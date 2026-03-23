@@ -11,7 +11,7 @@ occt-js is a WebAssembly build of OpenCASCADE Technology (OCCT) v7.9.3, providin
 ```bash
 # Prerequisites: Emscripten SDK 3.1.69, CMake 3.20+
 
-# Windows: install Emscripten
+# Windows: install Emscripten (one-time)
 tools\setup_emscripten_win.bat
 call emsdk\emsdk_env.bat
 
@@ -22,9 +22,15 @@ bash tools/build_wasm.sh
 mkdir -p build && cd build
 emcmake cmake .. -DCMAKE_BUILD_TYPE=Release
 emmake make -j$(nproc)
+
+# Run tests (requires Node.js from emsdk)
+emsdk/node/22.16.0_64bit/bin/node test/test_read.mjs
+emsdk/node/22.16.0_64bit/bin/node test/test_mvp_acceptance.mjs
 ```
 
-Output: `dist/occt-js.js` + `dist/occt-js.wasm`
+Output: `dist/occt-js.js` (109KB) + `dist/occt-js.wasm` (~11MB)
+
+First build takes 30-40 minutes (compiling ~200 OCCT modules). Incremental rebuilds of bridge code take ~2 minutes (relink only).
 
 ## Architecture
 
@@ -81,7 +87,17 @@ OCCT v7.9.3 source lives at `occt/` as a git submodule. Modules are compiled dir
 
 ## Relationship to Babylon.js
 
-This project is consumed by `packages/dev/loaders/src/STEP/stepWasmBridge.ts` in the Babylon.js fork. The bridge loads `occt-js.wasm`/`occt-js.js` and calls `ReadStepFile()`. The returned object is used directly as `StepSceneDto`.
+This project is consumed by `packages/dev/loaders/src/STEP/stepWasmBridge.ts` in the Babylon.js fork. The bridge loads `occt-js.wasm`/`occt-js.js` and calls `ReadStepFile()`. The returned object is then converted to `StepSceneDto` format via `_toStepSceneDto()` (mapping `isAssembly`→`kind`, `meshIndex`→`geometryId`, color objects→`baseColor` arrays, etc.).
+
+## Test Assets
+
+- `test/simple_part.step` — single cube (NX export, 12 triangles, orange color)
+- `test/assembly.step` — CAX-IF AS1 assembly (28 nodes, 5 geometries, 13 reused, 5 colors)
+- `test/ANC101.stp` — mechanical part (5584 triangles, no colors)
+
+## Current Status
+
+MVP complete. 18/18 acceptance criteria passed. See `test/test_mvp_acceptance.mjs`.
 
 ## License
 
