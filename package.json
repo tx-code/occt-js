@@ -1,15 +1,18 @@
 {
-  "name": "occt-js",
+  "name": "@aspect-code/occt-js",
   "version": "0.1.0",
-  "description": "OCCT STEP/IGES import via WebAssembly — minimal bridge for Babylon.js",
+  "description": "OCCT STEP import via WebAssembly — read STEP files in the browser",
   "main": "dist/occt-js.js",
+  "types": "dist/occt-js.d.ts",
   "files": [
     "dist/occt-js.js",
-    "dist/occt-js.wasm"
+    "dist/occt-js.wasm",
+    "dist/occt-js.d.ts",
+    "LICENSE"
   ],
   "scripts": {
-    "build:wasm": "tools/build_wasm.sh",
-    "test": "echo \"TODO: add tests\" && exit 0"
+    "build:wasm": "bash tools/build_wasm.sh",
+    "test": "node test/test_mvp_acceptance.mjs"
   },
   "repository": {
     "type": "git",
@@ -20,8 +23,13 @@
     "occt",
     "opencascade",
     "step",
+    "stp",
     "cad",
+    "brep",
     "wasm",
-    "webassembly"
+    "webassembly",
+    "3d",
+    "mesh",
+    "triangulation"
   ]
 }

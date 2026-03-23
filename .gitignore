@@ -1,7 +1,10 @@
 node_modules/
 build/
+build2/
 dist/*.wasm
 dist/*.js
 !dist/.gitkeep
+!dist/occt-js.d.ts
 *.o
 *.a
+emsdk/
