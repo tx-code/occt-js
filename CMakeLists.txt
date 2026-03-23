@@ -30,6 +30,17 @@ function(AddOcctModule moduleName)
     set(OcctIncludeDirs   ${OcctIncludeDirs}   PARENT_SCOPE)
 endfunction()
 
+# Header-only: add include path but do NOT compile .cxx files.
+# Use for modules needed only for type definitions referenced by other headers.
+function(AddOcctHeaders moduleName)
+    set(_modDir "${CMAKE_CURRENT_SOURCE_DIR}/occt/src/${moduleName}")
+    if(NOT EXISTS "${_modDir}")
+        return()
+    endif()
+    list(APPEND OcctIncludeDirs "occt/src/${moduleName}")
+    set(OcctIncludeDirs ${OcctIncludeDirs} PARENT_SCOPE)
+endfunction()
+
 # ===========================================================================
 #  OCCT Modules
 # ===========================================================================
@@ -213,10 +224,7 @@ AddOcctModule(TopOpeBRepBuild)
 AddOcctModule(TopOpeBRepDS)
 AddOcctModule(TopOpeBRepTool)
 
-# --- HLR ---
-AddOcctModule(HLRAlgo)
-AddOcctModule(HLRBRep)
-AddOcctModule(HLRTopoBRep)
+# --- HLR (headers only, see visualization section) ---
 
 # --- Shape Healing ---
 AddOcctModule(ShapeAlgo)
@@ -260,8 +268,7 @@ AddOcctModule(StepSelect)
 AddOcctModule(StepToGeom)
 AddOcctModule(StepToTopoDS)
 AddOcctModule(TopoDSToStep)
-AddOcctModule(GeomToIGES)
-AddOcctModule(Geom2dToIGES)
+# GeomToIGES / Geom2dToIGES: headers only (see IGES section)
 
 # --- RWStep readers ---
 AddOcctModule(RWHeaderSection)
@@ -280,24 +287,26 @@ AddOcctModule(RWStepVisual)
 AddOcctModule(HeaderSection)
 AddOcctModule(APIHeaderSection)
 
-# --- IGES exchange (needed by some STEP paths via GeomToIGES etc.) ---
-AddOcctModule(IGESAppli)
-AddOcctModule(IGESBasic)
-AddOcctModule(IGESCAFControl)
-AddOcctModule(IGESControl)
-AddOcctModule(IGESConvGeom)
-AddOcctModule(IGESData)
-AddOcctModule(IGESDefs)
-AddOcctModule(IGESDimen)
-AddOcctModule(IGESDraw)
-AddOcctModule(IGESFile)
-AddOcctModule(IGESGeom)
-AddOcctModule(IGESGraph)
-AddOcctModule(IGESSelect)
-AddOcctModule(IGESSolid)
-AddOcctModule(IGESToBRep)
-AddOcctModule(BRepToIGES)
-AddOcctModule(BRepToIGESBRep)
+# --- IGES exchange (headers only — some STEP types reference IGES headers) ---
+AddOcctHeaders(IGESAppli)
+AddOcctHeaders(IGESBasic)
+AddOcctHeaders(IGESCAFControl)
+AddOcctHeaders(IGESControl)
+AddOcctHeaders(IGESConvGeom)
+AddOcctHeaders(IGESData)
+AddOcctHeaders(IGESDefs)
+AddOcctHeaders(IGESDimen)
+AddOcctHeaders(IGESDraw)
+AddOcctHeaders(IGESFile)
+AddOcctHeaders(IGESGeom)
+AddOcctHeaders(IGESGraph)
+AddOcctHeaders(IGESSelect)
+AddOcctHeaders(IGESSolid)
+AddOcctHeaders(IGESToBRep)
+AddOcctHeaders(BRepToIGES)
+AddOcctHeaders(BRepToIGESBRep)
+AddOcctHeaders(GeomToIGES)
+AddOcctHeaders(Geom2dToIGES)
 
 # --- Exchange infrastructure ---
 AddOcctModule(Interface)
@@ -335,24 +344,25 @@ AddOcctModule(StdStorage)
 # --- DE framework (V7.8+ data exchange plugin system) ---
 AddOcctModule(DE)
 AddOcctModule(DEBREP)
-AddOcctModule(DEIGES)
-AddOcctModule(DEGLTF)
-AddOcctModule(DEOBJ)
-AddOcctModule(DEPLY)
-AddOcctModule(DESTL)
-AddOcctModule(DEVRML)
+# --- Non-STEP DE plugins (headers only) ---
+AddOcctHeaders(DEIGES)
+AddOcctHeaders(DEGLTF)
+AddOcctHeaders(DEOBJ)
+AddOcctHeaders(DEPLY)
+AddOcctHeaders(DESTL)
+AddOcctHeaders(DEVRML)
 
-# --- Additional RW/API modules required by DE plugins ---
-AddOcctModule(RWGltf)
-AddOcctModule(RWObj)
-AddOcctModule(RWPly)
-AddOcctModule(RWStl)
-AddOcctModule(RWMesh)
-AddOcctModule(StlAPI)
-AddOcctModule(Vrml)
-AddOcctModule(VrmlAPI)
-AddOcctModule(VrmlConverter)
-AddOcctModule(VrmlData)
+# --- Non-STEP RW/API modules (headers only) ---
+AddOcctHeaders(RWGltf)
+AddOcctHeaders(RWObj)
+AddOcctHeaders(RWPly)
+AddOcctHeaders(RWStl)
+AddOcctHeaders(RWMesh)
+AddOcctHeaders(StlAPI)
+AddOcctHeaders(Vrml)
+AddOcctHeaders(VrmlAPI)
+AddOcctHeaders(VrmlConverter)
+AddOcctHeaders(VrmlData)
 # XBRepMesh excluded: DISCRETALGO symbol conflicts with BRepMesh_IncrementalMesh
 AddOcctModule(DEBRepCascade)
 AddOcctModule(DESTEP)
@@ -399,31 +409,37 @@ AddOcctModule(ShapePersistent)
 AddOcctModule(AppStd)
 AddOcctModule(AppStdL)
 
-# --- Visualization (subset needed by XCAF / Prs3d) ---
+# --- Visualization (header-only) ---
+# XCAFDoc/XCAFPrs reference visualization types in their headers.
+# We only need the headers to compile; at link time these symbols are
+# not called on our STEP-import code path, so we skip .cxx compilation.
 AddOcctModule(AIS)
 AddOcctModule(Prs3d)
-AddOcctModule(PrsDim)
 AddOcctModule(PrsMgr)
 AddOcctModule(StdPrs)
 AddOcctModule(StdSelect)
-AddOcctModule(DsgPrs)
 AddOcctModule(Select3D)
 AddOcctModule(SelectBasics)
 AddOcctModule(SelectMgr)
 AddOcctModule(V3d)
 AddOcctModule(Graphic3d)
 AddOcctModule(Aspect)
-AddOcctModule(Image)
+AddOcctModule(Image)  # BinMXCAFDoc_VisMaterialDriver needs Image_Texture
 AddOcctModule(Font)
 AddOcctModule(Media)
+AddOcctModule(PrsDim)
+AddOcctModule(DsgPrs)
 AddOcctModule(WNT)
+AddOcctModule(HLRAlgo)
+AddOcctModule(HLRBRep)
+AddOcctModule(HLRTopoBRep)
+AddOcctModule(FairCurve)
 
 # --- Misc expression / mesh utilities ---
 AddOcctModule(Expr)
 AddOcctModule(ExprIntrp)
 AddOcctModule(FlexLexer)
-AddOcctModule(FairCurve)
-AddOcctModule(RWMesh)
+# FairCurve: headers only (see visualization section)
 
 # --- Resource files (message/step) ---
 AddOcctModule(SHMessage)
