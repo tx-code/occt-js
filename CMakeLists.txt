@@ -310,9 +310,50 @@ AddOcctModule(IFGraph)
 AddOcctModule(MoniTool)
 AddOcctModule(LibCtl)
 
+# --- TObj persistence ---
+AddOcctModule(TObj)
+AddOcctModule(BinTObjDrivers)
+AddOcctModule(XmlTObjDrivers)
+
+# --- XML persistence ---
+AddOcctModule(XmlDrivers)
+AddOcctModule(XmlLDrivers)
+AddOcctModule(XmlMDF)
+AddOcctModule(XmlMDataStd)
+AddOcctModule(XmlMDataXtd)
+AddOcctModule(XmlMDocStd)
+AddOcctModule(XmlMFunction)
+AddOcctModule(XmlMNaming)
+AddOcctModule(XmlMXCAFDoc)
+AddOcctModule(XmlObjMgt)
+AddOcctModule(XmlXCAFDrivers)
+
+# --- Standard persistence ---
+AddOcctModule(StdObject)
+AddOcctModule(StdStorage)
+
 # --- DE framework (V7.8+ data exchange plugin system) ---
 AddOcctModule(DE)
 AddOcctModule(DEBREP)
+AddOcctModule(DEIGES)
+AddOcctModule(DEGLTF)
+AddOcctModule(DEOBJ)
+AddOcctModule(DEPLY)
+AddOcctModule(DESTL)
+AddOcctModule(DEVRML)
+
+# --- Additional RW/API modules required by DE plugins ---
+AddOcctModule(RWGltf)
+AddOcctModule(RWObj)
+AddOcctModule(RWPly)
+AddOcctModule(RWStl)
+AddOcctModule(RWMesh)
+AddOcctModule(StlAPI)
+AddOcctModule(Vrml)
+AddOcctModule(VrmlAPI)
+AddOcctModule(VrmlConverter)
+AddOcctModule(VrmlData)
+# XBRepMesh excluded: DISCRETALGO symbol conflicts with BRepMesh_IncrementalMesh
 AddOcctModule(DEBRepCascade)
 AddOcctModule(DESTEP)
 AddOcctModule(DEXCAF)

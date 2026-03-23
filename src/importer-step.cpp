@@ -179,7 +179,7 @@ void TraverseLabel(
     if (!nodeColor.isValid) {
         nodeColor = GetLabelColor(refLabel, colorTool);
     }
-    node.color = nodeColor;
+    // nodeColor is used later as fallback for mesh color (not stored on node)
 
     // Check if it is an assembly (has sub-labels that are shapes)
     if (shapeTool->IsAssembly(refLabel))
