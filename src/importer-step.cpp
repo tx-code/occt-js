@@ -5,6 +5,7 @@
 #include <istream>
 #include <sstream>
 #include <map>
+#include <cstdint>
 
 // OCCT headers
 #include <STEPCAFControl_Reader.hxx>
@@ -195,12 +196,12 @@ void ExtractShapeMeshes(
     const Handle(XCAFDoc_ColorTool)& colorTool,
     OcctSceneData& scene,
     OcctNodeData& node,
-    std::map<int, int>& shapeHashToMeshIndex)
+    std::map<uintptr_t, int>& shapeHashToMeshIndex)
 {
     auto extractOne = [&](const TopoDS_Shape& subShape) {
-        // Geometry deduplication via shape hash
-        int shapeHash = subShape.IsNull() ? 0 : subShape.IsPartner(subShape) ? subShape.HashCode(INT_MAX) : subShape.HashCode(INT_MAX);
-        auto it = shapeHashToMeshIndex.find(shapeHash);
+        // Geometry deduplication: shapes sharing the same TShape are partners
+        auto* tshapePtr = subShape.IsNull() ? nullptr : subShape.TShape().get();
+        auto it = shapeHashToMeshIndex.find(reinterpret_cast<uintptr_t>(tshapePtr));
         if (it != shapeHashToMeshIndex.end()) {
             // Reuse existing mesh
             node.meshIndex = it->second;
@@ -234,7 +235,7 @@ void ExtractShapeMeshes(
 
         int meshIdx = static_cast<int>(scene.meshes.size());
         scene.meshes.push_back(std::move(meshData));
-        shapeHashToMeshIndex[shapeHash] = meshIdx;
+        shapeHashToMeshIndex[reinterpret_cast<uintptr_t>(tshapePtr)] = meshIdx;
         node.meshIndex = meshIdx;
     };
 
@@ -265,7 +266,8 @@ void TraverseLabel(
     const Handle(XCAFDoc_ShapeTool)&     shapeTool,
     const Handle(XCAFDoc_ColorTool)&     colorTool,
     const ImportParams&                  params,
-    OcctSceneData&                       scene)
+    OcctSceneData&                       scene,
+    std::map<uintptr_t, int>&            shapeCache)
 {
     int nodeIndex = static_cast<int>(scene.nodes.size());
     scene.nodes.emplace_back();
@@ -301,7 +303,7 @@ void TraverseLabel(
         // Extract mesh from the shape
         TopoDS_Shape shape = shapeTool->GetShape(refLabel);
         if (!shape.IsNull()) {
-            ExtractShapeMeshes(shape, shapeTool, colorTool, scene, scene.nodes[nodeIndex]);
+            ExtractShapeMeshes(shape, shapeTool, colorTool, scene, scene.nodes[nodeIndex], shapeCache);
         }
     } else {
         scene.nodes[nodeIndex].isAssembly = true;
@@ -311,7 +313,7 @@ void TraverseLabel(
             TDF_Label childLabel = it.Value();
             if (IsFreeShape(childLabel, shapeTool)) {
                 int childIdx = static_cast<int>(scene.nodes.size());
-                TraverseLabel(childLabel, shapeTool, colorTool, params, scene);
+                TraverseLabel(childLabel, shapeTool, colorTool, params, scene, shapeCache);
                 scene.nodes[nodeIndex].childIndices.push_back(childIdx);
             }
         }
@@ -404,6 +406,7 @@ OcctSceneData ImportStepFromMemory(
         }
 
         // ---- Build the scene graph ----
+        std::map<uintptr_t, int> shapeCache;
         for (int i = 1; i <= freeShapes.Length(); ++i)
         {
             int rootIdx = static_cast<int>(scene.nodes.size());
@@ -412,7 +415,8 @@ OcctSceneData ImportStepFromMemory(
                 shapeTool,
                 colorTool,
                 params,
-                scene);
+                scene,
+                shapeCache);
             scene.rootNodeIndices.push_back(rootIdx);
         }
 
