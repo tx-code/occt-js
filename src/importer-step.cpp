@@ -6,6 +6,7 @@
 #include <sstream>
 #include <map>
 #include <cstdint>
+#include <cmath>
 
 // OCCT headers
 #include <STEPCAFControl_Reader.hxx>
@@ -374,6 +375,28 @@ OcctSceneData ImportStepFromMemory(
             scene.error = "Failed to transfer STEP data to XDE document.";
             app->Close(doc);
             return scene;
+        }
+
+        // ---- Read unit info from document ----
+        {
+            Standard_Real unitInMeters = 0.0;
+            if (XCAFDoc_DocumentTool::GetLengthUnit(doc, unitInMeters)) {
+                scene.unitScaleToMeters = unitInMeters;
+                // Classify unit name
+                if (std::abs(unitInMeters - 0.001) < 1e-9) {
+                    scene.sourceUnit = "MM";
+                } else if (std::abs(unitInMeters - 0.01) < 1e-9) {
+                    scene.sourceUnit = "CM";
+                } else if (std::abs(unitInMeters - 1.0) < 1e-9) {
+                    scene.sourceUnit = "M";
+                } else if (std::abs(unitInMeters - 0.0254) < 1e-6) {
+                    scene.sourceUnit = "INCH";
+                } else if (std::abs(unitInMeters - 0.3048) < 1e-6) {
+                    scene.sourceUnit = "FOOT";
+                } else {
+                    scene.sourceUnit = "CUSTOM";
+                }
+            }
         }
 
         // ---- Extract tools ----

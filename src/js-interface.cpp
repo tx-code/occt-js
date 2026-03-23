@@ -165,6 +165,14 @@ val ReadStepFile(const val& content, const val& jsParams)
     }
     result.set("success", true);
 
+    // Unit info
+    if (!scene.sourceUnit.empty()) {
+        result.set("sourceUnit", scene.sourceUnit);
+    }
+    if (scene.unitScaleToMeters > 0.0) {
+        result.set("unitScaleToMeters", scene.unitScaleToMeters);
+    }
+
     // rootNodes (tree form)
     val rootNodes = val::array();
     for (int idx : scene.rootNodeIndices) {

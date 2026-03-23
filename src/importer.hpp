@@ -58,6 +58,10 @@ struct OcctSceneData {
     std::vector<OcctNodeData>  nodes;
     std::vector<OcctMeshData>  meshes;
     std::vector<int>           rootNodeIndices;
+
+    // Unit info read from STEP header
+    std::string                sourceUnit;          // e.g. "MM", "M", "INCH"
+    double                     unitScaleToMeters = 0.0; // 0 = unknown
 };
 
 struct ImportParams {
