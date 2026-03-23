@@ -1,0 +1,27 @@
+{
+  "name": "occt-js",
+  "version": "0.1.0",
+  "description": "OCCT STEP/IGES import via WebAssembly — minimal bridge for Babylon.js",
+  "main": "dist/occt-js.js",
+  "files": [
+    "dist/occt-js.js",
+    "dist/occt-js.wasm"
+  ],
+  "scripts": {
+    "build:wasm": "tools/build_wasm.sh",
+    "test": "echo \"TODO: add tests\" && exit 0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tx-code/occt-js.git"
+  },
+  "license": "LGPL-2.1",
+  "keywords": [
+    "occt",
+    "opencascade",
+    "step",
+    "cad",
+    "wasm",
+    "webassembly"
+  ]
+}

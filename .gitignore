@@ -1,0 +1,7 @@
+node_modules/
+build/
+dist/*.wasm
+dist/*.js
+!dist/.gitkeep
+*.o
+*.a
