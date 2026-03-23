@@ -1,5 +1,5 @@
 {
-  "name": "@aspect-code/occt-js",
+  "name": "@tx-code/occt-js",
   "version": "0.1.0",
   "description": "OCCT STEP import via WebAssembly — read STEP files in the browser",
   "main": "dist/occt-js.js",
