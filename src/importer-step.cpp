@@ -205,7 +205,7 @@ void ExtractShapeMeshes(
         auto it = shapeHashToMeshIndex.find(reinterpret_cast<uintptr_t>(tshapePtr));
         if (it != shapeHashToMeshIndex.end()) {
             // Reuse existing mesh
-            node.meshIndex = it->second;
+            node.meshIndices.push_back(it->second);
             return;
         }
 
@@ -237,7 +237,7 @@ void ExtractShapeMeshes(
         int meshIdx = static_cast<int>(scene.meshes.size());
         scene.meshes.push_back(std::move(meshData));
         shapeHashToMeshIndex[reinterpret_cast<uintptr_t>(tshapePtr)] = meshIdx;
-        node.meshIndex = meshIdx;
+        node.meshIndices.push_back(meshIdx);
     };
 
     // Solids

@@ -48,7 +48,7 @@ struct OcctNodeData {
     std::string            name;
     bool                   isAssembly = false;
     std::array<float, 16>  transform;      // column-major 4x4 matrix
-    int                    meshIndex = -1;  // index into meshes array, -1 if none
+    std::vector<int>       meshIndices;     // indices into meshes array (may have multiple solids)
     std::vector<int>       childIndices;
 };
 

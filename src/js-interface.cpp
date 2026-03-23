@@ -88,7 +88,12 @@ val NodeToTreeVal(const OcctSceneData& scene, int nodeIdx)
     obj.set("name",       node.name);
     obj.set("isAssembly", node.isAssembly);
     obj.set("transform",  TransformToVal(node.transform));
-    obj.set("meshIndex",  node.meshIndex);
+    // Output meshes array (matches occt-import-js format: node.meshes = [idx, ...])
+    val meshesArr = val::array();
+    for (size_t i = 0; i < node.meshIndices.size(); ++i) {
+        meshesArr.call<void>("push", node.meshIndices[i]);
+    }
+    obj.set("meshes", meshesArr);
 
     val children = val::array();
     for (int childIdx : node.childIndices) {
@@ -231,9 +236,11 @@ val ReadStepFile(const val& content, const val& jsParams)
         std::map<int, int> meshRefCount;
 
         for (const auto& node : scene.nodes) {
-            if (node.meshIndex >= 0) {
+            if (!node.meshIndices.empty()) {
                 ++partCount;
-                meshRefCount[node.meshIndex]++;
+                for (int mi : node.meshIndices) {
+                    meshRefCount[mi]++;
+                }
             }
         }
         for (const auto& [mi, count] : meshRefCount) {
