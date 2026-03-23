@@ -3,11 +3,11 @@
 #include "importer.hpp"
 
 #include <TopoDS_Shape.hxx>
-#include <TopLoc_Location.hxx>
 
-/// Run BRepMesh_IncrementalMesh on `shape` using the given tessellation params.
-void TriangulateShape(const TopoDS_Shape& shape, const ImportParams& params);
+/// Triangulate a shape using BRepMesh. Uses bounding-box-ratio deflection.
+/// Returns false if the shape has no valid bounding box.
+bool TriangulateShape(TopoDS_Shape& shape, const ImportParams& params);
 
 /// Extract triangulated mesh data from an already-meshed shape.
-/// `loc` is the accumulated location/transform for this shape.
-OcctMeshData ExtractMeshFromShape(const TopoDS_Shape& shape, const TopLoc_Location& loc);
+/// Uses each face's own location — no external location parameter needed.
+OcctMeshData ExtractMeshFromShape(const TopoDS_Shape& shape);

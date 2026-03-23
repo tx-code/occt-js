@@ -13,7 +13,6 @@
 #include <XCAFDoc_DocumentTool.hxx>
 #include <XCAFDoc_ShapeTool.hxx>
 #include <XCAFDoc_ColorTool.hxx>
-#include <XCAFDoc_Location.hxx>
 #include <TDocStd_Document.hxx>
 #include <TDF_Label.hxx>
 #include <TDF_LabelSequence.hxx>
@@ -21,7 +20,6 @@
 #include <TDataStd_Name.hxx>
 #include <TopoDS_Shape.hxx>
 #include <TopLoc_Location.hxx>
-#include <gp_Trsf.hxx>
 #include <Quantity_Color.hxx>
 #include <TopAbs_ShapeEnum.hxx>
 #include <TopExp_Explorer.hxx>
@@ -37,27 +35,27 @@
 namespace {
 
 // ---------------------------------------------------------------------------
-//  Convert gp_Trsf to a column-major 4x4 float array.
+//  Convert gp_Trsf to a column-major 4x4 float array (Babylon.js compatible).
 // ---------------------------------------------------------------------------
 std::array<float, 16> TrsfToMatrix(const gp_Trsf& trsf)
 {
     std::array<float, 16> m;
-    // Row 0
+    // Column 0
     m[0]  = static_cast<float>(trsf.Value(1, 1));
     m[1]  = static_cast<float>(trsf.Value(2, 1));
     m[2]  = static_cast<float>(trsf.Value(3, 1));
     m[3]  = 0.0f;
-    // Row 1
+    // Column 1
     m[4]  = static_cast<float>(trsf.Value(1, 2));
     m[5]  = static_cast<float>(trsf.Value(2, 2));
     m[6]  = static_cast<float>(trsf.Value(3, 2));
     m[7]  = 0.0f;
-    // Row 2
+    // Column 2
     m[8]  = static_cast<float>(trsf.Value(1, 3));
     m[9]  = static_cast<float>(trsf.Value(2, 3));
     m[10] = static_cast<float>(trsf.Value(3, 3));
     m[11] = 0.0f;
-    // Row 3 (translation)
+    // Column 3 (translation)
     m[12] = static_cast<float>(trsf.Value(1, 4));
     m[13] = static_cast<float>(trsf.Value(2, 4));
     m[14] = static_cast<float>(trsf.Value(3, 4));
@@ -65,189 +63,256 @@ std::array<float, 16> TrsfToMatrix(const gp_Trsf& trsf)
     return m;
 }
 
-// Identity 4x4 column-major
 std::array<float, 16> IdentityMatrix()
 {
-    return {
-        1, 0, 0, 0,
-        0, 1, 0, 0,
-        0, 0, 1, 0,
-        0, 0, 0, 1
-    };
+    return { 1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1 };
 }
 
 // ---------------------------------------------------------------------------
-//  Retrieve the user-visible name from a label (via TDataStd_Name).
+//  Get name from label — proper UTF-8 conversion (matches occt-import-js).
 // ---------------------------------------------------------------------------
-std::string GetLabelName(const TDF_Label& label)
+std::string GetLabelNameNoRef(const TDF_Label& label)
 {
     Handle(TDataStd_Name) nameAttr;
-    if (label.FindAttribute(TDataStd_Name::GetID(), nameAttr)) {
-        TCollection_ExtendedString extStr = nameAttr->Get();
-        std::string result;
-        for (int i = 1; i <= extStr.Length(); ++i) {
-            Standard_ExtCharacter ch = extStr.Value(i);
-            if (ch < 128) {
-                result += static_cast<char>(ch);
-            } else {
-                result += '?';
-            }
-        }
-        return result;
+    if (!label.FindAttribute(TDataStd_Name::GetID(), nameAttr)) {
+        return {};
     }
-    return {};
+    TCollection_ExtendedString extStr = nameAttr->Get();
+    std::string result;
+    for (int i = 1; i <= extStr.Length(); ++i) {
+        Standard_ExtCharacter ch = extStr.Value(i);
+        if (ch < 128) {
+            result += static_cast<char>(ch);
+        } else {
+            result += '?';
+        }
+    }
+    return result;
+}
+
+std::string GetLabelName(const TDF_Label& label,
+                         const Handle(XCAFDoc_ShapeTool)& shapeTool)
+{
+    if (XCAFDoc_ShapeTool::IsReference(label)) {
+        TDF_Label refLabel;
+        shapeTool->GetReferredShape(label, refLabel);
+        return GetLabelName(refLabel, shapeTool);
+    }
+    return GetLabelNameNoRef(label);
 }
 
 // ---------------------------------------------------------------------------
-//  Get color from a label using the color tool.
+//  Get color from label (matches occt-import-js: try label, then reference).
 // ---------------------------------------------------------------------------
-OcctColor GetLabelColor(const TDF_Label& label,
-                        const Handle(XCAFDoc_ColorTool)& colorTool)
+bool GetLabelColorNoRef(const TDF_Label& label,
+                        const Handle(XCAFDoc_ColorTool)& colorTool,
+                        OcctColor& color)
 {
     Quantity_Color qColor;
     if (colorTool->GetColor(label, XCAFDoc_ColorSurf, qColor) ||
         colorTool->GetColor(label, XCAFDoc_ColorCurv, qColor) ||
         colorTool->GetColor(label, XCAFDoc_ColorGen, qColor))
     {
-        return OcctColor(qColor.Red(), qColor.Green(), qColor.Blue());
+        color = OcctColor(qColor.Red(), qColor.Green(), qColor.Blue());
+        return true;
     }
-    return {};
+    return false;
 }
 
-// ---------------------------------------------------------------------------
-//  Get color for a shape.
-// ---------------------------------------------------------------------------
-OcctColor GetShapeColor(const TopoDS_Shape& shape,
-                        const Handle(XCAFDoc_ColorTool)& colorTool)
+bool GetLabelColor(const TDF_Label& label,
+                   const Handle(XCAFDoc_ShapeTool)& shapeTool,
+                   const Handle(XCAFDoc_ColorTool)& colorTool,
+                   OcctColor& color)
 {
-    Quantity_Color qColor;
-    if (colorTool->GetColor(shape, XCAFDoc_ColorSurf, qColor) ||
-        colorTool->GetColor(shape, XCAFDoc_ColorCurv, qColor) ||
-        colorTool->GetColor(shape, XCAFDoc_ColorGen, qColor))
-    {
-        return OcctColor(qColor.Red(), qColor.Green(), qColor.Blue());
+    if (GetLabelColorNoRef(label, colorTool, color)) {
+        return true;
     }
-    return {};
+    if (XCAFDoc_ShapeTool::IsReference(label)) {
+        TDF_Label refLabel;
+        shapeTool->GetReferredShape(label, refLabel);
+        return GetLabelColor(refLabel, shapeTool, colorTool, color);
+    }
+    return false;
+}
+
+bool GetShapeColor(const TopoDS_Shape& shape,
+                   const Handle(XCAFDoc_ShapeTool)& shapeTool,
+                   const Handle(XCAFDoc_ColorTool)& colorTool,
+                   OcctColor& color)
+{
+    TDF_Label shapeLabel;
+    if (!shapeTool->Search(shape, shapeLabel)) {
+        return false;
+    }
+    return GetLabelColor(shapeLabel, shapeTool, colorTool, color);
 }
 
 // ---------------------------------------------------------------------------
-//  Recursively traverse the XDE document tree and populate OcctSceneData.
+//  Check if a label is a free shape.
+// ---------------------------------------------------------------------------
+bool IsFreeShape(const TDF_Label& label, const Handle(XCAFDoc_ShapeTool)& shapeTool)
+{
+    TopoDS_Shape tmpShape;
+    return shapeTool->GetShape(label, tmpShape) && shapeTool->IsFree(label);
+}
+
+// ---------------------------------------------------------------------------
+//  Check if a label is a mesh node (leaf that has geometry, not assembly).
+//  Matches occt-import-js: no children, or only subshape/non-freeshape children.
+// ---------------------------------------------------------------------------
+bool IsMeshNode(const TDF_Label& label, const Handle(XCAFDoc_ShapeTool)& shapeTool)
+{
+    if (!label.HasChild()) {
+        return true;
+    }
+
+    // If it has a subshape child, treat as mesh node
+    for (TDF_ChildIterator it(label); it.More(); it.Next()) {
+        if (shapeTool->IsSubShape(it.Value())) {
+            return true;
+        }
+    }
+
+    // If no free-shape child, treat as mesh node
+    bool hasFreeShapeChild = false;
+    for (TDF_ChildIterator it(label); it.More(); it.Next()) {
+        if (IsFreeShape(it.Value(), shapeTool)) {
+            hasFreeShapeChild = true;
+            break;
+        }
+    }
+    return !hasFreeShapeChild;
+}
+
+// ---------------------------------------------------------------------------
+//  Extract meshes from a shape.
+//  Matches occt-import-js: enumerate SOLIDs, then SHELLs not in SOLIDs,
+//  then standalone FACEs not in SHELLs.
+// ---------------------------------------------------------------------------
+void ExtractShapeMeshes(
+    const TopoDS_Shape& shape,
+    const Handle(XCAFDoc_ShapeTool)& shapeTool,
+    const Handle(XCAFDoc_ColorTool)& colorTool,
+    OcctSceneData& scene,
+    OcctNodeData& node,
+    std::map<int, int>& shapeHashToMeshIndex)
+{
+    auto extractOne = [&](const TopoDS_Shape& subShape) {
+        // Geometry deduplication via shape hash
+        int shapeHash = subShape.IsNull() ? 0 : subShape.IsPartner(subShape) ? subShape.HashCode(INT_MAX) : subShape.HashCode(INT_MAX);
+        auto it = shapeHashToMeshIndex.find(shapeHash);
+        if (it != shapeHashToMeshIndex.end()) {
+            // Reuse existing mesh
+            node.meshIndex = it->second;
+            return;
+        }
+
+        OcctMeshData meshData = ExtractMeshFromShape(subShape);
+        if (meshData.positions.empty()) return;
+
+        // Name
+        meshData.name = node.name;
+
+        // Color: try shape-level, then node name lookup
+        OcctColor shapeColor;
+        GetShapeColor(subShape, shapeTool, colorTool, shapeColor);
+        meshData.color = shapeColor;
+
+        // Per-face colors
+        int faceIdx = 0;
+        for (TopExp_Explorer ex(subShape, TopAbs_FACE); ex.More(); ex.Next()) {
+            if (faceIdx < static_cast<int>(meshData.faceRanges.size())) {
+                OcctColor faceColor;
+                if (GetShapeColor(ex.Current(), shapeTool, colorTool, faceColor)) {
+                    meshData.faceRanges[faceIdx].color = faceColor;
+                } else {
+                    meshData.faceRanges[faceIdx].color = shapeColor;
+                }
+            }
+            ++faceIdx;
+        }
+
+        int meshIdx = static_cast<int>(scene.meshes.size());
+        scene.meshes.push_back(std::move(meshData));
+        shapeHashToMeshIndex[shapeHash] = meshIdx;
+        node.meshIndex = meshIdx;
+    };
+
+    // Solids
+    for (TopExp_Explorer ex(shape, TopAbs_SOLID); ex.More(); ex.Next()) {
+        extractOne(ex.Current());
+    }
+    // Shells not part of a solid
+    for (TopExp_Explorer ex(shape, TopAbs_SHELL, TopAbs_SOLID); ex.More(); ex.Next()) {
+        extractOne(ex.Current());
+    }
+    // Standalone faces not part of a shell
+    bool hasStandaloneFaces = false;
+    for (TopExp_Explorer ex(shape, TopAbs_FACE, TopAbs_SHELL); ex.More(); ex.Next()) {
+        hasStandaloneFaces = true;
+        break;
+    }
+    if (hasStandaloneFaces) {
+        extractOne(shape); // will enumerate TopAbs_FACE in ExtractMeshFromShape
+    }
+}
+
+// ---------------------------------------------------------------------------
+//  Recursively traverse the XDE document tree.
 // ---------------------------------------------------------------------------
 void TraverseLabel(
-    const TDF_Label&                         label,
-    const Handle(XCAFDoc_ShapeTool)&         shapeTool,
-    const Handle(XCAFDoc_ColorTool)&         colorTool,
-    const ImportParams&                      params,
-    OcctSceneData&                           scene,
-    std::map<size_t, int>&                   shapeHashToMeshIndex)
+    const TDF_Label&                     label,
+    const Handle(XCAFDoc_ShapeTool)&     shapeTool,
+    const Handle(XCAFDoc_ColorTool)&     colorTool,
+    const ImportParams&                  params,
+    OcctSceneData&                       scene)
 {
-    // Create a node for this label
     int nodeIndex = static_cast<int>(scene.nodes.size());
     scene.nodes.emplace_back();
-    OcctNodeData& node = scene.nodes.back();
-
-    // Name
-    node.name = GetLabelName(label);
-
-    // ID (use entry string)
-    {
-        TCollection_AsciiString entry;
-        TDF_Tool::Entry(label, entry);
-        node.id = entry.ToCString();
-    }
-
-    // Transform
-    TopLoc_Location loc = shapeTool->GetLocation(label);
-    if (loc.IsIdentity()) {
-        node.transform = IdentityMatrix();
-    } else {
-        node.transform = TrsfToMatrix(loc.Transformation());
-    }
 
     // Resolve reference
     TDF_Label refLabel = label;
     if (shapeTool->IsReference(label)) {
         shapeTool->GetReferredShape(label, refLabel);
-        // Inherit name from reference target if current is empty
-        if (node.name.empty()) {
-            node.name = GetLabelName(refLabel);
-        }
     }
 
-    // Color from this label or referenced label
-    OcctColor nodeColor = GetLabelColor(label, colorTool);
-    if (!nodeColor.isValid) {
-        nodeColor = GetLabelColor(refLabel, colorTool);
-    }
-    // nodeColor is used later as fallback for mesh color (not stored on node)
+    // Name
+    scene.nodes[nodeIndex].name = GetLabelName(label, shapeTool);
 
-    // Check if it is an assembly (has sub-labels that are shapes)
-    if (shapeTool->IsAssembly(refLabel))
+    // ID
     {
-        node.isAssembly = true;
-
-        TDF_LabelSequence children;
-        shapeTool->GetComponents(refLabel, children);
-
-        for (int i = 1; i <= children.Length(); ++i)
-        {
-            int childIdx = static_cast<int>(scene.nodes.size());
-            TraverseLabel(children.Value(i), shapeTool, colorTool,
-                          params, scene, shapeHashToMeshIndex);
-            // Re-fetch our node reference since vector may have reallocated
-            scene.nodes[nodeIndex].childIndices.push_back(childIdx);
-        }
+        TCollection_AsciiString entry;
+        TDF_Tool::Entry(label, entry);
+        scene.nodes[nodeIndex].id = entry.ToCString();
     }
-    else
-    {
-        // Leaf shape – triangulate and extract mesh
+
+    // Transform
+    TopLoc_Location loc = shapeTool->GetLocation(label);
+    if (loc.IsIdentity()) {
+        scene.nodes[nodeIndex].transform = IdentityMatrix();
+    } else {
+        scene.nodes[nodeIndex].transform = TrsfToMatrix(loc.Transformation());
+    }
+
+    // Check if mesh node (leaf) or assembly (has children)
+    if (IsMeshNode(refLabel, shapeTool)) {
+        scene.nodes[nodeIndex].isAssembly = false;
+
+        // Extract mesh from the shape
         TopoDS_Shape shape = shapeTool->GetShape(refLabel);
-        if (!shape.IsNull())
-        {
-            size_t shapeHash = std::hash<TopoDS_Shape>{}(shape);
+        if (!shape.IsNull()) {
+            ExtractShapeMeshes(shape, shapeTool, colorTool, scene, scene.nodes[nodeIndex]);
+        }
+    } else {
+        scene.nodes[nodeIndex].isAssembly = true;
 
-            auto it = shapeHashToMeshIndex.find(shapeHash);
-            if (it != shapeHashToMeshIndex.end()) {
-                // Reuse an already-extracted mesh
-                scene.nodes[nodeIndex].meshIndex = it->second;
-            } else {
-                // Triangulate
-                TriangulateShape(shape, params);
-
-                // Extract
-                TopLoc_Location identity;
-                OcctMeshData meshData = ExtractMeshFromShape(shape, identity);
-                meshData.name = node.name;
-
-                // Assign per-face colors
-                OcctColor shapeColor = GetShapeColor(shape, colorTool);
-                if (!shapeColor.isValid) {
-                    shapeColor = nodeColor;
-                }
-                meshData.color = shapeColor;
-
-                // Fill face-range colors from sub-shape colors
-                {
-                    int faceIdx = 0;
-                    TopExp_Explorer faceExplorer(shape, TopAbs_FACE);
-                    for (; faceExplorer.More(); faceExplorer.Next()) {
-                        if (faceIdx < static_cast<int>(meshData.faceRanges.size())) {
-                            OcctColor faceColor = GetShapeColor(
-                                faceExplorer.Current(), colorTool);
-                            if (faceColor.isValid) {
-                                meshData.faceRanges[faceIdx].color = faceColor;
-                            } else {
-                                meshData.faceRanges[faceIdx].color = shapeColor;
-                            }
-                        }
-                        ++faceIdx;
-                    }
-                }
-
-                int meshIdx = static_cast<int>(scene.meshes.size());
-                scene.meshes.push_back(std::move(meshData));
-                shapeHashToMeshIndex[shapeHash] = meshIdx;
-                scene.nodes[nodeIndex].meshIndex = meshIdx;
+        // Recurse children
+        for (TDF_ChildIterator it(refLabel); it.More(); it.Next()) {
+            TDF_Label childLabel = it.Value();
+            if (IsFreeShape(childLabel, shapeTool)) {
+                int childIdx = static_cast<int>(scene.nodes.size());
+                TraverseLabel(childLabel, shapeTool, colorTool, params, scene);
+                scene.nodes[nodeIndex].childIndices.push_back(childIdx);
             }
         }
     }
@@ -325,9 +390,20 @@ OcctSceneData ImportStepFromMemory(
             return scene;
         }
 
-        // ---- Build the scene graph ----
-        std::map<size_t, int> shapeHashToMeshIndex;
+        // ---- Triangulate at root level (matches occt-import-js) ----
+        // This ensures all sub-shapes get triangulated in one pass.
+        TDF_Label mainLabel = shapeTool->Label();
+        for (TDF_ChildIterator it(mainLabel); it.More(); it.Next()) {
+            TDF_Label childLabel = it.Value();
+            if (IsFreeShape(childLabel, shapeTool)) {
+                TopoDS_Shape shape = shapeTool->GetShape(childLabel);
+                if (!shape.IsNull()) {
+                    TriangulateShape(shape, params);
+                }
+            }
+        }
 
+        // ---- Build the scene graph ----
         for (int i = 1; i <= freeShapes.Length(); ++i)
         {
             int rootIdx = static_cast<int>(scene.nodes.size());
@@ -336,13 +412,11 @@ OcctSceneData ImportStepFromMemory(
                 shapeTool,
                 colorTool,
                 params,
-                scene,
-                shapeHashToMeshIndex);
+                scene);
             scene.rootNodeIndices.push_back(rootIdx);
         }
 
         scene.success = true;
-
         app->Close(doc);
     }
     catch (const Standard_Failure& ex) {
