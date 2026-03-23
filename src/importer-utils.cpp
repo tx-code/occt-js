@@ -20,7 +20,7 @@ void TriangulateShape(const TopoDS_Shape& shape, const ImportParams& params)
         params.linearDeflection,
         Standard_False,         // isRelative
         params.angularDeflection,
-        Standard_True           // inParallel
+        Standard_False          // inParallel (Wasm is single-threaded)
     );
     mesher.Perform();
 }
