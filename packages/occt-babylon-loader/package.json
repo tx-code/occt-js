@@ -1,0 +1,21 @@
+{
+  "name": "@tx-code/occt-babylon-loader",
+  "version": "0.1.0",
+  "description": "Babylon.js model-loader adapter for OCCT-backed CAD formats",
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "files": [
+    "src"
+  ],
+  "license": "Apache-2.0",
+  "peerDependencies": {
+    "@tx-code/occt-core": "^0.1.0",
+    "@babylonjs/core": "^8.0.0"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  }
+}
