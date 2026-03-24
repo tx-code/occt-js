@@ -177,3 +177,42 @@ test("loading a second file replaces the first", async ({ page }) => {
   await expect(page.locator("#fileNameDisplay")).toContainText("as1_pe_203.brep");
   await expect(page.locator("#statsContent")).toContainText("BREP");
 });
+
+// ---------------------------------------------------------------------------
+// Face picking
+// ---------------------------------------------------------------------------
+
+test("clicking on model shows face selection panel", async ({ page }) => {
+  // Load sample model
+  await page.click("#loadSample");
+  await expect(page.locator("#statsPanel")).toBeVisible({ timeout: 30_000 });
+
+  // Selection panel should be hidden initially
+  await expect(page.locator("#selectionPanel")).toBeHidden();
+
+  // Click the center of the canvas (should hit the model)
+  const canvas = page.locator("#renderCanvas");
+  const box = await canvas.boundingBox();
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+
+  // Selection panel should appear with face info
+  await expect(page.locator("#selectionPanel")).toBeVisible({ timeout: 5000 });
+  await expect(page.locator("#selectionContent")).toContainText("Face ID");
+  await expect(page.locator("#selectionContent")).toContainText("Triangles");
+  await expect(page.locator("#selectionContent")).toContainText("Boundary Edges");
+});
+
+test("clicking clear button hides selection panel", async ({ page }) => {
+  await page.click("#loadSample");
+  await expect(page.locator("#statsPanel")).toBeVisible({ timeout: 30_000 });
+
+  // Click center to select
+  const canvas = page.locator("#renderCanvas");
+  const box = await canvas.boundingBox();
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await expect(page.locator("#selectionPanel")).toBeVisible({ timeout: 5000 });
+
+  // Click close button
+  await page.click("#clearSelection");
+  await expect(page.locator("#selectionPanel")).toBeHidden();
+});

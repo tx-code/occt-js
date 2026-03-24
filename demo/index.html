@@ -72,6 +72,20 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
 }
 .toggle.active { border-color: #4cc9f0; color: #4cc9f0; }
 
+/* Selection info panel */
+#selectionPanel {
+  position: absolute; top: 56px; right: 16px; z-index: 10;
+  background: rgba(26, 26, 46, 0.9); border: 1px solid #4cc9f0;
+  border-radius: 10px; padding: 14px 18px; font-size: 12px;
+  backdrop-filter: blur(8px); min-width: 180px;
+}
+#selectionPanel h3 { font-size: 13px; color: #4cc9f0; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; }
+#selectionPanel h3 .close { cursor: pointer; color: #888; font-size: 16px; line-height: 1; }
+#selectionPanel h3 .close:hover { color: #fff; }
+#selectionPanel .row { display: flex; justify-content: space-between; padding: 2px 0; }
+#selectionPanel .label { color: #888; }
+#selectionPanel .value { color: #ddd; font-variant-numeric: tabular-nums; }
+
 /* Loading */
 #loading {
   position: absolute; inset: 0; z-index: 200;
@@ -118,6 +132,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
   <button class="toggle active" id="toggleEdges">Edges</button>
 </div>
 
+<div id="selectionPanel" style="display:none">
+  <h3>Selected Face <span class="close" id="clearSelection">&times;</span></h3>
+  <div id="selectionContent"></div>
+</div>
+
 <div id="loading"><div class="spinner"></div><span>Loading model...</span></div>
 
 <script>
@@ -125,6 +144,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
 let engine, scene, camera, occtModule;
 let currentMeshes = [], currentEdgeLines = [], currentTransformNodes = [];
 let facesVisible = true, edgesVisible = true;
+
+// Picking state
+let meshGeoMap = new Map(); // Babylon mesh → raw geometry data
+let highlightMesh = null, highlightEdgeLines = null;
+let selectedFaceId = null;
 
 // --- Babylon Setup ---
 function initBabylon() {
@@ -283,6 +307,9 @@ function buildScene(result) {
       vertexData.applyToMesh(mesh);
       mesh.material = getMaterial(meshColor);
 
+      // Store raw geometry for picking
+      meshGeoMap.set(mesh, geo);
+
       geoCache.set(cacheKey, mesh);
       currentMeshes.push(mesh);
 
@@ -328,12 +355,170 @@ function buildScene(result) {
 }
 
 function clearScene() {
+  clearSelection();
   for (const m of currentMeshes) m.dispose();
   for (const l of currentEdgeLines) l.dispose();
   for (const t of currentTransformNodes) t.dispose();
   currentMeshes = []; currentEdgeLines = []; currentTransformNodes = [];
+  meshGeoMap.clear();
   // Dispose materials
   scene.materials.slice().forEach(m => { if (m.name.startsWith("mat_")) m.dispose(); });
+}
+
+// --- Picking / Selection ---
+function clearSelection() {
+  if (highlightMesh) { highlightMesh.dispose(); highlightMesh = null; }
+  if (highlightEdgeLines) { highlightEdgeLines.dispose(); highlightEdgeLines = null; }
+  selectedFaceId = null;
+  document.getElementById("selectionPanel").style.display = "none";
+}
+
+function highlightFace(babylonMesh, faceId) {
+  clearSelection();
+  const geo = meshGeoMap.get(babylonMesh);
+  if (!geo || !geo.faces) return;
+
+  const face = geo.faces.find(f => f.id === faceId);
+  if (!face || face.indexCount === 0) return;
+
+  selectedFaceId = faceId;
+
+  // Extract face triangles into overlay mesh
+  const srcPositions = geo.positions;
+  const srcNormals = geo.normals;
+  const srcIndices = geo.indices;
+
+  const faceIndices = [];
+  for (let i = face.firstIndex; i < face.firstIndex + face.indexCount; i++) {
+    faceIndices.push(srcIndices[i]);
+  }
+
+  // Build compact vertex buffer for highlight
+  const indexRemap = new Map();
+  const positions = [], normals = [];
+  const indices = [];
+  for (const idx of faceIndices) {
+    if (!indexRemap.has(idx)) {
+      const newIdx = indexRemap.size;
+      indexRemap.set(idx, newIdx);
+      positions.push(srcPositions[idx * 3], srcPositions[idx * 3 + 1], srcPositions[idx * 3 + 2]);
+      if (srcNormals && srcNormals.length > 0) {
+        normals.push(srcNormals[idx * 3], srcNormals[idx * 3 + 1], srcNormals[idx * 3 + 2]);
+      }
+    }
+    indices.push(indexRemap.get(idx));
+  }
+
+  highlightMesh = new BABYLON.Mesh("__highlight__", scene);
+  highlightMesh.parent = babylonMesh;
+  const vd = new BABYLON.VertexData();
+  vd.positions = new Float32Array(positions);
+  vd.indices = new Uint32Array(indices);
+  if (normals.length > 0) vd.normals = new Float32Array(normals);
+  vd.applyToMesh(highlightMesh);
+
+  const mat = new BABYLON.StandardMaterial("mat_highlight", scene);
+  mat.diffuseColor = new BABYLON.Color3(0.3, 0.75, 1.0);
+  mat.emissiveColor = new BABYLON.Color3(0.1, 0.25, 0.4);
+  mat.alpha = 0.6;
+  mat.backFaceCulling = false;
+  mat.zOffset = -1; // render slightly in front
+  highlightMesh.material = mat;
+  highlightMesh.isPickable = false;
+  highlightMesh.renderingGroupId = 1;
+
+  // Highlight boundary edges
+  if (face.edgeIndices && geo.edges) {
+    const lines = [];
+    for (const ei of face.edgeIndices) {
+      const edge = geo.edges[ei];
+      if (!edge || !edge.points || edge.points.length < 6) continue;
+      const pts = edge.points;
+      const line = [];
+      for (let i = 0; i < pts.length; i += 3) {
+        line.push(new BABYLON.Vector3(pts[i], pts[i + 1], pts[i + 2]));
+      }
+      lines.push(line);
+    }
+    if (lines.length > 0) {
+      highlightEdgeLines = BABYLON.MeshBuilder.CreateLineSystem("__highlight_edges__", { lines }, scene);
+      highlightEdgeLines.color = new BABYLON.Color3(0.3, 0.85, 1.0);
+      highlightEdgeLines.parent = babylonMesh;
+      highlightEdgeLines.isPickable = false;
+      highlightEdgeLines.renderingGroupId = 1;
+    }
+  }
+
+  // Show selection info
+  const triCount = face.indexCount / 3;
+  const edgeCount = (face.edgeIndices || []).length;
+  const colorStr = face.color
+    ? `rgb(${(face.color.r * 255) | 0}, ${(face.color.g * 255) | 0}, ${(face.color.b * 255) | 0})`
+    : "none";
+
+  const rows = [
+    ["Face ID", faceId],
+    ["Triangles", triCount],
+    ["Boundary Edges", edgeCount],
+    ["Color", `<span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:${colorStr};vertical-align:middle;border:1px solid #555"></span> ${colorStr}`],
+  ];
+
+  // Find adjacent faces via shared edges
+  if (face.edgeIndices && geo.edges) {
+    const adjacentFaces = new Set();
+    for (const ei of face.edgeIndices) {
+      const edge = geo.edges[ei];
+      if (edge && edge.ownerFaceIds) {
+        for (const fid of edge.ownerFaceIds) {
+          if (fid !== faceId) adjacentFaces.add(fid);
+        }
+      }
+    }
+    if (adjacentFaces.size > 0) {
+      rows.push(["Adjacent Faces", Array.from(adjacentFaces).sort((a, b) => a - b).join(", ")]);
+    }
+  }
+
+  document.getElementById("selectionContent").innerHTML = rows
+    .map(([l, v]) => `<div class="row"><span class="label">${l}</span><span class="value">${v}</span></div>`)
+    .join("");
+  document.getElementById("selectionPanel").style.display = "";
+}
+
+function setupPicking() {
+  scene.onPointerDown = (evt, pickResult) => {
+    if (evt.button !== 0) return; // left click only
+
+    if (!pickResult.hit || !pickResult.pickedMesh) {
+      clearSelection();
+      return;
+    }
+
+    const mesh = pickResult.pickedMesh;
+    // Resolve source mesh for instances
+    const sourceMesh = mesh.sourceMesh || mesh;
+    const geo = meshGeoMap.get(sourceMesh);
+    if (!geo || !geo.triangleToFaceMap) {
+      clearSelection();
+      return;
+    }
+
+    // Babylon faceId = triangle index
+    const triIndex = pickResult.faceId;
+    if (triIndex < 0 || triIndex >= geo.triangleToFaceMap.length) {
+      clearSelection();
+      return;
+    }
+
+    const faceId = geo.triangleToFaceMap[triIndex];
+    if (faceId < 1) {
+      clearSelection();
+      return;
+    }
+
+    // Highlight on the source mesh (so instances share the data)
+    highlightFace(sourceMesh, faceId);
+  };
 }
 
 // --- Stats ---
@@ -476,6 +661,10 @@ function init() {
     camera.alpha = Math.PI / 4;
     camera.beta = Math.PI / 3;
   });
+
+  // Picking
+  setupPicking();
+  document.getElementById("clearSelection").addEventListener("click", clearSelection);
 
   // Toggles
   document.getElementById("toggleFaces").addEventListener("click", (e) => {
