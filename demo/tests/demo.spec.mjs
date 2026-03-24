@@ -216,3 +216,74 @@ test("clicking clear button hides selection panel", async ({ page }) => {
   await page.click("#clearSelection");
   await expect(page.locator("#selectionPanel")).toBeHidden();
 });
+
+// ---------------------------------------------------------------------------
+// Selection mode switching
+// ---------------------------------------------------------------------------
+
+test("mode buttons switch correctly", async ({ page }) => {
+  await page.click("#loadSample");
+  await expect(page.locator("#selectMode")).toBeVisible({ timeout: 30_000 });
+
+  // Default is Face
+  await expect(page.locator("#modeFace")).toHaveClass(/active/);
+  await expect(page.locator("#modeEdge")).not.toHaveClass(/active/);
+
+  // Switch to Edge
+  await page.click("#modeEdge");
+  await expect(page.locator("#modeEdge")).toHaveClass(/active/);
+  await expect(page.locator("#modeFace")).not.toHaveClass(/active/);
+
+  // Switch to Vertex
+  await page.click("#modeVertex");
+  await expect(page.locator("#modeVertex")).toHaveClass(/active/);
+  await expect(page.locator("#modeEdge")).not.toHaveClass(/active/);
+});
+
+test("edge mode: clicking model shows edge info", async ({ page }) => {
+  await page.click("#loadSample");
+  await expect(page.locator("#selectMode")).toBeVisible({ timeout: 30_000 });
+  await page.click("#modeEdge");
+
+  const canvas = page.locator("#renderCanvas");
+  const box = await canvas.boundingBox();
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+
+  await expect(page.locator("#selectionPanel")).toBeVisible({ timeout: 5000 });
+  await expect(page.locator("#selectionContent")).toContainText("Edge ID");
+  await expect(page.locator("#selectionContent")).toContainText("Owner Faces");
+});
+
+test("vertex mode: clicking model shows vertex info", async ({ page }) => {
+  await page.click("#loadSample");
+  await expect(page.locator("#selectMode")).toBeVisible({ timeout: 30_000 });
+  await page.click("#modeVertex");
+
+  // Vertices are at corners — invoke highlightVertex directly via the
+  // page globals (non-module script, so all top-level names are on window)
+  await page.evaluate(() => {
+    const [sourceMesh] = meshGeoMap.keys();
+    if (!sourceMesh) throw new Error("no mesh loaded");
+    const geo = meshGeoMap.get(sourceMesh);
+    if (!geo.vertices || geo.vertices.length === 0) throw new Error("no vertices");
+    highlightVertex(sourceMesh, geo.vertices[0].id);
+  });
+
+  await expect(page.locator("#selectionPanel")).toBeVisible({ timeout: 5000 });
+  await expect(page.locator("#selectionContent")).toContainText("Vertex ID");
+});
+
+test("switching mode clears selection", async ({ page }) => {
+  await page.click("#loadSample");
+  await expect(page.locator("#selectMode")).toBeVisible({ timeout: 30_000 });
+
+  // Select a face
+  const canvas = page.locator("#renderCanvas");
+  const box = await canvas.boundingBox();
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await expect(page.locator("#selectionPanel")).toBeVisible({ timeout: 5000 });
+
+  // Switch to Edge mode — selection should clear
+  await page.click("#modeEdge");
+  await expect(page.locator("#selectionPanel")).toBeHidden();
+});
