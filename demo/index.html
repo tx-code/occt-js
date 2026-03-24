@@ -383,28 +383,43 @@ function clearSelection() {
 }
 
 function setupPicking() {
-  // Track pointer down position via raw DOM events to distinguish click vs drag
-  const canvas = document.getElementById("renderCanvas");
-  let pointerDownX = 0, pointerDownY = 0;
-  const DRAG_THRESHOLD = 5; // pixels
+  // Track drag to distinguish click vs drag
+  let ptrDownX = 0, ptrDownY = 0;
+  const DRAG_SQ = 25; // 5px squared
 
-  canvas.addEventListener("pointerdown", (evt) => {
+  scene.onPointerObservable.add((pointerInfo) => {
+    // Record pointer down position
+    if (pointerInfo.type === BABYLON.PointerEventTypes.POINTERDOWN) {
+      const e = pointerInfo.event;
+      if (e.button === 0) { ptrDownX = e.clientX; ptrDownY = e.clientY; }
+      return;
+    }
+
+    // Handle both POINTERTAP (hit mesh) and POINTERUP (may miss mesh / empty)
+    if (pointerInfo.type !== BABYLON.PointerEventTypes.POINTERTAP &&
+        pointerInfo.type !== BABYLON.PointerEventTypes.POINTERUP) return;
+
+    const evt = pointerInfo.event;
     if (evt.button !== 0) return;
-    pointerDownX = evt.clientX;
-    pointerDownY = evt.clientY;
-  });
 
-  canvas.addEventListener("pointerup", (evt) => {
-    if (evt.button !== 0) return;
+    // Check drag distance
+    const ddx = evt.clientX - ptrDownX, ddy = evt.clientY - ptrDownY;
+    if (ddx * ddx + ddy * ddy > DRAG_SQ) return; // drag — skip
 
-    // If mouse moved more than threshold, it's a drag — skip picking
-    const dx = evt.clientX - pointerDownX;
-    const dy = evt.clientY - pointerDownY;
-    if (dx * dx + dy * dy > DRAG_THRESHOLD * DRAG_THRESHOLD) return;
+    // For POINTERUP that also triggers POINTERTAP, avoid double handling
+    if (pointerInfo.type === BABYLON.PointerEventTypes.POINTERUP) {
+      // Only handle empty-space clicks here (POINTERTAP handles mesh hits)
+      const pr = scene.pick(scene.pointerX, scene.pointerY);
+      if (pr.hit && pr.pickedMesh) return; // let POINTERTAP handle it
+      const isCtrl = evt.ctrlKey || evt.metaKey;
+      if (!isCtrl) clearAllSelections();
+      return;
+    }
 
+    // POINTERTAP — mesh was hit
     clearHover();
 
-    const pickResult = scene.pick(scene.pointerX, scene.pointerY);
+    const pickResult = pointerInfo.pickInfo;
     const isCtrl = evt.ctrlKey || evt.metaKey;
 
     if (!pickResult.hit || !pickResult.pickedMesh) {
@@ -413,13 +428,12 @@ function setupPicking() {
     }
 
     const pickedMesh = pickResult.pickedMesh;
-    // Resolve source mesh for geometry data lookup (instances share source geometry)
     const sourceMesh = pickedMesh.sourceMesh || pickedMesh;
     const geo = meshGeoMap.get(sourceMesh);
     if (!geo) { if (!isCtrl) clearAllSelections(); return; }
 
-    // Parent highlights to pickedMesh (not sourceMesh!) so instances highlight correctly
-    const parentMesh = pickedMesh;
+    // Get world matrix of the PICKED mesh (instance or source) for correct positioning
+    const worldMatrix = pickedMesh.getWorldMatrix();
 
     let mode = null, elementId = null, createFn = null;
 
@@ -431,7 +445,7 @@ function setupPicking() {
           const face = geo.faces && geo.faces.find(f => f.id === faceId);
           if (face) {
             mode = "face"; elementId = faceId;
-            createFn = () => createFaceSelectDisposables(parentMesh, face, geo);
+            createFn = () => createFaceSelectDisposables(worldMatrix, face, geo);
           }
         }
       }
@@ -444,7 +458,7 @@ function setupPicking() {
           const edge = geo.edges && geo.edges.find(e => e.id === edgeId);
           if (edge) {
             mode = "edge"; elementId = edgeId;
-            createFn = () => createEdgeSelectDisposables(parentMesh, edge);
+            createFn = () => createEdgeSelectDisposables(worldMatrix, edge);
           }
         }
       }
@@ -457,7 +471,7 @@ function setupPicking() {
           const vertex = geo.vertices && geo.vertices.find(v => v.id === vertexId);
           if (vertex) {
             mode = "vertex"; elementId = vertexId;
-            createFn = () => createVertexSelectDisposables(parentMesh, vertex);
+            createFn = () => createVertexSelectDisposables(worldMatrix, vertex);
           }
         }
       }
@@ -480,7 +494,8 @@ function setupPicking() {
     }
   });
 
-  // Hover (canvas already declared above)
+  // Hover
+  const canvas = document.getElementById("renderCanvas");
   canvas.addEventListener("pointermove", () => { hoverDirty = true; });
   canvas.addEventListener("pointerleave", () => { clearHover(); hoverDirty = false; });
   scene.onBeforeRenderObservable.add(processHover);

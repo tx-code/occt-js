@@ -124,12 +124,17 @@ function findClosestVertex(localPoint, geo, threshold) {
 
 // --- Highlight creation helpers ---
 
-function createEdgeHighlight(sourceMesh, edge, color) {
+// Transform a local-space point by a world matrix, returns BABYLON.Vector3
+function transformPoint(x, y, z, worldMatrix) {
+  return BABYLON.Vector3.TransformCoordinates(new BABYLON.Vector3(x, y, z), worldMatrix);
+}
+
+function createEdgeHighlight(worldMatrix, edge, color) {
   if (!edge.points || edge.points.length < 6) return null;
   const pts = edge.points;
   const line = [];
   for (let i = 0; i < pts.length; i += 3) {
-    line.push(new BABYLON.Vector3(pts[i], pts[i + 1], pts[i + 2]));
+    line.push(transformPoint(pts[i], pts[i + 1], pts[i + 2], worldMatrix));
   }
   const lineSystem = BABYLON.MeshBuilder.CreateLineSystem(
     "__highlight_edge__",
@@ -137,24 +142,19 @@ function createEdgeHighlight(sourceMesh, edge, color) {
     scene
   );
   lineSystem.color = color;
-  lineSystem.parent = sourceMesh;
   lineSystem.isPickable = false;
   lineSystem.renderingGroupId = 1;
   return lineSystem;
 }
 
-function createVertexHighlight(sourceMesh, vertex, color) {
+function createVertexHighlight(worldMatrix, vertex, color) {
   const sphere = BABYLON.MeshBuilder.CreateSphere(
     "__highlight_vertex__",
     { diameter: camera.radius * 0.008 },
     scene
   );
-  sphere.position = new BABYLON.Vector3(
-    vertex.position[0],
-    vertex.position[1],
-    vertex.position[2]
-  );
-  sphere.parent = sourceMesh;
+  const wp = transformPoint(vertex.position[0], vertex.position[1], vertex.position[2], worldMatrix);
+  sphere.position = wp;
   sphere.isPickable = false;
   sphere.renderingGroupId = 1;
 
@@ -170,10 +170,13 @@ function createVertexHighlight(sourceMesh, vertex, color) {
 
 // --- Disposable factory functions ---
 
-function createFaceSelectDisposables(sourceMesh, face, geo) {
+function createFaceSelectDisposables(worldMatrix, face, geo) {
   const disposables = [];
-  // Face overlay mesh
+  // Face overlay mesh — transform vertices to world space
   const srcPositions = geo.positions, srcNormals = geo.normals, srcIndices = geo.indices;
+  const normalMatrix = new BABYLON.Matrix();
+  worldMatrix.toNormalMatrix(normalMatrix);
+
   const indexRemap = new Map();
   const positions = [], normals = [], indices = [];
   for (let i = face.firstIndex; i < face.firstIndex + face.indexCount; i++) {
@@ -181,13 +184,19 @@ function createFaceSelectDisposables(sourceMesh, face, geo) {
     if (!indexRemap.has(idx)) {
       const newIdx = indexRemap.size;
       indexRemap.set(idx, newIdx);
-      positions.push(srcPositions[idx*3], srcPositions[idx*3+1], srcPositions[idx*3+2]);
-      if (srcNormals && srcNormals.length) normals.push(srcNormals[idx*3], srcNormals[idx*3+1], srcNormals[idx*3+2]);
+      const wp = transformPoint(srcPositions[idx*3], srcPositions[idx*3+1], srcPositions[idx*3+2], worldMatrix);
+      positions.push(wp.x, wp.y, wp.z);
+      if (srcNormals && srcNormals.length) {
+        const wn = BABYLON.Vector3.TransformNormal(
+          new BABYLON.Vector3(srcNormals[idx*3], srcNormals[idx*3+1], srcNormals[idx*3+2]), worldMatrix);
+        wn.normalize();
+        normals.push(wn.x, wn.y, wn.z);
+      }
     }
     indices.push(indexRemap.get(idx));
   }
   const hlMesh = new BABYLON.Mesh("__hl_face__", scene);
-  hlMesh.parent = sourceMesh;
+  // No parent — positioned in world space
   const vd = new BABYLON.VertexData();
   vd.positions = new Float32Array(positions);
   vd.indices = new Uint32Array(indices);
@@ -202,20 +211,20 @@ function createFaceSelectDisposables(sourceMesh, face, geo) {
   // Boundary edges
   if (face.edgeIndices && geo.edges) {
     for (const ei of face.edgeIndices) {
-      const hl = createEdgeHighlight(sourceMesh, geo.edges[ei], PICK_COLORS.edge);
+      const hl = createEdgeHighlight(worldMatrix, geo.edges[ei], PICK_COLORS.edge);
       if (hl) disposables.push(hl);
     }
   }
   return disposables;
 }
 
-function createEdgeSelectDisposables(sourceMesh, edge) {
-  const hl = createEdgeHighlight(sourceMesh, edge, PICK_COLORS.select);
+function createEdgeSelectDisposables(worldMatrix, edge) {
+  const hl = createEdgeHighlight(worldMatrix, edge, PICK_COLORS.select);
   return hl ? [hl] : [];
 }
 
-function createVertexSelectDisposables(sourceMesh, vertex) {
-  const hl = createVertexHighlight(sourceMesh, vertex, PICK_COLORS.select);
+function createVertexSelectDisposables(worldMatrix, vertex) {
+  const hl = createVertexHighlight(worldMatrix, vertex, PICK_COLORS.select);
   return hl ? [hl] : [];
 }
 
@@ -250,7 +259,8 @@ function attachFaceLinks() {
       const geo = meshGeoMap.get(targetMesh);
       const face = geo && geo.faces && geo.faces.find(f => f.id === faceId);
       if (face) {
-        addSelection("face", targetMesh, faceId, createFaceSelectDisposables(targetMesh, face, geo));
+        const wm = targetMesh.getWorldMatrix();
+        addSelection("face", targetMesh, faceId, createFaceSelectDisposables(wm, face, geo));
         updateSelectionPanel();
       }
     });
@@ -374,7 +384,8 @@ function highlightEdge(sourceMesh, edgeId) {
   const edge = geo.edges.find(e => e.id === edgeId);
   if (!edge) return;
 
-  addSelection("edge", sourceMesh, edgeId, createEdgeSelectDisposables(sourceMesh, edge));
+  const worldMatrix = sourceMesh.getWorldMatrix();
+  addSelection("edge", sourceMesh, edgeId, createEdgeSelectDisposables(worldMatrix, edge));
   updateSelectionPanel();
 }
 
@@ -386,7 +397,8 @@ function highlightVertex(sourceMesh, vertexId) {
   const vertex = geo.vertices.find(v => v.id === vertexId);
   if (!vertex || !vertex.position) return;
 
-  addSelection("vertex", sourceMesh, vertexId, createVertexSelectDisposables(sourceMesh, vertex));
+  const worldMatrix = sourceMesh.getWorldMatrix();
+  addSelection("vertex", sourceMesh, vertexId, createVertexSelectDisposables(worldMatrix, vertex));
   updateSelectionPanel();
 }
 
@@ -400,25 +412,25 @@ function clearHover() {
   document.getElementById("renderCanvas").style.cursor = "";
 }
 
-function createFaceHoverHighlight(sourceMesh, face, geo) {
+function createFaceHoverHighlight(worldMatrix, face, geo) {
   const disposables = [];
   if (face.edgeIndices && geo.edges) {
     for (const ei of face.edgeIndices) {
       const edge = geo.edges[ei];
-      const hl = createEdgeHighlight(sourceMesh, edge, PICK_COLORS.hover);
+      const hl = createEdgeHighlight(worldMatrix, edge, PICK_COLORS.hover);
       if (hl) disposables.push(hl);
     }
   }
   return disposables;
 }
 
-function createEdgeHoverHighlight(sourceMesh, edge) {
-  const hl = createEdgeHighlight(sourceMesh, edge, PICK_COLORS.hover);
+function createEdgeHoverHighlight(worldMatrix, edge) {
+  const hl = createEdgeHighlight(worldMatrix, edge, PICK_COLORS.hover);
   return hl ? [hl] : [];
 }
 
-function createVertexHoverHighlight(sourceMesh, vertex) {
-  const hl = createVertexHighlight(sourceMesh, vertex, PICK_COLORS.hover);
+function createVertexHoverHighlight(worldMatrix, vertex) {
+  const hl = createVertexHighlight(worldMatrix, vertex, PICK_COLORS.hover);
   return hl ? [hl] : [];
 }
 
@@ -438,8 +450,7 @@ function processHover() {
   const geo = meshGeoMap.get(sourceMesh);
   if (!geo) { clearHover(); return; }
 
-  // Parent highlights to pickedMesh (not sourceMesh) for correct instance positioning
-  const parentMesh = pickedMesh;
+  const worldMatrix = pickedMesh.getWorldMatrix();
 
   // Step 1: Determine hovered element (no GPU work yet)
   let hoveredMode = null, hoveredId = null;
@@ -470,19 +481,19 @@ function processHover() {
   clearHover();
   if (!hoveredId) return;
 
-  // Step 3: Create GPU disposables only for new hover target
+  // Step 3: Create GPU disposables in world space
   let disposables = [];
   if (hoveredMode === "face") {
     const face = geo.faces.find(f => f.id === hoveredId);
-    if (face) disposables = createFaceHoverHighlight(parentMesh, face, geo);
+    if (face) disposables = createFaceHoverHighlight(worldMatrix, face, geo);
   } else if (hoveredMode === "edge") {
     const edge = geo.edges.find(e => e.id === hoveredId);
-    if (edge) disposables = createEdgeHoverHighlight(parentMesh, edge);
+    if (edge) disposables = createEdgeHoverHighlight(worldMatrix, edge);
   } else if (hoveredMode === "vertex") {
     const vertex = geo.vertices.find(v => v.id === hoveredId);
-    if (vertex) disposables = createVertexHoverHighlight(parentMesh, vertex);
+    if (vertex) disposables = createVertexHoverHighlight(worldMatrix, vertex);
   }
 
-  hoverState = { mode: hoveredMode, id: hoveredId, sourceMesh: parentMesh, disposables };
+  hoverState = { mode: hoveredMode, id: hoveredId, sourceMesh, disposables };
   document.getElementById("renderCanvas").style.cursor = "pointer";
 }

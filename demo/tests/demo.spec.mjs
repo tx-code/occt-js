@@ -317,3 +317,60 @@ test("hovering away from model resets cursor", async ({ page }) => {
   const cursor = await canvas.evaluate(el => el.style.cursor);
   expect(cursor).toBe("");
 });
+
+// ---------------------------------------------------------------------------
+// Multi-select
+// ---------------------------------------------------------------------------
+
+test("ctrl+click adds to selection", async ({ page }) => {
+  await page.click("#loadSample");
+  await expect(page.locator("#selectMode")).toBeVisible({ timeout: 30_000 });
+
+  const canvas = page.locator("#renderCanvas");
+  const box = await canvas.boundingBox();
+
+  // First click — single select
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await expect(page.locator("#selectionPanel")).toBeVisible({ timeout: 5000 });
+  await expect(page.locator("#selectionTitle")).toContainText("Selected Face");
+
+  // Ctrl+click offset — should add (or toggle)
+  await page.mouse.click(box.x + box.width / 2 + 30, box.y + box.height / 2, { modifiers: ["Control"] });
+  await expect(page.locator("#selectionPanel")).toBeVisible();
+  await expect(page.locator("#selectionTitle")).toContainText("Selected");
+});
+
+test("plain click on empty clears selection", async ({ page }) => {
+  await page.click("#loadSample");
+  await expect(page.locator("#selectMode")).toBeVisible({ timeout: 30_000 });
+
+  const canvas = page.locator("#renderCanvas");
+  const box = await canvas.boundingBox();
+
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await expect(page.locator("#selectionPanel")).toBeVisible({ timeout: 5000 });
+
+  // Click far from model (bottom-right corner) to hit empty space
+  await page.mouse.click(box.x + box.width - 10, box.y + box.height - 10);
+  await page.waitForTimeout(300);
+  await expect(page.locator("#selectionPanel")).toBeHidden({ timeout: 5000 });
+});
+
+test("face info panel shows clickable adjacent face links", async ({ page }) => {
+  await page.click("#loadSample");
+  await expect(page.locator("#selectMode")).toBeVisible({ timeout: 30_000 });
+
+  const canvas = page.locator("#renderCanvas");
+  const box = await canvas.boundingBox();
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await expect(page.locator("#selectionPanel")).toBeVisible({ timeout: 5000 });
+
+  // Should have clickable face links
+  const links = page.locator("#selectionContent .face-link");
+  const count = await links.count();
+  expect(count).toBeGreaterThan(0);
+
+  // Click first adjacent face link
+  await links.first().click();
+  await expect(page.locator("#selectionTitle")).toContainText("Selected Face");
+});
