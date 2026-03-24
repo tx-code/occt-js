@@ -8,3 +8,4 @@ dist/*.js
 *.o
 *.a
 emsdk/
+test-results/
