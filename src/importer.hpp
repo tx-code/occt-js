@@ -20,33 +20,40 @@ struct OcctColor {
         : r(r_), g(g_), b(b_), isValid(true) {}
 };
 
-struct OcctFaceData {
-    std::vector<float>    positions;   // flat [x,y,z, ...]
-    std::vector<float>    normals;     // flat [nx,ny,nz, ...]
-    std::vector<uint32_t> indices;     // flat triangle indices
-    OcctColor             color;
+struct OcctFaceTopoData {
+    int              id = 0;
+    std::string      name;
+    uint32_t         firstIndex = 0;
+    uint32_t         indexCount = 0;
+    std::vector<int> edgeIndices;
+    OcctColor        color;
+};
+
+struct OcctEdgeTopoData {
+    int              id = 0;
+    std::string      name;
+    std::vector<float> points;
+    std::vector<int> ownerFaceIds;
+    bool             isFreeEdge = false;
+    OcctColor        color;
+};
+
+struct OcctVertexTopoData {
+    int   id = 0;
+    float position[3] = {0, 0, 0};
 };
 
 struct OcctMeshData {
     std::string            name;
     OcctColor              color;
-    std::vector<float>     positions;   // flat [x,y,z, ...]
-    std::vector<float>     normals;     // flat [nx,ny,nz, ...]
-    std::vector<uint32_t>  indices;     // flat triangle indices
+    std::vector<float>     positions;
+    std::vector<float>     normals;
+    std::vector<uint32_t>  indices;
 
-    // Per-face ranges for sub-material support
-    struct FaceRange {
-        uint32_t first;   // first triangle index
-        uint32_t last;    // last triangle index (inclusive)
-        OcctColor color;
-    };
-    std::vector<FaceRange> faceRanges;
-
-    // B-Rep edge polylines (each edge is a sequence of position indices)
-    struct EdgeData {
-        std::vector<uint32_t> positionIndices;  // indices into positions array
-    };
-    std::vector<EdgeData> edges;
+    std::vector<OcctFaceTopoData>   faces;
+    std::vector<OcctEdgeTopoData>   edges;
+    std::vector<OcctVertexTopoData> vertices;
+    std::vector<int>                triangleToFaceMap;
 };
 
 struct OcctNodeData {
@@ -71,8 +78,23 @@ struct OcctSceneData {
 };
 
 struct ImportParams {
-    double linearDeflection  = 0.1;
+    enum class LinearUnit {
+        Millimeter,
+        Centimeter,
+        Meter,
+        Inch,
+        Foot
+    };
+
+    enum class LinearDeflectionType {
+        BoundingBoxRatio,
+        AbsoluteValue
+    };
+
+    LinearUnit linearUnit = LinearUnit::Millimeter;
+    LinearDeflectionType linearDeflectionType = LinearDeflectionType::BoundingBoxRatio;
+    double linearDeflection = 0.001;
     double angularDeflection = 0.5;
-    bool   readNames         = true;
-    bool   readColors        = true;
+    bool readNames = true;
+    bool readColors = true;
 };
