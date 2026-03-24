@@ -1,7 +1,7 @@
 {
   "name": "@tx-code/occt-js",
   "version": "0.1.0",
-  "description": "OCCT STEP import via WebAssembly — read STEP files in the browser",
+  "description": "OCCT CAD import via WebAssembly — read STEP/IGES/BREP files in the browser",
   "main": "dist/occt-js.js",
   "types": "dist/occt-js.d.ts",
   "files": [
@@ -12,7 +12,7 @@
   ],
   "scripts": {
     "build:wasm": "bash tools/build_wasm.sh",
-    "test": "node test/test_mvp_acceptance.mjs"
+    "test": "node test/test_multi_format_exports.mjs && node test/test_mvp_acceptance.mjs"
   },
   "repository": {
     "type": "git",
@@ -23,6 +23,8 @@
     "occt",
     "opencascade",
     "step",
+    "iges",
+    "igs",
     "stp",
     "cad",
     "brep",
