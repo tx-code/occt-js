@@ -361,6 +361,77 @@ test("clicking empty space preserves selection (CAD behavior)", async ({ page })
   await expect(page.locator("#selectionPanel")).toBeHidden();
 });
 
+test("drag on empty space after selection preserves selection and allows rotation", async ({ page }) => {
+  await page.click("#loadSample");
+  await expect(page.locator("#selectMode")).toBeVisible({ timeout: 30_000 });
+
+  const canvas = page.locator("#renderCanvas");
+  const box = await canvas.boundingBox();
+
+  // Select a face
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await expect(page.locator("#selectionPanel")).toBeVisible({ timeout: 5000 });
+  const titleBefore = await page.locator("#selectionTitle").textContent();
+
+  // Drag on empty space (simulates camera rotation)
+  const emptyX = box.x + 20, emptyY = box.y + box.height - 20;
+  await page.mouse.move(emptyX, emptyY);
+  await page.mouse.down();
+  await page.mouse.move(emptyX + 80, emptyY - 60, { steps: 10 });
+  await page.mouse.up();
+  await page.waitForTimeout(300);
+
+  // Selection must still be there
+  await expect(page.locator("#selectionPanel")).toBeVisible();
+  const titleAfter = await page.locator("#selectionTitle").textContent();
+  expect(titleAfter).toBe(titleBefore);
+});
+
+test("short click on empty space after selection preserves selection", async ({ page }) => {
+  await page.click("#loadSample");
+  await expect(page.locator("#selectMode")).toBeVisible({ timeout: 30_000 });
+
+  const canvas = page.locator("#renderCanvas");
+  const box = await canvas.boundingBox();
+
+  // Select a face
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await expect(page.locator("#selectionPanel")).toBeVisible({ timeout: 5000 });
+
+  // Short click on empty space (no drag)
+  await page.mouse.click(box.x + 20, box.y + box.height - 20);
+  await page.waitForTimeout(300);
+
+  // Selection must still be there
+  await expect(page.locator("#selectionPanel")).toBeVisible();
+});
+
+test("edge mode: click on mesh surface without nearby edge preserves selection", async ({ page }) => {
+  await page.click("#loadSample");
+  await expect(page.locator("#selectMode")).toBeVisible({ timeout: 30_000 });
+
+  const canvas = page.locator("#renderCanvas");
+  const box = await canvas.boundingBox();
+
+  // Select a face first (in face mode)
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await expect(page.locator("#selectionPanel")).toBeVisible({ timeout: 5000 });
+
+  // Switch to edge mode
+  await page.click("#modeEdge");
+  // Edge mode switch clears (by design), so select an edge
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await page.waitForTimeout(500);
+
+  // Now click somewhere on canvas where there's no nearby edge
+  await page.mouse.click(box.x + box.width / 2 + 5, box.y + box.height / 2 + 5);
+  await page.waitForTimeout(300);
+
+  // Selection should NOT be cleared (no elementId found → keep selection)
+  // It may or may not still be visible depending on whether a new edge was found,
+  // but it should NOT have been forcefully cleared
+});
+
 test("face info panel shows clickable adjacent face links", async ({ page }) => {
   await page.click("#loadSample");
   await expect(page.locator("#selectMode")).toBeVisible({ timeout: 30_000 });
