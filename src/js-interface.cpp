@@ -3,13 +3,15 @@
 #include <map>
 #include <array>
 #include <string>
+#include <vector>
+#include <algorithm>
+#include <cctype>
+
 #include "importer-step.hpp"
+#include "importer-iges.hpp"
+#include "importer-brep.hpp"
 
 using namespace emscripten;
-
-// ---------------------------------------------------------------------------
-//  Helpers to convert C++ structures to JS val objects
-// ---------------------------------------------------------------------------
 
 namespace {
 
@@ -40,21 +42,18 @@ val MeshToVal(const OcctMeshData& mesh)
     obj.set("name", mesh.name);
     obj.set("color", ColorToVal(mesh.color));
 
-    // positions
     {
         val positions = val::global("Float32Array").new_(mesh.positions.size());
         val memView = val(typed_memory_view(mesh.positions.size(), mesh.positions.data()));
         positions.call<void>("set", memView);
         obj.set("positions", positions);
     }
-    // normals
     {
         val normals = val::global("Float32Array").new_(mesh.normals.size());
         val memView = val(typed_memory_view(mesh.normals.size(), mesh.normals.data()));
         normals.call<void>("set", memView);
         obj.set("normals", normals);
     }
-    // indices
     {
         val indices = val::global("Uint32Array").new_(mesh.indices.size());
         val memView = val(typed_memory_view(mesh.indices.size(), mesh.indices.data()));
@@ -62,45 +61,89 @@ val MeshToVal(const OcctMeshData& mesh)
         obj.set("indices", indices);
     }
 
-    // face ranges
-    val faceRanges = val::array();
-    for (const auto& fr : mesh.faceRanges) {
-        val frObj = val::object();
-        frObj.set("first", fr.first);
-        frObj.set("last",  fr.last);
-        frObj.set("color", ColorToVal(fr.color));
-        faceRanges.call<void>("push", frObj);
-    }
-    obj.set("faceRanges", faceRanges);
+    // Topology: faces
+    val facesArr = val::array();
+    for (const auto& face : mesh.faces) {
+        val fObj = val::object();
+        fObj.set("id", face.id);
+        fObj.set("name", face.name);
+        fObj.set("firstIndex", face.firstIndex);
+        fObj.set("indexCount", face.indexCount);
 
-    // B-Rep edges (polylines as arrays of position indices)
+        val edgeIdxArr = val::array();
+        for (int idx : face.edgeIndices) {
+            edgeIdxArr.call<void>("push", idx);
+        }
+        fObj.set("edgeIndices", edgeIdxArr);
+        fObj.set("color", ColorToVal(face.color));
+        facesArr.call<void>("push", fObj);
+    }
+    obj.set("faces", facesArr);
+
+    // Topology: edges
     val edgesArr = val::array();
     for (const auto& edge : mesh.edges) {
-        val edgeObj = val::object();
-        val posIndices = val::global("Uint32Array").new_(edge.positionIndices.size());
-        val memView = val(typed_memory_view(edge.positionIndices.size(), edge.positionIndices.data()));
-        posIndices.call<void>("set", memView);
-        edgeObj.set("positionIndices", posIndices);
-        edgesArr.call<void>("push", edgeObj);
+        val eObj = val::object();
+        eObj.set("id", edge.id);
+        eObj.set("name", edge.name);
+        eObj.set("isFreeEdge", edge.isFreeEdge);
+
+        {
+            val points = val::global("Float32Array").new_(edge.points.size());
+            if (!edge.points.empty()) {
+                val memView = val(typed_memory_view(edge.points.size(), edge.points.data()));
+                points.call<void>("set", memView);
+            }
+            eObj.set("points", points);
+        }
+
+        val ownerArr = val::array();
+        for (int fid : edge.ownerFaceIds) {
+            ownerArr.call<void>("push", fid);
+        }
+        eObj.set("ownerFaceIds", ownerArr);
+        eObj.set("color", ColorToVal(edge.color));
+        edgesArr.call<void>("push", eObj);
     }
     obj.set("edges", edgesArr);
+
+    // Topology: vertices
+    val verticesArr = val::array();
+    for (const auto& vert : mesh.vertices) {
+        val vObj = val::object();
+        vObj.set("id", vert.id);
+        val pos = val::array();
+        pos.call<void>("push", vert.position[0]);
+        pos.call<void>("push", vert.position[1]);
+        pos.call<void>("push", vert.position[2]);
+        vObj.set("position", pos);
+        verticesArr.call<void>("push", vObj);
+    }
+    obj.set("vertices", verticesArr);
+
+    // Topology: triangleToFaceMap
+    {
+        val triMap = val::global("Int32Array").new_(mesh.triangleToFaceMap.size());
+        if (!mesh.triangleToFaceMap.empty()) {
+            val memView = val(typed_memory_view(mesh.triangleToFaceMap.size(), mesh.triangleToFaceMap.data()));
+            triMap.call<void>("set", memView);
+        }
+        obj.set("triangleToFaceMap", triMap);
+    }
 
     return obj;
 }
 
-// ---------------------------------------------------------------------------
-//  Build a tree-form node hierarchy for the JS side.
-// ---------------------------------------------------------------------------
 val NodeToTreeVal(const OcctSceneData& scene, int nodeIdx)
 {
     const OcctNodeData& node = scene.nodes[nodeIdx];
 
     val obj = val::object();
-    obj.set("id",         node.id);
-    obj.set("name",       node.name);
+    obj.set("id", node.id);
+    obj.set("name", node.name);
     obj.set("isAssembly", node.isAssembly);
-    obj.set("transform",  TransformToVal(node.transform));
-    // Output meshes array (matches occt-import-js format: node.meshes = [idx, ...])
+    obj.set("transform", TransformToVal(node.transform));
+
     val meshesArr = val::array();
     for (size_t i = 0; i < node.meshIndices.size(); ++i) {
         meshesArr.call<void>("push", node.meshIndices[i]);
@@ -116,9 +159,6 @@ val NodeToTreeVal(const OcctSceneData& scene, int nodeIdx)
     return obj;
 }
 
-// ---------------------------------------------------------------------------
-//  Gather unique materials from all meshes.
-// ---------------------------------------------------------------------------
 struct MaterialKey {
     int ri, gi, bi;
     bool operator<(const MaterialKey& o) const {
@@ -128,7 +168,8 @@ struct MaterialKey {
     }
 };
 
-MaterialKey ColorToKey(const OcctColor& c) {
+MaterialKey ColorToKey(const OcctColor& c)
+{
     return {
         static_cast<int>(c.r * 255.0 + 0.5),
         static_cast<int>(c.g * 255.0 + 0.5),
@@ -136,23 +177,41 @@ MaterialKey ColorToKey(const OcctColor& c) {
     };
 }
 
-} // anonymous namespace
-
-// ===========================================================================
-//  ReadStepFile  –  main entry point from JavaScript
-// ===========================================================================
-
-val ReadStepFile(const val& content, const val& jsParams)
+std::vector<uint8_t> ExtractBytes(const val& content)
 {
-    // ---- Extract binary data from Uint8Array ----
     unsigned int length = content["length"].as<unsigned int>();
     std::vector<uint8_t> buffer(length);
     val memoryView = val(typed_memory_view(length, buffer.data()));
     memoryView.call<void>("set", content);
+    return buffer;
+}
 
-    // ---- Parse import parameters ----
+ImportParams ParseImportParams(const val& jsParams)
+{
     ImportParams params;
     if (jsParams.typeOf().as<std::string>() == "object" && !jsParams.isNull()) {
+        if (jsParams.hasOwnProperty("linearUnit")) {
+            std::string linearUnit = jsParams["linearUnit"].as<std::string>();
+            if (linearUnit == "millimeter") {
+                params.linearUnit = ImportParams::LinearUnit::Millimeter;
+            } else if (linearUnit == "centimeter") {
+                params.linearUnit = ImportParams::LinearUnit::Centimeter;
+            } else if (linearUnit == "meter") {
+                params.linearUnit = ImportParams::LinearUnit::Meter;
+            } else if (linearUnit == "inch") {
+                params.linearUnit = ImportParams::LinearUnit::Inch;
+            } else if (linearUnit == "foot") {
+                params.linearUnit = ImportParams::LinearUnit::Foot;
+            }
+        }
+        if (jsParams.hasOwnProperty("linearDeflectionType")) {
+            std::string linearDeflectionType = jsParams["linearDeflectionType"].as<std::string>();
+            if (linearDeflectionType == "bounding_box_ratio") {
+                params.linearDeflectionType = ImportParams::LinearDeflectionType::BoundingBoxRatio;
+            } else if (linearDeflectionType == "absolute_value") {
+                params.linearDeflectionType = ImportParams::LinearDeflectionType::AbsoluteValue;
+            }
+        }
         if (jsParams.hasOwnProperty("linearDeflection")) {
             params.linearDeflection = jsParams["linearDeflection"].as<double>();
         }
@@ -166,14 +225,13 @@ val ReadStepFile(const val& content, const val& jsParams)
             params.readColors = jsParams["readColors"].as<bool>();
         }
     }
+    return params;
+}
 
-    // ---- Import ----
-    OcctSceneData scene = ImportStepFromMemory(
-        buffer.data(), buffer.size(), "input.stp", params);
-
-    // ---- Build result object ----
+val BuildResult(const OcctSceneData& scene, const std::string& sourceFormat)
+{
     val result = val::object();
-    result.set("sourceFormat", std::string("step"));
+    result.set("sourceFormat", sourceFormat);
 
     if (!scene.success) {
         result.set("success", false);
@@ -182,7 +240,6 @@ val ReadStepFile(const val& content, const val& jsParams)
     }
     result.set("success", true);
 
-    // Unit info
     if (!scene.sourceUnit.empty()) {
         result.set("sourceUnit", scene.sourceUnit);
     }
@@ -190,21 +247,18 @@ val ReadStepFile(const val& content, const val& jsParams)
         result.set("unitScaleToMeters", scene.unitScaleToMeters);
     }
 
-    // rootNodes (tree form)
     val rootNodes = val::array();
     for (int idx : scene.rootNodeIndices) {
         rootNodes.call<void>("push", NodeToTreeVal(scene, idx));
     }
     result.set("rootNodes", rootNodes);
 
-    // geometries
     val geometries = val::array();
     for (const auto& mesh : scene.meshes) {
         geometries.call<void>("push", MeshToVal(mesh));
     }
     result.set("geometries", geometries);
 
-    // materials (deduplicated from face-range colors)
     std::map<MaterialKey, int> matMap;
     val materials = val::array();
 
@@ -223,62 +277,103 @@ val ReadStepFile(const val& content, const val& jsParams)
         return idx;
     };
 
-    // Walk geometries to map face ranges to material indices
-    for (size_t gi = 0; gi < scene.meshes.size(); ++gi) {
-        const auto& mesh = scene.meshes[gi];
+    for (const auto& mesh : scene.meshes) {
         getOrCreateMaterial(mesh.color);
-        for (const auto& fr : mesh.faceRanges) {
-            getOrCreateMaterial(fr.color);
+        for (const auto& face : mesh.faces) {
+            getOrCreateMaterial(face.color);
         }
     }
     result.set("materials", materials);
-
-    // warnings (empty for now)
     result.set("warnings", val::array());
 
-    // stats
-    {
-        val stats = val::object();
-        stats.set("rootCount",    static_cast<int>(scene.rootNodeIndices.size()));
-        stats.set("nodeCount",    static_cast<int>(scene.nodes.size()));
+    val stats = val::object();
+    stats.set("rootCount", static_cast<int>(scene.rootNodeIndices.size()));
+    stats.set("nodeCount", static_cast<int>(scene.nodes.size()));
 
-        int partCount = 0;
-        int reusedCount = 0;
-        uint32_t totalTriangles = 0;
-        std::map<int, int> meshRefCount;
+    int partCount = 0;
+    int reusedCount = 0;
+    uint32_t totalTriangles = 0;
+    std::map<int, int> meshRefCount;
 
-        for (const auto& node : scene.nodes) {
-            if (!node.meshIndices.empty()) {
-                ++partCount;
-                for (int mi : node.meshIndices) {
-                    meshRefCount[mi]++;
-                }
+    for (const auto& node : scene.nodes) {
+        if (!node.meshIndices.empty()) {
+            ++partCount;
+            for (int mi : node.meshIndices) {
+                meshRefCount[mi]++;
             }
         }
-        for (const auto& [mi, count] : meshRefCount) {
-            if (count > 1) {
-                reusedCount += count - 1;
-            }
-        }
-        for (const auto& mesh : scene.meshes) {
-            totalTriangles += static_cast<uint32_t>(mesh.indices.size() / 3);
-        }
-
-        stats.set("partCount",          partCount);
-        stats.set("geometryCount",      static_cast<int>(scene.meshes.size()));
-        stats.set("materialCount",      static_cast<int>(matMap.size()));
-        stats.set("triangleCount",      totalTriangles);
-        stats.set("reusedInstanceCount", reusedCount);
-        result.set("stats", stats);
     }
+    for (const auto& kv : meshRefCount) {
+        if (kv.second > 1) {
+            reusedCount += kv.second - 1;
+        }
+    }
+    for (const auto& mesh : scene.meshes) {
+        totalTriangles += static_cast<uint32_t>(mesh.indices.size() / 3);
+    }
+
+    stats.set("partCount", partCount);
+    stats.set("geometryCount", static_cast<int>(scene.meshes.size()));
+    stats.set("materialCount", static_cast<int>(matMap.size()));
+    stats.set("triangleCount", totalTriangles);
+    stats.set("reusedInstanceCount", reusedCount);
+    result.set("stats", stats);
 
     return result;
 }
 
-// ===========================================================================
-//  Embind registration
-// ===========================================================================
+val ReadByFormat(const std::string& format, const val& content, const val& jsParams)
+{
+    std::vector<uint8_t> buffer = ExtractBytes(content);
+    ImportParams params = ParseImportParams(jsParams);
 
-EMSCRIPTEN_BINDINGS(occtjs) {
+    std::string normalizedFormat = format;
+    std::transform(normalizedFormat.begin(), normalizedFormat.end(), normalizedFormat.begin(), [](unsigned char c) {
+        return static_cast<char>(std::tolower(c));
+    });
+
+    OcctSceneData scene;
+    if (normalizedFormat == "step") {
+        scene = ImportStepFromMemory(buffer.data(), buffer.size(), "input.stp", params);
+    } else if (normalizedFormat == "iges") {
+        scene = ImportIgesFromMemory(buffer.data(), buffer.size(), "input.igs", params);
+    } else if (normalizedFormat == "brep") {
+        scene = ImportBrepFromMemory(buffer.data(), buffer.size(), "input.brep", params);
+    } else {
+        scene.success = false;
+        scene.error = "Unsupported format: " + format;
+        return BuildResult(scene, normalizedFormat);
+    }
+
+    return BuildResult(scene, normalizedFormat);
+}
+
+} // anonymous namespace
+
+val ReadStepFile(const val& content, const val& jsParams)
+{
+    return ReadByFormat("step", content, jsParams);
+}
+
+val ReadIgesFile(const val& content, const val& jsParams)
+{
+    return ReadByFormat("iges", content, jsParams);
+}
+
+val ReadBrepFile(const val& content, const val& jsParams)
+{
+    return ReadByFormat("brep", content, jsParams);
+}
+
+val ReadFile(const std::string& format, const val& content, const val& jsParams)
+{
+    return ReadByFormat(format, content, jsParams);
+}
+
+EMSCRIPTEN_BINDINGS(occtjs)
+{
+    function("ReadFile", &ReadFile);
     function("ReadStepFile", &ReadStepFile);
+    function("ReadIgesFile", &ReadIgesFile);
+    function("ReadBrepFile", &ReadBrepFile);
 }
