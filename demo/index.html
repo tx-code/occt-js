@@ -425,7 +425,7 @@ function setupPicking() {
     const pickedMesh = pickResult.pickedMesh;
     const sourceMesh = pickedMesh.sourceMesh || pickedMesh;
     const geo = meshGeoMap.get(sourceMesh);
-    if (!geo) { if (!isCtrl) clearAllSelections(); return; }
+    if (!geo) return; // no geometry data — keep selection
 
     // Get world matrix of the PICKED mesh (instance or source) for correct positioning
     const worldMatrix = pickedMesh.getWorldMatrix();
@@ -472,7 +472,7 @@ function setupPicking() {
       }
     }
 
-    if (!elementId) { if (!isCtrl) clearAllSelections(); return; }
+    if (!elementId) return; // no element found — keep selection
 
     if (isCtrl) {
       const key = selectionKey(mode, sourceMesh.uniqueId, elementId);
