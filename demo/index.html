@@ -161,8 +161,6 @@ let facesVisible = true, edgesVisible = true;
 
 // Picking state
 let meshGeoMap = new Map(); // Babylon mesh → raw geometry data
-let highlightMesh = null, highlightEdgeLines = null;
-let selectedFaceId = null;
 
 // --- Babylon Setup ---
 function initBabylon() {
@@ -381,129 +379,35 @@ function clearScene() {
 
 // --- Picking / Selection ---
 function clearSelection() {
-  if (highlightMesh) { highlightMesh.dispose(); highlightMesh = null; }
-  if (highlightEdgeLines) { highlightEdgeLines.dispose(); highlightEdgeLines = null; }
-  selectedFaceId = null;
-  document.getElementById("selectionPanel").style.display = "none";
-}
-
-function highlightFace(babylonMesh, faceId) {
-  clearSelection();
-  const geo = meshGeoMap.get(babylonMesh);
-  if (!geo || !geo.faces) return;
-
-  const face = geo.faces.find(f => f.id === faceId);
-  if (!face || face.indexCount === 0) return;
-
-  selectedFaceId = faceId;
-
-  // Extract face triangles into overlay mesh
-  const srcPositions = geo.positions;
-  const srcNormals = geo.normals;
-  const srcIndices = geo.indices;
-
-  const faceIndices = [];
-  for (let i = face.firstIndex; i < face.firstIndex + face.indexCount; i++) {
-    faceIndices.push(srcIndices[i]);
-  }
-
-  // Build compact vertex buffer for highlight
-  const indexRemap = new Map();
-  const positions = [], normals = [];
-  const indices = [];
-  for (const idx of faceIndices) {
-    if (!indexRemap.has(idx)) {
-      const newIdx = indexRemap.size;
-      indexRemap.set(idx, newIdx);
-      positions.push(srcPositions[idx * 3], srcPositions[idx * 3 + 1], srcPositions[idx * 3 + 2]);
-      if (srcNormals && srcNormals.length > 0) {
-        normals.push(srcNormals[idx * 3], srcNormals[idx * 3 + 1], srcNormals[idx * 3 + 2]);
-      }
-    }
-    indices.push(indexRemap.get(idx));
-  }
-
-  highlightMesh = new BABYLON.Mesh("__highlight__", scene);
-  highlightMesh.parent = babylonMesh;
-  const vd = new BABYLON.VertexData();
-  vd.positions = new Float32Array(positions);
-  vd.indices = new Uint32Array(indices);
-  if (normals.length > 0) vd.normals = new Float32Array(normals);
-  vd.applyToMesh(highlightMesh);
-
-  const mat = new BABYLON.StandardMaterial("mat_highlight", scene);
-  mat.diffuseColor = new BABYLON.Color3(0.3, 0.75, 1.0);
-  mat.emissiveColor = new BABYLON.Color3(0.1, 0.25, 0.4);
-  mat.alpha = 0.6;
-  mat.backFaceCulling = false;
-  mat.zOffset = -1; // render slightly in front
-  highlightMesh.material = mat;
-  highlightMesh.isPickable = false;
-  highlightMesh.renderingGroupId = 1;
-
-  // Highlight boundary edges
-  if (face.edgeIndices && geo.edges) {
-    const lines = [];
-    for (const ei of face.edgeIndices) {
-      const edge = geo.edges[ei];
-      if (!edge || !edge.points || edge.points.length < 6) continue;
-      const pts = edge.points;
-      const line = [];
-      for (let i = 0; i < pts.length; i += 3) {
-        line.push(new BABYLON.Vector3(pts[i], pts[i + 1], pts[i + 2]));
-      }
-      lines.push(line);
-    }
-    if (lines.length > 0) {
-      highlightEdgeLines = BABYLON.MeshBuilder.CreateLineSystem("__highlight_edges__", { lines }, scene);
-      highlightEdgeLines.color = new BABYLON.Color3(0.3, 0.85, 1.0);
-      highlightEdgeLines.parent = babylonMesh;
-      highlightEdgeLines.isPickable = false;
-      highlightEdgeLines.renderingGroupId = 1;
-    }
-  }
-
-  // Show selection info
-  const triCount = face.indexCount / 3;
-  const edgeCount = (face.edgeIndices || []).length;
-  const colorStr = face.color
-    ? `rgb(${(face.color.r * 255) | 0}, ${(face.color.g * 255) | 0}, ${(face.color.b * 255) | 0})`
-    : "none";
-
-  const rows = [
-    ["Face ID", faceId],
-    ["Triangles", triCount],
-    ["Boundary Edges", edgeCount],
-    ["Color", `<span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:${colorStr};vertical-align:middle;border:1px solid #555"></span> ${colorStr}`],
-  ];
-
-  // Find adjacent faces via shared edges
-  if (face.edgeIndices && geo.edges) {
-    const adjacentFaces = new Set();
-    for (const ei of face.edgeIndices) {
-      const edge = geo.edges[ei];
-      if (edge && edge.ownerFaceIds) {
-        for (const fid of edge.ownerFaceIds) {
-          if (fid !== faceId) adjacentFaces.add(fid);
-        }
-      }
-    }
-    if (adjacentFaces.size > 0) {
-      rows.push(["Adjacent Faces", Array.from(adjacentFaces).sort((a, b) => a - b).join(", ")]);
-    }
-  }
-
-  showSelectionInfo("Selected Face", rows);
+  clearAllSelections();
 }
 
 function setupPicking() {
-  scene.onPointerDown = (evt, pickResult) => {
-    if (evt.button !== 0) return; // left click only
+  // Track pointer down position to distinguish click vs drag
+  let pointerDownX = 0, pointerDownY = 0;
+  const DRAG_THRESHOLD = 5; // pixels
+
+  scene.onPointerDown = (evt) => {
+    if (evt.button !== 0) return;
+    pointerDownX = evt.clientX;
+    pointerDownY = evt.clientY;
+  };
+
+  scene.onPointerUp = (evt) => {
+    if (evt.button !== 0) return;
+
+    // If mouse moved more than threshold, it's a drag — skip picking
+    const dx = evt.clientX - pointerDownX;
+    const dy = evt.clientY - pointerDownY;
+    if (dx * dx + dy * dy > DRAG_THRESHOLD * DRAG_THRESHOLD) return;
 
     clearHover();
 
+    const pickResult = scene.pick(scene.pointerX, scene.pointerY);
+    const isCtrl = evt.ctrlKey || evt.metaKey;
+
     if (!pickResult.hit || !pickResult.pickedMesh) {
-      clearSelection();
+      if (!isCtrl) clearAllSelections();
       return;
     }
 
@@ -511,42 +415,64 @@ function setupPicking() {
     // Resolve source mesh for instances
     const sourceMesh = mesh.sourceMesh || mesh;
     const geo = meshGeoMap.get(sourceMesh);
-    if (!geo) {
-      clearSelection();
-      return;
-    }
+    if (!geo) { if (!isCtrl) clearAllSelections(); return; }
 
-    if (pickMode === "face") {
-      if (!geo.triangleToFaceMap) { clearSelection(); return; }
+    let mode = null, elementId = null, createFn = null;
+
+    if (pickMode === "face" && geo.triangleToFaceMap) {
       const triIndex = pickResult.faceId;
-      if (triIndex < 0 || triIndex >= geo.triangleToFaceMap.length) { clearSelection(); return; }
-      const faceId = geo.triangleToFaceMap[triIndex];
-      if (faceId < 1) { clearSelection(); return; }
-      highlightFace(sourceMesh, faceId);
-
+      if (triIndex >= 0 && triIndex < geo.triangleToFaceMap.length) {
+        const faceId = geo.triangleToFaceMap[triIndex];
+        if (faceId >= 1) {
+          const face = geo.faces && geo.faces.find(f => f.id === faceId);
+          if (face) {
+            mode = "face"; elementId = faceId;
+            createFn = () => createFaceSelectDisposables(sourceMesh, face, geo);
+          }
+        }
+      }
     } else if (pickMode === "edge") {
       const worldPt = pickResult.pickedPoint;
-      if (!worldPt) { clearSelection(); return; }
-      const localPt = worldToLocal(worldPt, sourceMesh);
-      const threshold = getPickThreshold();
-      const edgeId = findClosestEdge(localPt, geo, threshold);
-      if (edgeId !== null) {
-        highlightEdge(sourceMesh, edgeId);
-      } else {
-        clearSelection();
+      if (worldPt) {
+        const localPt = worldToLocal(worldPt, sourceMesh);
+        const edgeId = findClosestEdge(localPt, geo, getPickThreshold());
+        if (edgeId) {
+          const edge = geo.edges && geo.edges.find(e => e.id === edgeId);
+          if (edge) {
+            mode = "edge"; elementId = edgeId;
+            createFn = () => createEdgeSelectDisposables(sourceMesh, edge);
+          }
+        }
       }
-
     } else if (pickMode === "vertex") {
       const worldPt = pickResult.pickedPoint;
-      if (!worldPt) { clearSelection(); return; }
-      const localPt = worldToLocal(worldPt, sourceMesh);
-      const threshold = getPickThreshold();
-      const vertexId = findClosestVertex(localPt, geo, threshold);
-      if (vertexId !== null) {
-        highlightVertex(sourceMesh, vertexId);
-      } else {
-        clearSelection();
+      if (worldPt) {
+        const localPt = worldToLocal(worldPt, sourceMesh);
+        const vertexId = findClosestVertex(localPt, geo, getPickThreshold());
+        if (vertexId) {
+          const vertex = geo.vertices && geo.vertices.find(v => v.id === vertexId);
+          if (vertex) {
+            mode = "vertex"; elementId = vertexId;
+            createFn = () => createVertexSelectDisposables(sourceMesh, vertex);
+          }
+        }
       }
+    }
+
+    if (!elementId) { if (!isCtrl) clearAllSelections(); return; }
+
+    if (isCtrl) {
+      const key = selectionKey(mode, sourceMesh.uniqueId, elementId);
+      if (selectionSet.has(key)) {
+        removeSelection(key);
+      } else {
+        addSelection(mode, sourceMesh, elementId, createFn());
+      }
+      updateSelectionPanel();
+    } else {
+      clearAllSelections();
+      addSelection(mode, sourceMesh, elementId, createFn());
+      updateSelectionPanel();
     }
   };
 
@@ -702,13 +628,13 @@ function init() {
 
   // Picking
   setupPicking();
-  document.getElementById("clearSelection").addEventListener("click", clearSelection);
+  document.getElementById("clearSelection").addEventListener("click", clearAllSelections);
 
   // Mode buttons
   document.querySelectorAll("#selectMode button[data-mode]").forEach(btn => {
     btn.addEventListener("click", () => {
       pickMode = btn.dataset.mode;
-      clearSelection();
+      clearAllSelections();
       if (typeof clearHover === "function") clearHover();
       document.querySelectorAll("#selectMode button[data-mode]").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
