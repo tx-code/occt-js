@@ -287,3 +287,33 @@ test("switching mode clears selection", async ({ page }) => {
   await page.click("#modeEdge");
   await expect(page.locator("#selectionPanel")).toBeHidden();
 });
+
+// ---------------------------------------------------------------------------
+// Hover preview
+// ---------------------------------------------------------------------------
+
+test("hovering over model changes cursor to pointer", async ({ page }) => {
+  await page.click("#loadSample");
+  await expect(page.locator("#statsPanel")).toBeVisible({ timeout: 30_000 });
+
+  const canvas = page.locator("#renderCanvas");
+  const box = await canvas.boundingBox();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.waitForTimeout(200);
+
+  const cursor = await canvas.evaluate(el => el.style.cursor);
+  expect(cursor).toBe("pointer");
+});
+
+test("hovering away from model resets cursor", async ({ page }) => {
+  await page.click("#loadSample");
+  await expect(page.locator("#statsPanel")).toBeVisible({ timeout: 30_000 });
+
+  const canvas = page.locator("#renderCanvas");
+  const box = await canvas.boundingBox();
+  await page.mouse.move(box.x + 5, box.y + 5);
+  await page.waitForTimeout(200);
+
+  const cursor = await canvas.evaluate(el => el.style.cursor);
+  expect(cursor).toBe("");
+});
