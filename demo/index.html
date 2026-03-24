@@ -500,6 +500,8 @@ function setupPicking() {
   scene.onPointerDown = (evt, pickResult) => {
     if (evt.button !== 0) return; // left click only
 
+    clearHover();
+
     if (!pickResult.hit || !pickResult.pickedMesh) {
       clearSelection();
       return;
@@ -547,6 +549,12 @@ function setupPicking() {
       }
     }
   };
+
+  // Hover
+  const canvas = document.getElementById("renderCanvas");
+  canvas.addEventListener("pointermove", () => { hoverDirty = true; });
+  canvas.addEventListener("pointerleave", () => { clearHover(); hoverDirty = false; });
+  scene.onBeforeRenderObservable.add(processHover);
 }
 
 // --- Stats ---

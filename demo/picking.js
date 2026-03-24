@@ -12,6 +12,10 @@ const PICK_COLORS = {
 
 let pickMode = "face";
 
+// --- Hover state ---
+let hoverState = null; // { mode, id, sourceMesh, disposables[] }
+let hoverDirty = false;
+
 // --- Geometry math ---
 
 function pointToSegmentDistanceSq(px, py, pz, ax, ay, az, bx, by, bz) {
@@ -110,7 +114,7 @@ function createEdgeHighlight(sourceMesh, edge, color) {
   return lineSystem;
 }
 
-function createVertexHighlight(sourceMesh, vertex) {
+function createVertexHighlight(sourceMesh, vertex, color) {
   const sphere = BABYLON.MeshBuilder.CreateSphere(
     "__highlight_vertex__",
     { diameter: camera.radius * 0.008 },
@@ -125,9 +129,10 @@ function createVertexHighlight(sourceMesh, vertex) {
   sphere.isPickable = false;
   sphere.renderingGroupId = 1;
 
+  const usedColor = color || PICK_COLORS.select;
   const mat = new BABYLON.StandardMaterial("mat_vertex_highlight", scene);
-  mat.diffuseColor = PICK_COLORS.select;
-  mat.emissiveColor = PICK_COLORS.selectEmissive;
+  mat.diffuseColor = usedColor;
+  mat.emissiveColor = color ? new BABYLON.Color3(usedColor.r * 0.4, usedColor.g * 0.4, usedColor.b * 0.4) : PICK_COLORS.selectEmissive;
   mat.backFaceCulling = false;
   sphere.material = mat;
 
@@ -191,4 +196,98 @@ function highlightVertex(sourceMesh, vertexId) {
   ];
 
   showSelectionInfo("Selected Vertex", rows);
+}
+
+// --- Hover ---
+
+function clearHover() {
+  if (hoverState) {
+    for (const d of hoverState.disposables) d.dispose();
+    hoverState = null;
+  }
+  document.getElementById("renderCanvas").style.cursor = "";
+}
+
+function createFaceHoverHighlight(sourceMesh, face, geo) {
+  const disposables = [];
+  if (face.edgeIndices && geo.edges) {
+    for (const ei of face.edgeIndices) {
+      const edge = geo.edges[ei];
+      const hl = createEdgeHighlight(sourceMesh, edge, PICK_COLORS.hover);
+      if (hl) disposables.push(hl);
+    }
+  }
+  return disposables;
+}
+
+function createEdgeHoverHighlight(sourceMesh, edge) {
+  const hl = createEdgeHighlight(sourceMesh, edge, PICK_COLORS.hover);
+  return hl ? [hl] : [];
+}
+
+function createVertexHoverHighlight(sourceMesh, vertex) {
+  const hl = createVertexHighlight(sourceMesh, vertex, PICK_COLORS.hover);
+  return hl ? [hl] : [];
+}
+
+function processHover() {
+  if (!hoverDirty) return;
+  hoverDirty = false;
+
+  const pickResult = scene.pick(scene.pointerX, scene.pointerY);
+
+  if (!pickResult.hit || !pickResult.pickedMesh) {
+    clearHover();
+    return;
+  }
+
+  const mesh = pickResult.pickedMesh;
+  const sourceMesh = mesh.sourceMesh || mesh;
+  const geo = meshGeoMap.get(sourceMesh);
+  if (!geo) { clearHover(); return; }
+
+  // Step 1: Determine hovered element (no GPU work yet)
+  let hoveredMode = null, hoveredId = null;
+
+  if (pickMode === "face") {
+    if (geo.triangleToFaceMap) {
+      const triIndex = pickResult.faceId;
+      if (triIndex >= 0 && triIndex < geo.triangleToFaceMap.length) {
+        const faceId = geo.triangleToFaceMap[triIndex];
+        if (faceId >= 1) { hoveredMode = "face"; hoveredId = faceId; }
+      }
+    }
+  } else if (pickMode === "edge") {
+    const localPt = worldToLocal(pickResult.pickedPoint, mesh);
+    const edgeId = findClosestEdge(localPt, geo, getPickThreshold());
+    if (edgeId) { hoveredMode = "edge"; hoveredId = edgeId; }
+  } else if (pickMode === "vertex") {
+    const localPt = worldToLocal(pickResult.pickedPoint, mesh);
+    const vertexId = findClosestVertex(localPt, geo, getPickThreshold());
+    if (vertexId) { hoveredMode = "vertex"; hoveredId = vertexId; }
+  }
+
+  // Step 2: Early return if hovering same item
+  if (hoveredId && hoverState && hoverState.mode === hoveredMode && hoverState.id === hoveredId) {
+    return;
+  }
+
+  clearHover();
+  if (!hoveredId) return;
+
+  // Step 3: Create GPU disposables only for new hover target
+  let disposables = [];
+  if (hoveredMode === "face") {
+    const face = geo.faces.find(f => f.id === hoveredId);
+    if (face) disposables = createFaceHoverHighlight(sourceMesh, face, geo);
+  } else if (hoveredMode === "edge") {
+    const edge = geo.edges.find(e => e.id === hoveredId);
+    if (edge) disposables = createEdgeHoverHighlight(sourceMesh, edge);
+  } else if (hoveredMode === "vertex") {
+    const vertex = geo.vertices.find(v => v.id === hoveredId);
+    if (vertex) disposables = createVertexHoverHighlight(sourceMesh, vertex);
+  }
+
+  hoverState = { mode: hoveredMode, id: hoveredId, sourceMesh, disposables };
+  document.getElementById("renderCanvas").style.cursor = "pointer";
 }
