@@ -406,13 +406,9 @@ function setupPicking() {
     const ddx = evt.clientX - ptrDownX, ddy = evt.clientY - ptrDownY;
     if (ddx * ddx + ddy * ddy > DRAG_SQ) return; // drag — skip
 
-    // For POINTERUP that also triggers POINTERTAP, avoid double handling
+    // POINTERUP on empty space — do nothing (keep selection, allow camera rotation)
+    // Selection is only cleared by: clicking another element, or the close button.
     if (pointerInfo.type === BABYLON.PointerEventTypes.POINTERUP) {
-      // Only handle empty-space clicks here (POINTERTAP handles mesh hits)
-      const pr = scene.pick(scene.pointerX, scene.pointerY);
-      if (pr.hit && pr.pickedMesh) return; // let POINTERTAP handle it
-      const isCtrl = evt.ctrlKey || evt.metaKey;
-      if (!isCtrl) clearAllSelections();
       return;
     }
 
@@ -423,8 +419,7 @@ function setupPicking() {
     const isCtrl = evt.ctrlKey || evt.metaKey;
 
     if (!pickResult.hit || !pickResult.pickedMesh) {
-      if (!isCtrl) clearAllSelections();
-      return;
+      return; // empty space — keep selection
     }
 
     const pickedMesh = pickResult.pickedMesh;

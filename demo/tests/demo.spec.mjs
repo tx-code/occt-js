@@ -340,20 +340,25 @@ test("ctrl+click adds to selection", async ({ page }) => {
   await expect(page.locator("#selectionTitle")).toContainText("Selected");
 });
 
-test("plain click on empty clears selection", async ({ page }) => {
+test("clicking empty space preserves selection (CAD behavior)", async ({ page }) => {
   await page.click("#loadSample");
   await expect(page.locator("#selectMode")).toBeVisible({ timeout: 30_000 });
 
   const canvas = page.locator("#renderCanvas");
   const box = await canvas.boundingBox();
 
+  // Select a face
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
   await expect(page.locator("#selectionPanel")).toBeVisible({ timeout: 5000 });
 
-  // Click far from model (bottom-right corner) to hit empty space
+  // Click empty space — selection should remain
   await page.mouse.click(box.x + box.width - 10, box.y + box.height - 10);
   await page.waitForTimeout(300);
-  await expect(page.locator("#selectionPanel")).toBeHidden({ timeout: 5000 });
+  await expect(page.locator("#selectionPanel")).toBeVisible();
+
+  // Close button still clears
+  await page.click("#clearSelection");
+  await expect(page.locator("#selectionPanel")).toBeHidden();
 });
 
 test("face info panel shows clickable adjacent face links", async ({ page }) => {
