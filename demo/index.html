@@ -287,13 +287,9 @@ function buildScene(result) {
       const geo = result.geometries[geoIdx];
       if (!geo || !geo.positions || geo.positions.length === 0) continue;
 
-      // Determine material: use first face color with valid color, or geo color, or default
-      let meshColor = geo.color;
-      if (geo.faces) {
-        for (const face of geo.faces) {
-          if (face.color) { meshColor = face.color; break; }
-        }
-      }
+      // Check if this geometry has multiple face colors
+      const hasPerFaceColors = geo.faces && geo.faces.some(f => f.color) &&
+        new Set(geo.faces.filter(f => f.color).map(f => `${(f.color.r*255)|0},${(f.color.g*255)|0},${(f.color.b*255)|0}`)).size > 1;
 
       const cacheKey = `${geoIdx}`;
       if (geoCache.has(cacheKey)) {
@@ -310,14 +306,55 @@ function buildScene(result) {
       mesh.parent = parent;
       applyTransform(mesh, nodeData.transform);
 
+      const positions = new Float32Array(geo.positions);
+      const indices = new Uint32Array(geo.indices);
       const vertexData = new BABYLON.VertexData();
-      vertexData.positions = new Float32Array(geo.positions);
-      vertexData.indices = new Uint32Array(geo.indices);
+      vertexData.positions = positions;
+      vertexData.indices = indices;
       if (geo.normals && geo.normals.length > 0) {
         vertexData.normals = new Float32Array(geo.normals);
       }
+
+      // Per-face vertex coloring: assign RGBA color per vertex based on face ownership
+      if (hasPerFaceColors && geo.faces) {
+        const vertexCount = positions.length / 3;
+        const colors = new Float32Array(vertexCount * 4);
+        // Default color for vertices not covered by any face
+        for (let v = 0; v < vertexCount; v++) {
+          colors[v * 4] = 0.7; colors[v * 4 + 1] = 0.7; colors[v * 4 + 2] = 0.7; colors[v * 4 + 3] = 1;
+        }
+        for (const face of geo.faces) {
+          const c = face.color || (geo.color ? geo.color : null);
+          const r = c ? c.r : 0.7, g = c ? c.g : 0.7, b = c ? c.b : 0.7;
+          for (let i = face.firstIndex; i < face.firstIndex + face.indexCount; i++) {
+            const vi = indices[i];
+            colors[vi * 4] = r;
+            colors[vi * 4 + 1] = g;
+            colors[vi * 4 + 2] = b;
+            colors[vi * 4 + 3] = 1;
+          }
+        }
+        vertexData.colors = colors;
+      }
+
       vertexData.applyToMesh(mesh);
-      mesh.material = getMaterial(meshColor);
+
+      // Material: white diffuse for vertex-colored meshes, face color for single-color
+      if (hasPerFaceColors) {
+        const mat = new BABYLON.StandardMaterial("mat_vcolor_" + geoIdx, scene);
+        mat.diffuseColor = new BABYLON.Color3(1, 1, 1);
+        mat.backFaceCulling = false;
+        mat.twoSidedLighting = true;
+        mesh.material = mat;
+      } else {
+        let meshColor = geo.color;
+        if (geo.faces) {
+          for (const face of geo.faces) {
+            if (face.color) { meshColor = face.color; break; }
+          }
+        }
+        mesh.material = getMaterial(meshColor);
+      }
 
       // Store raw geometry for picking
       meshGeoMap.set(mesh, geo);
