@@ -1,6 +1,6 @@
 // picking.js — Picking logic for Face, Edge, and Vertex modes
 // Depends on globals: engine, camera, scene, meshGeoMap (set up by index.html after init)
-// highlightMesh, highlightEdgeLines, clearSelection are also in index.html globals
+// clearAllSelections is also available from this file as a global
 
 // --- Color constants ---
 const PICK_COLORS = {
@@ -15,6 +15,35 @@ let pickMode = "face";
 // --- Hover state ---
 let hoverState = null; // { mode, id, sourceMesh, disposables[] }
 let hoverDirty = false;
+
+// --- Selection set ---
+let selectionSet = new Map(); // key → { mode, id, sourceMesh, disposables[] }
+
+function selectionKey(mode, meshUniqueId, elementId) {
+  return `${mode}:${meshUniqueId}:${elementId}`;
+}
+
+function clearAllSelections() {
+  for (const entry of selectionSet.values()) {
+    for (const d of entry.disposables) d.dispose();
+  }
+  selectionSet.clear();
+  document.getElementById("selectionPanel").style.display = "none";
+}
+
+function removeSelection(key) {
+  const entry = selectionSet.get(key);
+  if (entry) {
+    for (const d of entry.disposables) d.dispose();
+    selectionSet.delete(key);
+  }
+}
+
+function addSelection(mode, sourceMesh, elementId, disposables) {
+  const key = selectionKey(mode, sourceMesh.uniqueId, elementId);
+  removeSelection(key);
+  selectionSet.set(key, { mode, id: elementId, sourceMesh, disposables });
+}
 
 // --- Geometry math ---
 
@@ -139,6 +168,57 @@ function createVertexHighlight(sourceMesh, vertex, color) {
   return sphere;
 }
 
+// --- Disposable factory functions ---
+
+function createFaceSelectDisposables(sourceMesh, face, geo) {
+  const disposables = [];
+  // Face overlay mesh
+  const srcPositions = geo.positions, srcNormals = geo.normals, srcIndices = geo.indices;
+  const indexRemap = new Map();
+  const positions = [], normals = [], indices = [];
+  for (let i = face.firstIndex; i < face.firstIndex + face.indexCount; i++) {
+    const idx = srcIndices[i];
+    if (!indexRemap.has(idx)) {
+      const newIdx = indexRemap.size;
+      indexRemap.set(idx, newIdx);
+      positions.push(srcPositions[idx*3], srcPositions[idx*3+1], srcPositions[idx*3+2]);
+      if (srcNormals && srcNormals.length) normals.push(srcNormals[idx*3], srcNormals[idx*3+1], srcNormals[idx*3+2]);
+    }
+    indices.push(indexRemap.get(idx));
+  }
+  const hlMesh = new BABYLON.Mesh("__hl_face__", scene);
+  hlMesh.parent = sourceMesh;
+  const vd = new BABYLON.VertexData();
+  vd.positions = new Float32Array(positions);
+  vd.indices = new Uint32Array(indices);
+  if (normals.length) vd.normals = new Float32Array(normals);
+  vd.applyToMesh(hlMesh);
+  const mat = new BABYLON.StandardMaterial("__hl_mat__", scene);
+  mat.diffuseColor = PICK_COLORS.select;
+  mat.emissiveColor = PICK_COLORS.selectEmissive;
+  mat.alpha = 0.6; mat.backFaceCulling = false; mat.zOffset = -1;
+  hlMesh.material = mat; hlMesh.isPickable = false; hlMesh.renderingGroupId = 1;
+  disposables.push(hlMesh, mat);
+  // Boundary edges
+  if (face.edgeIndices && geo.edges) {
+    for (const ei of face.edgeIndices) {
+      const hl = createEdgeHighlight(sourceMesh, geo.edges[ei], PICK_COLORS.edge);
+      if (hl) disposables.push(hl);
+    }
+  }
+  return disposables;
+}
+
+function createEdgeSelectDisposables(sourceMesh, edge) {
+  const hl = createEdgeHighlight(sourceMesh, edge, PICK_COLORS.select);
+  return hl ? [hl] : [];
+}
+
+function createVertexSelectDisposables(sourceMesh, vertex) {
+  const hl = createVertexHighlight(sourceMesh, vertex, PICK_COLORS.select);
+  return hl ? [hl] : [];
+}
+
 // --- Info panel ---
 
 function showSelectionInfo(title, rows) {
@@ -149,53 +229,165 @@ function showSelectionInfo(title, rows) {
   document.getElementById("selectionPanel").style.display = "";
 }
 
-// --- Edge highlight & info ---
+// --- Navigation link helpers ---
 
-function highlightEdge(sourceMesh, edgeId) {
-  clearSelection();
-  const geo = meshGeoMap.get(sourceMesh);
-  if (!geo || !geo.edges) return;
+function attachFaceLinks() {
+  document.querySelectorAll("#selectionContent .face-link").forEach(link => {
+    link.addEventListener("click", (e) => {
+      e.preventDefault();
+      const faceId = parseInt(link.dataset.faceId);
+      const meshId = parseInt(link.dataset.meshId);
+      const targetMesh = [...meshGeoMap.keys()].find(m => m.uniqueId === meshId);
+      if (!targetMesh) return;
 
-  const edge = geo.edges.find(e => e.id === edgeId);
-  if (!edge) return;
+      // Switch to Face mode
+      pickMode = "face";
+      document.querySelectorAll("#selectMode button[data-mode]").forEach(b => b.classList.remove("active"));
+      document.getElementById("modeFace").classList.add("active");
 
-  highlightEdgeLines = createEdgeHighlight(sourceMesh, edge, PICK_COLORS.edge);
+      // Select the face
+      clearAllSelections();
+      const geo = meshGeoMap.get(targetMesh);
+      const face = geo && geo.faces && geo.faces.find(f => f.id === faceId);
+      if (face) {
+        addSelection("face", targetMesh, faceId, createFaceSelectDisposables(targetMesh, face, geo));
+        updateSelectionPanel();
+      }
+    });
+  });
+}
 
-  const ptCount = edge.points ? edge.points.length / 3 : 0;
-  const ownerStr = (edge.ownerFaceIds && edge.ownerFaceIds.length > 0)
-    ? edge.ownerFaceIds.join(", ")
+// --- Per-element info display functions ---
+
+function showFaceInfo(sourceMesh, face, geo) {
+  const faceId = face.id;
+  const triCount = face.indexCount / 3;
+  const edgeCount = (face.edgeIndices || []).length;
+  const colorStr = face.color
+    ? `rgb(${(face.color.r * 255) | 0}, ${(face.color.g * 255) | 0}, ${(face.color.b * 255) | 0})`
     : "none";
 
   const rows = [
-    ["Edge ID", edgeId],
+    ["Face ID", faceId],
+    ["Triangles", triCount],
+    ["Boundary Edges", edgeCount],
+    ["Color", `<span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:${colorStr};vertical-align:middle;border:1px solid #555"></span> ${colorStr}`],
+  ];
+
+  // Find adjacent faces via shared edges
+  if (face.edgeIndices && geo.edges) {
+    const adjacentFaces = new Set();
+    for (const ei of face.edgeIndices) {
+      const edge = geo.edges[ei];
+      if (edge && edge.ownerFaceIds) {
+        for (const fid of edge.ownerFaceIds) {
+          if (fid !== faceId) adjacentFaces.add(fid);
+        }
+      }
+    }
+    if (adjacentFaces.size > 0) {
+      const adjacentIds = Array.from(adjacentFaces).sort((a, b) => a - b);
+      const adjacentHtml = adjacentIds.map(fid =>
+        `<a href="#" class="face-link" data-face-id="${fid}" data-mesh-id="${sourceMesh.uniqueId}" style="color:#4cc9f0;cursor:pointer;text-decoration:none">${fid}</a>`
+      ).join(", ");
+      rows.push(["Adjacent Faces", adjacentHtml]);
+    }
+  }
+
+  showSelectionInfo("Selected Face", rows);
+  attachFaceLinks();
+}
+
+function showEdgeInfo(sourceMesh, edge) {
+  const ptCount = edge.points ? edge.points.length / 3 : 0;
+  const ownerHtml = (edge.ownerFaceIds && edge.ownerFaceIds.length > 0)
+    ? edge.ownerFaceIds.map(fid =>
+        `<a href="#" class="face-link" data-face-id="${fid}" data-mesh-id="${sourceMesh.uniqueId}" style="color:#4cc9f0;cursor:pointer;text-decoration:none">${fid}</a>`
+      ).join(", ")
+    : "none";
+
+  const rows = [
+    ["Edge ID", edge.id],
     ["Points", ptCount],
     ["Free Edge", edge.isFreeEdge ? "yes" : "no"],
-    ["Owner Faces", ownerStr],
+    ["Owner Faces", ownerHtml],
   ];
 
   showSelectionInfo("Selected Edge", rows);
+  attachFaceLinks();
 }
 
-// --- Vertex highlight & info ---
-
-function highlightVertex(sourceMesh, vertexId) {
-  clearSelection();
-  const geo = meshGeoMap.get(sourceMesh);
-  if (!geo || !geo.vertices) return;
-
-  const vertex = geo.vertices.find(v => v.id === vertexId);
-  if (!vertex || !vertex.position) return;
-
-  highlightMesh = createVertexHighlight(sourceMesh, vertex);
-
+function showVertexInfo(vertex) {
   const rows = [
-    ["Vertex ID", vertexId],
+    ["Vertex ID", vertex.id],
     ["X", vertex.position[0].toFixed(2)],
     ["Y", vertex.position[1].toFixed(2)],
     ["Z", vertex.position[2].toFixed(2)],
   ];
 
   showSelectionInfo("Selected Vertex", rows);
+}
+
+// --- Update selection panel (used by multi-select) ---
+
+function updateSelectionPanel() {
+  if (selectionSet.size === 0) {
+    document.getElementById("selectionPanel").style.display = "none";
+    return;
+  }
+
+  if (selectionSet.size === 1) {
+    const entry = selectionSet.values().next().value;
+    const geo = meshGeoMap.get(entry.sourceMesh);
+    if (!geo) return;
+
+    if (entry.mode === "face") {
+      const face = geo.faces && geo.faces.find(f => f.id === entry.id);
+      if (face) showFaceInfo(entry.sourceMesh, face, geo);
+    } else if (entry.mode === "edge") {
+      const edge = geo.edges && geo.edges.find(e => e.id === entry.id);
+      if (edge) showEdgeInfo(entry.sourceMesh, edge);
+    } else if (entry.mode === "vertex") {
+      const vertex = geo.vertices && geo.vertices.find(v => v.id === entry.id);
+      if (vertex) showVertexInfo(vertex);
+    }
+  } else {
+    // Multi-select summary
+    const counts = { face: 0, edge: 0, vertex: 0 };
+    for (const entry of selectionSet.values()) counts[entry.mode]++;
+    const parts = [];
+    if (counts.face) parts.push(`${counts.face} face${counts.face > 1 ? "s" : ""}`);
+    if (counts.edge) parts.push(`${counts.edge} edge${counts.edge > 1 ? "s" : ""}`);
+    if (counts.vertex) parts.push(`${counts.vertex} ${counts.vertex > 1 ? "vertices" : "vertex"}`);
+
+    showSelectionInfo(`${selectionSet.size} Selected`, [["Items", parts.join(", ")]]);
+  }
+}
+
+// --- Legacy highlight functions (kept for backward compatibility with direct calls) ---
+
+function highlightEdge(sourceMesh, edgeId) {
+  clearAllSelections();
+  const geo = meshGeoMap.get(sourceMesh);
+  if (!geo || !geo.edges) return;
+
+  const edge = geo.edges.find(e => e.id === edgeId);
+  if (!edge) return;
+
+  addSelection("edge", sourceMesh, edgeId, createEdgeSelectDisposables(sourceMesh, edge));
+  updateSelectionPanel();
+}
+
+function highlightVertex(sourceMesh, vertexId) {
+  clearAllSelections();
+  const geo = meshGeoMap.get(sourceMesh);
+  if (!geo || !geo.vertices) return;
+
+  const vertex = geo.vertices.find(v => v.id === vertexId);
+  if (!vertex || !vertex.position) return;
+
+  addSelection("vertex", sourceMesh, vertexId, createVertexSelectDisposables(sourceMesh, vertex));
+  updateSelectionPanel();
 }
 
 // --- Hover ---
@@ -241,10 +433,13 @@ function processHover() {
     return;
   }
 
-  const mesh = pickResult.pickedMesh;
-  const sourceMesh = mesh.sourceMesh || mesh;
+  const pickedMesh = pickResult.pickedMesh;
+  const sourceMesh = pickedMesh.sourceMesh || pickedMesh;
   const geo = meshGeoMap.get(sourceMesh);
   if (!geo) { clearHover(); return; }
+
+  // Parent highlights to pickedMesh (not sourceMesh) for correct instance positioning
+  const parentMesh = pickedMesh;
 
   // Step 1: Determine hovered element (no GPU work yet)
   let hoveredMode = null, hoveredId = null;
@@ -258,11 +453,11 @@ function processHover() {
       }
     }
   } else if (pickMode === "edge") {
-    const localPt = worldToLocal(pickResult.pickedPoint, mesh);
+    const localPt = worldToLocal(pickResult.pickedPoint, pickedMesh);
     const edgeId = findClosestEdge(localPt, geo, getPickThreshold());
     if (edgeId) { hoveredMode = "edge"; hoveredId = edgeId; }
   } else if (pickMode === "vertex") {
-    const localPt = worldToLocal(pickResult.pickedPoint, mesh);
+    const localPt = worldToLocal(pickResult.pickedPoint, pickedMesh);
     const vertexId = findClosestVertex(localPt, geo, getPickThreshold());
     if (vertexId) { hoveredMode = "vertex"; hoveredId = vertexId; }
   }
@@ -279,15 +474,15 @@ function processHover() {
   let disposables = [];
   if (hoveredMode === "face") {
     const face = geo.faces.find(f => f.id === hoveredId);
-    if (face) disposables = createFaceHoverHighlight(sourceMesh, face, geo);
+    if (face) disposables = createFaceHoverHighlight(parentMesh, face, geo);
   } else if (hoveredMode === "edge") {
     const edge = geo.edges.find(e => e.id === hoveredId);
-    if (edge) disposables = createEdgeHoverHighlight(sourceMesh, edge);
+    if (edge) disposables = createEdgeHoverHighlight(parentMesh, edge);
   } else if (hoveredMode === "vertex") {
     const vertex = geo.vertices.find(v => v.id === hoveredId);
-    if (vertex) disposables = createVertexHoverHighlight(sourceMesh, vertex);
+    if (vertex) disposables = createVertexHoverHighlight(parentMesh, vertex);
   }
 
-  hoverState = { mode: hoveredMode, id: hoveredId, sourceMesh, disposables };
+  hoverState = { mode: hoveredMode, id: hoveredId, sourceMesh: parentMesh, disposables };
   document.getElementById("renderCanvas").style.cursor = "pointer";
 }

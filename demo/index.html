@@ -383,17 +383,18 @@ function clearSelection() {
 }
 
 function setupPicking() {
-  // Track pointer down position to distinguish click vs drag
+  // Track pointer down position via raw DOM events to distinguish click vs drag
+  const canvas = document.getElementById("renderCanvas");
   let pointerDownX = 0, pointerDownY = 0;
   const DRAG_THRESHOLD = 5; // pixels
 
-  scene.onPointerDown = (evt) => {
+  canvas.addEventListener("pointerdown", (evt) => {
     if (evt.button !== 0) return;
     pointerDownX = evt.clientX;
     pointerDownY = evt.clientY;
-  };
+  });
 
-  scene.onPointerUp = (evt) => {
+  canvas.addEventListener("pointerup", (evt) => {
     if (evt.button !== 0) return;
 
     // If mouse moved more than threshold, it's a drag — skip picking
@@ -411,11 +412,14 @@ function setupPicking() {
       return;
     }
 
-    const mesh = pickResult.pickedMesh;
-    // Resolve source mesh for instances
-    const sourceMesh = mesh.sourceMesh || mesh;
+    const pickedMesh = pickResult.pickedMesh;
+    // Resolve source mesh for geometry data lookup (instances share source geometry)
+    const sourceMesh = pickedMesh.sourceMesh || pickedMesh;
     const geo = meshGeoMap.get(sourceMesh);
     if (!geo) { if (!isCtrl) clearAllSelections(); return; }
+
+    // Parent highlights to pickedMesh (not sourceMesh!) so instances highlight correctly
+    const parentMesh = pickedMesh;
 
     let mode = null, elementId = null, createFn = null;
 
@@ -427,33 +431,33 @@ function setupPicking() {
           const face = geo.faces && geo.faces.find(f => f.id === faceId);
           if (face) {
             mode = "face"; elementId = faceId;
-            createFn = () => createFaceSelectDisposables(sourceMesh, face, geo);
+            createFn = () => createFaceSelectDisposables(parentMesh, face, geo);
           }
         }
       }
     } else if (pickMode === "edge") {
       const worldPt = pickResult.pickedPoint;
       if (worldPt) {
-        const localPt = worldToLocal(worldPt, sourceMesh);
+        const localPt = worldToLocal(worldPt, pickedMesh);
         const edgeId = findClosestEdge(localPt, geo, getPickThreshold());
         if (edgeId) {
           const edge = geo.edges && geo.edges.find(e => e.id === edgeId);
           if (edge) {
             mode = "edge"; elementId = edgeId;
-            createFn = () => createEdgeSelectDisposables(sourceMesh, edge);
+            createFn = () => createEdgeSelectDisposables(parentMesh, edge);
           }
         }
       }
     } else if (pickMode === "vertex") {
       const worldPt = pickResult.pickedPoint;
       if (worldPt) {
-        const localPt = worldToLocal(worldPt, sourceMesh);
+        const localPt = worldToLocal(worldPt, pickedMesh);
         const vertexId = findClosestVertex(localPt, geo, getPickThreshold());
         if (vertexId) {
           const vertex = geo.vertices && geo.vertices.find(v => v.id === vertexId);
           if (vertex) {
             mode = "vertex"; elementId = vertexId;
-            createFn = () => createVertexSelectDisposables(sourceMesh, vertex);
+            createFn = () => createVertexSelectDisposables(parentMesh, vertex);
           }
         }
       }
@@ -474,10 +478,9 @@ function setupPicking() {
       addSelection(mode, sourceMesh, elementId, createFn());
       updateSelectionPanel();
     }
-  };
+  });
 
-  // Hover
-  const canvas = document.getElementById("renderCanvas");
+  // Hover (canvas already declared above)
   canvas.addEventListener("pointermove", () => { hoverDirty = true; });
   canvas.addEventListener("pointerleave", () => { clearHover(); hoverDirty = false; });
   scene.onBeforeRenderObservable.add(processHover);
