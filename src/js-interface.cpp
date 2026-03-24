@@ -73,6 +73,18 @@ val MeshToVal(const OcctMeshData& mesh)
     }
     obj.set("faceRanges", faceRanges);
 
+    // B-Rep edges (polylines as arrays of position indices)
+    val edgesArr = val::array();
+    for (const auto& edge : mesh.edges) {
+        val edgeObj = val::object();
+        val posIndices = val::global("Uint32Array").new_(edge.positionIndices.size());
+        val memView = val(typed_memory_view(edge.positionIndices.size(), edge.positionIndices.data()));
+        posIndices.call<void>("set", memView);
+        edgeObj.set("positionIndices", posIndices);
+        edgesArr.call<void>("push", edgeObj);
+    }
+    obj.set("edges", edgesArr);
+
     return obj;
 }
 

@@ -41,6 +41,12 @@ struct OcctMeshData {
         OcctColor color;
     };
     std::vector<FaceRange> faceRanges;
+
+    // B-Rep edge polylines (each edge is a sequence of position indices)
+    struct EdgeData {
+        std::vector<uint32_t> positionIndices;  // indices into positions array
+    };
+    std::vector<EdgeData> edges;
 };
 
 struct OcctNodeData {
