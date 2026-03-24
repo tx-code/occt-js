@@ -9,3 +9,4 @@ dist/*.js
 *.a
 emsdk/
 test-results/
+.npmrc
