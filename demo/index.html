@@ -189,10 +189,11 @@ function initBabylon() {
 // --- OCCT Module ---
 async function initOcct() {
   const script = document.createElement("script");
-  script.src = "../dist/occt-js.js";
+  const CDN = "https://unpkg.com/@tx-code/occt-js@0.1.1/dist/";
+  script.src = CDN + "occt-js.js";
   document.head.appendChild(script);
   await new Promise((resolve, reject) => { script.onload = resolve; script.onerror = reject; });
-  occtModule = await OcctJS({ locateFile: (f) => "../dist/" + f });
+  occtModule = await OcctJS({ locateFile: (f) => CDN + f });
 }
 
 // --- Format Detection ---
