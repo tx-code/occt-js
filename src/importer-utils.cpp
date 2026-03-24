@@ -14,35 +14,64 @@
 #include <gp_Trsf.hxx>
 #include <TopAbs.hxx>
 #include <Precision.hxx>
+#include <UnitsMethods.hxx>
 #include <TopoDS_Edge.hxx>
 #include <Poly_PolygonOnTriangulation.hxx>
 #include <Poly_Polygon3D.hxx>
 #include <TopTools_IndexedMapOfShape.hxx>
 #include <TopExp.hxx>
-#include <set>
+#include <TopoDS_Vertex.hxx>
+#include <algorithm>
+
+namespace {
+
+UnitsMethods_LengthUnit LinearUnitToLengthUnit(ImportParams::LinearUnit linearUnit)
+{
+    switch (linearUnit) {
+        case ImportParams::LinearUnit::Millimeter:
+            return UnitsMethods_LengthUnit_Millimeter;
+        case ImportParams::LinearUnit::Centimeter:
+            return UnitsMethods_LengthUnit_Centimeter;
+        case ImportParams::LinearUnit::Meter:
+            return UnitsMethods_LengthUnit_Meter;
+        case ImportParams::LinearUnit::Inch:
+            return UnitsMethods_LengthUnit_Inch;
+        case ImportParams::LinearUnit::Foot:
+            return UnitsMethods_LengthUnit_Foot;
+        default:
+            return UnitsMethods_LengthUnit_Millimeter;
+    }
+}
+
+} // namespace
 
 // ---------------------------------------------------------------------------
 // Triangulate a shape using BRepMesh_IncrementalMesh.
-// Matches occt-import-js: uses bounding-box-ratio for linearDeflection.
+// Matches occt-import-js: supports both deflection modes and unit fallback.
 // ---------------------------------------------------------------------------
 bool TriangulateShape(TopoDS_Shape& shape, const ImportParams& params)
 {
     Standard_Real linDeflection = params.linearDeflection;
     Standard_Real angDeflection = params.angularDeflection;
 
-    // Use bounding-box ratio mode by default (matches occt-import-js behavior).
-    Bnd_Box boundingBox;
-    BRepBndLib::Add(shape, boundingBox, false);
-    if (boundingBox.IsVoid()) {
-        return false;
-    }
+    if (params.linearDeflectionType == ImportParams::LinearDeflectionType::BoundingBoxRatio) {
+        Bnd_Box boundingBox;
+        BRepBndLib::Add(shape, boundingBox, false);
+        if (boundingBox.IsVoid()) {
+            return false;
+        }
 
-    Standard_Real xMin, yMin, zMin, xMax, yMax, zMax;
-    boundingBox.Get(xMin, yMin, zMin, xMax, yMax, zMax);
-    Standard_Real avgSize = ((xMax - xMin) + (yMax - yMin) + (zMax - zMin)) / 3.0;
-    linDeflection = avgSize * params.linearDeflection;
-    if (linDeflection < Precision::Confusion()) {
-        linDeflection = 0.01; // fallback: 0.01 model units
+        Standard_Real xMin, yMin, zMin, xMax, yMax, zMax;
+        boundingBox.Get(xMin, yMin, zMin, xMax, yMax, zMax);
+        Standard_Real avgSize = ((xMax - xMin) + (yMax - yMin) + (zMax - zMin)) / 3.0;
+        linDeflection = avgSize * params.linearDeflection;
+        if (linDeflection < Precision::Confusion()) {
+            // Use 1mm converted to the caller-selected linear unit.
+            double mmToUnit = UnitsMethods::GetLengthUnitScale(
+                UnitsMethods_LengthUnit_Millimeter,
+                LinearUnitToLengthUnit(params.linearUnit));
+            linDeflection = 1.0 * mmToUnit;
+        }
     }
 
     BRepMesh_IncrementalMesh mesher(shape, linDeflection, Standard_False, angDeflection);
@@ -71,8 +100,6 @@ static void ExtractFace(const TopoDS_Face& face,
 
     gp_Trsf trsf = faceLoc.Transformation();
     bool isReversed = (face.Orientation() == TopAbs_REVERSED);
-
-    uint32_t faceFirstTriIndex = static_cast<uint32_t>(mesh.indices.size() / 3);
 
     int nbNodes = triangulation->NbNodes();
     int nbTriangles = triangulation->NbTriangles();
@@ -117,129 +144,134 @@ static void ExtractFace(const TopoDS_Face& face,
         }
     }
 
-    // Face range for sub-material support
-    uint32_t faceLastTriIndex = static_cast<uint32_t>(mesh.indices.size() / 3) - 1;
-    OcctMeshData::FaceRange range;
-    range.first = faceFirstTriIndex;
-    range.last = faceLastTriIndex;
-    mesh.faceRanges.push_back(range);
-
     globalVertexOffset += static_cast<uint32_t>(nbNodes);
 }
 
 // ---------------------------------------------------------------------------
-// Extract mesh from a shape: faces + B-Rep edges.
-// Edge extraction follows SceneGraph.Net approach:
-//   - Face edges via Poly_PolygonOnTriangulation (reuses face vertex indices)
-//   - Free edges via Poly_Polygon3D (adds new vertices)
+// Extract mesh from a shape: full topology (faces, edges, vertices).
 // ---------------------------------------------------------------------------
 OcctMeshData ExtractMeshFromShape(const TopoDS_Shape& shape)
 {
     OcctMeshData mesh;
     uint32_t globalVertexOffset = 0;
 
-    // Build indexed maps for edge deduplication
-    TopTools_IndexedMapOfShape edgeMap;
+    // Build indexed maps for topology
+    TopTools_IndexedMapOfShape faceMap, edgeMap, vertexMap;
+    TopExp::MapShapes(shape, TopAbs_FACE, faceMap);
     TopExp::MapShapes(shape, TopAbs_EDGE, edgeMap);
+    TopExp::MapShapes(shape, TopAbs_VERTEX, vertexMap);
 
-    // Track which edges have been processed and which edges belong to faces
-    std::set<int> processedEdges;
-    std::set<int> faceEdgeIndices;
+    // Phase 1: Extract faces
+    for (int fi = 1; fi <= faceMap.Extent(); ++fi) {
+        const TopoDS_Face& face = TopoDS::Face(faceMap(fi));
+        OcctFaceTopoData faceData;
+        faceData.id = fi;
+        faceData.firstIndex = static_cast<uint32_t>(mesh.indices.size());
 
-    // Phase 1: Extract faces + edges on faces
-    for (TopExp_Explorer faceExplorer(shape, TopAbs_FACE); faceExplorer.More(); faceExplorer.Next()) {
-        const TopoDS_Face& face = TopoDS::Face(faceExplorer.Current());
-
-        TopLoc_Location faceLoc;
-        Handle(Poly_Triangulation) triangulation = BRep_Tool::Triangulation(face, faceLoc);
-
-        // Extract face geometry
-        uint32_t faceNodeOffset = globalVertexOffset;
         ExtractFace(face, mesh, globalVertexOffset);
 
-        if (triangulation.IsNull()) {
+        faceData.indexCount = static_cast<uint32_t>(mesh.indices.size()) - faceData.firstIndex;
+
+        uint32_t triCount = faceData.indexCount / 3;
+        for (uint32_t t = 0; t < triCount; ++t) {
+            mesh.triangleToFaceMap.push_back(fi);
+        }
+
+        mesh.faces.push_back(std::move(faceData));
+    }
+
+    // Phase 2: Extract edges
+    for (int ei = 1; ei <= edgeMap.Extent(); ++ei) {
+        const TopoDS_Edge& edge = TopoDS::Edge(edgeMap(ei));
+        OcctEdgeTopoData edgeData;
+        edgeData.id = ei;
+
+        if (BRep_Tool::Degenerated(edge)) {
+            mesh.edges.push_back(std::move(edgeData));
             continue;
         }
 
-        // Extract edges on this face
-        for (TopExp_Explorer edgeExplorer(face, TopAbs_EDGE); edgeExplorer.More(); edgeExplorer.Next()) {
-            const TopoDS_Edge& edge = TopoDS::Edge(edgeExplorer.Current());
+        bool polylineFound = false;
+        for (int fi = 1; fi <= faceMap.Extent(); ++fi) {
+            const TopoDS_Face& face = TopoDS::Face(faceMap(fi));
+            TopLoc_Location faceLoc;
+            Handle(Poly_Triangulation) triangulation = BRep_Tool::Triangulation(face, faceLoc);
+            if (triangulation.IsNull()) continue;
 
-            if (BRep_Tool::Degenerated(edge)) {
-                continue;
+            bool edgeOnFace = false;
+            for (TopExp_Explorer ex(face, TopAbs_EDGE); ex.More(); ex.Next()) {
+                if (edgeMap.FindIndex(ex.Current()) == ei) {
+                    edgeOnFace = true;
+                    break;
+                }
             }
+            if (!edgeOnFace) continue;
 
-            int edgeIndex = edgeMap.FindIndex(edge);
-            if (edgeIndex < 1) continue;
+            edgeData.ownerFaceIds.push_back(fi);
 
-            faceEdgeIndices.insert(edgeIndex);
-
-            if (processedEdges.count(edgeIndex) > 0) {
-                continue;
+            if (!polylineFound) {
+                Handle(Poly_PolygonOnTriangulation) polyOnTri =
+                    BRep_Tool::PolygonOnTriangulation(edge, triangulation, faceLoc);
+                if (!polyOnTri.IsNull()) {
+                    gp_Trsf trsf = faceLoc.Transformation();
+                    const TColStd_Array1OfInteger& nodeIndices = polyOnTri->Nodes();
+                    for (int i = nodeIndices.Lower(); i <= nodeIndices.Upper(); ++i) {
+                        gp_Pnt pt = triangulation->Node(nodeIndices(i));
+                        pt.Transform(trsf);
+                        edgeData.points.push_back(static_cast<float>(pt.X()));
+                        edgeData.points.push_back(static_cast<float>(pt.Y()));
+                        edgeData.points.push_back(static_cast<float>(pt.Z()));
+                    }
+                    polylineFound = true;
+                }
             }
+        }
 
-            Handle(Poly_PolygonOnTriangulation) polyOnTri =
-                BRep_Tool::PolygonOnTriangulation(edge, triangulation, faceLoc);
-
-            if (polyOnTri.IsNull()) {
-                continue;
+        if (!polylineFound) {
+            TopLoc_Location loc;
+            Handle(Poly_Polygon3D) poly3d = BRep_Tool::Polygon3D(edge, loc);
+            if (!poly3d.IsNull()) {
+                gp_Trsf trsf = loc.Transformation();
+                const TColgp_Array1OfPnt& nodes = poly3d->Nodes();
+                for (int i = nodes.Lower(); i <= nodes.Upper(); ++i) {
+                    gp_Pnt p = nodes(i);
+                    p.Transform(trsf);
+                    edgeData.points.push_back(static_cast<float>(p.X()));
+                    edgeData.points.push_back(static_cast<float>(p.Y()));
+                    edgeData.points.push_back(static_cast<float>(p.Z()));
+                }
             }
+        }
 
-            OcctMeshData::EdgeData edgeData;
-            const TColStd_Array1OfInteger& nodeIndices = polyOnTri->Nodes();
-            for (int i = nodeIndices.Lower(); i <= nodeIndices.Upper(); ++i) {
-                uint32_t globalIdx = faceNodeOffset + static_cast<uint32_t>(nodeIndices(i) - 1);
-                edgeData.positionIndices.push_back(globalIdx);
-            }
+        edgeData.isFreeEdge = edgeData.ownerFaceIds.empty();
+        mesh.edges.push_back(std::move(edgeData));
+    }
 
-            if (!edgeData.positionIndices.empty()) {
-                mesh.edges.push_back(std::move(edgeData));
+    // Phase 3: Backfill face edgeIndices
+    for (int fi = 1; fi <= faceMap.Extent(); ++fi) {
+        const TopoDS_Face& face = TopoDS::Face(faceMap(fi));
+        OcctFaceTopoData& faceData = mesh.faces[fi - 1];
+        for (TopExp_Explorer ex(face, TopAbs_EDGE); ex.More(); ex.Next()) {
+            int edgeIdx = edgeMap.FindIndex(ex.Current());
+            if (edgeIdx >= 1) {
+                int zeroBasedIdx = edgeIdx - 1;
+                if (std::find(faceData.edgeIndices.begin(), faceData.edgeIndices.end(), zeroBasedIdx) == faceData.edgeIndices.end()) {
+                    faceData.edgeIndices.push_back(zeroBasedIdx);
+                }
             }
-            processedEdges.insert(edgeIndex);
         }
     }
 
-    // Phase 2: Extract free edges (not on any face)
-    for (int edgeIdx = 1; edgeIdx <= edgeMap.Extent(); ++edgeIdx) {
-        const TopoDS_Edge& edge = TopoDS::Edge(edgeMap(edgeIdx));
-
-        if (BRep_Tool::Degenerated(edge)) {
-            continue;
-        }
-
-        if (faceEdgeIndices.count(edgeIdx) > 0) {
-            continue; // Not a free edge
-        }
-
-        TopLoc_Location loc;
-        Handle(Poly_Polygon3D) poly3d = BRep_Tool::Polygon3D(edge, loc);
-        if (poly3d.IsNull()) {
-            continue;
-        }
-
-        gp_Trsf trsf = loc.Transformation();
-
-        OcctMeshData::EdgeData edgeData;
-        const TColgp_Array1OfPnt& nodes = poly3d->Nodes();
-        for (int i = nodes.Lower(); i <= nodes.Upper(); ++i) {
-            gp_Pnt p = nodes(i);
-            p.Transform(trsf);
-
-            uint32_t posIdx = static_cast<uint32_t>(mesh.positions.size() / 3);
-            edgeData.positionIndices.push_back(posIdx);
-
-            mesh.positions.push_back(static_cast<float>(p.X()));
-            mesh.positions.push_back(static_cast<float>(p.Y()));
-            mesh.positions.push_back(static_cast<float>(p.Z()));
-            // Normals placeholder for free edge vertices
-            mesh.normals.push_back(0.0f);
-            mesh.normals.push_back(0.0f);
-            mesh.normals.push_back(0.0f);
-        }
-
-        if (!edgeData.positionIndices.empty()) {
-            mesh.edges.push_back(std::move(edgeData));
-        }
+    // Phase 4: Extract B-Rep vertices
+    for (int vi = 1; vi <= vertexMap.Extent(); ++vi) {
+        const TopoDS_Vertex& vertex = TopoDS::Vertex(vertexMap(vi));
+        gp_Pnt pt = BRep_Tool::Pnt(vertex);
+        OcctVertexTopoData vData;
+        vData.id = vi;
+        vData.position[0] = static_cast<float>(pt.X());
+        vData.position[1] = static_cast<float>(pt.Y());
+        vData.position[2] = static_cast<float>(pt.Z());
+        mesh.vertices.push_back(std::move(vData));
     }
 
     return mesh;
