@@ -1,26 +1,32 @@
-/**
- * OCCT STEP import result.
- */
-export interface OcctJSResult {
-    success: boolean;
-    error?: string;
-    sourceFormat: "step";
-    sourceUnit?: string;
-    unitScaleToMeters?: number;
-    rootNodes: OcctJSNode[];
-    geometries: OcctJSGeometry[];
-    materials: OcctJSMaterial[];
-    warnings: unknown[];
-    stats: OcctJSStats;
+export type OcctFormat = "step" | "iges" | "brep";
+
+export interface OcctJSColor {
+    r: number;
+    g: number;
+    b: number;
 }
 
-export interface OcctJSNode {
-    id: string;
+export interface OcctJSFace {
+    id: number;
     name: string;
-    isAssembly: boolean;
-    transform: number[];
-    meshIndex: number;
-    children: OcctJSNode[];
+    firstIndex: number;
+    indexCount: number;
+    edgeIndices: number[];
+    color: OcctJSColor | null;
+}
+
+export interface OcctJSEdge {
+    id: number;
+    name: string;
+    points: Float32Array;
+    ownerFaceIds: number[];
+    isFreeEdge: boolean;
+    color: OcctJSColor | null;
+}
+
+export interface OcctJSVertex {
+    id: number;
+    position: [number, number, number];
 }
 
 export interface OcctJSGeometry {
@@ -29,11 +35,10 @@ export interface OcctJSGeometry {
     positions: Float32Array;
     normals: Float32Array;
     indices: Uint32Array;
-    faceRanges: Array<{
-        first: number;
-        last: number;
-        color: OcctJSColor | null;
-    }>;
+    faces: OcctJSFace[];
+    edges: OcctJSEdge[];
+    vertices: OcctJSVertex[];
+    triangleToFaceMap: Int32Array;
 }
 
 export interface OcctJSMaterial {
@@ -42,10 +47,13 @@ export interface OcctJSMaterial {
     b: number;
 }
 
-export interface OcctJSColor {
-    r: number;
-    g: number;
-    b: number;
+export interface OcctJSNode {
+    id: string;
+    name: string;
+    isAssembly: boolean;
+    transform: number[];
+    meshes: number[];
+    children: OcctJSNode[];
 }
 
 export interface OcctJSStats {
@@ -58,7 +66,22 @@ export interface OcctJSStats {
     reusedInstanceCount: number;
 }
 
+export interface OcctJSResult {
+    success: boolean;
+    error?: string;
+    sourceFormat: string;
+    sourceUnit?: string;
+    unitScaleToMeters?: number;
+    rootNodes?: OcctJSNode[];
+    geometries?: OcctJSGeometry[];
+    materials?: OcctJSMaterial[];
+    warnings?: unknown[];
+    stats?: OcctJSStats;
+}
+
 export interface OcctJSReadParams {
+    linearUnit?: "millimeter" | "centimeter" | "meter" | "inch" | "foot";
+    linearDeflectionType?: "bounding_box_ratio" | "absolute_value";
     linearDeflection?: number;
     angularDeflection?: number;
     readNames?: boolean;
@@ -66,15 +89,15 @@ export interface OcctJSReadParams {
 }
 
 export interface OcctJSModule {
+    ReadFile(format: string, content: Uint8Array, params?: OcctJSReadParams): OcctJSResult;
     ReadStepFile(content: Uint8Array, params?: OcctJSReadParams): OcctJSResult;
+    ReadIgesFile(content: Uint8Array, params?: OcctJSReadParams): OcctJSResult;
+    ReadBrepFile(content: Uint8Array, params?: OcctJSReadParams): OcctJSResult;
 }
 
-/**
- * Factory function to instantiate the OCCT WebAssembly module.
- */
 declare function OcctJS(options?: {
     locateFile?: (filename: string) => string;
-    wasmBinary?: ArrayBuffer;
+    wasmBinary?: ArrayBuffer | Uint8Array;
 }): Promise<OcctJSModule>;
 
 export default OcctJS;
