@@ -340,7 +340,7 @@ test("ctrl+click adds to selection", async ({ page }) => {
   await expect(page.locator("#selectionTitle")).toContainText("Selected");
 });
 
-test("clicking empty space preserves selection (CAD behavior)", async ({ page }) => {
+test("short click on empty clears selection", async ({ page }) => {
   await page.click("#loadSample");
   await expect(page.locator("#selectMode")).toBeVisible({ timeout: 30_000 });
 
@@ -351,13 +351,9 @@ test("clicking empty space preserves selection (CAD behavior)", async ({ page })
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
   await expect(page.locator("#selectionPanel")).toBeVisible({ timeout: 5000 });
 
-  // Click empty space — selection should remain
+  // Short click on empty space — should clear
   await page.mouse.click(box.x + box.width - 10, box.y + box.height - 10);
   await page.waitForTimeout(300);
-  await expect(page.locator("#selectionPanel")).toBeVisible();
-
-  // Close button still clears
-  await page.click("#clearSelection");
   await expect(page.locator("#selectionPanel")).toBeHidden();
 });
 
@@ -385,25 +381,6 @@ test("drag on empty space after selection preserves selection and allows rotatio
   await expect(page.locator("#selectionPanel")).toBeVisible();
   const titleAfter = await page.locator("#selectionTitle").textContent();
   expect(titleAfter).toBe(titleBefore);
-});
-
-test("short click on empty space after selection preserves selection", async ({ page }) => {
-  await page.click("#loadSample");
-  await expect(page.locator("#selectMode")).toBeVisible({ timeout: 30_000 });
-
-  const canvas = page.locator("#renderCanvas");
-  const box = await canvas.boundingBox();
-
-  // Select a face
-  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-  await expect(page.locator("#selectionPanel")).toBeVisible({ timeout: 5000 });
-
-  // Short click on empty space (no drag)
-  await page.mouse.click(box.x + 20, box.y + box.height - 20);
-  await page.waitForTimeout(300);
-
-  // Selection must still be there
-  await expect(page.locator("#selectionPanel")).toBeVisible();
 });
 
 test("edge mode: click on mesh surface without nearby edge preserves selection", async ({ page }) => {
