@@ -1,0 +1,17 @@
+{
+  "name": "@tx-code/occt-core",
+  "version": "0.1.0",
+  "description": "Core OCCT Wasm runtime adapter with normalized CAD model output",
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "files": [
+    "src"
+  ],
+  "license": "LGPL-2.1",
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  }
+}
