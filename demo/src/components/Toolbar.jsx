@@ -73,6 +73,10 @@ export default function Toolbar({ onOpenFile, onFitAll, onCameraView, onSetProje
         📷
       </Button>
 
+      <Button size="sm" variant="ghost" onClick={() => useViewerStore.getState().setTreeOpen(!useViewerStore.getState().treeOpen)} data-testid="toggle-tree">
+        🌳
+      </Button>
+
       <Button size="sm" variant="ghost" onClick={onFitAll} data-testid="fit-all">
         Fit
       </Button>
