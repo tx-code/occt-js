@@ -80,9 +80,9 @@ export default function ViewCube({ onCameraView, cameraRef }) {
       materialsRef.current = {};
     }
 
-    const engine = new BABYLON.Engine(canvas, true, { alpha: true, premultipliedAlpha: false, antialias: true });
+    const engine = new BABYLON.Engine(canvas, true, { antialias: true });
     const scene = new BABYLON.Scene(engine);
-    scene.clearColor = new BABYLON.Color4(0, 0, 0, 0); // transparent background
+    scene.clearColor = new BABYLON.Color4(0.08, 0.08, 0.1, 1); // dark background matching app
 
     // Camera — fixed distance, syncs rotation with main camera
     const camera = new BABYLON.ArcRotateCamera("vcCam", PI/4, PI/3, 3.5, BABYLON.Vector3.Zero(), scene);
@@ -101,7 +101,7 @@ export default function ViewCube({ onCameraView, cameraRef }) {
     const faceColors = [];
     for (let i = 0; i < 6; i++) {
       faceUV.push(new BABYLON.Vector4(0, 0, 1, 1));
-      faceColors.push(new BABYLON.Color4(0.45, 0.47, 0.55, 1));
+      faceColors.push(new BABYLON.Color4(0.65, 0.68, 0.78, 1));
     }
     const box = BABYLON.MeshBuilder.CreateBox("vcBox", { size: 1.6, faceUV, faceColors }, scene);
 
@@ -113,13 +113,14 @@ export default function ViewCube({ onCameraView, cameraRef }) {
     for (let i = 0; i < 6; i++) {
       const faceName = FACE_MAP[i];
       const mat = new BABYLON.StandardMaterial("vcFace_" + faceName, scene);
-      mat.diffuseColor = new BABYLON.Color3(0.45, 0.47, 0.55);
-      mat.specularColor = new BABYLON.Color3(0.05, 0.05, 0.05);
+      mat.diffuseColor = new BABYLON.Color3(0.65, 0.68, 0.78);
+      mat.specularColor = new BABYLON.Color3(0.1, 0.1, 0.1);
+      mat.emissiveColor = new BABYLON.Color3(0.15, 0.16, 0.2); // boost brightness
 
       // Dynamic texture for label
       const tex = new BABYLON.DynamicTexture("vcTex_" + faceName, { width: 256, height: 256 }, scene, false);
       const ctx = tex.getContext();
-      ctx.fillStyle = "#6a6e80";
+      ctx.fillStyle = "#8890a8";
       ctx.fillRect(0, 0, 256, 256);
       ctx.strokeStyle = "rgba(255,255,255,0.15)";
       ctx.lineWidth = 3;
@@ -204,7 +205,7 @@ export default function ViewCube({ onCameraView, cameraRef }) {
     for (const key of Object.keys(materialsRef.current)) {
       const { tex } = materialsRef.current[key];
       const ctx = tex.getContext();
-      ctx.fillStyle = "#6a6e80";
+      ctx.fillStyle = "#8890a8";
       ctx.fillRect(0, 0, 256, 256);
       ctx.strokeStyle = "rgba(255,255,255,0.15)";
       ctx.lineWidth = 3;
@@ -216,7 +217,7 @@ export default function ViewCube({ onCameraView, cameraRef }) {
       const label = key.toUpperCase();
       ctx.fillText(label, 128, 128);
       tex.update();
-      materialsRef.current[key].mat.diffuseColor = new BABYLON.Color3(0.45, 0.47, 0.55);
+      materialsRef.current[key].mat.diffuseColor = new BABYLON.Color3(0.65, 0.68, 0.78);
     }
 
     if (pick.hit && pick.pickedMesh?.name === "vcBox") {
@@ -331,7 +332,7 @@ export default function ViewCube({ onCameraView, cameraRef }) {
       width={SIZE}
       height={SIZE}
       className="absolute bottom-4 right-4 z-20"
-      style={{ width: SIZE, height: SIZE }}
+      style={{ width: SIZE, height: SIZE, borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)" }}
       onMouseMove={handleMove}
       onClick={handleClick}
       onMouseLeave={() => {
@@ -341,7 +342,7 @@ export default function ViewCube({ onCameraView, cameraRef }) {
         for (const key of Object.keys(materialsRef.current)) {
           const { tex, mat } = materialsRef.current[key];
           const ctx = tex.getContext();
-          ctx.fillStyle = "#6a6e80";
+          ctx.fillStyle = "#8890a8";
           ctx.fillRect(0, 0, 256, 256);
           ctx.strokeStyle = "rgba(255,255,255,0.15)";
           ctx.lineWidth = 2;
@@ -352,7 +353,7 @@ export default function ViewCube({ onCameraView, cameraRef }) {
           ctx.textBaseline = "middle";
           ctx.fillText(key.toUpperCase(), 128, 128);
           tex.update();
-          mat.diffuseColor = new BABYLON.Color3(0.45, 0.47, 0.55);
+          mat.diffuseColor = new BABYLON.Color3(0.65, 0.68, 0.78);
         }
       }}
       data-testid="viewcube"
