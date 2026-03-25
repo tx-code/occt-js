@@ -2,7 +2,7 @@
 import { Button } from "./ui/button";
 import { useViewerStore } from "../store/viewerStore";
 
-export default function Toolbar({ onOpenFile, onFitAll }) {
+export default function Toolbar({ onOpenFile, onFitAll, onCameraView, onSetProjection, onSnapshot }) {
   const fileName = useViewerStore((s) => s.fileName);
   const facesVisible = useViewerStore((s) => s.facesVisible);
   const edgesVisible = useViewerStore((s) => s.edgesVisible);
@@ -10,6 +10,7 @@ export default function Toolbar({ onOpenFile, onFitAll }) {
   const toggleEdges = useViewerStore((s) => s.toggleEdges);
   const pickMode = useViewerStore((s) => s.pickMode);
   const setPickMode = useViewerStore((s) => s.setPickMode);
+  const projectionMode = useViewerStore((s) => s.projectionMode);
 
   if (!fileName) return null;
 
@@ -23,6 +24,25 @@ export default function Toolbar({ onOpenFile, onFitAll }) {
 
       <Button size="sm" variant="ghost" onClick={onOpenFile} data-testid="open-file">
         Open
+      </Button>
+
+      <span className="w-px h-5 bg-zinc-700" />
+
+      {/* Camera presets */}
+      {["front", "back", "top", "bottom", "left", "right", "iso"].map((dir) => (
+        <Button key={dir} size="sm" variant="ghost" onClick={() => onCameraView(dir)} data-testid={`view-${dir}`}>
+          {dir.charAt(0).toUpperCase() + dir.slice(1)}
+        </Button>
+      ))}
+
+      <span className="w-px h-5 bg-zinc-700" />
+
+      {/* Projection */}
+      <Button size="sm" variant={projectionMode === "perspective" ? "active" : "default"} onClick={() => onSetProjection("perspective")} data-testid="proj-persp">
+        Persp
+      </Button>
+      <Button size="sm" variant={projectionMode === "orthographic" ? "active" : "default"} onClick={() => onSetProjection("orthographic")} data-testid="proj-ortho">
+        Ortho
       </Button>
 
       <span className="w-px h-5 bg-zinc-700" />
@@ -47,6 +67,11 @@ export default function Toolbar({ onOpenFile, onFitAll }) {
       </Button>
 
       <span className="w-px h-5 bg-zinc-700" />
+
+      {/* Snapshot */}
+      <Button size="sm" variant="ghost" onClick={onSnapshot} data-testid="snapshot">
+        📷
+      </Button>
 
       <Button size="sm" variant="ghost" onClick={onFitAll} data-testid="fit-all">
         Fit

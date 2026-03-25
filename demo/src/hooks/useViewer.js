@@ -256,5 +256,73 @@ export function useViewer(canvasRef) {
     camera.beta = Math.PI / 3;
   }, []);
 
-  return { engineRef, sceneRef, cameraRef, meshGeoMapRef, meshesRef, edgeLinesRef, buildScene, fitAll };
+  const setCameraView = useCallback((direction) => {
+    const camera = cameraRef.current;
+    const root = transformNodesRef.current[0];
+    if (!camera || !root) return;
+
+    const bounds = root.getHierarchyBoundingVectors(true);
+    const center = bounds.min.add(bounds.max).scale(0.5);
+    const extent = bounds.max.subtract(bounds.min);
+    const radius = Math.max(extent.length() * 0.8, 1);
+
+    // ArcRotateCamera: alpha = rotation around Y from +X, beta = angle from +Y
+    const views = {
+      front:  { alpha: -Math.PI / 2, beta: Math.PI / 2 },
+      back:   { alpha: Math.PI / 2,  beta: Math.PI / 2 },
+      top:    { alpha: -Math.PI / 2, beta: 0.01 },
+      bottom: { alpha: -Math.PI / 2, beta: Math.PI - 0.01 },
+      left:   { alpha: Math.PI,      beta: Math.PI / 2 },
+      right:  { alpha: 0,            beta: Math.PI / 2 },
+      iso:    { alpha: Math.PI / 4,  beta: Math.PI / 3 },
+    };
+
+    const view = views[direction];
+    if (!view) return;
+
+    // Animate camera transition (0.3s)
+    const scene = sceneRef.current;
+    BABYLON.Animation.CreateAndStartAnimation("camAlpha", camera, "alpha", 30, 9, camera.alpha, view.alpha, BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
+    BABYLON.Animation.CreateAndStartAnimation("camBeta", camera, "beta", 30, 9, camera.beta, view.beta, BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
+
+    camera.target = center;
+    camera.radius = radius;
+  }, []);
+
+  const setProjection = useCallback((mode) => {
+    const camera = cameraRef.current;
+    const root = transformNodesRef.current[0];
+    if (!camera) return;
+
+    if (mode === "orthographic") {
+      camera.mode = BABYLON.Camera.ORTHOGRAPHIC_CAMERA;
+      // Calculate ortho bounds from model extent
+      if (root) {
+        const bounds = root.getHierarchyBoundingVectors(true);
+        const extent = bounds.max.subtract(bounds.min);
+        const size = Math.max(extent.length() * 0.5, 1);
+        const aspect = camera.getEngine().getAspectRatio(camera);
+        camera.orthoLeft = -size * aspect;
+        camera.orthoRight = size * aspect;
+        camera.orthoTop = size;
+        camera.orthoBottom = -size;
+      }
+    } else {
+      camera.mode = BABYLON.Camera.PERSPECTIVE_CAMERA;
+    }
+  }, []);
+
+  const takeSnapshot = useCallback(() => {
+    const engine = engineRef.current;
+    const camera = cameraRef.current;
+    if (!engine || !camera) return;
+    BABYLON.Tools.CreateScreenshot(engine, camera, { width: 1920, height: 1080 }, (data) => {
+      const link = document.createElement("a");
+      link.href = data;
+      link.download = "occt-js-snapshot.png";
+      link.click();
+    });
+  }, []);
+
+  return { engineRef, sceneRef, cameraRef, meshGeoMapRef, meshesRef, edgeLinesRef, buildScene, fitAll, setCameraView, setProjection, takeSnapshot };
 }

@@ -15,7 +15,7 @@ export default function App() {
   const model = useViewerStore((s) => s.model);
   const { importFile } = useOcct();
   const viewerRefs = useViewer(canvasRef);
-  const { buildScene, fitAll } = viewerRefs;
+  const { buildScene, fitAll, setCameraView, setProjection, takeSnapshot } = viewerRefs;
   usePicking(viewerRefs);
   const fileInputRef = useRef(null);
 
@@ -64,7 +64,13 @@ export default function App() {
 
       <DropZone visible={!model} onFile={handleFile} onSample={handleSample} />
       <LoadingOverlay />
-      <Toolbar onOpenFile={handleOpenFile} onFitAll={fitAll} />
+      <Toolbar
+        onOpenFile={handleOpenFile}
+        onFitAll={fitAll}
+        onCameraView={setCameraView}
+        onSetProjection={(mode) => { setProjection(mode); useViewerStore.getState().setProjection(mode); }}
+        onSnapshot={takeSnapshot}
+      />
       <StatsPanel />
       <SelectionPanel />
     </div>
