@@ -2,12 +2,16 @@
 
 WebAssembly build of [OpenCASCADE Technology (OCCT)](https://dev.opencascade.org/) v7.9.3 for CAD import and triangulation. Designed for use in browser-based CAD viewers (e.g., Babylon.js).
 
+**[Live Demo](https://tx-code.github.io/occt-js/demo/index.html)** — drag and drop STEP/IGES/BREP files, face/edge/vertex picking, hover preview
+
 ## Features
 
 - Import STEP / IGES / BREP files from memory (`Uint8Array`)
-- XDE assembly tree traversal with names and colors
+- Full B-Rep topology output (Face/Edge/Vertex with stable IDs and adjacency)
+- XDE assembly tree traversal with names and per-face colors
 - BRepMesh triangulation with configurable deflection
 - Embind-based API returning a structured scene graph
+- Babylon.js demo with interactive face/edge/vertex selection
 
 ## Prerequisites
 
@@ -77,10 +81,10 @@ const result = occt.ReadFile("step", buffer, {
 
 // result.success       — boolean
 // result.sourceFormat  — "step"
-// result.rootNodes     — tree of nodes with children, transforms, meshIndex
-// result.geometries    — array of { positions, normals, indices, faceRanges }
+// result.rootNodes     — tree of nodes with children, transforms, meshes[]
+// result.geometries    — array of { positions, normals, indices, faces, edges, vertices, triangleToFaceMap }
 // result.materials     — deduplicated color list
-// result.stats         — { rootCount, nodeCount, partCount, ... }
+// result.stats         — { rootCount, nodeCount, partCount, triangleCount, ... }
 ```
 
 ## License
