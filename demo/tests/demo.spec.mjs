@@ -236,3 +236,20 @@ test("drag on empty space preserves selection", async ({ page }) => {
   // Selection should remain
   await expect(page.locator("[data-testid='selection-panel']")).toBeVisible();
 });
+
+test("short click on empty clears selection", async ({ page }) => {
+  await page.click("[data-testid='load-sample']");
+  await expect(page.locator("[data-testid='stats-panel']")).toBeVisible({ timeout: 30_000 });
+
+  const canvas = page.locator("[data-testid='render-canvas']");
+  const box = await canvas.boundingBox();
+
+  // Select a face
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await expect(page.locator("[data-testid='selection-panel']")).toBeVisible({ timeout: 5000 });
+
+  // Short click on empty (corner, away from model)
+  await page.mouse.click(box.x + box.width - 10, box.y + box.height - 10);
+  await page.waitForTimeout(500);
+  await expect(page.locator("[data-testid='selection-panel']")).not.toBeVisible();
+});
