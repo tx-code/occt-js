@@ -1,8 +1,10 @@
 // demo/src/components/StatsPanel.jsx
+import { useState } from "react";
 import { useViewerStore } from "../store/viewerStore";
 
 export default function StatsPanel() {
   const model = useViewerStore((s) => s.model);
+  const [collapsed, setCollapsed] = useState(false);
   if (!model) return null;
 
   const s = model.stats || {};
@@ -25,14 +27,22 @@ export default function StatsPanel() {
   ];
 
   return (
-    <div className="absolute bottom-4 left-4 z-10 bg-zinc-950/90 border border-zinc-700 rounded-xl p-3.5 text-xs backdrop-blur-sm min-w-[160px]" data-testid="stats-panel">
-      <h3 className="text-cyan-400 font-semibold text-[13px] mb-2">Model Info</h3>
-      {rows.map(([label, value]) => (
-        <div key={label} className="flex justify-between py-0.5">
-          <span className="text-zinc-500">{label}</span>
-          <span className="text-zinc-300 tabular-nums">{value}</span>
-        </div>
-      ))}
+    <div className="absolute bottom-4 left-4 z-10 bg-zinc-950/90 border border-zinc-700 rounded-xl p-3.5 text-xs md:text-xs backdrop-blur-sm min-w-[120px] md:min-w-[160px] max-w-[160px] md:max-w-none" data-testid="stats-panel">
+      <h3
+        className="text-cyan-400 font-semibold text-[11px] md:text-[13px] mb-2 md:cursor-default cursor-pointer select-none flex items-center justify-between"
+        onClick={() => setCollapsed((c) => !c)}
+      >
+        Model Info
+        <span className="md:hidden text-zinc-500 text-[10px]">{collapsed ? "+" : "\u2212"}</span>
+      </h3>
+      <div className={`${collapsed ? "hidden" : "block"} md:block`}>
+        {rows.map(([label, value]) => (
+          <div key={label} className="flex justify-between py-0.5">
+            <span className="text-zinc-500">{label}</span>
+            <span className="text-zinc-300 tabular-nums">{value}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

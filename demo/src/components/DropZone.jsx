@@ -23,7 +23,10 @@ export default function DropZone({ onFile, onSample, visible }) {
     >
       <div className={`border-2 border-dashed rounded-2xl p-12 text-center transition-colors ${dragOver ? "border-cyan-400" : "border-zinc-600"}`}>
         <h2 className="text-xl font-medium mb-3">occt-js Viewer</h2>
-        <p className="text-zinc-500 text-sm mb-5">Drop a STEP, IGES, or BREP file here</p>
+        <p className="text-zinc-500 text-sm mb-5">
+          <span className="hidden md:inline">Drop a STEP, IGES, or BREP file here</span>
+          <span className="md:hidden">Open a STEP, IGES, or BREP file</span>
+        </p>
         <Button onClick={() => document.getElementById("file-input").click()}>
           Browse Files
         </Button>

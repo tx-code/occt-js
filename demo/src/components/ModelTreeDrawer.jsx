@@ -52,7 +52,7 @@ export default function ModelTreeDrawer() {
       )}
       {/* Drawer */}
       <div
-        className={`absolute top-10 left-0 bottom-0 z-40 w-64 bg-zinc-950/95 border-r border-zinc-800 backdrop-blur-sm transform transition-transform duration-200 ${
+        className={`absolute top-10 left-0 bottom-0 z-40 w-full md:w-64 bg-zinc-950/95 border-r border-zinc-800 backdrop-blur-sm transform transition-transform duration-200 ${
           treeOpen ? "translate-x-0" : "-translate-x-full"
         }`}
         data-testid="model-tree"
