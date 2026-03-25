@@ -226,12 +226,13 @@ export function useViewer(canvasRef) {
     transformNodesRef.current.push(root);
     for (const rn of result.rootNodes || []) buildNode(rn, root);
 
-    // Frame camera
+    // Frame camera — calculate radius to fit model in viewport
     const bounds = root.getHierarchyBoundingVectors(true);
     const center = bounds.min.add(bounds.max).scale(0.5);
     const extent = bounds.max.subtract(bounds.min);
     const modelSize = extent.length();
-    const radius = modelSize * 0.8;
+    const fov = camera.fov || 0.8;
+    const radius = (modelSize * 0.5) / Math.tan(fov * 0.5) * 1.2; // 1.2 = padding
 
     camera.target = center;
     camera.radius = Math.max(radius, 1);
@@ -250,8 +251,11 @@ export function useViewer(canvasRef) {
     const bounds = root.getHierarchyBoundingVectors(true);
     const center = bounds.min.add(bounds.max).scale(0.5);
     const extent = bounds.max.subtract(bounds.min);
+    const modelSize = extent.length();
+    const fov = camera.fov || 0.8;
+    const radius = (modelSize * 0.5) / Math.tan(fov * 0.5) * 1.2;
     camera.target = center;
-    camera.radius = Math.max(extent.length() * 0.8, 1);
+    camera.radius = Math.max(radius, 1);
     camera.alpha = Math.PI / 4;
     camera.beta = Math.PI / 3;
   }, []);
@@ -264,7 +268,9 @@ export function useViewer(canvasRef) {
     const bounds = root.getHierarchyBoundingVectors(true);
     const center = bounds.min.add(bounds.max).scale(0.5);
     const extent = bounds.max.subtract(bounds.min);
-    const radius = Math.max(extent.length() * 0.8, 1);
+    const modelSize = extent.length();
+    const fov = camera.fov || 0.8;
+    const radius = Math.max((modelSize * 0.5) / Math.tan(fov * 0.5) * 1.2, 1);
 
     // ArcRotateCamera: alpha = rotation around Y from +X, beta = angle from +Y
     const views = {
