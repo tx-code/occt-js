@@ -27,7 +27,7 @@ export default function App() {
   const handleSample = useCallback(async () => {
     useViewerStore.getState().setLoading(true);
     try {
-      const resp = await fetch("../test/simple_part.step"); // served locally by Vite (fs.allow: ['..'])
+      const resp = await fetch("/test/simple_part.step"); // served by Vite serveTestFixtures plugin
       const blob = await resp.blob();
       const file = new File([blob], "simple_part.step");
       await handleFile(file);

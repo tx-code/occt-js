@@ -5,14 +5,14 @@ export default defineConfig({
   timeout: 60_000,
   expect: { timeout: 15_000 },
   use: {
-    baseURL: "http://localhost:9090",
+    baseURL: "http://localhost:5173",
     headless: true,
   },
   webServer: {
-    command: "node demo/server.mjs",
-    port: 9090,
+    command: "cd demo && npx vite --port 5173",
+    port: 5173,
     reuseExistingServer: true,
-    timeout: 10_000,
+    timeout: 15_000,
   },
   projects: [{ name: "chromium", use: { browserName: "chromium" } }],
 });
