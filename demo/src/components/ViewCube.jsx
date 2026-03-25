@@ -146,139 +146,47 @@ const CORNER_NAMES = [
 
 // Face 0 (Front -Z): verts [0,2,3,1] = [FBL, FTL, FTR, FBR]
 //   v0=FBL, v1=FTL, v2=FTR, v3=FBR
+// FACE_SUBREGIONS: for each face, map edge indices (0-3) and corner vertex positions (0-3)
+// Edge i = quad[i] → quad[(i+1)%4]
+// Corner i = vertex at quad[i] (where edges (i-1)%4 and i meet)
 const FACE_SUBREGIONS = [
-  // Face 0: Front (-Z), verts [0=FBL, 2=FTL, 3=FTR, 1=FBR]
+  // Face 0: Front (-Z), quad [0=FBL, 2=FTL, 3=FTR, 1=FBR]
   {
-    corners: {
-      0: "front-bottom-left",  // BL = v0 = FBL
-      2: "front-bottom-right", // BR = v3 = FBR
-      6: "front-top-left",     // TL = v1 = FTL
-      8: "front-top-right",    // TR = v2 = FTR
-    },
-    edges: {
-      1: "front-bottom", // B = v0-v3 = FBL-FBR
-      3: "front-left",   // L = v0-v1 = FBL-FTL
-      5: "front-right",  // R = v2-v3 = FTR-FBR
-      7: "front-top",    // T = v1-v2 = FTL-FTR
-    },
+    edges: { 0: "front-left", 1: "front-top", 2: "front-right", 3: "front-bottom" },
+    corners: { 0: "front-bottom-left", 1: "front-top-left", 2: "front-top-right", 3: "front-bottom-right" },
     center: "front",
   },
-  // Face 1: Back (+Z), verts [5=BBR, 7=BTR, 6=BTL, 4=BBL]
+  // Face 1: Back (+Z), quad [5=BBR, 7=BTR, 6=BTL, 4=BBL]
   {
-    corners: {
-      0: "back-bottom-right",  // BL = v0 = BBR
-      2: "back-bottom-left",   // BR = v3 = BBL
-      6: "back-top-right",     // TL = v1 = BTR
-      8: "back-top-left",      // TR = v2 = BTL
-    },
-    edges: {
-      1: "back-bottom",  // B = v0-v3 = BBR-BBL
-      3: "back-right",   // L = v0-v1 = BBR-BTR
-      5: "back-left",    // R = v2-v3 = BTL-BBL
-      7: "back-top",     // T = v1-v2 = BTR-BTL
-    },
+    edges: { 0: "back-right", 1: "back-top", 2: "back-left", 3: "back-bottom" },
+    corners: { 0: "back-bottom-right", 1: "back-top-right", 2: "back-top-left", 3: "back-bottom-left" },
     center: "back",
   },
-  // Face 2: Top (+Y), verts [2=FTL, 6=BTL, 7=BTR, 3=FTR]
+  // Face 2: Top (+Y), quad [2=FTL, 6=BTL, 7=BTR, 3=FTR]
   {
-    corners: {
-      0: "front-top-left",   // BL = v0 = FTL
-      2: "front-top-right",  // BR = v3 = FTR
-      6: "back-top-left",    // TL = v1 = BTL
-      8: "back-top-right",   // TR = v2 = BTR
-    },
-    edges: {
-      1: "front-top",   // B = v0-v3 = FTL-FTR
-      3: "top-left",    // L = v0-v1 = FTL-BTL
-      5: "top-right",   // R = v2-v3 = BTR-FTR
-      7: "back-top",    // T = v1-v2 = BTL-BTR
-    },
+    edges: { 0: "top-left", 1: "back-top", 2: "top-right", 3: "front-top" },
+    corners: { 0: "front-top-left", 1: "back-top-left", 2: "back-top-right", 3: "front-top-right" },
     center: "top",
   },
-  // Face 3: Bottom (-Y), verts [0=FBL, 1=FBR, 5=BBR, 4=BBL]
+  // Face 3: Bottom (-Y), quad [0=FBL, 1=FBR, 5=BBR, 4=BBL]
   {
-    corners: {
-      0: "front-bottom-left",   // BL = v0 = FBL
-      2: "back-bottom-left",    // BR = v3 = BBL
-      6: "front-bottom-right",  // TL = v1 = FBR
-      8: "back-bottom-right",   // TR = v2 = BBR
-    },
-    edges: {
-      1: "bottom-left",    // B = v0-v3 = FBL-BBL
-      3: "front-bottom",   // L = v0-v1 = FBL-FBR
-      5: "back-bottom",    // R = v2-v3 = BBR-BBL
-      7: "bottom-right",   // T = v1-v2 = FBR-BBR
-    },
+    edges: { 0: "front-bottom", 1: "bottom-right", 2: "back-bottom", 3: "bottom-left" },
+    corners: { 0: "front-bottom-left", 1: "front-bottom-right", 2: "back-bottom-right", 3: "back-bottom-left" },
     center: "bottom",
   },
-  // Face 4: Left (-X), verts [0=FBL, 4=BBL, 6=BTL, 2=FTL]
+  // Face 4: Left (-X), quad [0=FBL, 4=BBL, 6=BTL, 2=FTL]
   {
-    corners: {
-      0: "front-bottom-left",  // BL = v0 = FBL
-      2: "front-top-left",     // BR = v3 = FTL
-      6: "back-bottom-left",   // TL = v1 = BBL
-      8: "back-top-left",      // TR = v2 = BTL
-    },
-    edges: {
-      1: "front-left",    // B = v0-v3 = FBL-FTL
-      3: "bottom-left",   // L = v0-v1 = FBL-BBL
-      5: "top-left",      // R = v2-v3 = BTL-FTL
-      7: "back-left",     // T = v1-v2 = BBL-BTL
-    },
+    edges: { 0: "bottom-left", 1: "back-left", 2: "top-left", 3: "front-left" },
+    corners: { 0: "front-bottom-left", 1: "back-bottom-left", 2: "back-top-left", 3: "front-top-left" },
     center: "left",
   },
-  // Face 5: Right (+X), verts [1=FBR, 3=FTR, 7=BTR, 5=BBR]
+  // Face 5: Right (+X), quad [1=FBR, 3=FTR, 7=BTR, 5=BBR]
   {
-    corners: {
-      0: "front-bottom-right",  // BL = v0 = FBR
-      2: "front-top-right",     // BR = v3 = FTR  -- wait, v3=BBR? let me recheck
-      6: "back-bottom-right",   // TL = v1 = FTR? -- Need to recheck
-      8: "back-top-right",      // TR = v2 = BTR
-    },
-    edges: {
-      1: "front-right",    // B = v0-v3
-      3: "bottom-right",   // L = v0-v1
-      5: "top-right",      // R = v2-v3
-      7: "back-right",     // T = v1-v2
-    },
+    edges: { 0: "front-right", 1: "top-right", 2: "back-right", 3: "bottom-right" },
+    corners: { 0: "front-bottom-right", 1: "front-top-right", 2: "back-top-right", 3: "back-bottom-right" },
     center: "right",
   },
 ];
-
-// ═══════════════════════════════════════════════════════════════════════════
-// Let me re-derive the sub-regions carefully from the face vertex definitions.
-//
-// The local coord system for each face quad [v0, v1, v2, v3]:
-//   e0 = v3 - v0 (u-direction, "bottom edge")
-//   e1 = v1 - v0 (v-direction, "left edge")
-//
-// Grid layout (u,v):
-//   (0,1)TL  (0.5,1)T   (1,1)TR
-//   (0,0.5)L (0.5,0.5)C (1,0.5)R
-//   (0,0)BL  (0.5,0)B   (1,0)BR
-//
-// So: BL=v0, BR=v0+e0=v3, TL=v0+e1=v1, TR=v0+e0+e1≈v2
-// ═══════════════════════════════════════════════════════════════════════════
-
-// Re-derive properly:
-// Face 5: Right (+X), verts [1=FBR, 3=FTR, 7=BTR, 5=BBR]
-//   v0=FBR(1), v1=FTR(3), v2=BTR(7), v3=BBR(5)
-//   BL=v0=FBR, BR=v3=BBR, TL=v1=FTR, TR=v2=BTR
-FACE_SUBREGIONS[5] = {
-  corners: {
-    0: "front-bottom-right",  // BL = FBR
-    2: "back-bottom-right",   // BR = BBR
-    6: "front-top-right",     // TL = FTR
-    8: "back-top-right",      // TR = BTR
-  },
-  edges: {
-    1: "bottom-right",  // B = FBR-BBR
-    3: "front-right",   // L = FBR-FTR
-    5: "back-right",    // R = BTR-BBR
-    7: "top-right",     // T = FTR-BTR
-  },
-  center: "right",
-};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Projection and hit test functions
@@ -379,47 +287,64 @@ function isPointInQuad(px, py, quad) {
 }
 
 /**
- * Convert screen point to face local coordinates (0-1 range).
- * Ported from ViewCubeHitTest.ToFaceLocalCoords().
+ * Determine sub-region using distance-to-edge approach.
+ * For each edge of the quad, compute the normalized perpendicular distance
+ * from the point. If close to an edge (< EDGE_RATIO), it's in edge zone.
+ * If close to two edges, it's a corner.
  */
-function toFaceLocalCoords(px, py, quad) {
-  const v0 = quad[0]; // bottom-left
-  const v1 = quad[1]; // top-left
-  const v3 = quad[3]; // bottom-right
+function getSubRegion(faceIndex, px, py, quad) {
+  // Compute normalized distance from point to each edge (0 = on edge, 1 = opposite edge)
+  // Edge i connects quad[i] to quad[(i+1)%4], opposite edge is (i+2)%4 to (i+3)%4
+  const dists = [];
+  for (let i = 0; i < 4; i++) {
+    const a = quad[i], b = quad[(i + 1) % 4];
+    const opp0 = quad[(i + 2) % 4], opp1 = quad[(i + 3) % 4];
+    // Signed distance from edge ab
+    const edgeNx = b[1] - a[1], edgeNy = -(b[0] - a[0]);
+    const edgeLen = Math.sqrt(edgeNx * edgeNx + edgeNy * edgeNy);
+    if (edgeLen < 0.001) { dists.push(0.5); continue; }
+    const d = ((px - a[0]) * edgeNx + (py - a[1]) * edgeNy) / edgeLen;
+    // Distance from opposite edge to normalize
+    const oppMidX = (opp0[0] + opp1[0]) / 2, oppMidY = (opp0[1] + opp1[1]) / 2;
+    const dOpp = ((oppMidX - a[0]) * edgeNx + (oppMidY - a[1]) * edgeNy) / edgeLen;
+    dists.push(Math.abs(dOpp) > 0.001 ? d / dOpp : 0.5);
+  }
 
-  const e0x = v3[0] - v0[0], e0y = v3[1] - v0[1]; // u direction
-  const e1x = v1[0] - v0[0], e1y = v1[1] - v0[1]; // v direction
-  const pdx = px - v0[0], pdy = py - v0[1];
+  // dists[0] = distance from edge 0 (quad[0]→quad[1]) normalized
+  // dists[1] = distance from edge 1 (quad[1]→quad[2]) normalized
+  // dists[2] = distance from edge 2 (quad[2]→quad[3]) normalized
+  // dists[3] = distance from edge 3 (quad[3]→quad[0]) normalized
 
-  const cross_e0_e1 = e0x * e1y - e0y * e1x;
-  if (Math.abs(cross_e0_e1) < 0.0001) return [0.5, 0.5];
-
-  const u = (pdx * e1y - pdy * e1x) / cross_e0_e1;
-  const v = (e0x * pdy - e0y * pdx) / cross_e0_e1;
-  return [u, v];
-}
-
-/**
- * Determine sub-region within a face using 3x3 grid.
- * Ported from ViewCubeHitTest.GetSubRegion().
- */
-function getSubRegion(faceIndex, u, v) {
-  u = Math.max(0, Math.min(1, u));
-  v = Math.max(0, Math.min(1, v));
-
-  const zoneX = u < EDGE_RATIO ? 0 : (u > 1 - EDGE_RATIO ? 2 : 1);
-  const zoneY = v < EDGE_RATIO ? 0 : (v > 1 - EDGE_RATIO ? 2 : 1);
-  const gridIndex = zoneY * 3 + zoneX;
+  // Near which edges? (distance < EDGE_RATIO)
+  const nearEdge = dists.map(d => d < EDGE_RATIO);
+  const nearCount = nearEdge.filter(Boolean).length;
 
   const sr = FACE_SUBREGIONS[faceIndex];
-  if (gridIndex === 4) return { type: "face", name: sr.center };
 
-  if (sr.corners[gridIndex] !== undefined) {
-    return { type: "corner", name: sr.corners[gridIndex] };
+  if (nearCount >= 2) {
+    // Corner — find which two edges
+    const e1 = nearEdge.indexOf(true);
+    const e2 = nearEdge.indexOf(true, e1 + 1);
+    const cornerKey = e1 * 4 + e2;
+    // Map edge pair to corner: edges are 0,1,2,3 around the quad
+    // Adjacent edge pairs: (0,1)=vertex1, (1,2)=vertex2, (2,3)=vertex3, (3,0)=vertex0
+    const cornerMap = { "01": 0, "12": 1, "23": 2, "03": 3 };
+    const key = e1 < e2 ? `${e1}${e2}` : `${e2}${e1}`;
+    const vertexPos = cornerMap[key];
+    if (vertexPos !== undefined && sr.corners[vertexPos] !== undefined) {
+      return { type: "corner", name: sr.corners[vertexPos] };
+    }
   }
-  if (sr.edges[gridIndex] !== undefined) {
-    return { type: "edge", name: sr.edges[gridIndex] };
+
+  if (nearCount === 1) {
+    // Edge
+    const edgeIdx = nearEdge.indexOf(true);
+    if (sr.edges[edgeIdx] !== undefined) {
+      return { type: "edge", name: sr.edges[edgeIdx] };
+    }
   }
+
+  // Center
   return { type: "face", name: sr.center };
 }
 
@@ -439,8 +364,7 @@ function hitTest(px, py, projection, cx, cy, size) {
 
   for (const face of sortedFaces) {
     if (!isPointInQuad(px, py, face.verts)) continue;
-    const [u, v] = toFaceLocalCoords(px, py, face.verts);
-    return getSubRegion(face.index, u, v);
+    return getSubRegion(face.index, px, py, face.verts);
   }
 
   return null;
@@ -517,7 +441,10 @@ function drawViewCube(ctx, projection, hoveredRegion, cx, cy, size) {
   // --- Draw faces ---
   for (const face of sortedFaces) {
     const v = face.verts;
-    const isHovered = hCat === "face" && FACE_NAME_TO_INDEX[hoveredRegion] === face.index;
+    // Face is hovered if: directly hovered, OR an edge/corner on this face is hovered
+    const sr = FACE_SUBREGIONS[face.index];
+    const allRegionNames = [sr.center, ...Object.values(sr.edges), ...Object.values(sr.corners)];
+    const isHovered = hoveredRegion && allRegionNames.includes(hoveredRegion);
 
     ctx.beginPath();
     ctx.moveTo(v[0][0], v[0][1]);
