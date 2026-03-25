@@ -171,16 +171,16 @@ function createFaceHighlight(scene, pickedMesh, geo, faceId, BABYLON) {
   mat.emissiveColor = PICK_COLORS.selectEmissive;
   mat.alpha = 0.6;
   mat.backFaceCulling = false;
-  mat.zOffset = -2;
+  mat.zOffset = -5;
+  mat.disableDepthWrite = false;
   overlay.material = mat;
   overlay.isPickable = false;
-  overlay.renderingGroupId = 1;
   disposables.push(overlay, mat);
 
   // --- Boundary edge lines ---
-  if (face.boundaryEdges && face.boundaryEdges.length > 0 && geo.edges) {
+  if (face.edgeIndices && face.edgeIndices.length > 0 && geo.edges) {
     const edgeLines = [];
-    for (const eIdx of face.boundaryEdges) {
+    for (const eIdx of face.edgeIndices) {
       const edge = geo.edges[eIdx];
       if (!edge || !edge.points || edge.points.length < 6) continue;
       const pts = edge.points;
@@ -248,7 +248,7 @@ function buildFaceDetail(geo, faceId, meshUniqueId) {
   const info = {
     faceId,
     triangles: face.indexCount / 3,
-    boundaryEdges: face.boundaryEdges || [],
+    boundaryEdges: face.edgeIndices || [],
     color: face.color || geo.color || null,
     adjacentFaces: face.adjacentFaces || [],
   };
@@ -496,8 +496,8 @@ export function usePicking(viewerRefs) {
 
       function createFaceHoverHL(worldMatrix, face, geo) {
         const disposables = [];
-        if (face.boundaryEdges && face.boundaryEdges.length > 0 && geo.edges) {
-          for (const ei of face.boundaryEdges) {
+        if (face.edgeIndices && face.edgeIndices.length > 0 && geo.edges) {
+          for (const ei of face.edgeIndices) {
             const hl = createEdgeHoverLine(worldMatrix, geo.edges[ei]);
             if (hl) disposables.push(hl);
           }
