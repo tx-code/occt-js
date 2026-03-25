@@ -281,12 +281,21 @@ export function useViewer(canvasRef) {
     if (!view) return;
 
     // Animate camera transition (0.3s)
-    const scene = sceneRef.current;
     BABYLON.Animation.CreateAndStartAnimation("camAlpha", camera, "alpha", 30, 9, camera.alpha, view.alpha, BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
     BABYLON.Animation.CreateAndStartAnimation("camBeta", camera, "beta", 30, 9, camera.beta, view.beta, BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
 
     camera.target = center;
     camera.radius = radius;
+
+    // Update ortho bounds if in orthographic mode
+    if (camera.mode === BABYLON.Camera.ORTHOGRAPHIC_CAMERA) {
+      const size = Math.max(extent.length() * 0.5, 1);
+      const aspect = camera.getEngine().getAspectRatio(camera);
+      camera.orthoLeft = -size * aspect;
+      camera.orthoRight = size * aspect;
+      camera.orthoTop = size;
+      camera.orthoBottom = -size;
+    }
   }, []);
 
   const setProjection = useCallback((mode) => {
