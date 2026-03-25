@@ -284,6 +284,9 @@ function buildVertexDetail(geo, vertexIndex, meshUniqueId) {
 // ---------------------------------------------------------------------------
 export function usePicking(viewerRefs) {
   const selectionSetRef = useRef(new Map()); // key → { mode, id, meshUniqueId, disposables[] }
+  const hoverStateRef = useRef(null); // { mode, id, disposables[] }
+  const hoverDirtyRef = useRef(false);
+  const clearHoverRef = useRef(null); // set when setup() runs
 
   const clearAllSelections = useCallback(() => {
     for (const entry of selectionSetRef.current.values()) {
@@ -463,6 +466,135 @@ export function usePicking(viewerRefs) {
         pushToStore();
       }
 
+      // -----------------------------------------------------------------------
+      // Hover system
+      // -----------------------------------------------------------------------
+      function clearHover() {
+        if (hoverStateRef.current) {
+          for (const d of hoverStateRef.current.disposables) d.dispose();
+          hoverStateRef.current = null;
+        }
+        const canvas = engineRef.current?.getRenderingCanvas();
+        if (canvas) canvas.style.cursor = "";
+      }
+      clearHoverRef.current = clearHover;
+
+      function createEdgeHoverLine(worldMatrix, edge) {
+        if (!edge || !edge.points || edge.points.length < 6) return null;
+        const pts = edge.points;
+        const line = [];
+        for (let i = 0; i < pts.length; i += 3) {
+          const v = new BABYLON.Vector3(pts[i], pts[i + 1], pts[i + 2]);
+          const w = BABYLON.Vector3.TransformCoordinates(v, worldMatrix);
+          line.push(w);
+        }
+        const ls = BABYLON.MeshBuilder.CreateLineSystem("hover_edge_" + Math.random(), { lines: [line] }, scene);
+        ls.color = PICK_COLORS.hover;
+        ls.isPickable = false;
+        return ls;
+      }
+
+      function createFaceHoverHL(worldMatrix, face, geo) {
+        const disposables = [];
+        if (face.boundaryEdges && face.boundaryEdges.length > 0 && geo.edges) {
+          for (const ei of face.boundaryEdges) {
+            const hl = createEdgeHoverLine(worldMatrix, geo.edges[ei]);
+            if (hl) disposables.push(hl);
+          }
+        }
+        return disposables;
+      }
+
+      function createEdgeHoverHL(worldMatrix, edge) {
+        const hl = createEdgeHoverLine(worldMatrix, edge);
+        return hl ? [hl] : [];
+      }
+
+      function createVertexHoverHL(worldMatrix, vertex) {
+        if (!vertex) return [];
+        const localPt = new BABYLON.Vector3(vertex.x, vertex.y, vertex.z);
+        const worldPt = BABYLON.Vector3.TransformCoordinates(localPt, worldMatrix);
+        const camera = cameraRef.current;
+        const diameter = camera ? camera.radius * 0.008 : 0.01;
+        const sphere = BABYLON.MeshBuilder.CreateSphere("hover_vtx_" + Math.random(), { diameter }, scene);
+        sphere.position = worldPt;
+        const mat = new BABYLON.StandardMaterial("hover_vtx_mat_" + Math.random(), scene);
+        mat.diffuseColor = PICK_COLORS.hover;
+        mat.emissiveColor = PICK_COLORS.hover;
+        sphere.material = mat;
+        sphere.isPickable = false;
+        return [sphere, mat];
+      }
+
+      function processHover() {
+        if (!hoverDirtyRef.current) return;
+        hoverDirtyRef.current = false;
+
+        const engine = engineRef.current;
+        const camera = cameraRef.current;
+        if (!scene || !engine || !camera) return;
+
+        const pickResult = scene.pick(scene.pointerX, scene.pointerY);
+        if (!pickResult.hit || !pickResult.pickedMesh) { clearHover(); return; }
+
+        const pickedMesh = pickResult.pickedMesh;
+        const sourceMesh = pickedMesh.sourceMesh || pickedMesh;
+        const geo = meshGeoMapRef.current.get(sourceMesh);
+        if (!geo) { clearHover(); return; }
+
+        const pickMode = useViewerStore.getState().pickMode;
+        let hoveredMode = null, hoveredId = null;
+
+        if (pickMode === "face" && geo.triangleToFaceMap) {
+          const triIndex = pickResult.faceId;
+          if (triIndex >= 0 && triIndex < geo.triangleToFaceMap.length) {
+            const faceId = geo.triangleToFaceMap[triIndex];
+            if (faceId >= 1) { hoveredMode = "face"; hoveredId = faceId; }
+          }
+        } else if (pickMode === "edge") {
+          const localPt = worldToLocal(pickResult.pickedPoint, pickedMesh, BABYLON);
+          const threshold = getPickThreshold(engine, camera);
+          const result = findClosestEdge(localPt, geo, threshold);
+          if (result) { hoveredMode = "edge"; hoveredId = result.index; }
+        } else if (pickMode === "vertex") {
+          const localPt = worldToLocal(pickResult.pickedPoint, pickedMesh, BABYLON);
+          const threshold = getPickThreshold(engine, camera);
+          const result = findClosestVertex(localPt, geo, threshold);
+          if (result) { hoveredMode = "vertex"; hoveredId = result.index; }
+        }
+
+        // Early return if same item already highlighted
+        if (hoveredId !== null && hoverStateRef.current?.mode === hoveredMode && hoverStateRef.current?.id === hoveredId) return;
+
+        clearHover();
+        if (hoveredId === null) return;
+
+        const worldMatrix = pickedMesh.getWorldMatrix();
+        let disposables = [];
+        if (hoveredMode === "face") {
+          const face = geo.faces[hoveredId];
+          if (face) disposables = createFaceHoverHL(worldMatrix, face, geo);
+        } else if (hoveredMode === "edge") {
+          const edge = geo.edges[hoveredId];
+          if (edge) disposables = createEdgeHoverHL(worldMatrix, edge);
+        } else if (hoveredMode === "vertex") {
+          const vertex = geo.vertices[hoveredId];
+          if (vertex) disposables = createVertexHoverHL(worldMatrix, vertex);
+        }
+
+        hoverStateRef.current = { mode: hoveredMode, id: hoveredId, disposables };
+        const canvas = engineRef.current?.getRenderingCanvas();
+        if (canvas) canvas.style.cursor = "pointer";
+      }
+
+      // Wire hover events
+      const renderCanvas = engineRef.current?.getRenderingCanvas();
+      if (renderCanvas) {
+        renderCanvas.addEventListener("pointermove", () => { hoverDirtyRef.current = true; });
+        renderCanvas.addEventListener("pointerleave", () => { clearHover(); hoverDirtyRef.current = false; });
+      }
+      scene.onBeforeRenderObservable.add(processHover);
+
       observer = scene.onPointerObservable.add((pointerInfo) => {
         const type = pointerInfo.type;
 
@@ -480,6 +612,8 @@ export function usePicking(viewerRefs) {
 
           // If dragged, don't trigger selection
           if (dist > DRAG_THRESHOLD_PX) return;
+
+          clearHover();
 
           // Click on empty space → clear selection
           const pickResult = scene.pick(pointerInfo.event.offsetX, pointerInfo.event.offsetY);
@@ -523,6 +657,7 @@ export function usePicking(viewerRefs) {
         sceneRef.current.onPointerObservable.remove(observer);
       }
       clearAllSelections();
+      if (clearHoverRef.current) clearHoverRef.current();
       unsub();
     };
   }, [viewerRefs, clearAllSelections]);
