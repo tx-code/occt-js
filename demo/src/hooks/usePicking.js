@@ -171,10 +171,10 @@ function createFaceHighlight(scene, pickedMesh, geo, faceId, BABYLON) {
   mat.emissiveColor = PICK_COLORS.selectEmissive;
   mat.alpha = 0.6;
   mat.backFaceCulling = false;
+  mat.zOffset = -2;
   overlay.material = mat;
   overlay.isPickable = false;
-  // Slight offset to prevent z-fighting
-  overlay.position = new BABYLON.Vector3(0, 0, 0);
+  overlay.renderingGroupId = 1;
   disposables.push(overlay, mat);
 
   // --- Boundary edge lines ---
