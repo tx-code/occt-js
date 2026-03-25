@@ -1,0 +1,42 @@
+// demo/src/components/Toolbar.jsx
+import { Button } from "./ui/button";
+import { useViewerStore } from "../store/viewerStore";
+
+export default function Toolbar({ onOpenFile, onFitAll }) {
+  const fileName = useViewerStore((s) => s.fileName);
+  const facesVisible = useViewerStore((s) => s.facesVisible);
+  const edgesVisible = useViewerStore((s) => s.edgesVisible);
+  const toggleFaces = useViewerStore((s) => s.toggleFaces);
+  const toggleEdges = useViewerStore((s) => s.toggleEdges);
+
+  if (!fileName) return null;
+
+  return (
+    <div className="absolute top-0 left-0 right-0 z-10 flex items-center gap-2 px-3 py-2 bg-zinc-950/85 backdrop-blur-sm border-b border-zinc-800" data-testid="toolbar">
+      <span className="text-cyan-400 font-semibold text-sm">occt-js</span>
+      <span className="w-px h-5 bg-zinc-700" />
+      <span className="text-zinc-500 text-xs" data-testid="file-name">{fileName}</span>
+
+      <span className="flex-1" />
+
+      <Button size="sm" variant="ghost" onClick={onOpenFile} data-testid="open-file">
+        Open
+      </Button>
+
+      <span className="w-px h-5 bg-zinc-700" />
+
+      <Button size="sm" variant={facesVisible ? "active" : "default"} onClick={toggleFaces} data-testid="toggle-faces">
+        Faces
+      </Button>
+      <Button size="sm" variant={edgesVisible ? "active" : "default"} onClick={toggleEdges} data-testid="toggle-edges">
+        Edges
+      </Button>
+
+      <span className="w-px h-5 bg-zinc-700" />
+
+      <Button size="sm" variant="ghost" onClick={onFitAll} data-testid="fit-all">
+        Fit
+      </Button>
+    </div>
+  );
+}
