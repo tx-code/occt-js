@@ -32,8 +32,9 @@ const VIEWS = {
   "back-bottom-right":  { alpha: PI/4,    beta: 3*PI/4 },
 };
 
-// Babylon face order: [0]=+X(right), [1]=-X(left), [2]=+Y(top), [3]=-Y(bottom), [4]=+Z(back), [5]=-Z(front)
-const FACE_MAP = { 5: "front", 4: "back", 2: "top", 3: "bottom", 1: "left", 0: "right" };
+// Actual Babylon CreateBox face indices (verified by picking):
+// faceIdx 0=back, 1=front, 2=right, 3=left, 4=top, 5=bottom
+const FACE_MAP = { 1: "front", 0: "back", 4: "top", 5: "bottom", 3: "left", 2: "right" };
 
 const EDGE_T = 0.25;
 const FACE_REGIONS = {
@@ -48,13 +49,16 @@ const FACE_REGIONS = {
 // Texture atlas UV mapping: 2 columns × 3 rows
 // Col 0: RIGHT, TOP, FRONT | Col 1: LEFT, BOTTOM, BACK
 // Babylon face order: right(0), left(1), top(2), bottom(3), back(4), front(5)
+// faceUV = Vector4(uMin, vMin, uMax, vMax)
+// Babylon face order: [0]=back, [1]=front, [2]=right, [3]=left, [4]=top, [5]=bottom
+// Atlas layout: row0=RIGHT,LEFT  row1=TOP,BOTTOM  row2=FRONT,BACK
 const FACE_UVS = [
-  new BABYLON.Vector4(0,    2/3, 0.5, 1),    // [0] right  → col0, row0
-  new BABYLON.Vector4(0.5,  2/3, 1,   1),    // [1] left   → col1, row0
-  new BABYLON.Vector4(0,    1/3, 0.5, 2/3),  // [2] top    → col0, row1
-  new BABYLON.Vector4(0.5,  1/3, 1,   2/3),  // [3] bottom → col1, row1
-  new BABYLON.Vector4(0.5,  0,   1,   1/3),  // [4] back   → col1, row2
-  new BABYLON.Vector4(0,    0,   0.5, 1/3),  // [5] front  → col0, row2
+  new BABYLON.Vector4(1,   1/3, 0.5, 0),     // [0] back   → col1, row2 (U+V flipped)
+  new BABYLON.Vector4(0,   0,   0.5, 1/3),   // [1] front  → col0, row2
+  new BABYLON.Vector4(0,   2/3, 0.5, 1),     // [2] right  → col0, row0
+  new BABYLON.Vector4(0.5, 2/3, 1,   1),     // [3] left   → col1, row0
+  new BABYLON.Vector4(0,   1/3, 0.5, 2/3),   // [4] top    → col0, row1
+  new BABYLON.Vector4(1,   2/3, 0.5, 1/3),   // [5] bottom → col1, row1 (U+V flipped)
 ];
 
 const SIZE = 140;
@@ -78,9 +82,9 @@ export default function ViewCube({ onCameraView, cameraRef }) {
       miniEngineRef.current = null;
     }
 
-    const engine = new BABYLON.Engine(canvas, true, { antialias: true });
+    const engine = new BABYLON.Engine(canvas, true, { antialias: true, alpha: true, premultipliedAlpha: true });
     const scene = new BABYLON.Scene(engine);
-    scene.clearColor = new BABYLON.Color4(0.09, 0.09, 0.11, 1);
+    scene.clearColor = new BABYLON.Color4(0, 0, 0, 0);
 
     const camera = new BABYLON.ArcRotateCamera("vcCam", PI/4, PI/3, 3.2, BABYLON.Vector3.Zero(), scene);
     camera.minZ = 0.1;
@@ -102,7 +106,7 @@ export default function ViewCube({ onCameraView, cameraRef }) {
     const mat = new BABYLON.StandardMaterial("vcMat", scene);
     mat.diffuseTexture = texDefault;
     mat.diffuseColor = new BABYLON.Color3(1, 1, 1);
-    mat.emissiveColor = new BABYLON.Color3(0.2, 0.2, 0.22);
+    mat.emissiveColor = new BABYLON.Color3(0.3, 0.3, 0.33);
     mat.specularColor = new BABYLON.Color3(0.15, 0.15, 0.15);
     box.material = mat;
     boxRef.current = box;
@@ -232,7 +236,7 @@ export default function ViewCube({ onCameraView, cameraRef }) {
       width={SIZE}
       height={SIZE}
       className="absolute bottom-4 right-4 z-20"
-      style={{ width: SIZE, height: SIZE, borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)" }}
+      style={{ width: SIZE, height: SIZE }}
       onMouseMove={handleMove}
       onClick={handleClick}
       onMouseLeave={handleLeave}
