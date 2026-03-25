@@ -105,10 +105,12 @@ export default function ViewCube({ onCameraView, cameraRef }) {
     const faceMats = [];
     for (let i = 0; i < 6; i++) {
       const mat = new BABYLON.StandardMaterial("vcFace_" + i, scene);
-      mat.diffuseTexture = texDefault.clone();
-      mat.diffuseColor = new BABYLON.Color3(1, 1, 1);
-      mat.emissiveColor = new BABYLON.Color3(0.5, 0.5, 0.55);
-      mat.specularColor = new BABYLON.Color3(0.1, 0.1, 0.1);
+      // Flat shading: use emissive only, no lighting dependency
+      mat.disableLighting = true;
+      mat.emissiveTexture = texDefault.clone();
+      mat.emissiveColor = new BABYLON.Color3(0.75, 0.75, 0.78);
+      mat.diffuseColor = new BABYLON.Color3(0, 0, 0);
+      mat.specularColor = new BABYLON.Color3(0, 0, 0);
       multiMat.subMaterials.push(mat);
       faceMats.push(mat);
     }
@@ -203,8 +205,7 @@ export default function ViewCube({ onCameraView, cameraRef }) {
     const mats = matsRef.current;
     if (!tex.default || mats.length === 0) return;
     for (const mat of mats) {
-      mat.diffuseTexture = tex.default;
-      mat.emissiveColor = new BABYLON.Color3(0.5, 0.5, 0.55);
+      mat.emissiveTexture = tex.default;
     }
   }
 
@@ -225,8 +226,7 @@ export default function ViewCube({ onCameraView, cameraRef }) {
       const isEdgeOrCorner = result.viewName !== result.faceName;
       const hoveredMat = mats[result.faceIdx];
       if (hoveredMat) {
-        hoveredMat.diffuseTexture = isEdgeOrCorner ? tex.edges : tex.sides;
-        hoveredMat.emissiveColor = new BABYLON.Color3(0.3, 0.45, 0.6);
+        hoveredMat.emissiveTexture = isEdgeOrCorner ? tex.edges : tex.sides;
       }
     } else {
       hoveredRef.current = null;
