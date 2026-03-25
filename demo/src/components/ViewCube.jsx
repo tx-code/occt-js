@@ -79,9 +79,9 @@ export default function ViewCube({ onCameraView, cameraRef }) {
       miniEngineRef.current = null;
     }
 
-    const engine = new BABYLON.Engine(canvas, true, { antialias: true, alpha: true, premultipliedAlpha: true });
+    const engine = new BABYLON.Engine(canvas, true, { antialias: true });
     const scene = new BABYLON.Scene(engine);
-    scene.clearColor = new BABYLON.Color4(0, 0, 0, 0);
+    scene.clearColor = new BABYLON.Color4(0.11, 0.11, 0.13, 1);
 
     const camera = new BABYLON.ArcRotateCamera("vcCam", PI/4, PI/3, 3.2, BABYLON.Vector3.Zero(), scene);
     camera.minZ = 0.1;
@@ -108,7 +108,7 @@ export default function ViewCube({ onCameraView, cameraRef }) {
       // Flat shading: use emissive only, no lighting dependency
       mat.disableLighting = true;
       mat.emissiveTexture = texDefault.clone();
-      mat.emissiveColor = new BABYLON.Color3(0.75, 0.75, 0.78);
+      mat.emissiveColor = new BABYLON.Color3(0, 0, 0); // texture provides all color
       mat.diffuseColor = new BABYLON.Color3(0, 0, 0);
       mat.specularColor = new BABYLON.Color3(0, 0, 0);
       multiMat.subMaterials.push(mat);
@@ -125,8 +125,8 @@ export default function ViewCube({ onCameraView, cameraRef }) {
 
     // Edge wireframe
     box.enableEdgesRendering();
-    box.edgesWidth = 4;
-    box.edgesColor = new BABYLON.Color4(1, 1, 1, 0.5);
+    box.edgesWidth = 2;
+    box.edgesColor = new BABYLON.Color4(0.5, 0.5, 0.55, 0.8);
 
     // Axis lines
     const axisLen = 1.3;
@@ -257,7 +257,7 @@ export default function ViewCube({ onCameraView, cameraRef }) {
       width={SIZE}
       height={SIZE}
       className="absolute bottom-4 right-4 z-20"
-      style={{ width: SIZE, height: SIZE }}
+      style={{ width: SIZE, height: SIZE, borderRadius: 10 }}
       onMouseMove={handleMove}
       onClick={handleClick}
       onMouseLeave={handleLeave}
