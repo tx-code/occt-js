@@ -11,6 +11,8 @@ export default function Toolbar({ onOpenFile, onFitAll, onCameraView, onSetProje
   const pickMode = useViewerStore((s) => s.pickMode);
   const setPickMode = useViewerStore((s) => s.setPickMode);
   const projectionMode = useViewerStore((s) => s.projectionMode);
+  const theme = useViewerStore((s) => s.theme);
+  const toggleTheme = useViewerStore((s) => s.toggleTheme);
 
   if (!fileName) return null;
 
@@ -71,6 +73,10 @@ export default function Toolbar({ onOpenFile, onFitAll, onCameraView, onSetProje
       {/* Snapshot */}
       <Button size="sm" variant="ghost" onClick={onSnapshot} data-testid="snapshot">
         📷
+      </Button>
+
+      <Button size="sm" variant="ghost" onClick={toggleTheme} data-testid="toggle-theme">
+        {theme === "dark" ? "☀️" : "🌙"}
       </Button>
 
       <Button size="sm" variant="ghost" onClick={() => useViewerStore.getState().setTreeOpen(!useViewerStore.getState().treeOpen)} data-testid="toggle-tree">

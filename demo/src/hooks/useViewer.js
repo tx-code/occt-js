@@ -56,6 +56,29 @@ export function useViewer(canvasRef) {
     };
   }, [canvasRef]);
 
+  // Sync theme from store
+  useEffect(() => {
+    const unsub = useViewerStore.subscribe(
+      (state) => state.theme,
+      (theme) => {
+        if (theme === "dark") {
+          document.documentElement.classList.add("dark");
+          document.documentElement.classList.remove("light");
+        } else {
+          document.documentElement.classList.add("light");
+          document.documentElement.classList.remove("dark");
+        }
+        const scene = sceneRef.current;
+        if (scene) {
+          scene.clearColor = theme === "dark"
+            ? new BABYLON.Color4(0.1, 0.1, 0.12, 1)
+            : new BABYLON.Color4(0.92, 0.92, 0.94, 1);
+        }
+      }
+    );
+    return unsub;
+  }, []);
+
   // Sync faces/edges visibility from store
   useEffect(() => {
     const unsub = useViewerStore.subscribe(

@@ -12,6 +12,7 @@ export const useViewerStore = create(subscribeWithSelector((set, get) => ({
   edgesVisible: true,
   projectionMode: "perspective", // "perspective" | "orthographic"
   treeOpen: false,
+  theme: "dark", // "dark" | "light"
 
   // Selection (serializable summary)
   pickMode: "face",
@@ -26,6 +27,7 @@ export const useViewerStore = create(subscribeWithSelector((set, get) => ({
   setProjection: (mode) => set({ projectionMode: mode }),
   setPickMode: (mode) => set({ pickMode: mode, selectedItems: [], selectedDetail: null }),
   setTreeOpen: (open) => set({ treeOpen: open }),
+  toggleTheme: () => set((s) => ({ theme: s.theme === "dark" ? "light" : "dark" })),
   setSelectedItems: (items) => set({ selectedItems: items }),
   setSelectedDetail: (detail) => set({ selectedDetail: detail }),
   reset: () => set({ model: null, fileName: "", selectedItems: [], selectedDetail: null }),
