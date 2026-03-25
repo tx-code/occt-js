@@ -14,13 +14,15 @@ export const useViewerStore = create(subscribeWithSelector((set, get) => ({
   // Selection (serializable summary)
   pickMode: "face",
   selectedItems: [],
+  selectedDetail: null, // { mode, items: [{ id, meshUniqueId, info: {...} }] } or null
 
   // Actions
   setModel: (model, fileName) => set({ model, fileName }),
   setLoading: (loading) => set({ loading }),
   toggleFaces: () => set((s) => ({ facesVisible: !s.facesVisible })),
   toggleEdges: () => set((s) => ({ edgesVisible: !s.edgesVisible })),
-  setPickMode: (mode) => set({ pickMode: mode, selectedItems: [] }),
+  setPickMode: (mode) => set({ pickMode: mode, selectedItems: [], selectedDetail: null }),
   setSelectedItems: (items) => set({ selectedItems: items }),
-  reset: () => set({ model: null, fileName: "", selectedItems: [] }),
+  setSelectedDetail: (detail) => set({ selectedDetail: detail }),
+  reset: () => set({ model: null, fileName: "", selectedItems: [], selectedDetail: null }),
 })));

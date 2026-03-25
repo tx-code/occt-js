@@ -8,6 +8,8 @@ export default function Toolbar({ onOpenFile, onFitAll }) {
   const edgesVisible = useViewerStore((s) => s.edgesVisible);
   const toggleFaces = useViewerStore((s) => s.toggleFaces);
   const toggleEdges = useViewerStore((s) => s.toggleEdges);
+  const pickMode = useViewerStore((s) => s.pickMode);
+  const setPickMode = useViewerStore((s) => s.setPickMode);
 
   if (!fileName) return null;
 
@@ -30,6 +32,18 @@ export default function Toolbar({ onOpenFile, onFitAll }) {
       </Button>
       <Button size="sm" variant={edgesVisible ? "active" : "default"} onClick={toggleEdges} data-testid="toggle-edges">
         Edges
+      </Button>
+
+      <span className="w-px h-5 bg-zinc-700" />
+
+      <Button size="sm" variant={pickMode === "face" ? "active" : "default"} onClick={() => setPickMode("face")} data-testid="pick-face">
+        Face
+      </Button>
+      <Button size="sm" variant={pickMode === "edge" ? "active" : "default"} onClick={() => setPickMode("edge")} data-testid="pick-edge">
+        Edge
+      </Button>
+      <Button size="sm" variant={pickMode === "vertex" ? "active" : "default"} onClick={() => setPickMode("vertex")} data-testid="pick-vertex">
+        Vtx
       </Button>
 
       <span className="w-px h-5 bg-zinc-700" />

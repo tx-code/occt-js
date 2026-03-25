@@ -3,16 +3,20 @@ import { useRef, useCallback } from "react";
 import { useViewerStore } from "./store/viewerStore";
 import { useOcct } from "./hooks/useOcct";
 import { useViewer } from "./hooks/useViewer";
+import { usePicking } from "./hooks/usePicking";
 import DropZone from "./components/DropZone";
 import LoadingOverlay from "./components/LoadingOverlay";
 import StatsPanel from "./components/StatsPanel";
+import SelectionPanel from "./components/SelectionPanel";
 import Toolbar from "./components/Toolbar";
 
 export default function App() {
   const canvasRef = useRef(null);
   const model = useViewerStore((s) => s.model);
   const { importFile } = useOcct();
-  const { buildScene, fitAll } = useViewer(canvasRef);
+  const viewerRefs = useViewer(canvasRef);
+  const { buildScene, fitAll } = viewerRefs;
+  usePicking(viewerRefs);
   const fileInputRef = useRef(null);
 
   const handleFile = useCallback(async (file) => {
@@ -62,6 +66,7 @@ export default function App() {
       <LoadingOverlay />
       <Toolbar onOpenFile={handleOpenFile} onFitAll={fitAll} />
       <StatsPanel />
+      <SelectionPanel />
     </div>
   );
 }
