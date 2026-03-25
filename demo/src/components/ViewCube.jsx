@@ -93,7 +93,7 @@ export default function ViewCube({ onCameraView, cameraRef }) {
 
     // Lighting
     const hemi = new BABYLON.HemisphericLight("vcHemi", new BABYLON.Vector3(0, 1, 0), scene);
-    hemi.intensity = 0.8;
+    hemi.intensity = 1.2;
     hemi.groundColor = new BABYLON.Color3(0.3, 0.3, 0.35);
 
     // Create cube with per-face materials
@@ -101,7 +101,7 @@ export default function ViewCube({ onCameraView, cameraRef }) {
     const faceColors = [];
     for (let i = 0; i < 6; i++) {
       faceUV.push(new BABYLON.Vector4(0, 0, 1, 1));
-      faceColors.push(new BABYLON.Color4(0.22, 0.22, 0.3, 1));
+      faceColors.push(new BABYLON.Color4(0.45, 0.47, 0.55, 1));
     }
     const box = BABYLON.MeshBuilder.CreateBox("vcBox", { size: 1.6, faceUV, faceColors }, scene);
 
@@ -113,22 +113,22 @@ export default function ViewCube({ onCameraView, cameraRef }) {
     for (let i = 0; i < 6; i++) {
       const faceName = FACE_MAP[i];
       const mat = new BABYLON.StandardMaterial("vcFace_" + faceName, scene);
-      mat.diffuseColor = new BABYLON.Color3(0.22, 0.22, 0.3);
+      mat.diffuseColor = new BABYLON.Color3(0.45, 0.47, 0.55);
       mat.specularColor = new BABYLON.Color3(0.05, 0.05, 0.05);
 
       // Dynamic texture for label
-      const tex = new BABYLON.DynamicTexture("vcTex_" + faceName, { width: 128, height: 128 }, scene, false);
+      const tex = new BABYLON.DynamicTexture("vcTex_" + faceName, { width: 256, height: 256 }, scene, false);
       const ctx = tex.getContext();
-      ctx.fillStyle = "#383850";
-      ctx.fillRect(0, 0, 128, 128);
+      ctx.fillStyle = "#6a6e80";
+      ctx.fillRect(0, 0, 256, 256);
       ctx.strokeStyle = "rgba(255,255,255,0.15)";
-      ctx.lineWidth = 2;
-      ctx.strokeRect(1, 1, 126, 126);
-      ctx.fillStyle = "rgba(255,255,255,0.7)";
-      ctx.font = "bold 20px system-ui";
+      ctx.lineWidth = 3;
+      ctx.strokeRect(2, 2, 252, 252);
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 36px system-ui";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(labels[i], 64, 64);
+      ctx.fillText(labels[i], 128, 128);
       tex.update();
       mat.diffuseTexture = tex;
 
@@ -204,19 +204,19 @@ export default function ViewCube({ onCameraView, cameraRef }) {
     for (const key of Object.keys(materialsRef.current)) {
       const { tex } = materialsRef.current[key];
       const ctx = tex.getContext();
-      ctx.fillStyle = "#383850";
-      ctx.fillRect(0, 0, 128, 128);
+      ctx.fillStyle = "#6a6e80";
+      ctx.fillRect(0, 0, 256, 256);
       ctx.strokeStyle = "rgba(255,255,255,0.15)";
-      ctx.lineWidth = 2;
-      ctx.strokeRect(1, 1, 126, 126);
-      ctx.fillStyle = "rgba(255,255,255,0.7)";
-      ctx.font = "bold 20px system-ui";
+      ctx.lineWidth = 3;
+      ctx.strokeRect(2, 2, 252, 252);
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 36px system-ui";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       const label = key.toUpperCase();
-      ctx.fillText(label, 64, 64);
+      ctx.fillText(label, 128, 128);
       tex.update();
-      materialsRef.current[key].mat.diffuseColor = new BABYLON.Color3(0.22, 0.22, 0.3);
+      materialsRef.current[key].mat.diffuseColor = new BABYLON.Color3(0.45, 0.47, 0.55);
     }
 
     if (pick.hit && pick.pickedMesh?.name === "vcBox") {
@@ -225,18 +225,18 @@ export default function ViewCube({ onCameraView, cameraRef }) {
       if (faceName && materialsRef.current[faceName]) {
         const { tex, mat } = materialsRef.current[faceName];
         const ctx = tex.getContext();
-        ctx.fillStyle = "#2a6080";
-        ctx.fillRect(0, 0, 128, 128);
+        ctx.fillStyle = "#3090c0";
+        ctx.fillRect(0, 0, 256, 256);
         ctx.strokeStyle = "rgba(76,201,240,0.9)";
         ctx.lineWidth = 4;
-        ctx.strokeRect(2, 2, 124, 124);
+        ctx.strokeRect(4, 4, 248, 248);
         ctx.fillStyle = "#fff";
-        ctx.font = "bold 22px system-ui";
+        ctx.font = "bold 40px system-ui";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillText(faceName.toUpperCase(), 64, 64);
+        ctx.fillText(faceName.toUpperCase(), 128, 128);
         tex.update();
-        mat.diffuseColor = new BABYLON.Color3(0.3, 0.55, 0.7);
+        mat.diffuseColor = new BABYLON.Color3(0.4, 0.7, 0.9);
         hoveredFaceRef.current = faceName;
         canvasRef.current.style.cursor = "pointer";
 
@@ -267,12 +267,12 @@ export default function ViewCube({ onCameraView, cameraRef }) {
 
               // Draw sub-region highlight on texture
               if (subView !== faceName) {
-                const sx = isLeft ? 0 : isRight ? 128 * (1 - EDGE_T) : 128 * EDGE_T;
-                const sy = isBot ? 0 : isTop ? 128 * (1 - EDGE_T) : 128 * EDGE_T;
-                const sw = (isLeft || isRight) ? 128 * EDGE_T : 128 * (1 - 2 * EDGE_T);
-                const sh = (isTop || isBot) ? 128 * EDGE_T : 128 * (1 - 2 * EDGE_T);
+                const sx = isLeft ? 0 : isRight ? 256 * (1 - EDGE_T) : 256 * EDGE_T;
+                const sy = isBot ? 0 : isTop ? 256 * (1 - EDGE_T) : 256 * EDGE_T;
+                const sw = (isLeft || isRight) ? 256 * EDGE_T : 256 * (1 - 2 * EDGE_T);
+                const sh = (isTop || isBot) ? 256 * EDGE_T : 256 * (1 - 2 * EDGE_T);
                 ctx.fillStyle = "rgba(76,201,240,0.5)";
-                ctx.fillRect(sx, 128 - sy - sh, sw, sh); // flip Y for texture
+                ctx.fillRect(sx, 256 - sy - sh, sw, sh); // flip Y for texture
                 tex.update();
               }
             }
@@ -341,18 +341,18 @@ export default function ViewCube({ onCameraView, cameraRef }) {
         for (const key of Object.keys(materialsRef.current)) {
           const { tex, mat } = materialsRef.current[key];
           const ctx = tex.getContext();
-          ctx.fillStyle = "#383850";
-          ctx.fillRect(0, 0, 128, 128);
+          ctx.fillStyle = "#6a6e80";
+          ctx.fillRect(0, 0, 256, 256);
           ctx.strokeStyle = "rgba(255,255,255,0.15)";
           ctx.lineWidth = 2;
-          ctx.strokeRect(1, 1, 126, 126);
-          ctx.fillStyle = "rgba(255,255,255,0.7)";
-          ctx.font = "bold 20px system-ui";
+          ctx.strokeRect(2, 2, 252, 252);
+          ctx.fillStyle = "#ffffff";
+          ctx.font = "bold 36px system-ui";
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
-          ctx.fillText(key.toUpperCase(), 64, 64);
+          ctx.fillText(key.toUpperCase(), 128, 128);
           tex.update();
-          mat.diffuseColor = new BABYLON.Color3(0.22, 0.22, 0.3);
+          mat.diffuseColor = new BABYLON.Color3(0.45, 0.47, 0.55);
         }
       }}
       data-testid="viewcube"
