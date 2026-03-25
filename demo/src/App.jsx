@@ -10,6 +10,7 @@ import StatsPanel from "./components/StatsPanel";
 import SelectionPanel from "./components/SelectionPanel";
 import Toolbar from "./components/Toolbar";
 import ModelTreeDrawer from "./components/ModelTreeDrawer";
+import ViewCube from "./components/ViewCube";
 
 export default function App() {
   const canvasRef = useRef(null);
@@ -75,6 +76,7 @@ export default function App() {
       <StatsPanel />
       <SelectionPanel />
       <ModelTreeDrawer />
+      <ViewCube onCameraView={setCameraView} cameraRef={viewerRefs.cameraRef} />
     </div>
   );
 }

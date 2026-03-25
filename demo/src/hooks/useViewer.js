@@ -353,7 +353,7 @@ export function useViewer(canvasRef) {
     camera.beta = Math.PI / 3;
   }, []);
 
-  const setCameraView = useCallback((direction) => {
+  const setCameraView = useCallback((direction, customView) => {
     const camera = cameraRef.current;
     const root = transformNodesRef.current[0];
     if (!camera || !root) return;
@@ -376,7 +376,7 @@ export function useViewer(canvasRef) {
       iso:    { alpha: Math.PI / 4,  beta: Math.PI / 3 },
     };
 
-    const view = views[direction];
+    const view = customView || views[direction];
     if (!view) return;
 
     // Animate camera transition (0.3s)
