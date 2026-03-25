@@ -53,6 +53,18 @@ const VERTICES = [
   [ 0.5,  0.5,  0.5], // 7: BackTopRight     (+X, +Y, +Z)
 ];
 
+// Vertex index → corner region name
+const VERTEX_TO_CORNER = [
+  "front-bottom-left",  // 0
+  "front-bottom-right", // 1
+  "front-top-left",     // 2
+  "front-top-right",    // 3
+  "back-bottom-left",   // 4
+  "back-bottom-right",  // 5
+  "back-top-left",      // 6
+  "back-top-right",     // 7
+];
+
 // Face vertex indices (CCW winding when viewed from outside)
 // Order: Front(-Z), Back(+Z), Top(+Y), Bottom(-Y), Left(-X), Right(+X)
 const FACE_INDICES = [
@@ -355,7 +367,7 @@ function getSubRegion(faceIndex, px, py, quad) {
 function hitTest(px, py, projection, cx, cy, size) {
   const dx = px - cx, dy = py - cy;
   const dist = Math.sqrt(dx * dx + dy * dy);
-  if (dist > size * 0.75) return null;
+  if (dist > size * 1.1) return null; // corners can extend beyond face extents
 
   // Sort front-facing faces front-to-back (descending depth for correct occlusion)
   const sortedFaces = projection.faces
@@ -367,7 +379,54 @@ function hitTest(px, py, projection, cx, cy, size) {
     return getSubRegion(face.index, px, py, face.verts);
   }
 
+  // If no face hit, check proximity to visible corners (projected cube vertices)
+  const cornerThreshold = size * 0.25;
+  let bestCornerDist = cornerThreshold;
+  let bestCorner = null;
+  for (let vi = 0; vi < 8; vi++) {
+    // Corner is visible if any adjacent face is front-facing
+    const adjFaces = CORNER_ADJ_FACES[vi];
+    const visible = adjFaces.some(fi => projection.faces[fi].isFrontFacing);
+    if (!visible) continue;
+    const vp = projection.projected[vi];
+    const dx = px - vp[0], dy = py - vp[1];
+    const d = Math.sqrt(dx*dx + dy*dy);
+    if (d < bestCornerDist) { bestCornerDist = d; bestCorner = vi; }
+  }
+  if (bestCorner !== null) {
+    // Find which corner region this vertex maps to
+    const cornerName = VERTEX_TO_CORNER[bestCorner];
+    if (cornerName) return { type: "corner", name: cornerName };
+  }
+
+  // Check proximity to visible edges
+  const edgeThreshold = size * 0.15;
+  let bestEdgeDist = edgeThreshold;
+  let bestEdge = null;
+  for (let ei = 0; ei < 12; ei++) {
+    const [v1, v2, f1, f2] = EDGE_DEFS[ei];
+    const visible = projection.faces[f1].isFrontFacing || projection.faces[f2].isFrontFacing;
+    if (!visible) continue;
+    const p1 = projection.projected[v1], p2 = projection.projected[v2];
+    const d = pointToSegmentDist(px, py, p1[0], p1[1], p2[0], p2[1]);
+    if (d < bestEdgeDist) { bestEdgeDist = d; bestEdge = ei; }
+  }
+  if (bestEdge !== null) {
+    const edgeName = EDGE_NAMES[bestEdge];
+    if (edgeName) return { type: "edge", name: edgeName };
+  }
+
   return null;
+}
+
+function pointToSegmentDist(px, py, ax, ay, bx, by) {
+  const dx = bx - ax, dy = by - ay;
+  const lenSq = dx*dx + dy*dy;
+  if (lenSq < 0.001) return Math.sqrt((px-ax)*(px-ax)+(py-ay)*(py-ay));
+  let t = ((px-ax)*dx + (py-ay)*dy) / lenSq;
+  t = Math.max(0, Math.min(1, t));
+  const cx = ax + t*dx - px, cy = ay + t*dy - py;
+  return Math.sqrt(cx*cx + cy*cy);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
