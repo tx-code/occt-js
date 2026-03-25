@@ -288,12 +288,15 @@ export function useViewer(canvasRef) {
       subdivisions: 1,
     }, scene);
 
-    // Adaptive grid ratio based on model size
-    let gridRatio;
-    if (modelSize > 500) gridRatio = 100;
-    else if (modelSize > 50) gridRatio = 10;
-    else if (modelSize > 5) gridRatio = 1;
-    else gridRatio = 0.1;
+    // Adaptive grid ratio: pick a ratio so there are ~10-50 visible grid cells
+    const maxDim = Math.max(extent.x, extent.y, extent.z);
+    let gridRatio = 1;
+    if (maxDim > 0) {
+      // Target ~20 grid lines across the largest dimension
+      const raw = maxDim / 20;
+      // Snap to nearest power of 10: 0.01, 0.1, 1, 10, 100, 1000
+      gridRatio = Math.pow(10, Math.round(Math.log10(raw)));
+    }
 
     const gridMat = new BABYLON.GridMaterial("gridMat", scene);
     gridMat.mainColor = new BABYLON.Color3(0, 0, 0);

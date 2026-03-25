@@ -181,21 +181,11 @@ export default function ViewCube({ onCameraView, cameraRef }) {
       }}
       data-testid="viewcube"
     >
-      {/* Axis labels */}
-      <div
-        style={{
-          position: "absolute",
-          bottom: -2,
-          left: "50%",
-          transform: "translateX(-50%)",
-          fontSize: 10,
-          color: "rgba(255,255,255,0.3)",
-          pointerEvents: "none",
-        }}
-      >
-        <span style={{ color: "#cc3333" }}>X</span>{" "}
-        <span style={{ color: "#33cc33" }}>Y</span>{" "}
-        <span style={{ color: "#3366cc" }}>Z</span>
+      {/* Axis labels — positioned around cube */}
+      <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+        <span style={{ position: "absolute", bottom: 0, left: 12, fontSize: 11, fontWeight: 700, color: "#cc3333" }}>X</span>
+        <span style={{ position: "absolute", bottom: 0, right: 12, fontSize: 11, fontWeight: 700, color: "#33cc33" }}>Y</span>
+        <span style={{ position: "absolute", top: 2, left: "50%", transform: "translateX(-50%)", fontSize: 11, fontWeight: 700, color: "#3366cc" }}>Z</span>
       </div>
 
       {/* 3D Cube container */}
@@ -223,7 +213,7 @@ export default function ViewCube({ onCameraView, cameraRef }) {
           </div>
         ))}
 
-        {/* 12 Edges */}
+        {/* 12 Edges — only intercept pointer when hovered */}
         {edgeConfigs.map(({ name, transform, w, h }) => (
           <div
             key={name}
@@ -232,13 +222,15 @@ export default function ViewCube({ onCameraView, cameraRef }) {
               width: w,
               height: h,
               transform,
-              cursor: "pointer",
+              cursor: hovered === name ? "pointer" : "default",
+              pointerEvents: "auto",
               background:
                 hovered === name
                   ? "rgba(76,201,240,0.5)"
                   : "transparent",
               transition: "background 0.15s",
               backfaceVisibility: "hidden",
+              zIndex: hovered === name ? 10 : 1,
             }}
             onMouseEnter={() => setHovered(name)}
             onMouseLeave={() => setHovered(null)}
@@ -246,7 +238,7 @@ export default function ViewCube({ onCameraView, cameraRef }) {
           />
         ))}
 
-        {/* 8 Corners */}
+        {/* 8 Corners — only intercept pointer when hovered */}
         {cornerConfigs.map(({ name, transform }) => (
           <div
             key={name}
@@ -255,7 +247,8 @@ export default function ViewCube({ onCameraView, cameraRef }) {
               width: CORNER_SIZE,
               height: CORNER_SIZE,
               transform,
-              cursor: "pointer",
+              cursor: hovered === name ? "pointer" : "default",
+              pointerEvents: "auto",
               borderRadius: 2,
               background:
                 hovered === name
@@ -263,6 +256,7 @@ export default function ViewCube({ onCameraView, cameraRef }) {
                   : "transparent",
               transition: "background 0.15s",
               backfaceVisibility: "hidden",
+              zIndex: hovered === name ? 10 : 1,
             }}
             onMouseEnter={() => setHovered(name)}
             onMouseLeave={() => setHovered(null)}
