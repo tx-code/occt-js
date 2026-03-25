@@ -8,8 +8,10 @@ export default function Toolbar({ onOpenFile, onFitAll, onCameraView, onSetProje
   const fileName = useViewerStore((s) => s.fileName);
   const facesVisible = useViewerStore((s) => s.facesVisible);
   const edgesVisible = useViewerStore((s) => s.edgesVisible);
+  const gridVisible = useViewerStore((s) => s.gridVisible);
   const toggleFaces = useViewerStore((s) => s.toggleFaces);
   const toggleEdges = useViewerStore((s) => s.toggleEdges);
+  const toggleGrid = useViewerStore((s) => s.toggleGrid);
   const pickMode = useViewerStore((s) => s.pickMode);
   const setPickMode = useViewerStore((s) => s.setPickMode);
   const projectionMode = useViewerStore((s) => s.projectionMode);
@@ -43,6 +45,9 @@ export default function Toolbar({ onOpenFile, onFitAll, onCameraView, onSetProje
       </Button>
       <Button size="sm" variant={edgesVisible ? "active" : "default"} onClick={toggleEdges} data-testid="toggle-edges">
         Edges
+      </Button>
+      <Button size="sm" variant={gridVisible ? "active" : "default"} onClick={toggleGrid} data-testid="toggle-grid">
+        Grid
       </Button>
     </>
   );

@@ -10,6 +10,7 @@ export function useViewer(canvasRef) {
   const meshesRef = useRef([]);
   const edgeLinesRef = useRef([]);
   const transformNodesRef = useRef([]);
+  const gridMeshesRef = useRef([]);
 
   // Initialize Babylon.js
   useEffect(() => {
@@ -92,6 +93,17 @@ export function useViewer(canvasRef) {
     return unsub;
   }, []);
 
+  // Sync grid visibility from store
+  useEffect(() => {
+    const unsub = useViewerStore.subscribe(
+      (state) => state.gridVisible,
+      (visible) => {
+        for (const m of gridMeshesRef.current) m.isVisible = visible;
+      }
+    );
+    return unsub;
+  }, []);
+
   // Build scene from OCCT result
   const buildScene = useCallback((result) => {
     const scene = sceneRef.current;
@@ -102,9 +114,11 @@ export function useViewer(canvasRef) {
     for (const m of meshesRef.current) m.dispose();
     for (const l of edgeLinesRef.current) l.dispose();
     for (const t of transformNodesRef.current) t.dispose();
+    for (const g of gridMeshesRef.current) g.dispose();
     meshesRef.current = [];
     edgeLinesRef.current = [];
     transformNodesRef.current = [];
+    gridMeshesRef.current = [];
     meshGeoMapRef.current.clear();
     scene.materials.slice().forEach((m) => { if (m.name.startsWith("mat_")) m.dispose(); });
 
@@ -265,6 +279,62 @@ export function useViewer(canvasRef) {
     camera.upperRadiusLimit = modelSize * 10;
     camera.minZ = modelSize * 0.001;
     camera.maxZ = modelSize * 100;
+
+    // --- Ground grid ---
+    const gridSize = modelSize * 4;
+    const ground = BABYLON.MeshBuilder.CreateGround("grid", {
+      width: gridSize,
+      height: gridSize,
+      subdivisions: 1,
+    }, scene);
+
+    // Adaptive grid ratio based on model size
+    let gridRatio;
+    if (modelSize > 500) gridRatio = 100;
+    else if (modelSize > 50) gridRatio = 10;
+    else if (modelSize > 5) gridRatio = 1;
+    else gridRatio = 0.1;
+
+    const gridMat = new BABYLON.GridMaterial("gridMat", scene);
+    gridMat.mainColor = new BABYLON.Color3(0, 0, 0);
+    gridMat.lineColor = new BABYLON.Color3(0.3, 0.3, 0.35);
+    gridMat.opacity = 0.98;
+    gridMat.gridRatio = gridRatio;
+    gridMat.majorUnitFrequency = 10;
+    gridMat.minorUnitVisibility = 0.3;
+    gridMat.backFaceCulling = false;
+
+    ground.material = gridMat;
+    ground.position.y = bounds.min.y - 0.01;
+    ground.isPickable = false;
+
+    // X-axis line (red)
+    const xAxis = BABYLON.MeshBuilder.CreateLines("xAxis", {
+      points: [
+        new BABYLON.Vector3(-gridSize / 2, bounds.min.y, 0),
+        new BABYLON.Vector3(gridSize / 2, bounds.min.y, 0),
+      ],
+    }, scene);
+    xAxis.color = new BABYLON.Color3(0.8, 0.2, 0.2);
+    xAxis.isPickable = false;
+
+    // Z-axis line (green — Babylon Y-up, Z is forward)
+    const zAxis = BABYLON.MeshBuilder.CreateLines("zAxis", {
+      points: [
+        new BABYLON.Vector3(0, bounds.min.y, -gridSize / 2),
+        new BABYLON.Vector3(0, bounds.min.y, gridSize / 2),
+      ],
+    }, scene);
+    zAxis.color = new BABYLON.Color3(0.2, 0.8, 0.2);
+    zAxis.isPickable = false;
+
+    // Apply current visibility state
+    const gridVisible = useViewerStore.getState().gridVisible;
+    ground.isVisible = gridVisible;
+    xAxis.isVisible = gridVisible;
+    zAxis.isVisible = gridVisible;
+
+    gridMeshesRef.current.push(ground, xAxis, zAxis);
   }, []);
 
   const fitAll = useCallback(() => {
