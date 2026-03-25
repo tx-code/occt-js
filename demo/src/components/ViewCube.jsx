@@ -33,8 +33,8 @@ const VIEWS = {
 };
 
 // Actual Babylon CreateBox face indices (verified by picking):
-// faceIdx 0=back, 1=front, 2=right, 3=left, 4=top, 5=bottom
 const FACE_MAP = { 1: "front", 0: "back", 4: "top", 5: "bottom", 3: "left", 2: "right" };
+const FACE_NAMES = ["back", "front", "right", "left", "top", "bottom"];
 
 const EDGE_T = 0.25;
 const FACE_REGIONS = {
@@ -46,19 +46,15 @@ const FACE_REGIONS = {
   right:  { t:"top-right",    b:"bottom-right",  l:"front-right", r:"back-right",   tl:"front-top-right",   tr:"back-top-right",     bl:"front-bottom-right", br:"back-bottom-right" },
 };
 
-// Texture atlas UV mapping: 2 columns × 3 rows
-// Col 0: RIGHT, TOP, FRONT | Col 1: LEFT, BOTTOM, BACK
-// Babylon face order: right(0), left(1), top(2), bottom(3), back(4), front(5)
-// faceUV = Vector4(uMin, vMin, uMax, vMax)
+// UV atlas: 2 cols × 3 rows. Row0: RIGHT,LEFT. Row1: TOP,BOTTOM. Row2: FRONT,BACK
 // Babylon face order: [0]=back, [1]=front, [2]=right, [3]=left, [4]=top, [5]=bottom
-// Atlas layout: row0=RIGHT,LEFT  row1=TOP,BOTTOM  row2=FRONT,BACK
 const FACE_UVS = [
-  new BABYLON.Vector4(1,   1/3, 0.5, 0),     // [0] back   → col1, row2 (U+V flipped)
-  new BABYLON.Vector4(0,   0,   0.5, 1/3),   // [1] front  → col0, row2
-  new BABYLON.Vector4(0,   2/3, 0.5, 1),     // [2] right  → col0, row0
-  new BABYLON.Vector4(0.5, 2/3, 1,   1),     // [3] left   → col1, row0
-  new BABYLON.Vector4(0,   1/3, 0.5, 2/3),   // [4] top    → col0, row1
-  new BABYLON.Vector4(1,   2/3, 0.5, 1/3),   // [5] bottom → col1, row1 (U+V flipped)
+  new BABYLON.Vector4(1,   1/3, 0.5, 0),     // [0] back
+  new BABYLON.Vector4(0,   0,   0.5, 1/3),   // [1] front
+  new BABYLON.Vector4(0,   2/3, 0.5, 1),     // [2] right
+  new BABYLON.Vector4(0.5, 2/3, 1,   1),     // [3] left
+  new BABYLON.Vector4(0,   1/3, 0.5, 2/3),   // [4] top
+  new BABYLON.Vector4(1,   2/3, 0.5, 1/3),   // [5] bottom
 ];
 
 const SIZE = 140;
@@ -69,6 +65,7 @@ export default function ViewCube({ onCameraView, cameraRef }) {
   const miniSceneRef = useRef(null);
   const miniCameraRef = useRef(null);
   const boxRef = useRef(null);
+  const matsRef = useRef([]); // per-face materials
   const texturesRef = useRef({ default: null, sides: null, edges: null });
   const hoveredRef = useRef(null);
   const model = useViewerStore((s) => s.model);
@@ -92,8 +89,8 @@ export default function ViewCube({ onCameraView, cameraRef }) {
     camera.inputs.clear();
 
     const hemi = new BABYLON.HemisphericLight("vcHemi", new BABYLON.Vector3(0.3, 1, 0.2), scene);
-    hemi.intensity = 1.3;
-    hemi.groundColor = new BABYLON.Color3(0.4, 0.4, 0.45);
+    hemi.intensity = 1.5;
+    hemi.groundColor = new BABYLON.Color3(0.5, 0.5, 0.55);
 
     // Load textures
     const texDefault = new BABYLON.Texture("/textures/controller_cube_default.png", scene, false, true, BABYLON.Texture.BILINEAR_SAMPLINGMODE);
@@ -101,20 +98,33 @@ export default function ViewCube({ onCameraView, cameraRef }) {
     const texEdges = new BABYLON.Texture("/textures/controller_cube_edges.png", scene, false, true, BABYLON.Texture.BILINEAR_SAMPLINGMODE);
     texturesRef.current = { default: texDefault, sides: texSides, edges: texEdges };
 
-    // Create box with atlas UVs
+    // Create box with per-face multi-material
     const box = BABYLON.MeshBuilder.CreateBox("vcBox", { size: 1.5, faceUV: FACE_UVS }, scene);
-    const mat = new BABYLON.StandardMaterial("vcMat", scene);
-    mat.diffuseTexture = texDefault;
-    mat.diffuseColor = new BABYLON.Color3(1, 1, 1);
-    mat.emissiveColor = new BABYLON.Color3(0.3, 0.3, 0.33);
-    mat.specularColor = new BABYLON.Color3(0.15, 0.15, 0.15);
-    box.material = mat;
+
+    const multiMat = new BABYLON.MultiMaterial("vcMulti", scene);
+    const faceMats = [];
+    for (let i = 0; i < 6; i++) {
+      const mat = new BABYLON.StandardMaterial("vcFace_" + i, scene);
+      mat.diffuseTexture = texDefault.clone();
+      mat.diffuseColor = new BABYLON.Color3(1, 1, 1);
+      mat.emissiveColor = new BABYLON.Color3(0.5, 0.5, 0.55);
+      mat.specularColor = new BABYLON.Color3(0.1, 0.1, 0.1);
+      multiMat.subMaterials.push(mat);
+      faceMats.push(mat);
+    }
+    box.material = multiMat;
+    box.subMeshes = [];
+    const vertCount = box.getTotalVertices();
+    for (let i = 0; i < 6; i++) {
+      box.subMeshes.push(new BABYLON.SubMesh(i, 0, vertCount, i * 6, 6, box));
+    }
     boxRef.current = box;
+    matsRef.current = faceMats;
 
     // Edge wireframe
     box.enableEdgesRendering();
-    box.edgesWidth = 3;
-    box.edgesColor = new BABYLON.Color4(1, 1, 1, 0.35);
+    box.edgesWidth = 4;
+    box.edgesColor = new BABYLON.Color4(1, 1, 1, 0.5);
 
     // Axis lines
     const axisLen = 1.3;
@@ -152,7 +162,6 @@ export default function ViewCube({ onCameraView, cameraRef }) {
     return () => { scene.onBeforeRenderObservable.remove(obs); };
   }, [model, cameraRef]);
 
-  // Pick helper — returns { faceName, viewName }
   function doPick(x, y) {
     const scene = miniSceneRef.current;
     if (!scene) return null;
@@ -168,11 +177,11 @@ export default function ViewCube({ onCameraView, cameraRef }) {
     if (uv) {
       const regions = FACE_REGIONS[faceName];
       if (regions) {
-        const u = uv.x, v = uv.y;
-        // Remap UV from atlas to face-local 0-1
         const atlasUV = FACE_UVS[faceIdx];
-        const lu = (u - atlasUV.x) / (atlasUV.z - atlasUV.x);
-        const lv = (v - atlasUV.y) / (atlasUV.w - atlasUV.y);
+        const uMin = Math.min(atlasUV.x, atlasUV.z), uMax = Math.max(atlasUV.x, atlasUV.z);
+        const vMin = Math.min(atlasUV.y, atlasUV.w), vMax = Math.max(atlasUV.y, atlasUV.w);
+        const lu = (uMax - uMin) > 0.001 ? (uv.x - uMin) / (uMax - uMin) : 0.5;
+        const lv = (vMax - vMin) > 0.001 ? (uv.y - vMin) / (vMax - vMin) : 0.5;
         const isTop = lv > 1 - EDGE_T, isBot = lv < EDGE_T;
         const isLeft = lu < EDGE_T, isRight = lu > 1 - EDGE_T;
         if (isTop && isLeft) viewName = regions.tl;
@@ -185,29 +194,43 @@ export default function ViewCube({ onCameraView, cameraRef }) {
         else if (isRight) viewName = regions.r;
       }
     }
-    return { faceName, viewName };
+    return { faceName, viewName, faceIdx };
+  }
+
+  // Reset all faces to default texture
+  function resetFaces() {
+    const tex = texturesRef.current;
+    const mats = matsRef.current;
+    if (!tex.default || mats.length === 0) return;
+    for (const mat of mats) {
+      mat.diffuseTexture = tex.default;
+      mat.emissiveColor = new BABYLON.Color3(0.5, 0.5, 0.55);
+    }
   }
 
   const handleMove = useCallback((e) => {
     const rect = canvasRef.current?.getBoundingClientRect();
     if (!rect) return;
     const result = doPick(e.clientX - rect.left, e.clientY - rect.top);
-    const box = boxRef.current;
     const tex = texturesRef.current;
+    const mats = matsRef.current;
 
-    if (result && box && tex.default) {
+    resetFaces();
+
+    if (result && tex.sides && mats.length > 0) {
       hoveredRef.current = result.viewName;
       canvasRef.current.style.cursor = "pointer";
-      // Switch texture based on what's hovered
-      if (result.viewName === result.faceName) {
-        box.material.diffuseTexture = tex.sides; // face hover → blue faces
-      } else {
-        box.material.diffuseTexture = tex.edges; // edge/corner hover → blue grid + white corners
+
+      // Only highlight the hovered face
+      const isEdgeOrCorner = result.viewName !== result.faceName;
+      const hoveredMat = mats[result.faceIdx];
+      if (hoveredMat) {
+        hoveredMat.diffuseTexture = isEdgeOrCorner ? tex.edges : tex.sides;
+        hoveredMat.emissiveColor = new BABYLON.Color3(0.3, 0.45, 0.6);
       }
     } else {
       hoveredRef.current = null;
       if (canvasRef.current) canvasRef.current.style.cursor = "default";
-      if (box && tex.default) box.material.diffuseTexture = tex.default;
     }
   }, []);
 
@@ -223,9 +246,7 @@ export default function ViewCube({ onCameraView, cameraRef }) {
   const handleLeave = useCallback(() => {
     hoveredRef.current = null;
     if (canvasRef.current) canvasRef.current.style.cursor = "default";
-    const box = boxRef.current;
-    const tex = texturesRef.current;
-    if (box && tex.default) box.material.diffuseTexture = tex.default;
+    resetFaces();
   }, []);
 
   if (!model) return null;
