@@ -17,7 +17,7 @@ export default function Toolbar({ onOpenFile, onFitAll, onCameraView, onSetProje
   if (!fileName) return null;
 
   return (
-    <div className="absolute top-0 left-0 right-0 z-10 flex items-center gap-2 px-3 py-2 bg-zinc-950/85 backdrop-blur-sm border-b border-zinc-800" data-testid="toolbar">
+    <div className="absolute top-0 left-0 right-0 z-50 flex items-center gap-2 px-3 py-2 bg-zinc-950/85 backdrop-blur-sm border-b border-zinc-800" data-testid="toolbar">
       <span className="text-cyan-400 font-semibold text-sm">occt-js</span>
       <span className="w-px h-5 bg-zinc-700" />
       <span className="text-zinc-500 text-xs" data-testid="file-name">{fileName}</span>
