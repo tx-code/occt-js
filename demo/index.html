@@ -171,9 +171,10 @@ function initBabylon() {
 
   camera = new BABYLON.ArcRotateCamera("cam", Math.PI / 4, Math.PI / 3, 100, BABYLON.Vector3.Zero(), scene);
   camera.attachControl(canvas, true);
-  camera.wheelPrecision = 20;
+  camera.wheelPrecision = 5;       // lower = faster zoom (default 3, was 20)
+  camera.wheelDeltaPercentage = 0.05; // smooth percentage-based zoom
   camera.minZ = 0.1;
-  camera.panningSensibility = 50;
+  camera.panningSensibility = 30;  // lower = faster pan
 
   const light = new BABYLON.HemisphericLight("hemi", new BABYLON.Vector3(0, 1, 0), scene);
   light.intensity = 0.9;
@@ -392,16 +393,25 @@ function buildScene(result) {
     buildNode(rn, root);
   }
 
-  // Frame camera
+  // Frame camera with proper zoom limits and clipping
   const bounds = root.getHierarchyBoundingVectors(true);
   const center = bounds.min.add(bounds.max).scale(0.5);
   const extent = bounds.max.subtract(bounds.min);
-  const radius = extent.length() * 0.8;
+  const modelSize = extent.length();
+  const radius = modelSize * 0.8;
 
   camera.target = center;
   camera.radius = Math.max(radius, 1);
   camera.alpha = Math.PI / 4;
   camera.beta = Math.PI / 3;
+
+  // Zoom limits based on model size
+  camera.lowerRadiusLimit = modelSize * 0.01;   // can't zoom closer than 1% of model size
+  camera.upperRadiusLimit = modelSize * 10;      // can't zoom further than 10x model size
+
+  // Dynamic near/far clipping based on model size
+  camera.minZ = modelSize * 0.001;
+  camera.maxZ = modelSize * 100;
 }
 
 function clearScene() {
