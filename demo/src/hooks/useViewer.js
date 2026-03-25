@@ -14,7 +14,15 @@ export function useViewer(canvasRef) {
   // Initialize Babylon.js
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas || engineRef.current) return;
+    if (!canvas) return;
+
+    // Dispose previous engine if exists (React StrictMode double-mount)
+    if (engineRef.current) {
+      engineRef.current.dispose();
+      engineRef.current = null;
+      sceneRef.current = null;
+      cameraRef.current = null;
+    }
 
     const engine = new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true });
     const scene = new BABYLON.Scene(engine);
