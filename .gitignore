@@ -10,3 +10,4 @@ dist/*.js
 emsdk/
 test-results/
 .npmrc
+.superpowers/
