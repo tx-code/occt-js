@@ -104,7 +104,7 @@ function findClosestVertex(localPt, geo, threshold) {
 
 function createFaceHighlight(scene, pickedMesh, geo, faceId, BABYLON) {
   ensureColors(BABYLON);
-  const face = geo.faces[faceId];
+  const face = geo.faces[faceId - 1]; // faceId is 1-based, array is 0-based
   if (!face) return [];
   const disposables = [];
   const worldMatrix = pickedMesh.getWorldMatrix();
@@ -243,7 +243,7 @@ function createVertexHighlight(scene, pickedMesh, geo, vertexIndex, camera, BABY
 // Build detail info for store
 // ---------------------------------------------------------------------------
 function buildFaceDetail(geo, faceId, meshUniqueId) {
-  const face = geo.faces[faceId];
+  const face = geo.faces[faceId - 1]; // faceId is 1-based
   if (!face) return null;
   const info = {
     faceId,
@@ -572,7 +572,7 @@ export function usePicking(viewerRefs) {
         const worldMatrix = pickedMesh.getWorldMatrix();
         let disposables = [];
         if (hoveredMode === "face") {
-          const face = geo.faces[hoveredId];
+          const face = geo.faces[hoveredId - 1]; // hoveredId is 1-based
           if (face) disposables = createFaceHoverHL(worldMatrix, face, geo);
         } else if (hoveredMode === "edge") {
           const edge = geo.edges[hoveredId];
