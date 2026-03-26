@@ -299,64 +299,52 @@ function isPointInQuad(px, py, quad) {
 }
 
 /**
- * Determine sub-region using distance-to-edge approach.
- * For each edge of the quad, compute the normalized perpendicular distance
- * from the point. If close to an edge (< EDGE_RATIO), it's in edge zone.
- * If close to two edges, it's a corner.
+ * Compute local (u,v) coordinates within a projected quad using
+ * inverse bilinear (parallelogram approximation).
+ * quad[0]=v0, quad[1]=v1, quad[2]=v2, quad[3]=v3 (CCW winding)
+ * u-axis: v0 → v3 direction, v-axis: v0 → v1 direction
  */
-function getSubRegion(faceIndex, px, py, quad) {
-  // Compute normalized distance from point to each edge (0 = on edge, 1 = opposite edge)
-  // Edge i connects quad[i] to quad[(i+1)%4], opposite edge is (i+2)%4 to (i+3)%4
-  const dists = [];
-  for (let i = 0; i < 4; i++) {
-    const a = quad[i], b = quad[(i + 1) % 4];
-    const opp0 = quad[(i + 2) % 4], opp1 = quad[(i + 3) % 4];
-    // Signed distance from edge ab
-    const edgeNx = b[1] - a[1], edgeNy = -(b[0] - a[0]);
-    const edgeLen = Math.sqrt(edgeNx * edgeNx + edgeNy * edgeNy);
-    if (edgeLen < 0.001) { dists.push(0.5); continue; }
-    const d = ((px - a[0]) * edgeNx + (py - a[1]) * edgeNy) / edgeLen;
-    // Distance from opposite edge to normalize
-    const oppMidX = (opp0[0] + opp1[0]) / 2, oppMidY = (opp0[1] + opp1[1]) / 2;
-    const dOpp = ((oppMidX - a[0]) * edgeNx + (oppMidY - a[1]) * edgeNy) / edgeLen;
-    dists.push(Math.abs(dOpp) > 0.001 ? d / dOpp : 0.5);
-  }
+function toFaceLocalCoords(px, py, quad) {
+  const e0x = quad[3][0] - quad[0][0], e0y = quad[3][1] - quad[0][1];
+  const e1x = quad[1][0] - quad[0][0], e1y = quad[1][1] - quad[0][1];
+  const px0 = px - quad[0][0], py0 = py - quad[0][1];
 
-  // dists[0] = distance from edge 0 (quad[0]→quad[1]) normalized
-  // dists[1] = distance from edge 1 (quad[1]→quad[2]) normalized
-  // dists[2] = distance from edge 2 (quad[2]→quad[3]) normalized
-  // dists[3] = distance from edge 3 (quad[3]→quad[0]) normalized
+  const det = e0x * e1y - e0y * e1x;
+  if (Math.abs(det) < 0.001) return [0.5, 0.5];
 
-  // Near which edges? (distance < EDGE_RATIO)
-  const nearEdge = dists.map(d => d < EDGE_RATIO);
-  const nearCount = nearEdge.filter(Boolean).length;
+  const u = (px0 * e1y - py0 * e1x) / det;
+  const v = (e0x * py0 - e0y * px0) / det;
+  return [Math.max(0, Math.min(1, u)), Math.max(0, Math.min(1, v))];
+}
 
+/**
+ * Determine sub-region from (u,v) parametric coordinates within a face.
+ * u < EDGE_RATIO → left edge zone (edge 0: v0→v1)
+ * u > 1-EDGE_RATIO → right edge zone (edge 2: v2→v3)
+ * v < EDGE_RATIO → bottom edge zone (edge 3: v3→v0)
+ * v > 1-EDGE_RATIO → top edge zone (edge 1: v1→v2)
+ * Corners at intersections of two edge zones.
+ */
+function getSubRegion(faceIndex, u, v) {
+  u = Math.max(0, Math.min(1, u));
+  v = Math.max(0, Math.min(1, v));
+  const T = EDGE_RATIO;
+  const isLeft = u < T, isRight = u > 1 - T;
+  const isBot = v < T, isTop = v > 1 - T;
   const sr = FACE_SUBREGIONS[faceIndex];
 
-  if (nearCount >= 2) {
-    // Corner — find which two edges
-    const e1 = nearEdge.indexOf(true);
-    const e2 = nearEdge.indexOf(true, e1 + 1);
-    const cornerKey = e1 * 4 + e2;
-    // Map edge pair to corner: edges are 0,1,2,3 around the quad
-    // Adjacent edge pairs: (0,1)=vertex1, (1,2)=vertex2, (2,3)=vertex3, (3,0)=vertex0
-    const cornerMap = { "01": 0, "12": 1, "23": 2, "03": 3 };
-    const key = e1 < e2 ? `${e1}${e2}` : `${e2}${e1}`;
-    const vertexPos = cornerMap[key];
-    if (vertexPos !== undefined && sr.corners[vertexPos] !== undefined) {
-      return { type: "corner", name: sr.corners[vertexPos] };
-    }
-  }
+  // Corners (vertex positions 0-3)
+  if (isBot && isLeft)  return { type: "corner", name: sr.corners[0] }; // v0
+  if (isTop && isLeft)  return { type: "corner", name: sr.corners[1] }; // v1
+  if (isTop && isRight) return { type: "corner", name: sr.corners[2] }; // v2
+  if (isBot && isRight) return { type: "corner", name: sr.corners[3] }; // v3
 
-  if (nearCount === 1) {
-    // Edge
-    const edgeIdx = nearEdge.indexOf(true);
-    if (sr.edges[edgeIdx] !== undefined) {
-      return { type: "edge", name: sr.edges[edgeIdx] };
-    }
-  }
+  // Edges (edge i = vi→v(i+1)%4)
+  if (isLeft)  return { type: "edge", name: sr.edges[0] }; // v0→v1
+  if (isTop)   return { type: "edge", name: sr.edges[1] }; // v1→v2
+  if (isRight) return { type: "edge", name: sr.edges[2] }; // v2→v3
+  if (isBot)   return { type: "edge", name: sr.edges[3] }; // v3→v0
 
-  // Center
   return { type: "face", name: sr.center };
 }
 
@@ -376,9 +364,9 @@ function hitTest(px, py, projection, cx, cy, size) {
 
   for (const face of sortedFaces) {
     if (!isPointInQuad(px, py, face.verts)) continue;
-    // Inside a face — always return the face name (reliable)
-    // Edge/corner sub-regions within faces are unreliable with projected quads
-    return { type: "face", name: FACE_LABELS[face.index].toLowerCase() };
+    const [u, v] = toFaceLocalCoords(px, py, face.verts);
+    const region = getSubRegion(face.index, u, v);
+    return region;
   }
 
   // If no face hit, check proximity to visible corners (projected cube vertices)
@@ -463,29 +451,40 @@ CORNER_NAMES.forEach((n, i) => { CORNER_NAME_TO_INDEX[n] = i; });
 // ═══════════════════════════════════════════════════════════════════════════
 
 const STYLE = {
-  faceColor: "#c8cad0",
-  faceHoverColor: "#4488cc",
-  faceBorderColor: "rgba(0,0,0,0.15)",
-  backFaceColor: "#808590",
-  backFaceAlpha: 0.4,
-  labelColor: "#333",
-  labelHoverColor: "#fff",
-  labelMinDepth: 0.3,
+  // Face
+  faceColor: "rgba(64, 64, 71, 1)",          // 0.25, 0.25, 0.28
+  faceHoverColor: "rgba(77, 115, 166, 1)",    // 0.3, 0.45, 0.65
+  faceBorderColor: "rgba(128, 128, 128, 1)",  // 0.5, 0.5, 0.5
+  faceBorderWidth: 1.5,
+  backFaceColor: "rgba(64, 64, 71, 0.3)",     // same but 0.3 alpha
+  backFaceAlpha: 0.3,
+
+  // Edge
+  edgeColor: "rgba(153, 153, 153, 1)",        // 0.6, 0.6, 0.6
+  edgeHoverColor: "rgba(102, 179, 255, 1)",   // 0.4, 0.7, 1.0
+  edgeWidth: 3,
+  edgeHoverWidth: 5,
+
+  // Corner
+  cornerColor: "rgba(153, 153, 153, 1)",      // 0.6, 0.6, 0.6
+  cornerHoverColor: "rgba(102, 179, 255, 1)", // 0.4, 0.7, 1.0
+  cornerRadius: 5,
+  cornerHoverRadius: 7,
+
+  // Label
+  labelColor: "rgba(230, 230, 230, 1)",       // 0.9, 0.9, 0.9
+  labelHoverColor: "#ffffff",
   labelFontSize: 11,
-  edgeColor: "rgba(0,0,0,0.12)",
-  edgeHoverColor: "#4488cc",
-  edgeWidth: 1,
-  edgeHoverWidth: 4,
-  cornerRadius: 4,
-  cornerHoverRadius: 6,
-  cornerColor: "rgba(0,0,0,0.15)",
-  cornerHoverColor: "#4488cc",
+  labelMinDepth: 0.3,
+
+  // Axis
   axisLength: 55,
   axisWidth: 2,
   axisXColor: "#e04040",
   axisYColor: "#40b050",
   axisZColor: "#4060e0",
-  axisLabelSize: 11,
+  axisThickness: 3,
+  axisLabelSize: 10,
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -499,8 +498,30 @@ function drawViewCube(ctx, projection, hoveredRegion, cx, cy, size) {
   // --- Sort faces back-to-front for painter's algorithm ---
   const sortedFaces = [...faces].sort((a, b) => b.depth - a.depth); // back-to-front: most positive (farthest) drawn first
 
-  // --- Draw faces ---
+  // --- 1. Back faces (semi-transparent) ---
   for (const face of sortedFaces) {
+    if (face.isFrontFacing) continue;
+    const v = face.verts;
+
+    ctx.beginPath();
+    ctx.moveTo(v[0][0], v[0][1]);
+    for (let i = 1; i < 4; i++) ctx.lineTo(v[i][0], v[i][1]);
+    ctx.closePath();
+
+    ctx.fillStyle = STYLE.backFaceColor;
+    ctx.globalAlpha = STYLE.backFaceAlpha;
+    ctx.fill();
+
+    ctx.strokeStyle = STYLE.faceBorderColor;
+    ctx.lineWidth = STYLE.faceBorderWidth;
+    ctx.globalAlpha = STYLE.backFaceAlpha * 0.5;
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  // --- 2. Front faces (opaque) ---
+  for (const face of sortedFaces) {
+    if (!face.isFrontFacing) continue;
     const v = face.verts;
     // Face is hovered if: directly hovered, OR an edge/corner on this face is hovered
     const sr = FACE_SUBREGIONS[face.index];
@@ -512,25 +533,19 @@ function drawViewCube(ctx, projection, hoveredRegion, cx, cy, size) {
     for (let i = 1; i < 4; i++) ctx.lineTo(v[i][0], v[i][1]);
     ctx.closePath();
 
-    if (face.isFrontFacing) {
-      ctx.fillStyle = isHovered ? STYLE.faceHoverColor : STYLE.faceColor;
-      ctx.globalAlpha = 1;
-    } else {
-      ctx.fillStyle = STYLE.backFaceColor;
-      ctx.globalAlpha = STYLE.backFaceAlpha;
-    }
+    ctx.fillStyle = isHovered ? STYLE.faceHoverColor : STYLE.faceColor;
+    ctx.globalAlpha = 1;
     ctx.fill();
 
     // Border
     ctx.strokeStyle = STYLE.faceBorderColor;
-    ctx.lineWidth = 1;
-    ctx.globalAlpha = face.isFrontFacing ? 1 : STYLE.backFaceAlpha * 0.5;
+    ctx.lineWidth = STYLE.faceBorderWidth;
+    ctx.globalAlpha = 1;
     ctx.stroke();
     ctx.globalAlpha = 1;
   }
 
-  // --- Draw edges (visible ones) ---
-  // Sort by depth for proper layering
+  // --- 3. Edges (on top of faces) ---
   const sortedEdges = [...edges].sort((a, b) => b.depth - a.depth);
   for (const edge of sortedEdges) {
     if (!edge.isVisible) continue;
@@ -544,20 +559,23 @@ function drawViewCube(ctx, projection, hoveredRegion, cx, cy, size) {
     ctx.stroke();
   }
 
-  // --- Draw corners (visible ones) ---
+  // --- 4. Corners (on top of edges) ---
   const sortedCorners = [...corners].sort((a, b) => b.depth - a.depth);
   for (const corner of sortedCorners) {
     if (!corner.isVisible) continue;
     const isHovered = hCat === "corner" && CORNER_NAME_TO_INDEX[hoveredRegion] === corner.index;
-    if (!isHovered) continue; // Only draw corners when hovered
 
     ctx.beginPath();
-    ctx.arc(corner.pos[0], corner.pos[1], isHovered ? STYLE.cornerHoverRadius : STYLE.cornerRadius, 0, Math.PI * 2);
+    ctx.arc(
+      corner.pos[0], corner.pos[1],
+      isHovered ? STYLE.cornerHoverRadius : STYLE.cornerRadius,
+      0, Math.PI * 2
+    );
     ctx.fillStyle = isHovered ? STYLE.cornerHoverColor : STYLE.cornerColor;
     ctx.fill();
   }
 
-  // --- Draw face labels ---
+  // --- 5. Labels (on top of everything) ---
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   for (const face of sortedFaces) {
@@ -565,7 +583,13 @@ function drawViewCube(ctx, projection, hoveredRegion, cx, cy, size) {
     const absDepth = Math.abs(face.depth);
     if (absDepth < STYLE.labelMinDepth) continue;
 
-    const isHovered = hCat === "face" && FACE_NAME_TO_INDEX[hoveredRegion] === face.index;
+    // Label is "hovered" only when the face center itself is hovered
+    const isFaceHovered = hCat === "face" && FACE_NAME_TO_INDEX[hoveredRegion] === face.index;
+    // Also highlight label when any sub-region of this face is hovered
+    const sr = FACE_SUBREGIONS[face.index];
+    const allRegionNames = [sr.center, ...Object.values(sr.edges), ...Object.values(sr.corners)];
+    const isAnyHovered = hoveredRegion && allRegionNames.includes(hoveredRegion);
+
     const label = FACE_LABELS[face.index];
     const fcx = (face.verts[0][0] + face.verts[1][0] + face.verts[2][0] + face.verts[3][0]) / 4;
     const fcy = (face.verts[0][1] + face.verts[1][1] + face.verts[2][1] + face.verts[3][1]) / 4;
@@ -576,13 +600,13 @@ function drawViewCube(ctx, projection, hoveredRegion, cx, cy, size) {
     if (fontSize < 6) continue;
 
     ctx.font = `bold ${fontSize}px sans-serif`;
-    ctx.fillStyle = isHovered ? STYLE.labelHoverColor : STYLE.labelColor;
+    ctx.fillStyle = (isFaceHovered || isAnyHovered) ? STYLE.labelHoverColor : STYLE.labelColor;
     ctx.globalAlpha = Math.min(1, (absDepth - STYLE.labelMinDepth) * 3);
     ctx.fillText(label, fcx, fcy);
     ctx.globalAlpha = 1;
   }
 
-  // --- Draw axis lines ---
+  // --- 6. Axis triad ---
   const axisLen = STYLE.axisLength;
   const axes = [
     { dir: [1, 0, 0], color: STYLE.axisXColor, label: "X" },
@@ -600,7 +624,7 @@ function drawViewCube(ctx, projection, hoveredRegion, cx, cy, size) {
     ctx.moveTo(cx, cy);
     ctx.lineTo(endX, endY);
     ctx.strokeStyle = axis.color;
-    ctx.lineWidth = STYLE.axisWidth;
+    ctx.lineWidth = STYLE.axisThickness;
     // Fade back-facing axis lines
     ctx.globalAlpha = tip[2] > 0 ? 1 : 0.25;
     ctx.stroke();
