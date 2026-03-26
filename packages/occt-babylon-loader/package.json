@@ -1,6 +1,6 @@
 {
   "name": "@tx-code/occt-babylon-loader",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Babylon.js model-loader adapter for OCCT-backed CAD formats",
   "type": "module",
   "main": "./src/index.js",
