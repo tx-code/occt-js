@@ -36,12 +36,13 @@ export function useViewer(canvasRef) {
     camera.minZ = 0.1;
     camera.panningSensibility = 30;
 
-    const hemi = new BABYLON.HemisphericLight("hemi", new BABYLON.Vector3(0, 1, 0), scene);
-    hemi.intensity = 0.9;
-    hemi.groundColor = new BABYLON.Color3(0.2, 0.2, 0.25);
+    const hemi = new BABYLON.HemisphericLight("hemi", new BABYLON.Vector3(0, -1, 0), scene);
+    hemi.intensity = 0.8;
+    hemi.groundColor = new BABYLON.Color3(0.75, 0.75, 0.8);
+    hemi.specular = new BABYLON.Color3(0.1, 0.1, 0.1);
 
     const dir = new BABYLON.DirectionalLight("dir", new BABYLON.Vector3(-1, -2, 1), scene);
-    dir.intensity = 0.5;
+    dir.intensity = 0.3;
 
     engineRef.current = engine;
     sceneRef.current = scene;
