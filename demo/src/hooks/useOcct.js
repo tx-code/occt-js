@@ -1,7 +1,7 @@
 import { useRef, useCallback } from "react";
 import { useViewerStore } from "../store/viewerStore";
 
-const CDN = "https://unpkg.com/@tx-code/occt-js@0.1.1/dist/";
+const CDN = "https://unpkg.com/@tx-code/occt-js@0.1.2/dist/";
 
 export function useOcct() {
   const moduleRef = useRef(null);
