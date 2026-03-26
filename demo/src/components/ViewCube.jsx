@@ -247,8 +247,8 @@ function projectCube(viewMatrixValues, cx, cy, size) {
     const verts = [projected[idx[0]], projected[idx[1]], projected[idx[2]], projected[idx[3]]];
     const viewNormal = transformNormal(FACE_NORMALS[i], m);
     const depth = viewNormal[2]; // positive Z = facing camera
-    faceFrontFacing[i] = depth > 0;
-    faces[i] = { index: i, verts, depth, isFrontFacing: depth > 0, viewNormal };
+    faceFrontFacing[i] = depth < 0; // Babylon left-handed: negative Z = facing camera
+    faces[i] = { index: i, verts, depth, isFrontFacing: depth < 0, viewNormal }; // Babylon left-handed: Z < 0 = facing camera
   }
 
   // Build edge projections
@@ -372,11 +372,13 @@ function hitTest(px, py, projection, cx, cy, size) {
   // Sort front-facing faces front-to-back (descending depth for correct occlusion)
   const sortedFaces = projection.faces
     .filter(f => f.isFrontFacing)
-    .sort((a, b) => b.depth - a.depth);
+    .sort((a, b) => a.depth - b.depth); // front-to-back: most negative depth first (closest to camera)
 
   for (const face of sortedFaces) {
     if (!isPointInQuad(px, py, face.verts)) continue;
-    return getSubRegion(face.index, px, py, face.verts);
+    // Inside a face — always return the face name (reliable)
+    // Edge/corner sub-regions within faces are unreliable with projected quads
+    return { type: "face", name: FACE_LABELS[face.index].toLowerCase() };
   }
 
   // If no face hit, check proximity to visible corners (projected cube vertices)
@@ -495,7 +497,7 @@ function drawViewCube(ctx, projection, hoveredRegion, cx, cy, size) {
   const hCat = regionCategory(hoveredRegion);
 
   // --- Sort faces back-to-front for painter's algorithm ---
-  const sortedFaces = [...faces].sort((a, b) => a.depth - b.depth);
+  const sortedFaces = [...faces].sort((a, b) => b.depth - a.depth); // back-to-front: most positive (farthest) drawn first
 
   // --- Draw faces ---
   for (const face of sortedFaces) {
@@ -529,7 +531,7 @@ function drawViewCube(ctx, projection, hoveredRegion, cx, cy, size) {
 
   // --- Draw edges (visible ones) ---
   // Sort by depth for proper layering
-  const sortedEdges = [...edges].sort((a, b) => a.depth - b.depth);
+  const sortedEdges = [...edges].sort((a, b) => b.depth - a.depth);
   for (const edge of sortedEdges) {
     if (!edge.isVisible) continue;
     const isHovered = hCat === "edge" && EDGE_NAME_TO_INDEX[hoveredRegion] === edge.index;
@@ -543,7 +545,7 @@ function drawViewCube(ctx, projection, hoveredRegion, cx, cy, size) {
   }
 
   // --- Draw corners (visible ones) ---
-  const sortedCorners = [...corners].sort((a, b) => a.depth - b.depth);
+  const sortedCorners = [...corners].sort((a, b) => b.depth - a.depth);
   for (const corner of sortedCorners) {
     if (!corner.isVisible) continue;
     const isHovered = hCat === "corner" && CORNER_NAME_TO_INDEX[hoveredRegion] === corner.index;
@@ -560,7 +562,8 @@ function drawViewCube(ctx, projection, hoveredRegion, cx, cy, size) {
   ctx.textBaseline = "middle";
   for (const face of sortedFaces) {
     if (!face.isFrontFacing) continue;
-    if (face.depth < STYLE.labelMinDepth) continue;
+    const absDepth = Math.abs(face.depth);
+    if (absDepth < STYLE.labelMinDepth) continue;
 
     const isHovered = hCat === "face" && FACE_NAME_TO_INDEX[hoveredRegion] === face.index;
     const label = FACE_LABELS[face.index];
@@ -568,13 +571,13 @@ function drawViewCube(ctx, projection, hoveredRegion, cx, cy, size) {
     const fcy = (face.verts[0][1] + face.verts[1][1] + face.verts[2][1] + face.verts[3][1]) / 4;
 
     // Scale font size based on face foreshortening
-    const scale = Math.min(1, face.depth * 1.5);
+    const scale = Math.min(1, absDepth * 1.5);
     const fontSize = Math.round(STYLE.labelFontSize * scale);
     if (fontSize < 6) continue;
 
     ctx.font = `bold ${fontSize}px sans-serif`;
     ctx.fillStyle = isHovered ? STYLE.labelHoverColor : STYLE.labelColor;
-    ctx.globalAlpha = Math.min(1, (face.depth - STYLE.labelMinDepth) * 3);
+    ctx.globalAlpha = Math.min(1, (absDepth - STYLE.labelMinDepth) * 3);
     ctx.fillText(label, fcx, fcy);
     ctx.globalAlpha = 1;
   }
