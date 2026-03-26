@@ -6,6 +6,7 @@ export const useViewerStore = create(subscribeWithSelector((set, get) => ({
   model: null,
   fileName: "",
   loading: false,
+  loadingMessage: "",  // "Loading engine...", "Parsing model...", etc.
 
   // View
   facesVisible: true,
@@ -22,7 +23,11 @@ export const useViewerStore = create(subscribeWithSelector((set, get) => ({
 
   // Actions
   setModel: (model, fileName) => set({ model, fileName }),
-  setLoading: (loading) => set({ loading }),
+  setLoading: (loading, loadingMessage = "") => set({
+    loading,
+    loadingMessage: loading ? loadingMessage : "",
+  }),
+  setLoadingMessage: (loadingMessage) => set({ loadingMessage }),
   toggleFaces: () => set((s) => ({ facesVisible: !s.facesVisible })),
   toggleEdges: () => set((s) => ({ edgesVisible: !s.edgesVisible })),
   toggleGrid: () => set((s) => ({ gridVisible: !s.gridVisible })),
@@ -32,5 +37,12 @@ export const useViewerStore = create(subscribeWithSelector((set, get) => ({
   toggleTheme: () => set((s) => ({ theme: s.theme === "dark" ? "light" : "dark" })),
   setSelectedItems: (items) => set({ selectedItems: items }),
   setSelectedDetail: (detail) => set({ selectedDetail: detail }),
-  reset: () => set({ model: null, fileName: "", selectedItems: [], selectedDetail: null }),
+  reset: () => set({
+    model: null,
+    fileName: "",
+    loading: false,
+    loadingMessage: "",
+    selectedItems: [],
+    selectedDetail: null,
+  }),
 })));

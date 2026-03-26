@@ -31,7 +31,6 @@ export default function App() {
   }, [importFile, buildScene]);
 
   const handleSample = useCallback(async () => {
-    useViewerStore.getState().setLoading(true);
     try {
       // Dev: served by Vite middleware. Prod: fetch from GitHub
       const devUrl = "/test/simple_part.step";
@@ -42,8 +41,6 @@ export default function App() {
       await handleFile(file);
     } catch (err) {
       alert("Error loading sample: " + err.message);
-    } finally {
-      useViewerStore.getState().setLoading(false);
     }
   }, [handleFile]);
 

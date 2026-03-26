@@ -652,6 +652,7 @@ export default function ViewCube({ onCameraView, cameraRef }) {
   const projectionRef = useRef(null);
   const animFrameRef = useRef(null);
   const model = useViewerStore((s) => s.model);
+  const selectedDetail = useViewerStore((s) => s.selectedDetail);
 
   // Render loop
   useEffect(() => {
@@ -751,7 +752,7 @@ export default function ViewCube({ onCameraView, cameraRef }) {
   if (!model) return null;
   return (
     <canvas ref={canvasRef} width={CANVAS_SIZE} height={CANVAS_SIZE}
-      className="absolute bottom-4 right-4 z-20"
+      className={`absolute bottom-4 right-4 z-20 ${selectedDetail ? "hidden md:block" : ""}`}
       style={{ width: CANVAS_SIZE, height: CANVAS_SIZE, borderRadius: 10 }}
       onMouseMove={handleMove} onClick={handleClick} onMouseLeave={handleLeave}
       data-testid="viewcube" />

@@ -108,7 +108,7 @@ export default function SelectionPanel() {
 
   return (
     <div
-      className="absolute z-10 bg-zinc-950/90 border border-zinc-700 p-3.5 text-xs backdrop-blur-sm bottom-0 left-0 right-0 max-h-[40vh] overflow-y-auto rounded-t-xl md:bottom-auto md:left-auto md:top-14 md:right-4 md:min-w-[180px] md:max-w-[240px] md:max-h-none md:overflow-y-visible md:rounded-xl"
+      className="absolute z-10 bg-zinc-950/90 border border-zinc-700 px-3.5 pt-3.5 pb-[calc(0.875rem+env(safe-area-inset-bottom))] text-xs backdrop-blur-sm bottom-0 left-0 right-0 max-h-[42svh] overflow-y-auto rounded-t-2xl md:bottom-auto md:left-auto md:top-14 md:right-4 md:min-w-[180px] md:max-w-[240px] md:max-h-none md:overflow-y-visible md:rounded-xl md:p-3.5"
       data-testid="selection-panel"
     >
       <h3 className="text-cyan-400 font-semibold text-[13px] mb-2">

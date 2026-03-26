@@ -4,7 +4,10 @@ import { useViewerStore } from "../store/viewerStore";
 
 export default function StatsPanel() {
   const model = useViewerStore((s) => s.model);
-  const [collapsed, setCollapsed] = useState(false);
+  const selectedDetail = useViewerStore((s) => s.selectedDetail);
+  const [collapsed, setCollapsed] = useState(() => (
+    typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches
+  ));
   if (!model) return null;
 
   const s = model.stats || {};
@@ -27,7 +30,10 @@ export default function StatsPanel() {
   ];
 
   return (
-    <div className="absolute bottom-4 left-4 z-10 bg-zinc-950/90 border border-zinc-700 rounded-xl p-3.5 text-xs md:text-xs backdrop-blur-sm min-w-[120px] md:min-w-[160px] max-w-[160px] md:max-w-none" data-testid="stats-panel">
+    <div
+      className={`absolute bottom-4 left-4 z-10 bg-zinc-950/90 border border-zinc-700 rounded-xl p-3.5 text-xs md:text-xs backdrop-blur-sm min-w-[120px] md:min-w-[160px] max-w-[160px] md:max-w-none ${selectedDetail ? "hidden md:block" : ""}`}
+      data-testid="stats-panel"
+    >
       <h3
         className="text-cyan-400 font-semibold text-[11px] md:text-[13px] mb-2 md:cursor-default cursor-pointer select-none flex items-center justify-between"
         onClick={() => setCollapsed((c) => !c)}

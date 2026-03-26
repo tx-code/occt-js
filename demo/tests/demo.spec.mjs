@@ -1,9 +1,25 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, devices } from "@playwright/test";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const fixtures = resolve(__dirname, "..", "..", "test");
+const iphone12 = devices["iPhone 12"];
+
+function boxesOverlap(a, b) {
+  if (!a || !b) return false;
+  return !(
+    a.x + a.width <= b.x ||
+    b.x + b.width <= a.x ||
+    a.y + a.height <= b.y ||
+    b.y + b.height <= a.y
+  );
+}
+
+async function loadFixture(page, fileName = "simple_part.step") {
+  await page.locator("[data-testid='file-input']").setInputFiles(resolve(fixtures, fileName));
+  await expect(page.locator("[data-testid='toolbar']")).toBeVisible({ timeout: 30_000 });
+}
 
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
@@ -12,6 +28,10 @@ test.beforeEach(async ({ page }) => {
 test("shows drop zone on initial load", async ({ page }) => {
   await expect(page.locator("[data-testid='drop-zone']")).toBeVisible();
   await expect(page.locator("[data-testid='toolbar']")).toBeHidden();
+});
+
+test("preloads occt engine on initial load", async ({ page }) => {
+  await expect(page.locator("script[src*='occt-js.js']")).toHaveCount(1, { timeout: 15_000 });
 });
 
 test("toolbar and stats hidden initially", async ({ page }) => {
@@ -55,8 +75,7 @@ test("imports assembly STEP with stats", async ({ page }) => {
 });
 
 test("faces and edges toggles work", async ({ page }) => {
-  await page.click("[data-testid='load-sample']");
-  await expect(page.locator("[data-testid='toolbar']")).toBeVisible({ timeout: 30_000 });
+  await loadFixture(page);
 
   const facesBtn = page.locator("[data-testid='toggle-faces']");
   const edgesBtn = page.locator("[data-testid='toggle-edges']");
@@ -78,8 +97,7 @@ test("faces and edges toggles work", async ({ page }) => {
 });
 
 test("fit button works", async ({ page }) => {
-  await page.click("[data-testid='load-sample']");
-  await expect(page.locator("[data-testid='toolbar']")).toBeVisible({ timeout: 30_000 });
+  await loadFixture(page);
   await page.click("[data-testid='fit-all']");
   // Should not crash, stats still visible
   await expect(page.locator("[data-testid='stats-panel']")).toBeVisible();
@@ -90,8 +108,8 @@ test("fit button works", async ({ page }) => {
 // ---------------------------------------------------------------------------
 
 test("clicking on model shows face selection panel", async ({ page }) => {
-  await page.click("[data-testid='load-sample']");
-  await expect(page.locator("[data-testid='stats-panel']")).toBeVisible({ timeout: 30_000 });
+  await loadFixture(page);
+  await expect(page.locator("[data-testid='stats-panel']")).toBeVisible();
 
   const canvas = page.locator("[data-testid='render-canvas']");
   const box = await canvas.boundingBox();
@@ -105,8 +123,7 @@ test("clicking on model shows face selection panel", async ({ page }) => {
 // ---------------------------------------------------------------------------
 
 test("pick mode buttons switch correctly", async ({ page }) => {
-  await page.click("[data-testid='load-sample']");
-  await expect(page.locator("[data-testid='toolbar']")).toBeVisible({ timeout: 30_000 });
+  await loadFixture(page);
 
   await expect(page.locator("[data-testid='pick-face']")).toHaveClass(/cyan/);
 
@@ -124,8 +141,7 @@ test("pick mode buttons switch correctly", async ({ page }) => {
 // ---------------------------------------------------------------------------
 
 test("view preset buttons exist and are clickable", async ({ page }) => {
-  await page.click("[data-testid='load-sample']");
-  await expect(page.locator("[data-testid='toolbar']")).toBeVisible({ timeout: 30_000 });
+  await loadFixture(page);
 
   for (const dir of ["front", "back", "top", "bottom", "left", "right", "iso"]) {
     const btn = page.locator(`[data-testid='view-${dir}']`);
@@ -142,8 +158,7 @@ test("view preset buttons exist and are clickable", async ({ page }) => {
 // ---------------------------------------------------------------------------
 
 test("ortho/perspective toggle works", async ({ page }) => {
-  await page.click("[data-testid='load-sample']");
-  await expect(page.locator("[data-testid='toolbar']")).toBeVisible({ timeout: 30_000 });
+  await loadFixture(page);
 
   // Default is perspective (active)
   await expect(page.locator("[data-testid='proj-persp']")).toHaveClass(/cyan/);
@@ -164,8 +179,7 @@ test("ortho/perspective toggle works", async ({ page }) => {
 // ---------------------------------------------------------------------------
 
 test("model tree drawer opens and closes", async ({ page }) => {
-  await page.click("[data-testid='load-sample']");
-  await expect(page.locator("[data-testid='toolbar']")).toBeVisible({ timeout: 30_000 });
+  await loadFixture(page);
 
   // Tree should be closed initially
   const tree = page.locator("[data-testid='model-tree']");
@@ -198,8 +212,8 @@ test("assembly model tree shows hierarchy", async ({ page }) => {
 // ---------------------------------------------------------------------------
 
 test("hovering over model changes cursor", async ({ page }) => {
-  await page.click("[data-testid='load-sample']");
-  await expect(page.locator("[data-testid='stats-panel']")).toBeVisible({ timeout: 30_000 });
+  await loadFixture(page);
+  await expect(page.locator("[data-testid='stats-panel']")).toBeVisible();
 
   const canvas = page.locator("[data-testid='render-canvas']");
   const box = await canvas.boundingBox();
@@ -215,8 +229,8 @@ test("hovering over model changes cursor", async ({ page }) => {
 // ---------------------------------------------------------------------------
 
 test("drag on empty space preserves selection", async ({ page }) => {
-  await page.click("[data-testid='load-sample']");
-  await expect(page.locator("[data-testid='stats-panel']")).toBeVisible({ timeout: 30_000 });
+  await loadFixture(page);
+  await expect(page.locator("[data-testid='stats-panel']")).toBeVisible();
 
   const canvas = page.locator("[data-testid='render-canvas']");
   const box = await canvas.boundingBox();
@@ -238,8 +252,8 @@ test("drag on empty space preserves selection", async ({ page }) => {
 });
 
 test("short click on empty clears selection", async ({ page }) => {
-  await page.click("[data-testid='load-sample']");
-  await expect(page.locator("[data-testid='stats-panel']")).toBeVisible({ timeout: 30_000 });
+  await loadFixture(page);
+  await expect(page.locator("[data-testid='stats-panel']")).toBeVisible();
 
   const canvas = page.locator("[data-testid='render-canvas']");
   const box = await canvas.boundingBox();
@@ -252,4 +266,43 @@ test("short click on empty clears selection", async ({ page }) => {
   await page.mouse.click(box.x + box.width - 10, box.y + box.height - 10);
   await page.waitForTimeout(500);
   await expect(page.locator("[data-testid='selection-panel']")).not.toBeVisible();
+});
+
+test.describe("mobile layout", () => {
+  test.use({
+    viewport: iphone12.viewport,
+    userAgent: iphone12.userAgent,
+    deviceScaleFactor: iphone12.deviceScaleFactor,
+    isMobile: iphone12.isMobile,
+    hasTouch: iphone12.hasTouch,
+  });
+
+  test("mobile toolbar stays compact when menu is open", async ({ page }) => {
+    await page.locator("[data-testid='file-input']").setInputFiles(resolve(fixtures, "simple_part.step"));
+    await expect(page.locator("[data-testid='toolbar']")).toBeVisible({ timeout: 30_000 });
+
+    await page.click("[data-testid='menu-toggle']");
+
+    const toolbarBox = await page.locator("[data-testid='toolbar']").boundingBox();
+    expect(toolbarBox.height).toBeLessThanOrEqual(110);
+  });
+
+  test("mobile selection does not overlap utility panels", async ({ page }) => {
+    await page.locator("[data-testid='file-input']").setInputFiles(resolve(fixtures, "simple_part.step"));
+    await expect(page.locator("[data-testid='stats-panel']")).toBeVisible({ timeout: 30_000 });
+
+    const canvas = page.locator("[data-testid='render-canvas']");
+    const box = await canvas.boundingBox();
+    await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+
+    const selection = page.locator("[data-testid='selection-panel']");
+    await expect(selection).toBeVisible({ timeout: 5000 });
+
+    const statsBox = await page.locator("[data-testid='stats-panel']").boundingBox();
+    const selectionBox = await selection.boundingBox();
+    const viewcubeBox = await page.locator("[data-testid='viewcube']").boundingBox();
+
+    expect(boxesOverlap(statsBox, selectionBox)).toBe(false);
+    expect(boxesOverlap(viewcubeBox, selectionBox)).toBe(false);
+  });
 });
