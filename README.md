@@ -2,7 +2,7 @@
 
 WebAssembly build of [OpenCASCADE Technology (OCCT)](https://dev.opencascade.org/) v7.9.3 for CAD import and triangulation. Designed for use in browser-based CAD viewers (e.g., Babylon.js).
 
-**[Live Demo](https://tx-code.github.io/occt-js/demo/index.html)** — drag and drop STEP/IGES/BREP files, face/edge/vertex picking, hover preview
+**[Live Demo](https://tx-code.github.io/occt-js/)** — drag and drop STEP/IGES/BREP files, face/edge/vertex picking, hover preview
 
 ## Features
 
