@@ -33,7 +33,10 @@ export default function App() {
   const handleSample = useCallback(async () => {
     useViewerStore.getState().setLoading(true);
     try {
-      const resp = await fetch("/test/simple_part.step"); // served by Vite serveTestFixtures plugin
+      // Dev: served by Vite middleware. Prod: fetch from GitHub
+      const devUrl = "/test/simple_part.step";
+      const prodUrl = "https://raw.githubusercontent.com/tx-code/occt-js/master/test/simple_part.step";
+      const resp = await fetch(devUrl).then(r => r.ok ? r : fetch(prodUrl));
       const blob = await resp.blob();
       const file = new File([blob], "simple_part.step");
       await handleFile(file);

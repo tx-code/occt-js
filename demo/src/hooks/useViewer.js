@@ -190,6 +190,8 @@ export function useViewer(canvasRef) {
           inst.parent = parent;
           applyTransform(inst, nodeData.transform);
           meshesRef.current.push(inst);
+          // Edge lines for instances (createInstance doesn't copy children)
+          buildEdgeLines(geo, inst);
           continue; // not return — there may be more meshIndices for this node
         }
 
