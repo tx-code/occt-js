@@ -5,22 +5,23 @@
 
 ## Goal
 
-Add a Windows desktop MVP for the existing `demo` viewer using Tauri, while preserving the current web demo as the primary browser-facing workflow.
+Add a Windows desktop MVP for the existing viewer frontend using Tauri, while preserving the current web app as the primary browser-facing workflow.
 
 The desktop MVP must be able to launch the existing viewer UI in a native window and import local STEP, IGES, and BREP files using the current in-app file picker. The desktop app must work offline.
 
 ## Non-Negotiable Constraints
 
-- The desktop MVP must not break the current web demo.
+- The desktop MVP must not break the current web app.
 - Existing web development and build commands must keep working.
 - Existing npm package publishing from the repository root must not depend on Tauri.
 - The desktop MVP is additive. It must not replace the browser demo workflow.
 - The desktop MVP must not require internet access at runtime.
+- The frontend project directory may be renamed from `demo/` to something clearer such as `app/`, but the browser workflow, tests, and scripts must be migrated together in the same change.
 
 ## In Scope
 
-- Add a Tauri app shell around the existing `demo` React + Vite frontend.
-- Support `tauri dev` and `tauri build` from inside `demo/`.
+- Add a Tauri app shell around the existing React + Vite frontend.
+- Support `tauri dev` and `tauri build` from inside the frontend app directory.
 - Keep the existing in-app file picker for model import.
 - Bundle Babylon.js locally instead of loading it from a CDN.
 - Bundle `occt-js.js` and `occt-js.wasm` into the desktop app so the viewer works offline.
@@ -34,23 +35,27 @@ The desktop MVP must be able to launch the existing viewer UI in a native window
 - Code signing
 - Installer customization
 - Multi-window support
-- Replacing the existing web demo deployment path
+- Replacing the existing web deployment path
 
 ## Recommended Approach
 
-Use `demo/` as the only frontend project and add Tauri inside `demo/src-tauri/`.
+Use the current frontend app as the only UI project and add Tauri inside its `src-tauri/` directory.
+
+At the time of writing, that frontend project is `demo/`. During implementation, it may either remain `demo/` for the lowest-risk path or be renamed to a clearer directory such as `app/` if that makes the desktop/web split easier to understand.
 
 This is the least disruptive approach because:
 
 - the existing UI, state, hooks, and tests stay in one place
 - the root npm package layout remains focused on `@tx-code/occt-js`
-- desktop-specific configuration can be isolated to `demo/src-tauri/`
+- desktop-specific configuration can be isolated to the frontend app's `src-tauri/`
 - web and desktop can share the same React app while keeping separate runtime wiring
+
+If the directory is renamed, the rename must be treated as a first-class migration step, not an incidental side effect. Vite scripts, Playwright config, any hard-coded paths, and documentation references must all be updated together.
 
 ## Project Structure
 
 ```text
-demo/
+<frontend-app>/
   package.json
   index.html
   vite.config.js
@@ -74,15 +79,17 @@ demo/
       default.json
 ```
 
+At the time of writing, `<frontend-app>` is `demo/`.
+
 ## Runtime Split
 
 ### Web
 
-The browser demo remains the baseline workflow.
+The browser app remains the baseline workflow.
 
-- `npm run dev` in `demo/` must continue to start the Vite web app.
-- `npm run build` in `demo/` must continue to produce a web build.
-- Existing Playwright web tests remain targeted at the browser demo.
+- `npm run dev` in the frontend app directory must continue to start the Vite web app.
+- `npm run build` in the frontend app directory must continue to produce a web build.
+- Existing Playwright web tests remain targeted at the browser app.
 
 ### Desktop
 
@@ -93,15 +100,15 @@ The desktop app is an additional entry path that wraps the same React app.
 
 ## Babylon.js Strategy
 
-Current web demo behavior depends on Babylon globals injected by CDN scripts in `demo/index.html`.
+Current web behavior depends on Babylon globals injected by CDN scripts in the frontend app `index.html`.
 
 That is not acceptable for an offline desktop app, so Babylon must move to local npm dependencies.
 
 Implementation strategy:
 
-- add `@babylonjs/core` and `@babylonjs/materials` to `demo/package.json`
-- remove Babylon CDN `<script>` tags from `demo/index.html`
-- create `demo/src/lib/babylon-runtime.js` that imports Babylon modules and exposes a compatibility object
+- add `@babylonjs/core` and `@babylonjs/materials` to the frontend app `package.json`
+- remove Babylon CDN `<script>` tags from the frontend app `index.html`
+- create `src/lib/babylon-runtime.js` in the frontend app that imports Babylon modules and exposes a compatibility object
 - assign the compatibility object to `window.BABYLON`
 
 This keeps existing viewer logic stable while replacing the network dependency with a bundled runtime.
@@ -129,7 +136,7 @@ The desktop app must bundle the root repository `dist/` artifacts:
 - `../dist/occt-js.js`
 - `../dist/occt-js.wasm`
 
-Because `src-tauri/` lives under `demo/`, the resource declaration must point back to the repository root `dist/` directory.
+Because `src-tauri/` lives under the frontend app directory, the resource declaration must point back to the repository root `dist/` directory.
 
 Tauri configuration must:
 
@@ -148,7 +155,7 @@ Only enable the permissions needed for the main window and bundled resource read
 
 ## Commands
 
-`demo/package.json` should keep current web commands and add desktop-only commands.
+The frontend app `package.json` should keep current web commands and add desktop-only commands.
 
 Required web commands:
 
@@ -161,18 +168,19 @@ Required desktop commands:
 - `tauri:dev`
 - `tauri:build`
 
-These desktop commands must live only in `demo/package.json`, not the repository root package.
+These desktop commands must live only in the frontend app `package.json`, not the repository root package.
 
 ## Verification Gates
 
 The MVP is only complete when all of these are true:
 
-1. `cd demo && npm run dev` still works for the web app
-2. `cd demo && npm run build` still succeeds
+1. `cd <frontend-app> && npm run dev` still works for the web app
+2. `cd <frontend-app> && npm run build` still succeeds
 3. Existing web tests still pass or remain intentionally unchanged
-4. `cd demo && npm run tauri:dev` launches the desktop window
+4. `cd <frontend-app> && npm run tauri:dev` launches the desktop window
 5. The desktop window can import a local STEP, IGES, or BREP file with the current file picker
 6. The desktop app works offline because Babylon and OCCT runtime files are bundled locally
+7. If the frontend app directory is renamed, all scripts, docs, and tests use the new path consistently and the browser workflow still works end-to-end
 
 ## Risks
 
@@ -190,4 +198,4 @@ Changing runtime loading paths can easily break current browser development or p
 
 ## Acceptance Summary
 
-The desktop MVP is accepted when the repository still has a working browser demo and also has a separate Tauri desktop entry path under `demo/`, with offline Babylon and OCCT runtime loading, and without introducing desktop-only requirements into the root package publishing flow.
+The desktop MVP is accepted when the repository still has a working browser app and also has a separate Tauri desktop entry path under the frontend app directory, with offline Babylon and OCCT runtime loading, and without introducing desktop-only requirements into the root package publishing flow.
