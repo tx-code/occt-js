@@ -8,12 +8,27 @@ function assert(condition, message) {
   }
 }
 
+function flattenNodes(nodes) {
+  const result = [];
+  const stack = [...nodes];
+  while (stack.length > 0) {
+    const node = stack.pop();
+    result.push(node);
+    if (node.children?.length) {
+      stack.push(...node.children);
+    }
+  }
+  return result;
+}
+
 async function main() {
   const factory = loadOcctFactory();
   const m = await factory();
 
   const multiRootStep = new Uint8Array(readFileSync(resolve("test", "two_free_shapes.step")));
   const igesFixture = new Uint8Array(readFileSync(resolve("test", "cube_10x10.igs")));
+  const realisticMultiRootStep = new Uint8Array(readFileSync(resolve("test", "chassis-2roots.stp")));
+  const inchStep = new Uint8Array(readFileSync(resolve("test", "as1-oc-214_inches.stp")));
 
   const stepDefault = m.ReadStepFile(multiRootStep, {});
   assert(stepDefault.success, "ReadStepFile default import should succeed for two_free_shapes.step");
@@ -34,6 +49,25 @@ async function main() {
   const stepDispatch = m.ReadFile("step", multiRootStep, { rootMode: "multiple-shapes" });
   assert(stepDispatch.success, "ReadFile(step) multiple-shapes import should succeed");
   assert(stepDispatch.rootNodes.length === stepMultiple.rootNodes.length, "ReadFile(step) should match ReadStepFile root count");
+
+  const realisticDefault = m.ReadStepFile(realisticMultiRootStep, {});
+  assert(realisticDefault.success, "ReadStepFile default import should succeed for chassis-2roots.stp");
+  assert(realisticDefault.rootNodes.length === 1, `default realistic STEP rootMode should return one root, got ${realisticDefault.rootNodes.length}`);
+
+  const realisticMultiple = m.ReadStepFile(realisticMultiRootStep, { rootMode: "multiple-shapes" });
+  assert(realisticMultiple.success, "ReadStepFile multiple-shapes import should succeed for chassis-2roots.stp");
+  assert(realisticMultiple.rootNodes.length > 1, `realistic STEP multiple-shapes should return more than one root, got ${realisticMultiple.rootNodes.length}`);
+
+  const realisticDispatch = m.ReadFile("step", realisticMultiRootStep, { rootMode: "multiple-shapes" });
+  assert(realisticDispatch.success, "ReadFile(step) multiple-shapes import should succeed for chassis-2roots.stp");
+  assert(realisticDispatch.rootNodes.length === realisticMultiple.rootNodes.length, "ReadFile(step) should match realistic STEP root count");
+
+  const inchStepDefault = m.ReadStepFile(inchStep, {});
+  assert(inchStepDefault.success, "ReadStepFile default import should succeed for as1-oc-214_inches.stp");
+  assert(typeof inchStepDefault.sourceUnit === "string" && inchStepDefault.sourceUnit.length > 0, "inch STEP import should report sourceUnit");
+  assert(typeof inchStepDefault.unitScaleToMeters === "number" && inchStepDefault.unitScaleToMeters > 0, "inch STEP import should report a positive unitScaleToMeters");
+  const inchNodes = flattenNodes(inchStepDefault.rootNodes);
+  assert(inchNodes.length > 0, "inch STEP import should produce at least one node");
 
   const igesDefault = m.ReadIgesFile(igesFixture, {});
   assert(igesDefault.success, "ReadIgesFile default import should succeed");

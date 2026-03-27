@@ -86,7 +86,8 @@ The first adoption wave should focus on formats and behaviors already in scope f
 - `STEP` colors
 - `STEP` units
 - `IGES` realistic solid import
-- `BREP` isolated parts / compound splitting
+- `BREP` realistic import success
+- `BREP` compound splitting
 
 ## Proposed Initial Fixture Set
 
@@ -146,7 +147,7 @@ Purpose:
 - realistic IGES coverage beyond the tiny in-repo cube fixture
 - validate that the IGES path remains healthy on a larger solid model
 
-### BREP Isolated Components / Compound Split
+### BREP Realistic Import Success
 
 Source:
 
@@ -154,7 +155,18 @@ Source:
 
 Purpose:
 
-- validate `BREP rootMode: "multiple-shapes"` on a realistic isolated-components case
+- realistic BREP coverage beyond the older in-repo fixture set
+- verify import success and triangle generation on a production-style BREP
+
+### BREP Compound Split
+
+Source:
+
+- `E:\Coding\AnalysisSitus\data\public\cad\nonmanifold_cells.brep`
+
+Purpose:
+
+- validate `BREP rootMode: "multiple-shapes"` on a file that actually exposes multiple roots
 - protect compound splitting semantics against regressions
 
 ## Test Integration Rules
