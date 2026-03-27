@@ -1,10 +1,9 @@
-import { createRequire } from "module";
 import { readFileSync } from "fs";
 import { dirname, resolve } from "path";
 import { fileURLToPath } from "url";
+import { loadOcctFactory } from "./load_occt_factory.mjs";
 
-const require = createRequire(import.meta.url);
-const factory = require("../dist/occt-js.js");
+const factory = loadOcctFactory();
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 function assert(condition, message) {

@@ -3,9 +3,8 @@
  * Run with: node test/test_mvp_acceptance.mjs
  */
 import { readFileSync } from "fs";
-import { createRequire } from "module";
-const require = createRequire(import.meta.url);
-const factory = require("../dist/occt-js.js");
+import { loadOcctFactory } from "./load_occt_factory.mjs";
+const factory = loadOcctFactory();
 
 let passed = 0;
 let failed = 0;

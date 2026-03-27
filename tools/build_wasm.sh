@@ -14,6 +14,8 @@ DIST_DIR="$PROJECT_DIR/dist"
 mkdir -p "$BUILD_DIR"
 mkdir -p "$DIST_DIR"
 
+node "$PROJECT_DIR/tools/check_wasm_prereqs.mjs" unix dist-types
+
 echo "=== Configuring with emcmake ==="
 cd "$BUILD_DIR"
 emcmake cmake "$PROJECT_DIR" -DCMAKE_BUILD_TYPE=Release
@@ -34,3 +36,4 @@ fi
 echo "=== Build complete ==="
 echo "Output: $DIST_DIR/occt-js.js"
 echo "Output: $DIST_DIR/occt-js.wasm"
+echo "Tracked types: $DIST_DIR/occt-js.d.ts"

@@ -9,6 +9,24 @@ project(OcctJS)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+set(OcctGeneratedIncludeDir "${CMAKE_CURRENT_BINARY_DIR}/inc")
+file(MAKE_DIRECTORY "${OcctGeneratedIncludeDir}")
+
+include("${CMAKE_CURRENT_SOURCE_DIR}/occt/adm/cmake/version.cmake")
+
+string(TIMESTAMP OCCT_VERSION_DATE "%Y-%m-%d" UTC)
+set(SET_OCC_VERSION_DEVELOPMENT "")
+if (NOT "${OCC_VERSION_DEVELOPMENT}" STREQUAL ""
+    AND NOT "${OCC_VERSION_DEVELOPMENT}" STREQUAL "OCC_VERSION_DEVELOPMENT")
+    set(SET_OCC_VERSION_DEVELOPMENT "#define OCC_VERSION_DEVELOPMENT \"${OCC_VERSION_DEVELOPMENT}\"")
+endif()
+
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/occt/adm/templates/Standard_Version.hxx.in"
+    "${OcctGeneratedIncludeDir}/Standard_Version.hxx"
+    @ONLY
+)
+
 # ---------------------------------------------------------------------------
 # Macro: AddOcctModule
 #   Collects all .cxx/.c sources from occt/src/<module> and adds the
@@ -16,7 +34,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 #   does not exist in the current OCCT checkout (prints a warning).
 # ---------------------------------------------------------------------------
 set(OcctSourceFolders)
-set(OcctIncludeDirs)
+set(OcctIncludeDirs "${OcctGeneratedIncludeDir}")
 
 function(AddOcctModule moduleName)
     set(_modDir "${CMAKE_CURRENT_SOURCE_DIR}/occt/src/${moduleName}")
