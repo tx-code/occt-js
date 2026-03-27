@@ -80,6 +80,7 @@ export interface OcctJSResult {
 }
 
 export interface OcctJSReadParams {
+    rootMode?: "one-shape" | "multiple-shapes";
     linearUnit?: "millimeter" | "centimeter" | "meter" | "inch" | "foot";
     linearDeflectionType?: "bounding_box_ratio" | "absolute_value";
     linearDeflection?: number;

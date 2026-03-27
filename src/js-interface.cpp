@@ -190,6 +190,14 @@ ImportParams ParseImportParams(const val& jsParams)
 {
     ImportParams params;
     if (jsParams.typeOf().as<std::string>() == "object" && !jsParams.isNull()) {
+        if (jsParams.hasOwnProperty("rootMode")) {
+            std::string rootMode = jsParams["rootMode"].as<std::string>();
+            if (rootMode == "multiple-shapes") {
+                params.rootMode = ImportParams::RootMode::MultipleShapes;
+            } else {
+                params.rootMode = ImportParams::RootMode::OneShape;
+            }
+        }
         if (jsParams.hasOwnProperty("linearUnit")) {
             std::string linearUnit = jsParams["linearUnit"].as<std::string>();
             if (linearUnit == "millimeter") {

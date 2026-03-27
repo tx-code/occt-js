@@ -90,6 +90,7 @@ const occt = await OcctJS();
 
 const buffer = new Uint8Array(/* ... CAD file bytes ... */);
 const result = occt.ReadFile("step", buffer, {
+    rootMode: "one-shape",
     linearUnit: "millimeter",
     linearDeflectionType: "bounding_box_ratio",
     linearDeflection: 0.1,
@@ -109,6 +110,13 @@ const result = occt.ReadFile("step", buffer, {
 // result.materials     — deduplicated color list
 // result.stats         — { rootCount, nodeCount, partCount, triangleCount, ... }
 ```
+
+`rootMode` currently applies to `STEP` and `IGES` imports:
+
+- `"one-shape"`: default. Multiple top-level XDE free shapes are exposed under one logical root node.
+- `"multiple-shapes"`: preserves each top-level free shape as an independent root node.
+
+`BREP` behavior is unchanged in this phase and still returns a single root.
 
 ## License
 
