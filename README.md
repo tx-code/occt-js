@@ -111,12 +111,12 @@ const result = occt.ReadFile("step", buffer, {
 // result.stats         — { rootCount, nodeCount, partCount, triangleCount, ... }
 ```
 
-`rootMode` currently applies to `STEP` and `IGES` imports:
+`rootMode` behavior by format:
 
 - `"one-shape"`: default. Multiple top-level XDE free shapes are exposed under one logical root node.
 - `"multiple-shapes"`: preserves each top-level free shape as an independent root node.
-
-`BREP` behavior is unchanged in this phase and still returns a single root.
+- `BREP one-shape`: keeps the current single-root behavior.
+- `BREP multiple-shapes`: if the imported file resolves to a compound/compsolid wrapper chain, `occt-js` unwraps single-child wrappers and exposes the first meaningful compound level as multiple root nodes.
 
 ## License
 

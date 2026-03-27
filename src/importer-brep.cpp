@@ -14,6 +14,7 @@
 #include <TopAbs_ShapeEnum.hxx>
 #include <BRep_Builder.hxx>
 #include <BRepTools.hxx>
+#include <TopoDS_Iterator.hxx>
 
 namespace {
 
@@ -67,6 +68,60 @@ void ExtractShapeMeshes(const TopoDS_Shape& shape, OcctSceneData& scene, OcctNod
     }
 }
 
+std::vector<TopoDS_Shape> CollectDirectChildren(const TopoDS_Shape& shape)
+{
+    std::vector<TopoDS_Shape> children;
+    for (TopoDS_Iterator it(shape); it.More(); it.Next()) {
+        if (!it.Value().IsNull()) {
+            children.push_back(it.Value());
+        }
+    }
+    return children;
+}
+
+std::vector<TopoDS_Shape> CollectRootShapes(const TopoDS_Shape& shape, const ImportParams& params)
+{
+    if (params.rootMode != ImportParams::RootMode::MultipleShapes) {
+        return { shape };
+    }
+
+    TopoDS_Shape splitShape = shape;
+    while (splitShape.ShapeType() == TopAbs_COMPOUND || splitShape.ShapeType() == TopAbs_COMPSOLID) {
+        std::vector<TopoDS_Shape> children = CollectDirectChildren(splitShape);
+        if (children.size() != 1) {
+            break;
+        }
+        splitShape = children[0];
+    }
+
+    if (splitShape.ShapeType() != TopAbs_COMPOUND && splitShape.ShapeType() != TopAbs_COMPSOLID) {
+        return { shape };
+    }
+
+    std::vector<TopoDS_Shape> roots = CollectDirectChildren(splitShape);
+
+    if (roots.size() <= 1) {
+        return { shape };
+    }
+
+    return roots;
+}
+
+void AppendRootNode(const TopoDS_Shape& shape,
+                    const std::string& nodeId,
+                    const std::string& nodeName,
+                    OcctSceneData& scene)
+{
+    scene.nodes.emplace_back();
+    OcctNodeData& root = scene.nodes.back();
+    root.id = nodeId;
+    root.name = nodeName;
+    root.isAssembly = false;
+    root.transform = IdentityMatrix();
+
+    ExtractShapeMeshes(shape, scene, root);
+}
+
 } // namespace
 
 OcctSceneData ImportBrepFromMemory(
@@ -95,21 +150,28 @@ OcctSceneData ImportBrepFromMemory(
         TopoDS_Shape meshingShape = shape;
         TriangulateShape(meshingShape, params);
 
-        scene.nodes.emplace_back();
-        OcctNodeData& root = scene.nodes.back();
-        root.id = "0";
-        root.name = fileName.empty() ? "BREP" : fileName;
-        root.isAssembly = false;
-        root.transform = IdentityMatrix();
+        const std::string baseName = fileName.empty() ? "BREP" : fileName;
+        const std::vector<TopoDS_Shape> rootShapes = CollectRootShapes(meshingShape, params);
 
-        ExtractShapeMeshes(meshingShape, scene, root);
+        for (size_t i = 0; i < rootShapes.size(); ++i) {
+            const bool useIndexedName = rootShapes.size() > 1;
+            const std::string nodeName = useIndexedName
+                ? (baseName + " #" + std::to_string(i + 1))
+                : baseName;
 
-        if (root.meshIndices.empty()) {
+            const int rootIndex = static_cast<int>(scene.nodes.size());
+            AppendRootNode(rootShapes[i], std::to_string(rootIndex), nodeName, scene);
+
+            if (!scene.nodes[rootIndex].meshIndices.empty()) {
+                scene.rootNodeIndices.push_back(rootIndex);
+            }
+        }
+
+        if (scene.rootNodeIndices.empty()) {
             scene.error = "No meshable shapes found in BREP file.";
             return scene;
         }
 
-        scene.rootNodeIndices.push_back(0);
         scene.success = true;
     }
     catch (const Standard_Failure& ex) {
