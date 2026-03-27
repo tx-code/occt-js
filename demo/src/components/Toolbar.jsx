@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Button } from "./ui/button";
 import { useViewerStore } from "../store/viewerStore";
 
-export default function Toolbar({ onOpenFile, onFitAll, onCameraView, onSetProjection, onSnapshot }) {
+export default function Toolbar({ chromeIntegrated = false, onOpenFile, onFitAll, onCameraView, onSetProjection, onSnapshot }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const fileName = useViewerStore((s) => s.fileName);
   const facesVisible = useViewerStore((s) => s.facesVisible);
@@ -87,11 +87,14 @@ export default function Toolbar({ onOpenFile, onFitAll, onCameraView, onSetProje
     <div className="absolute top-0 left-0 right-0 z-50 bg-zinc-950/85 backdrop-blur-sm border-b border-zinc-800" data-testid="toolbar">
       {/* Row 1: always visible */}
       <div className="flex items-center gap-2 px-3 py-1.5">
-        <span className="text-cyan-400 font-semibold text-sm">occt-js</span>
-        {sep}
-        <span className="text-zinc-500 text-xs truncate" data-testid="file-name">{fileName}</span>
-
-        <span className="flex-1" />
+        {!chromeIntegrated && (
+          <>
+            <span className="text-cyan-400 font-semibold text-sm">occt-js</span>
+            {sep}
+            <span className="text-zinc-500 text-xs truncate" data-testid="file-name">{fileName}</span>
+            <span className="flex-1" />
+          </>
+        )}
 
         {/* Desktop: all buttons inline */}
         <div className="hidden md:flex items-center gap-2">

@@ -1,9 +1,11 @@
 import { useRef, useEffect, useCallback } from "react";
+import { convertFileSrc, isTauri } from "@tauri-apps/api/core";
+import { resolveResource } from "@tauri-apps/api/path";
 import { useViewerStore } from "../store/viewerStore";
 
 const CDN = "https://unpkg.com/@tx-code/occt-js@0.1.4/dist/";
 
-function getDistBase() {
+function getWebDistBase() {
   if (import.meta.env.DEV) {
     const localDist = new URL("../../../dist/", import.meta.url).href;
     return localDist.endsWith("/") ? localDist : `${localDist}/`;
@@ -14,19 +16,56 @@ function getDistBase() {
 export function useOcct() {
   const moduleRef = useRef(null);
   const modulePromiseRef = useRef(null);
-  const distBaseRef = useRef(getDistBase());
+  const runtimeRef = useRef(null);
+  const runtimePromiseRef = useRef(null);
   const setModel = useViewerStore((s) => s.setModel);
   const setLoading = useViewerStore((s) => s.setLoading);
   const setLoadingMessage = useViewerStore((s) => s.setLoadingMessage);
+
+  const ensureRuntime = useCallback(async () => {
+    if (runtimeRef.current) return runtimeRef.current;
+    if (runtimePromiseRef.current) return runtimePromiseRef.current;
+
+    runtimePromiseRef.current = (async () => {
+      if (isTauri()) {
+        const [jsPath, wasmPath] = await Promise.all([
+          resolveResource("dist/occt-js.js"),
+          resolveResource("dist/occt-js.wasm"),
+        ]);
+        return {
+          moduleUrl: convertFileSrc(jsPath),
+          locateFile: () => convertFileSrc(wasmPath),
+        };
+      }
+
+      const distBase = getWebDistBase();
+      return {
+        moduleUrl: distBase + "occt-js.js",
+        locateFile: (fileName) => distBase + fileName,
+      };
+    })()
+      .then((runtime) => {
+        runtimeRef.current = runtime;
+        return runtime;
+      })
+      .catch((error) => {
+        runtimePromiseRef.current = null;
+        throw error;
+      });
+
+    return runtimePromiseRef.current;
+  }, []);
 
   const ensureModule = useCallback(async () => {
     if (moduleRef.current) return moduleRef.current;
     if (modulePromiseRef.current) return modulePromiseRef.current;
 
     modulePromiseRef.current = (async () => {
+      const runtime = await ensureRuntime();
+
       if (!window.OcctJS) {
         const script = document.createElement("script");
-        script.src = distBaseRef.current + "occt-js.js";
+        script.src = runtime.moduleUrl;
         document.head.appendChild(script);
         await new Promise((resolve, reject) => {
           script.onload = resolve;
@@ -34,7 +73,7 @@ export function useOcct() {
         });
       }
 
-      const module = await window.OcctJS({ locateFile: (f) => distBaseRef.current + f });
+      const module = await window.OcctJS({ locateFile: runtime.locateFile });
       moduleRef.current = module;
       return module;
     })().catch((error) => {
@@ -43,7 +82,7 @@ export function useOcct() {
     });
 
     return modulePromiseRef.current;
-  }, []);
+  }, [ensureRuntime]);
 
   useEffect(() => {
     ensureModule().catch(() => {});
