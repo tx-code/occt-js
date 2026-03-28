@@ -89,11 +89,60 @@ export interface OcctJSReadParams {
     readColors?: boolean;
 }
 
+export interface OcctJSOrientationPresetAxis {
+    origin?: [number, number, number];
+    direction?: [number, number, number];
+}
+
+export interface OcctJSOrientationParams {
+    linearUnit?: "millimeter" | "centimeter" | "meter" | "inch" | "foot";
+    mode?: "manufacturing";
+    presetAxis?: OcctJSOrientationPresetAxis;
+}
+
+export interface OcctJSOrientationFrame {
+    origin: [number, number, number];
+    xDir: [number, number, number];
+    yDir: [number, number, number];
+    zDir: [number, number, number];
+}
+
+export interface OcctJSOrientationBbox {
+    dx: number;
+    dy: number;
+    dz: number;
+}
+
+export interface OcctJSOrientationStage1 {
+    baseFaceId?: number;
+    usedCylinderSupport: boolean;
+    detectedAxis: [number, number, number];
+}
+
+export interface OcctJSOrientationStage2 {
+    rotationAroundZDeg: number;
+}
+
+export interface OcctJSOrientationResult {
+    success: boolean;
+    error?: string;
+    transform?: number[];
+    localFrame?: OcctJSOrientationFrame;
+    bbox?: OcctJSOrientationBbox;
+    strategy?: string;
+    stage1?: OcctJSOrientationStage1;
+    stage2?: OcctJSOrientationStage2;
+    confidence?: number;
+    sourceUnit?: string;
+    unitScaleToMeters?: number;
+}
+
 export interface OcctJSModule {
     ReadFile(format: string, content: Uint8Array, params?: OcctJSReadParams): OcctJSResult;
     ReadStepFile(content: Uint8Array, params?: OcctJSReadParams): OcctJSResult;
     ReadIgesFile(content: Uint8Array, params?: OcctJSReadParams): OcctJSResult;
     ReadBrepFile(content: Uint8Array, params?: OcctJSReadParams): OcctJSResult;
+    AnalyzeOptimalOrientation(format: OcctFormat, content: Uint8Array, params?: OcctJSOrientationParams): OcctJSOrientationResult;
 }
 
 declare function OcctJS(options?: {

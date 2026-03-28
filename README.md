@@ -10,6 +10,7 @@ WebAssembly build of [OpenCASCADE Technology (OCCT)](https://dev.opencascade.org
 - Full B-Rep topology output (Face/Edge/Vertex with stable IDs and adjacency)
 - XDE assembly tree traversal with names and per-face colors
 - BRepMesh triangulation with configurable deflection
+- Manufacturing-oriented single-part orientation analysis for STEP / IGES / BREP
 - Embind-based API returning a structured scene graph
 - Babylon.js demo with interactive face/edge/vertex selection
 
@@ -117,6 +118,43 @@ const result = occt.ReadFile("step", buffer, {
 - `"multiple-shapes"`: preserves each top-level free shape as an independent root node.
 - `BREP one-shape`: keeps the current single-root behavior.
 - `BREP multiple-shapes`: if the imported file resolves to a compound/compsolid wrapper chain, `occt-js` unwraps single-child wrappers and exposes the first meaningful compound level as multiple root nodes.
+
+## Orientation Analysis
+
+`occt-js` also exposes a separate manufacturing-oriented orientation analysis API for single parts:
+
+```js
+const orientation = occt.AnalyzeOptimalOrientation("step", buffer, {
+    mode: "manufacturing",
+    linearUnit: "millimeter"
+});
+
+if (orientation.success) {
+    // 4x4 transform that aligns the part into its suggested working pose.
+    console.log(orientation.transform);
+
+    // Local reference frame derived from the oriented bounding box.
+    console.log(orientation.localFrame);
+
+    // Analysis diagnostics.
+    console.log(orientation.strategy);   // e.g. "planar-base-with-cylinder-support+projected-min-area-rect"
+    console.log(orientation.stage1);     // base face / detected axis
+    console.log(orientation.stage2);     // rotationAroundZDeg
+    console.log(orientation.confidence); // 0..1 heuristic score
+}
+```
+
+Supported formats for `AnalyzeOptimalOrientation(...)`:
+
+- `step`
+- `iges`
+- `brep`
+
+Current scope:
+
+- single-part / `one-shape` analysis
+- manufacturing-oriented heuristic based on exact B-Rep geometry
+- optional `presetAxis` override to constrain stage 1 alignment
 
 ## License
 
