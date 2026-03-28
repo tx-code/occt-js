@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { Button } from "./ui/button";
 import { useViewerStore } from "../store/viewerStore";
+import AutoOrientToggle from "./AutoOrientToggle";
 
 export default function Toolbar({ chromeIntegrated = false, onOpenFile, onFitAll, onCameraView, onSetProjection, onSnapshot }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -101,6 +102,7 @@ export default function Toolbar({ chromeIntegrated = false, onOpenFile, onFitAll
           <Button size="sm" variant="ghost" onClick={onOpenFile} data-testid="open-file">
             Open
           </Button>
+          <AutoOrientToggle testId="auto-orient-checkbox-toolbar" />
           {sep}
           {cameraPresets}
           {sep}
@@ -134,6 +136,12 @@ export default function Toolbar({ chromeIntegrated = false, onOpenFile, onFitAll
       {menuOpen && (
         <div className="md:hidden border-t border-zinc-800 px-3 py-1.5">
           <div className="flex items-start gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className={mobileGroupClass}>
+              <div className="mb-0.5 px-1 text-[9px] uppercase tracking-[0.18em] text-zinc-500">Import</div>
+              <div className="flex items-center gap-1 whitespace-nowrap px-1 py-1">
+                <AutoOrientToggle testId="auto-orient-checkbox-mobile" />
+              </div>
+            </div>
             <div className={mobileGroupClass}>
               <div className="mb-0.5 px-1 text-[9px] uppercase tracking-[0.18em] text-zinc-500">View</div>
               <div className="flex items-center gap-1 whitespace-nowrap">{cameraPresets}</div>

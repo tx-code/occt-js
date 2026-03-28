@@ -2,6 +2,7 @@ import { useRef, useEffect, useCallback } from "react";
 import { convertFileSrc, isTauri } from "@tauri-apps/api/core";
 import { resolveResource } from "@tauri-apps/api/path";
 import { useViewerStore } from "../store/viewerStore";
+import { getOcctFormatFromFileName, resolveAutoOrientedResult } from "../lib/auto-orient";
 
 const CDN = "https://unpkg.com/@tx-code/occt-js@0.1.4/dist/";
 
@@ -92,9 +93,7 @@ export function useOcct() {
     setLoading(true, "Loading engine...");
     try {
       const occt = await ensureModule();
-      const ext = file.name.toLowerCase().split(".").pop();
-      const formatMap = { step: "step", stp: "step", iges: "iges", igs: "iges", brep: "brep", brp: "brep" };
-      const format = formatMap[ext];
+      const format = getOcctFormatFromFileName(file.name);
       if (!format) throw new Error("Unsupported format: " + file.name);
 
       const buffer = await file.arrayBuffer();
@@ -106,8 +105,24 @@ export function useOcct() {
 
       if (!result.success) throw new Error(result.error || "Import failed");
 
-      setModel(result, file.name);
-      return result;
+      let finalResult = result;
+      if (useViewerStore.getState().autoOrientEnabled) {
+        setLoadingMessage("Analyzing orientation...");
+        try {
+          finalResult = await resolveAutoOrientedResult({
+            occt,
+            format,
+            bytes,
+            result,
+            autoOrientEnabled: true,
+          });
+        } catch (error) {
+          console.warn("Auto orient failed for", file.name, error);
+        }
+      }
+
+      setModel(finalResult, file.name);
+      return finalResult;
     } finally {
       setLoading(false);
     }

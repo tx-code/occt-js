@@ -30,6 +30,12 @@ test("shows drop zone on initial load", async ({ page }) => {
   await expect(page.locator("[data-testid='toolbar']")).toBeHidden();
 });
 
+test("auto orient is enabled by default", async ({ page }) => {
+  await expect(page.locator("[data-testid='auto-orient-checkbox-empty']")).toBeChecked();
+  await loadFixture(page);
+  await expect(page.locator("[data-testid='auto-orient-checkbox-toolbar']")).toBeChecked();
+});
+
 test("preloads occt engine on initial load", async ({ page }) => {
   await expect(page.locator("script[src*='occt-js.js']")).toHaveCount(1, { timeout: 15_000 });
 });

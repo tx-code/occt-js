@@ -1,6 +1,7 @@
 // demo/src/components/DropZone.jsx
 import { useCallback, useState } from "react";
 import { Button } from "./ui/button";
+import AutoOrientToggle from "./AutoOrientToggle";
 
 export default function DropZone({ onFile, onSample, visible }) {
   const [dragOver, setDragOver] = useState(false);
@@ -44,6 +45,9 @@ export default function DropZone({ onFile, onSample, visible }) {
             sample file
           </a>
         </p>
+        <div className="mt-4">
+          <AutoOrientToggle testId="auto-orient-checkbox-empty" className="justify-center" />
+        </div>
       </div>
     </div>
   );
