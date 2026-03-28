@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add a C++/Wasm `AnalyzeOptimalOrientation()` API for single-part `STEP`/`IGES`/`BREP` inputs, modeled on the AnalysisSitus reference workflow, and return a Babylon-friendly transform plus diagnostics.
+**Goal:** Add a C++/Wasm `AnalyzeOptimalOrientation()` API for single-part `STEP`/`IGES`/`BREP` inputs, modeled on a stronger B-Rep-based reference workflow, and return a Babylon-friendly transform plus diagnostics.
 
 **Architecture:** Keep orientation analysis separate from the existing import API. Add a dedicated C++ orientation module that loads a single OCCT shape from in-memory bytes, runs a two-stage manufacturing-oriented orientation analysis, and marshals the result through Embind. Reuse existing readers and the existing matrix convention rather than mutating the `Read*` pipeline.
 
@@ -376,12 +376,12 @@ git add src/orientation.cpp
 git commit -m "feat: add orientation shape-loading path"
 ```
 
-### Task 5: Implement AnalysisSitus-like Stage 1 machining-axis detection
+### Task 5: Implement reference-style Stage 1 machining-axis detection
 
 **Files:**
 - Modify: `E:/Coding/occt-js.worktrees/occtjs-core-next/src/orientation.cpp`
 - Reference:
-  - `E:/Coding/AnalysisSitus/src/asiAlgo/auxiliary/asiAlgo_OrientCnc.cpp`
+  - existing external machining-orientation workflow notes used during design
 
 - [ ] **Step 1: Write the minimal Stage 1 result structure**
 
@@ -398,7 +398,7 @@ Use OCCT exact geometry to:
 
 - collect planar faces
 - compute exact face areas
-- discard very small planar faces using an internal threshold similar to AnalysisSitus
+- discard very small planar faces using an internal threshold similar to the reference workflow
 - collect cylindrical axes
 
 - [ ] **Step 3: Implement candidate ranking and fallback**
@@ -412,7 +412,7 @@ Algorithm:
 
 - [ ] **Step 4: Compute the Stage 1 transform**
 
-Align the detected axis to `OZ`, or if `presetAxis` is set, honor it in the same spirit as the AnalysisSitus preset-axis path.
+Align the detected axis to `OZ`, or if `presetAxis` is set, honor it in the same spirit as the reference preset-axis path.
 
 - [ ] **Step 5: Rebuild and run the invariant test**
 
@@ -444,7 +444,7 @@ git commit -m "feat: add orientation stage1 axis detection"
 **Files:**
 - Modify: `E:/Coding/occt-js.worktrees/occtjs-core-next/src/orientation.cpp`
 - Reference:
-  - `E:/Coding/AnalysisSitus/src/asiAlgo/auxiliary/asiAlgo_FindOptimalOrientation.cpp`
+  - existing external projected-orientation workflow notes used during design
 
 - [ ] **Step 1: Implement triangulation preflight**
 
@@ -504,7 +504,7 @@ git commit -m "feat: add orientation stage2 refinement"
 
 - [ ] **Step 1: Implement oriented bbox and local-frame extraction**
 
-Follow the AnalysisSitus convention:
+Follow the reference convention:
 
 - `xDir` = longest axis
 - `yDir` = medium axis

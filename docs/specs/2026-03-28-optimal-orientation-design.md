@@ -22,18 +22,12 @@ The API should expose a recommended transform and diagnostics. It should not sil
 
 The current `occt-js` API can import CAD data and expose triangulation plus topology-oriented scene payloads, but it does not expose an algorithm for determining a manufacturing-friendly part orientation.
 
-For simple viewer UX, a downstream application can derive a rough orientation from mesh data. That is not sufficient for a result comparable to AnalysisSitus.
+For simple viewer UX, a downstream application can derive a rough orientation from mesh data. That is not sufficient for a result comparable to a stronger B-Rep-based reference workflow.
 
-The AnalysisSitus reference implementation does not treat orientation as a pure mesh problem. Its algorithm first reasons over exact B-Rep geometry and only then uses projection-based refinement:
+A suitable reference implementation does not treat orientation as a pure mesh problem. Its algorithm first reasons over exact B-Rep geometry and only then uses projection-based refinement:
 
 - `asiAlgo_OrientCnc` inspects planar and cylindrical faces, areas, and candidate machining axes
 - `asiAlgo_FindOptimalOrientation` then refines rotation around `Z` using discrete HLR projection and a minimum-area rectangle
-
-Relevant references:
-
-- [asiAlgo_OrientCnc.cpp](E:/Coding/AnalysisSitus/src/asiAlgo/auxiliary/asiAlgo_OrientCnc.cpp)
-- [asiAlgo_FindOptimalOrientation.cpp](E:/Coding/AnalysisSitus/src/asiAlgo/auxiliary/asiAlgo_FindOptimalOrientation.cpp)
-- [features_smru-orientation.html](E:/Coding/AnalysisSitus/docs/www/featuresext/features_smru-orientation.html)
 
 If `occt-js` leaves this entirely to JavaScript, downstream code must either:
 
@@ -58,7 +52,7 @@ This design does not cover:
 - automatic mutation of `ReadFile` / `ReadStepFile` / `ReadIgesFile` / `ReadBrepFile`
 - Babylon runtime code
 - point-cloud or mesh-native formats
-- full replication of every AnalysisSitus orientation rule
+- full replication of every reference-orientation rule
 
 ## Why This Belongs In C++
 
@@ -78,9 +72,9 @@ Those capabilities already exist naturally at the OCCT level. Rebuilding them in
 
 For this feature, `occt-js` should provide the algorithm, not merely the raw ingredients.
 
-## Reference Behavior In AnalysisSitus
+## Reference Behavior
 
-The AnalysisSitus workflow relevant to this design has two main stages.
+The reference workflow relevant to this design has two main stages.
 
 ### Stage 1: Identify A Machining-Oriented Axis
 
@@ -111,7 +105,7 @@ This makes the final in-plane orientation tighter and more stable for flat or qu
 
 ### Local Reference Frame
 
-AnalysisSitus also reports a local reference frame derived from the oriented bounding box:
+The reference workflow also reports a local reference frame derived from the oriented bounding box:
 
 - `X` = longest box direction
 - `Y` = medium direction
@@ -156,7 +150,7 @@ interface OcctJSOrientationParams {
 Notes:
 
 - `mode` exists to reserve space for future variants, but the only supported mode in v1 is `"manufacturing"`
-- `presetAxis` mirrors the preset-axis concept in AnalysisSitus and allows constrained turning scenarios
+- `presetAxis` mirrors the preset-axis concept in the reference workflow and allows constrained turning scenarios
 - implementation thresholds should remain internal in v1
 
 Do not expose algorithm tuning knobs yet:
@@ -225,7 +219,7 @@ Recommended shape:
 
 1. Parse bytes to `TopoDS_Shape` using the existing import readers
 2. Normalize to the single-part / `one-shape` path
-3. Run a new orientation-analysis routine modeled on the AnalysisSitus flow
+3. Run a new orientation-analysis routine modeled on the reference flow
 4. Return the computed transform and diagnostics through Embind
 
 ### Internal Structure
@@ -249,7 +243,7 @@ Responsibilities:
 
 ## First-Phase Algorithm Boundary
 
-The first implementation should cover the core AnalysisSitus path but not every special case.
+The first implementation should cover the core reference path but not every special case.
 
 ### Include In Phase 1
 
@@ -288,7 +282,7 @@ Add focused coverage for:
 - `localFrame` directions are orthonormal within tolerance
 - `strategy` and `stage1/stage2` fields are populated consistently
 
-The AnalysisSitus-derived fixtures already added under `test/` are the right place to start.
+The realistic reference fixtures already added under `test/` are the right place to start.
 
 ## Non-Goals
 

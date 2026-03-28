@@ -1,4 +1,4 @@
-# AnalysisSitus Regression Fixture Selection Design
+# Realistic CAD Regression Fixture Selection Design
 
 Date: 2026-03-27
 Status: Approved design
@@ -7,15 +7,15 @@ Target branch: `feature/occtjs-core-next`
 
 ## Purpose
 
-This document defines how `occt-js` should adopt a small set of representative regression fixtures from `E:\Coding\AnalysisSitus\data\public`.
+This document defines how `occt-js` should adopt a small set of representative regression fixtures from an external CAD sample corpus.
 
 The goal is not to mirror the external dataset. The goal is to bring a curated set of realistic CAD files into `occt-js/test` so that importer behavior is reproducible inside this repository without depending on local external paths.
 
-## Why Use AnalysisSitus Fixtures
+## Why Use External Reference Fixtures
 
 The existing in-repo fixtures are useful, but several of them are synthetic or minimal. They are good for targeted checks, but they do not fully represent the kinds of real-world CAD files downstream consumers will import.
 
-`AnalysisSitus\data\public` already contains realistic STEP, IGES, and BREP samples with enough variation to test:
+The external sample corpus already contains realistic STEP, IGES, and BREP samples with enough variation to test:
 
 - multiple top-level roots
 - names
@@ -43,9 +43,9 @@ Cons:
 - requires manual curation
 - fixture set must be maintained intentionally
 
-### Option 2: Bulk Mirror Of AnalysisSitus Samples
+### Option 2: Bulk Mirror Of External Sample Corpus
 
-Copy a large part of `AnalysisSitus\data\public` into this repository.
+Copy a large part of the external sample corpus into this repository.
 
 Pros:
 
@@ -59,7 +59,7 @@ Cons:
 
 ### Option 3: External Dataset Dependency
 
-Keep files outside the repo and point tests at `E:\Coding\AnalysisSitus\data\public`.
+Keep files outside the repo and point tests at an external local sample corpus.
 
 Pros:
 
@@ -95,7 +95,7 @@ The first adoption wave should focus on formats and behaviors already in scope f
 
 Source:
 
-- `E:\Coding\AnalysisSitus\data\public\cad\chassis-2roots.stp`
+- external sample corpus: `cad/chassis-2roots.stp`
 
 Purpose:
 
@@ -107,7 +107,7 @@ Purpose:
 
 Source:
 
-- `E:\Coding\AnalysisSitus\data\public\cad\ANC101_colored.stp`
+- external sample corpus: `cad/ANC101_colored.stp`
 
 Purpose:
 
@@ -118,7 +118,7 @@ Purpose:
 
 Source:
 
-- `E:\Coding\AnalysisSitus\data\public\cad\as1-oc-214_inches.stp`
+- external sample corpus: `cad/as1-oc-214_inches.stp`
 
 Purpose:
 
@@ -129,7 +129,7 @@ Purpose:
 
 Source:
 
-- `E:\Coding\AnalysisSitus\data\public\cad\gehause_rohteil_with-names.STEP`
+- external sample corpus: `cad/gehause_rohteil_with-names.STEP`
 
 Purpose:
 
@@ -140,7 +140,7 @@ Purpose:
 
 Source:
 
-- `E:\Coding\AnalysisSitus\data\public\cad\bearing.igs`
+- external sample corpus: `cad/bearing.igs`
 
 Purpose:
 
@@ -151,7 +151,7 @@ Purpose:
 
 Source:
 
-- `E:\Coding\AnalysisSitus\data\public\cad\ANC101_isolated_components.brep`
+- external sample corpus: `cad/ANC101_isolated_components.brep`
 
 Purpose:
 
@@ -162,7 +162,7 @@ Purpose:
 
 Source:
 
-- `E:\Coding\AnalysisSitus\data\public\cad\nonmanifold_cells.brep`
+- external sample corpus: `cad/nonmanifold_cells.brep`
 
 Purpose:
 
@@ -186,7 +186,7 @@ This work does not mean:
 
 - importing mesh-only formats into `occt-js`
 - importing point-cloud formats into `occt-js`
-- copying all of `AnalysisSitus\data\public` into this repository
+- copying the entire external sample corpus into this repository
 
 The fixture expansion remains limited to realistic regression coverage for already supported `STEP`, `IGES`, and `BREP` import behavior.
 
