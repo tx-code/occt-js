@@ -2,6 +2,10 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { loadOcctFactory } from "./load_occt_factory.mjs";
 
+const GOLDEN = JSON.parse(readFileSync(resolve("test", "orientation_reference_golden.json"), "utf8"));
+const ABS_TOL = 1e-6;
+const REL_TOL = 1e-5;
+
 function assert(condition, message) {
   if (!condition) {
     throw new Error(message);
@@ -30,35 +34,27 @@ function assertSortedBbox(bbox, label) {
   assert(bbox.dy >= bbox.dz, `${label}: bbox.dy should be >= bbox.dz`);
 }
 
+function assertNear(actual, expected, label, absTol = ABS_TOL, relTol = REL_TOL) {
+  const tol = Math.max(absTol, Math.abs(expected) * relTol);
+  assert(Math.abs(actual - expected) <= tol, `${label}: expected ${expected}, got ${actual}, tol=${tol}`);
+}
+
+function assertVectorNear(actual, expected, label) {
+  assert(Array.isArray(actual) && actual.length === expected.length, `${label}: vector length mismatch`);
+  for (let i = 0; i < expected.length; i += 1) {
+    assertNear(actual[i], expected[i], `${label}[${i}]`);
+  }
+}
+
 async function main() {
   const factory = loadOcctFactory();
   const m = await factory();
 
-  const cases = [
-    {
-      format: "step",
-      fixture: "ANC101.stp",
-      expectedStrategy: "planar-base-with-cylinder-support",
-      minConfidence: 0.9,
-      expectsCylinderSupport: true,
-    },
-    {
-      format: "iges",
-      fixture: "bearing.igs",
-      expectedStrategy: "principal-inertia-fallback+projected-min-area-rect",
-      minConfidence: 0.5,
-      expectsCylinderSupport: false,
-    },
-    {
-      format: "brep",
-      fixture: "ANC101_isolated_components.brep",
-      expectedStrategy: "planar-base-with-cylinder-support",
-      minConfidence: 0.9,
-      expectsCylinderSupport: true,
-    },
-  ];
+  const cases = ["step", "iges", "brep"];
 
-  for (const { format, fixture, expectedStrategy, minConfidence, expectsCylinderSupport } of cases) {
+  for (const format of cases) {
+    const golden = GOLDEN[format];
+    const fixture = golden.fixture;
     const bytes = new Uint8Array(readFileSync(resolve("test", fixture)));
     const result = m.AnalyzeOptimalOrientation(format, bytes, { mode: "manufacturing" });
     assert(result.success, `${fixture}: orientation analysis should succeed`);
@@ -68,9 +64,25 @@ async function main() {
     assert(result.stage2, `${fixture}: stage2 diagnostics should be present`);
     assert(Array.isArray(result.stage1.detectedAxis) && result.stage1.detectedAxis.length === 3, `${fixture}: stage1.detectedAxis should be a 3D vector`);
     assert(typeof result.stage2.rotationAroundZDeg === "number", `${fixture}: stage2.rotationAroundZDeg should be numeric`);
-    assert(result.strategy === expectedStrategy, `${fixture}: strategy should be ${expectedStrategy}, got ${result.strategy}`);
-    assert(result.confidence >= minConfidence, `${fixture}: confidence should be >= ${minConfidence}, got ${result.confidence}`);
-    assert(result.stage1.usedCylinderSupport === expectsCylinderSupport, `${fixture}: usedCylinderSupport should be ${expectsCylinderSupport}`);
+    assert(result.strategy === golden.strategy, `${fixture}: strategy should be ${golden.strategy}, got ${result.strategy}`);
+    assert(result.stage1.usedCylinderSupport === golden.usedCylinderSupport, `${fixture}: usedCylinderSupport should be ${golden.usedCylinderSupport}`);
+    assertNear(result.confidence, golden.confidence, `${fixture}: confidence`, 1e-9, 1e-9);
+    assertNear(result.stage2.rotationAroundZDeg, golden.rotationAroundZDeg, `${fixture}: rotationAroundZDeg`, 1e-5, 1e-5);
+    assertVectorNear(result.stage1.detectedAxis, golden.detectedAxis, `${fixture}: detectedAxis`);
+    assertVectorNear(result.transform, golden.transform, `${fixture}: transform`);
+    assertVectorNear(result.localFrame.origin, golden.localFrame.origin, `${fixture}: localFrame.origin`);
+    assertVectorNear(result.localFrame.xDir, golden.localFrame.xDir, `${fixture}: localFrame.xDir`);
+    assertVectorNear(result.localFrame.yDir, golden.localFrame.yDir, `${fixture}: localFrame.yDir`);
+    assertVectorNear(result.localFrame.zDir, golden.localFrame.zDir, `${fixture}: localFrame.zDir`);
+    assertNear(result.bbox.dx, golden.bbox.dx, `${fixture}: bbox.dx`);
+    assertNear(result.bbox.dy, golden.bbox.dy, `${fixture}: bbox.dy`);
+    assertNear(result.bbox.dz, golden.bbox.dz, `${fixture}: bbox.dz`);
+    if (golden.sourceUnit) {
+      assert(result.sourceUnit === golden.sourceUnit, `${fixture}: sourceUnit should be ${golden.sourceUnit}, got ${result.sourceUnit}`);
+    }
+    if (golden.unitScaleToMeters !== undefined) {
+      assertNear(result.unitScaleToMeters, golden.unitScaleToMeters, `${fixture}: unitScaleToMeters`, 1e-12, 1e-12);
+    }
     assertOrthonormal(result.localFrame, fixture);
     assertSortedBbox(result.bbox, fixture);
   }
