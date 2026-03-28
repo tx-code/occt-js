@@ -23,6 +23,7 @@ const model = await core.importModel(stepBytes, {
   format: "step",
   fileName: "part.step",
   importParams: {
+    rootMode: "one-shape",
     linearDeflectionType: "bounding_box_ratio",
     linearDeflection: 0.001,
     angularDeflection: 0.5,

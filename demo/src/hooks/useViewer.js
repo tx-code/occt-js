@@ -1,6 +1,7 @@
 // demo/src/hooks/useViewer.js
 import { useRef, useEffect, useCallback } from "react";
 import { useViewerStore } from "../store/viewerStore";
+import { getCameraAttachOptions } from "../lib/camera-input.js";
 
 export function useViewer(canvasRef) {
   const engineRef = useRef(null);
@@ -11,6 +12,24 @@ export function useViewer(canvasRef) {
   const edgeLinesRef = useRef([]);
   const transformNodesRef = useRef([]);
   const gridMeshesRef = useRef([]);
+
+  const clearScene = useCallback(() => {
+    const scene = sceneRef.current;
+    if (!scene) return;
+
+    for (const m of meshesRef.current) m.dispose();
+    for (const l of edgeLinesRef.current) l.dispose();
+    for (const t of transformNodesRef.current) t.dispose();
+    for (const g of gridMeshesRef.current) g.dispose();
+    meshesRef.current = [];
+    edgeLinesRef.current = [];
+    transformNodesRef.current = [];
+    gridMeshesRef.current = [];
+    meshGeoMapRef.current.clear();
+    scene.materials.slice().forEach((m) => {
+      if (m.name.startsWith("mat_") || m.name === "gridMat") m.dispose();
+    });
+  }, []);
 
   // Initialize Babylon.js
   useEffect(() => {
@@ -30,7 +49,8 @@ export function useViewer(canvasRef) {
     scene.clearColor = new BABYLON.Color4(0.1, 0.1, 0.12, 1);
 
     const camera = new BABYLON.ArcRotateCamera("cam", Math.PI / 4, Math.PI / 3, 100, BABYLON.Vector3.Zero(), scene);
-    camera.attachControl(canvas, true);
+    const { noPreventDefault } = getCameraAttachOptions();
+    camera.attachControl(canvas, noPreventDefault);
     camera.wheelPrecision = 5;
     camera.wheelDeltaPercentage = 0.05;
     camera.minZ = 0.1;
@@ -111,17 +131,7 @@ export function useViewer(canvasRef) {
     const camera = cameraRef.current;
     if (!scene || !camera) return;
 
-    // Clear previous
-    for (const m of meshesRef.current) m.dispose();
-    for (const l of edgeLinesRef.current) l.dispose();
-    for (const t of transformNodesRef.current) t.dispose();
-    for (const g of gridMeshesRef.current) g.dispose();
-    meshesRef.current = [];
-    edgeLinesRef.current = [];
-    transformNodesRef.current = [];
-    gridMeshesRef.current = [];
-    meshGeoMapRef.current.clear();
-    scene.materials.slice().forEach((m) => { if (m.name.startsWith("mat_")) m.dispose(); });
+    clearScene();
 
     const defaultColor = new BABYLON.Color3(0.7, 0.7, 0.7);
     const edgeColor = new BABYLON.Color3(0.15, 0.15, 0.18);
@@ -341,7 +351,7 @@ export function useViewer(canvasRef) {
     zAxis.isVisible = gridVisible;
 
     gridMeshesRef.current.push(ground, xAxis, zAxis);
-  }, []);
+  }, [clearScene]);
 
   const fitAll = useCallback(() => {
     const camera = cameraRef.current;
@@ -438,5 +448,5 @@ export function useViewer(canvasRef) {
     });
   }, []);
 
-  return { engineRef, sceneRef, cameraRef, meshGeoMapRef, meshesRef, edgeLinesRef, buildScene, fitAll, setCameraView, setProjection, takeSnapshot };
+  return { engineRef, sceneRef, cameraRef, meshGeoMapRef, meshesRef, edgeLinesRef, buildScene, clearScene, fitAll, setCameraView, setProjection, takeSnapshot };
 }

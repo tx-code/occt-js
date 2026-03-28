@@ -296,6 +296,55 @@ void TraverseLabel(const TDF_Label& label,
     }
 }
 
+void AppendRootNodes(const TDF_LabelSequence& freeShapes,
+                     const Handle(XCAFDoc_ShapeTool)& shapeTool,
+                     const Handle(XCAFDoc_ColorTool)& colorTool,
+                     const ImportParams& params,
+                     OcctSceneData& scene)
+{
+    std::map<uintptr_t, int> shapeCache;
+
+    if (params.rootMode == ImportParams::RootMode::MultipleShapes
+        || freeShapes.Length() == 1)
+    {
+        for (int i = 1; i <= freeShapes.Length(); ++i) {
+            int rootIdx = static_cast<int>(scene.nodes.size());
+            TraverseLabel(
+                freeShapes.Value(i),
+                shapeTool,
+                colorTool,
+                params,
+                scene,
+                shapeCache);
+            scene.rootNodeIndices.push_back(rootIdx);
+        }
+        return;
+    }
+
+    // Preserve XDE-derived child semantics, names, and colors while exposing a
+    // single logical root for callers that want one top-level node.
+    int rootIdx = static_cast<int>(scene.nodes.size());
+    scene.nodes.emplace_back();
+    scene.nodes[rootIdx].id = "__root__";
+    scene.nodes[rootIdx].name = "Root";
+    scene.nodes[rootIdx].isAssembly = true;
+    scene.nodes[rootIdx].transform = IdentityMatrix();
+
+    for (int i = 1; i <= freeShapes.Length(); ++i) {
+        int childIdx = static_cast<int>(scene.nodes.size());
+        TraverseLabel(
+            freeShapes.Value(i),
+            shapeTool,
+            colorTool,
+            params,
+            scene,
+            shapeCache);
+        scene.nodes[rootIdx].childIndices.push_back(childIdx);
+    }
+
+    scene.rootNodeIndices.push_back(rootIdx);
+}
+
 bool ReadAndTransferXde(const uint8_t* data,
                         size_t size,
                         const std::string& fileName,
@@ -445,18 +494,7 @@ OcctSceneData ImportXdeFromMemory(
             }
         }
 
-        std::map<uintptr_t, int> shapeCache;
-        for (int i = 1; i <= freeShapes.Length(); ++i) {
-            int rootIdx = static_cast<int>(scene.nodes.size());
-            TraverseLabel(
-                freeShapes.Value(i),
-                shapeTool,
-                colorTool,
-                params,
-                scene,
-                shapeCache);
-            scene.rootNodeIndices.push_back(rootIdx);
-        }
+        AppendRootNodes(freeShapes, shapeTool, colorTool, params, scene);
 
         scene.success = true;
         app->Close(doc);

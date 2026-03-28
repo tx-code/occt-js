@@ -1,10 +1,9 @@
-import { createRequire } from "module";
 import { readFileSync } from "fs";
 import { dirname, resolve } from "path";
 import { fileURLToPath } from "url";
+import { loadOcctFactory } from "./load_occt_factory.mjs";
 
-const require = createRequire(import.meta.url);
-const factory = require("../dist/occt-js.js");
+const factory = loadOcctFactory();
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 function assert(condition, message) {
@@ -17,6 +16,23 @@ assert.equal = function(actual, expected, message) {
     throw new Error(message + ` (got ${actual}, expected ${expected})`);
   }
 };
+
+function flattenNodes(nodes) {
+  const result = [];
+  const stack = [...nodes];
+  while (stack.length > 0) {
+    const node = stack.pop();
+    result.push(node);
+    if (node.children?.length) {
+      stack.push(...node.children);
+    }
+  }
+  return result;
+}
+
+function hasValidColor(color) {
+  return !!(color && typeof color.r === "number" && typeof color.g === "number" && typeof color.b === "number");
+}
 
 function validateTopology(result, label) {
   const g = result.geometries[0];
@@ -125,6 +141,33 @@ async function main() {
   assert(brepOk && brepOk.success === true, "ReadFile(brep) should import a valid BREP file");
   assert(brepOk.stats && brepOk.stats.triangleCount > 0, "ReadFile(brep) should produce triangles");
   validateTopology(brepOk, "BREP");
+
+  const realisticBrepFixture = new Uint8Array(readFileSync(resolve(__dirname, "ANC101_isolated_components.brep")));
+  const realisticBrepOk = m.ReadFile("brep", realisticBrepFixture, {});
+  assert(realisticBrepOk && realisticBrepOk.success === true, "ReadFile(brep) should import ANC101_isolated_components.brep");
+  assert(realisticBrepOk.stats && realisticBrepOk.stats.triangleCount > 0, "ANC101_isolated_components.brep should produce triangles");
+
+  const realisticIgesFixture = new Uint8Array(readFileSync(resolve(__dirname, "bearing.igs")));
+  const realisticIgesOk = m.ReadIgesFile(realisticIgesFixture, {});
+  assert(realisticIgesOk && realisticIgesOk.success === true, "ReadIgesFile should import bearing.igs");
+  assert(realisticIgesOk.stats && realisticIgesOk.stats.triangleCount > 0, "bearing.igs import should produce triangles");
+  assert(realisticIgesOk.geometries.length > 0, "bearing.igs import should produce at least one geometry");
+  assert(realisticIgesOk.geometries[0].faces.length > 0, "bearing.igs import should expose faces");
+  assert(realisticIgesOk.geometries[0].edges.length > 0, "bearing.igs import should expose edges");
+
+  const coloredStepFixture = new Uint8Array(readFileSync(resolve(__dirname, "ANC101_colored.stp")));
+  const coloredStepOk = m.ReadFile("step", coloredStepFixture, {});
+  assert(coloredStepOk && coloredStepOk.success === true, "ReadFile(step) should import ANC101_colored.stp");
+  const coloredGeometry = coloredStepOk.geometries.some((geometry) =>
+    hasValidColor(geometry.color) || geometry.faces.some((face) => hasValidColor(face.color)) || geometry.edges.some((edge) => hasValidColor(edge.color))
+  );
+  assert(coloredGeometry, "ANC101_colored.stp should produce at least one valid imported color");
+
+  const namedStepFixture = new Uint8Array(readFileSync(resolve(__dirname, "gehause_rohteil_with-names.STEP")));
+  const namedStepOk = m.ReadFile("step", namedStepFixture, {});
+  assert(namedStepOk && namedStepOk.success === true, "ReadFile(step) should import gehause_rohteil_with-names.STEP");
+  const namedNodes = flattenNodes(namedStepOk.rootNodes);
+  assert(namedNodes.some((node) => typeof node.name === "string" && node.name.trim().length > 0), "gehause_rohteil_with-names.STEP should preserve at least one non-empty node name");
 
   console.log("PASS test_multi_format_exports");
 }

@@ -86,11 +86,17 @@ struct ImportParams {
         Foot
     };
 
+    enum class RootMode {
+        OneShape,
+        MultipleShapes
+    };
+
     enum class LinearDeflectionType {
         BoundingBoxRatio,
         AbsoluteValue
     };
 
+    RootMode rootMode = RootMode::OneShape;
     LinearUnit linearUnit = LinearUnit::Millimeter;
     LinearDeflectionType linearDeflectionType = LinearDeflectionType::BoundingBoxRatio;
     double linearDeflection = 0.001;

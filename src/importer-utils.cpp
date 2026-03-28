@@ -186,18 +186,8 @@ OcctMeshData ExtractMeshFromShape(const TopoDS_Shape& shape)
         OcctEdgeTopoData edgeData;
         edgeData.id = ei;
 
-        if (BRep_Tool::Degenerated(edge)) {
-            mesh.edges.push_back(std::move(edgeData));
-            continue;
-        }
-
-        bool polylineFound = false;
         for (int fi = 1; fi <= faceMap.Extent(); ++fi) {
             const TopoDS_Face& face = TopoDS::Face(faceMap(fi));
-            TopLoc_Location faceLoc;
-            Handle(Poly_Triangulation) triangulation = BRep_Tool::Triangulation(face, faceLoc);
-            if (triangulation.IsNull()) continue;
-
             bool edgeOnFace = false;
             for (TopExp_Explorer ex(face, TopAbs_EDGE); ex.More(); ex.Next()) {
                 if (edgeMap.FindIndex(ex.Current()) == ei) {
@@ -208,23 +198,40 @@ OcctMeshData ExtractMeshFromShape(const TopoDS_Shape& shape)
             if (!edgeOnFace) continue;
 
             edgeData.ownerFaceIds.push_back(fi);
+        }
 
-            if (!polylineFound) {
-                Handle(Poly_PolygonOnTriangulation) polyOnTri =
-                    BRep_Tool::PolygonOnTriangulation(edge, triangulation, faceLoc);
-                if (!polyOnTri.IsNull()) {
-                    gp_Trsf trsf = faceLoc.Transformation();
-                    const TColStd_Array1OfInteger& nodeIndices = polyOnTri->Nodes();
-                    for (int i = nodeIndices.Lower(); i <= nodeIndices.Upper(); ++i) {
-                        gp_Pnt pt = triangulation->Node(nodeIndices(i));
-                        pt.Transform(trsf);
-                        edgeData.points.push_back(static_cast<float>(pt.X()));
-                        edgeData.points.push_back(static_cast<float>(pt.Y()));
-                        edgeData.points.push_back(static_cast<float>(pt.Z()));
-                    }
-                    polylineFound = true;
-                }
+        if (BRep_Tool::Degenerated(edge)) {
+            edgeData.isFreeEdge = edgeData.ownerFaceIds.empty();
+            mesh.edges.push_back(std::move(edgeData));
+            continue;
+        }
+
+        bool polylineFound = false;
+        for (int fi : edgeData.ownerFaceIds) {
+            const TopoDS_Face& face = TopoDS::Face(faceMap(fi));
+            TopLoc_Location faceLoc;
+            Handle(Poly_Triangulation) triangulation = BRep_Tool::Triangulation(face, faceLoc);
+            if (triangulation.IsNull()) {
+                continue;
             }
+
+            Handle(Poly_PolygonOnTriangulation) polyOnTri =
+                BRep_Tool::PolygonOnTriangulation(edge, triangulation, faceLoc);
+            if (polyOnTri.IsNull()) {
+                continue;
+            }
+
+            gp_Trsf trsf = faceLoc.Transformation();
+            const TColStd_Array1OfInteger& nodeIndices = polyOnTri->Nodes();
+            for (int i = nodeIndices.Lower(); i <= nodeIndices.Upper(); ++i) {
+                gp_Pnt pt = triangulation->Node(nodeIndices(i));
+                pt.Transform(trsf);
+                edgeData.points.push_back(static_cast<float>(pt.X()));
+                edgeData.points.push_back(static_cast<float>(pt.Y()));
+                edgeData.points.push_back(static_cast<float>(pt.Z()));
+            }
+            polylineFound = true;
+            break;
         }
 
         if (!polylineFound) {

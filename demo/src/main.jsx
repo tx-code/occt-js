@@ -1,5 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import "./lib/babylon-runtime";
 import App from "./App";
 import "./globals.css";
 

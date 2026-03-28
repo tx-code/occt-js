@@ -2,8 +2,9 @@
 import { useState } from "react";
 import { Button } from "./ui/button";
 import { useViewerStore } from "../store/viewerStore";
+import OrientationModeToggle from "./OrientationModeToggle";
 
-export default function Toolbar({ onOpenFile, onFitAll, onCameraView, onSetProjection, onSnapshot }) {
+export default function Toolbar({ chromeIntegrated = false, onOpenFile, onFitAll, onCameraView, onSetProjection, onSnapshot }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const fileName = useViewerStore((s) => s.fileName);
   const facesVisible = useViewerStore((s) => s.facesVisible);
@@ -87,17 +88,24 @@ export default function Toolbar({ onOpenFile, onFitAll, onCameraView, onSetProje
     <div className="absolute top-0 left-0 right-0 z-50 bg-zinc-950/85 backdrop-blur-sm border-b border-zinc-800" data-testid="toolbar">
       {/* Row 1: always visible */}
       <div className="flex items-center gap-2 px-3 py-1.5">
-        <span className="text-cyan-400 font-semibold text-sm">occt-js</span>
-        {sep}
-        <span className="text-zinc-500 text-xs truncate" data-testid="file-name">{fileName}</span>
-
-        <span className="flex-1" />
+        {!chromeIntegrated && (
+          <>
+            <span className="text-cyan-400 font-semibold text-sm">occt-js</span>
+            {sep}
+            <span className="text-zinc-500 text-xs truncate" data-testid="file-name">{fileName}</span>
+            <span className="flex-1" />
+          </>
+        )}
 
         {/* Desktop: all buttons inline */}
         <div className="hidden md:flex items-center gap-2">
           <Button size="sm" variant="ghost" onClick={onOpenFile} data-testid="open-file">
             Open
           </Button>
+          <OrientationModeToggle
+            rawTestId="orientation-mode-raw-toolbar"
+            autoTestId="orientation-mode-auto-toolbar"
+          />
           {sep}
           {cameraPresets}
           {sep}
@@ -131,6 +139,15 @@ export default function Toolbar({ onOpenFile, onFitAll, onCameraView, onSetProje
       {menuOpen && (
         <div className="md:hidden border-t border-zinc-800 px-3 py-1.5">
           <div className="flex items-start gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className={mobileGroupClass}>
+              <div className="mb-0.5 px-1 text-[9px] uppercase tracking-[0.18em] text-zinc-500">Import</div>
+              <div className="flex items-center gap-1 whitespace-nowrap px-1 py-1">
+                <OrientationModeToggle
+                  rawTestId="orientation-mode-raw-mobile"
+                  autoTestId="orientation-mode-auto-mobile"
+                />
+              </div>
+            </div>
             <div className={mobileGroupClass}>
               <div className="mb-0.5 px-1 text-[9px] uppercase tracking-[0.18em] text-zinc-500">View</div>
               <div className="flex items-center gap-1 whitespace-nowrap">{cameraPresets}</div>

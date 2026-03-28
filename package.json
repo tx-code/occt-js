@@ -12,7 +12,8 @@
   ],
   "scripts": {
     "build:wasm": "bash tools/build_wasm.sh",
-    "test": "node test/test_multi_format_exports.mjs && node test/test_mvp_acceptance.mjs"
+    "build:wasm:win": "tools\\build_wasm_win_dist.bat",
+    "test": "node --test test/load_occt_factory.test.mjs test/wasm_build_prereqs.test.mjs && node test/test_multi_format_exports.mjs && node test/test_iges_degenerated_edges.mjs && node test/test_step_iges_root_mode.mjs && node test/test_brep_root_mode.mjs && node test/test_optimal_orientation_api.mjs && node test/test_optimal_orientation_reference.mjs && node test/test_mvp_acceptance.mjs"
   },
   "repository": {
     "type": "git",

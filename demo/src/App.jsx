@@ -1,8 +1,9 @@
 // demo/src/App.jsx
-import { useRef, useCallback } from "react";
+import { useEffect, useRef } from "react";
 import { useViewerStore } from "./store/viewerStore";
 import { useOcct } from "./hooks/useOcct";
 import { useViewer } from "./hooks/useViewer";
+import { useViewerActions } from "./hooks/useViewerActions";
 import { usePicking } from "./hooks/usePicking";
 import DropZone from "./components/DropZone";
 import LoadingOverlay from "./components/LoadingOverlay";
@@ -11,72 +12,91 @@ import SelectionPanel from "./components/SelectionPanel";
 import Toolbar from "./components/Toolbar";
 import ModelTreeDrawer from "./components/ModelTreeDrawer";
 import ViewCube from "./components/ViewCube";
+import DesktopChrome from "./components/DesktopChrome";
+import { shouldUseWindowsCustomChrome } from "./lib/desktop-runtime";
+import { getAppShellLayout } from "./lib/app-shell";
 
 export default function App() {
   const canvasRef = useRef(null);
   const model = useViewerStore((s) => s.model);
   const { importFile } = useOcct();
   const viewerRefs = useViewer(canvasRef);
-  const { buildScene, fitAll, setCameraView, setProjection, takeSnapshot } = viewerRefs;
+  const { buildScene, clearScene, fitAll, setCameraView, setProjection, takeSnapshot } = viewerRefs;
   usePicking(viewerRefs);
   const fileInputRef = useRef(null);
+  const windowsDesktopChrome = shouldUseWindowsCustomChrome();
+  const shellLayout = getAppShellLayout(windowsDesktopChrome);
+  const {
+    aboutAction,
+    closeModel,
+    importModelFile,
+    openFile,
+    openSample,
+    setProjectionAction,
+    toggleThemeAction,
+  } = useViewerActions({
+    desktopEnabled: windowsDesktopChrome,
+    fileInputRef,
+    fitAll,
+    importFile,
+    setProjection,
+  });
 
-  const handleFile = useCallback(async (file) => {
-    try {
-      const result = await importFile(file);
-      buildScene(result);
-    } catch (err) {
-      alert("Error: " + err.message);
+  useEffect(() => {
+    if (model) {
+      buildScene(model);
+      return;
     }
-  }, [importFile, buildScene]);
 
-  const handleSample = useCallback(async () => {
-    try {
-      // Dev: served by Vite middleware. Prod: fetch from GitHub
-      const devUrl = "/test/simple_part.step";
-      const prodUrl = "https://raw.githubusercontent.com/tx-code/occt-js/master/test/simple_part.step";
-      const resp = await fetch(devUrl).then(r => r.ok ? r : fetch(prodUrl));
-      const blob = await resp.blob();
-      const file = new File([blob], "simple_part.step");
-      await handleFile(file);
-    } catch (err) {
-      alert("Error loading sample: " + err.message);
-    }
-  }, [handleFile]);
-
-  const handleOpenFile = useCallback(() => {
-    if (fileInputRef.current) fileInputRef.current.click();
-  }, []);
+    clearScene();
+  }, [buildScene, clearScene, model]);
 
   return (
-    <div className="relative h-screen w-screen">
-      <canvas
-        ref={canvasRef}
-        className="absolute inset-0 w-full h-full outline-none"
-        data-testid="render-canvas"
-      />
+    <div className={shellLayout.rootClassName}>
+      {windowsDesktopChrome && (
+        <DesktopChrome
+          onOpenFile={openFile}
+          onOpenSample={openSample}
+          onCloseModel={closeModel}
+          onFitAll={fitAll}
+          onSetProjection={setProjectionAction}
+          onToggleTheme={toggleThemeAction}
+          onAbout={aboutAction}
+        />
+      )}
 
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept=".step,.stp,.iges,.igs,.brep,.brp"
-        className="hidden"
-        onChange={(e) => { if (e.target.files[0]) handleFile(e.target.files[0]); e.target.value = ""; }}
-      />
+      <div className={shellLayout.viewportClassName}>
+        <div className="relative h-full">
+          <canvas
+            ref={canvasRef}
+            className="absolute inset-0 h-full w-full outline-none"
+            data-testid="render-canvas"
+          />
 
-      <DropZone visible={!model} onFile={handleFile} onSample={handleSample} />
-      <LoadingOverlay />
-      <Toolbar
-        onOpenFile={handleOpenFile}
-        onFitAll={fitAll}
-        onCameraView={setCameraView}
-        onSetProjection={(mode) => { setProjection(mode); useViewerStore.getState().setProjection(mode); }}
-        onSnapshot={takeSnapshot}
-      />
-      <StatsPanel />
-      <SelectionPanel />
-      <ModelTreeDrawer />
-      <ViewCube onCameraView={setCameraView} cameraRef={viewerRefs.cameraRef} />
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".step,.stp,.iges,.igs,.brep,.brp"
+            className="hidden"
+            onChange={(e) => { if (e.target.files[0]) importModelFile(e.target.files[0]); e.target.value = ""; }}
+          />
+
+          <DropZone visible={!model} onFile={importModelFile} />
+          <LoadingOverlay />
+          <Toolbar
+            chromeIntegrated={windowsDesktopChrome}
+            onOpenFile={openFile}
+            onFitAll={fitAll}
+            onCameraView={setCameraView}
+            onSetProjection={setProjectionAction}
+            onSnapshot={takeSnapshot}
+          />
+          <StatsPanel />
+          <SelectionPanel />
+          <ModelTreeDrawer />
+          <ViewCube onCameraView={setCameraView} cameraRef={viewerRefs.cameraRef} />
+        </div>
+      </div>
     </div>
   );
 }
