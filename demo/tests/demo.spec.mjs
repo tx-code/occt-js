@@ -30,10 +30,30 @@ test("shows drop zone on initial load", async ({ page }) => {
   await expect(page.locator("[data-testid='toolbar']")).toBeHidden();
 });
 
-test("auto orient is enabled by default", async ({ page }) => {
-  await expect(page.locator("[data-testid='auto-orient-checkbox-empty']")).toBeChecked();
+test("auto-orient mode is selected by default", async ({ page }) => {
+  await expect(page.locator("[data-testid='orientation-mode-auto-empty']")).toHaveClass(/cyan/);
   await loadFixture(page);
-  await expect(page.locator("[data-testid='auto-orient-checkbox-toolbar']")).toBeChecked();
+  await expect(page.locator("[data-testid='orientation-mode-auto-toolbar']")).toHaveClass(/cyan/);
+});
+
+test("raw and auto-orient modes can be switched after import", async ({ page }) => {
+  await loadFixture(page);
+
+  const rawButton = page.locator("[data-testid='orientation-mode-raw-toolbar']");
+  const autoButton = page.locator("[data-testid='orientation-mode-auto-toolbar']");
+
+  await expect(rawButton).toBeVisible();
+  await expect(autoButton).toBeVisible();
+  await expect(autoButton).toHaveClass(/cyan/);
+  await expect(rawButton).not.toHaveClass(/cyan/);
+
+  await rawButton.click();
+  await expect(rawButton).toHaveClass(/cyan/);
+  await expect(autoButton).not.toHaveClass(/cyan/);
+
+  await autoButton.click();
+  await expect(autoButton).toHaveClass(/cyan/);
+  await expect(rawButton).not.toHaveClass(/cyan/);
 });
 
 test("preloads occt engine on initial load", async ({ page }) => {
@@ -46,10 +66,10 @@ test("toolbar and stats hidden initially", async ({ page }) => {
   await expect(statsPanel).not.toBeVisible();
 });
 
-test("loads sample STEP file via link", async ({ page }) => {
-  await page.click("[data-testid='load-sample']");
-  await expect(page.locator("[data-testid='stats-panel']")).toBeVisible({ timeout: 30_000 });
-  await expect(page.locator("[data-testid='file-name']")).toContainText("simple_part.step");
+test("drop zone keeps import flow focused", async ({ page }) => {
+  await expect(page.locator("[data-testid='load-sample']")).toHaveCount(0);
+  await expect(page.locator("[data-testid='orientation-mode-raw-empty']")).toBeVisible();
+  await expect(page.locator("[data-testid='orientation-mode-auto-empty']")).toBeVisible();
 });
 
 test("imports STEP file via file input", async ({ page }) => {

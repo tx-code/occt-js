@@ -1,9 +1,9 @@
 // demo/src/components/DropZone.jsx
 import { useCallback, useState } from "react";
 import { Button } from "./ui/button";
-import AutoOrientToggle from "./AutoOrientToggle";
+import OrientationModeToggle from "./OrientationModeToggle";
 
-export default function DropZone({ onFile, onSample, visible }) {
+export default function DropZone({ onFile, visible }) {
   const [dragOver, setDragOver] = useState(false);
 
   const handleDrop = useCallback((e) => {
@@ -22,15 +22,30 @@ export default function DropZone({ onFile, onSample, visible }) {
       onDrop={handleDrop}
       data-testid="drop-zone"
     >
-      <div className={`border-2 border-dashed rounded-2xl p-12 text-center transition-colors ${dragOver ? "border-cyan-400" : "border-zinc-600"}`}>
-        <h2 className="text-xl font-medium mb-3">occt-js Viewer</h2>
-        <p className="text-zinc-500 text-sm mb-5">
-          <span className="hidden md:inline">Drop a STEP, IGES, or BREP file here</span>
-          <span className="md:hidden">Open a STEP, IGES, or BREP file</span>
-        </p>
-        <Button onClick={() => document.getElementById("file-input").click()}>
-          Browse Files
-        </Button>
+      <div
+        className={`w-[min(92vw,34rem)] rounded-3xl border border-zinc-800/90 bg-zinc-950/90 p-8 text-center shadow-2xl shadow-black/30 transition-colors ${
+          dragOver ? "border-cyan-400/70" : "border-zinc-800/90"
+        }`}
+      >
+        <div className="space-y-3">
+          <p className="text-[11px] uppercase tracking-[0.28em] text-zinc-500">Import CAD</p>
+          <h2 className="text-2xl font-semibold text-zinc-100">Open STEP, IGES, or BREP</h2>
+          <p className="mx-auto max-w-md text-sm leading-6 text-zinc-500">
+            Choose how the model should land in the viewer, then browse or drop a file.
+          </p>
+        </div>
+        <div className="mt-6 flex justify-center">
+          <OrientationModeToggle
+            className="justify-center"
+            rawTestId="orientation-mode-raw-empty"
+            autoTestId="orientation-mode-auto-empty"
+          />
+        </div>
+        <div className="mt-6">
+          <Button onClick={() => document.getElementById("file-input").click()}>
+            Browse Files
+          </Button>
+        </div>
         <input
           id="file-input"
           type="file"
@@ -40,14 +55,8 @@ export default function DropZone({ onFile, onSample, visible }) {
           data-testid="file-input"
         />
         <p className="mt-4 text-xs text-zinc-600">
-          Or try with a{" "}
-          <a href="#" onClick={(e) => { e.preventDefault(); onSample(); }} className="text-cyan-400" data-testid="load-sample">
-            sample file
-          </a>
+          Drag and drop is supported too.
         </p>
-        <div className="mt-4">
-          <AutoOrientToggle testId="auto-orient-checkbox-empty" className="justify-center" />
-        </div>
       </div>
     </div>
   );

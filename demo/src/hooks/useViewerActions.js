@@ -6,8 +6,6 @@ import { getDesktopShortcutAction } from "../lib/desktop-shortcuts";
 import { createDesktopActionMap, isEditableTarget } from "../lib/viewer-actions";
 
 export function useViewerActions({
-  buildScene,
-  clearScene,
   desktopEnabled,
   fileInputRef,
   fitAll,
@@ -20,12 +18,11 @@ export function useViewerActions({
 
   const importModelFile = useCallback(async (file) => {
     try {
-      const result = await importFile(file);
-      buildScene(result);
+      await importFile(file);
     } catch (err) {
       alert("Error: " + err.message);
     }
-  }, [buildScene, importFile]);
+  }, [importFile]);
 
   const openSample = useCallback(async () => {
     try {
@@ -67,9 +64,8 @@ export function useViewerActions({
   }, [desktopEnabled, fileInputRef, importModelFile]);
 
   const closeModel = useCallback(() => {
-    clearScene();
     resetViewer();
-  }, [clearScene, resetViewer]);
+  }, [resetViewer]);
 
   const setProjectionAction = useCallback((mode) => {
     setProjection(mode);

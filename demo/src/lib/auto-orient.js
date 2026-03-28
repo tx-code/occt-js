@@ -5,6 +5,13 @@ const IDENTITY_MATRIX = [
   0, 0, 0, 1,
 ];
 
+const ANALYSIS_Z_UP_TO_BABYLON_Y_UP = [
+  1, 0, 0, 0,
+  0, 0, -1, 0,
+  0, 1, 0, 0,
+  0, 0, 0, 1,
+];
+
 const FORMAT_MAP = {
   step: "step",
   stp: "step",
@@ -52,14 +59,25 @@ export function applyOrientationToResult(result, orientation) {
   };
 }
 
+function normalizeOrientationForBabylon(orientation) {
+  const transform = orientation?.transform;
+  if (!Array.isArray(transform) || transform.length !== 16) {
+    return orientation;
+  }
+
+  return {
+    ...orientation,
+    transform: multiplyMatrices(ANALYSIS_Z_UP_TO_BABYLON_Y_UP, transform),
+  };
+}
+
 export async function resolveAutoOrientedResult({
   occt,
   format,
   bytes,
   result,
-  autoOrientEnabled,
 } = {}) {
-  if (!autoOrientEnabled || !occt || typeof occt.AnalyzeOptimalOrientation !== "function") {
+  if (!occt || typeof occt.AnalyzeOptimalOrientation !== "function") {
     return result;
   }
 
@@ -68,5 +86,5 @@ export async function resolveAutoOrientedResult({
     return result;
   }
 
-  return applyOrientationToResult(result, orientation);
+  return applyOrientationToResult(result, normalizeOrientationForBabylon(orientation));
 }

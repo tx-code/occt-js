@@ -19,7 +19,7 @@ export function useOcct() {
   const modulePromiseRef = useRef(null);
   const runtimeRef = useRef(null);
   const runtimePromiseRef = useRef(null);
-  const setModel = useViewerStore((s) => s.setModel);
+  const setImportedModels = useViewerStore((s) => s.setImportedModels);
   const setLoading = useViewerStore((s) => s.setLoading);
   const setLoadingMessage = useViewerStore((s) => s.setLoadingMessage);
 
@@ -105,28 +105,32 @@ export function useOcct() {
 
       if (!result.success) throw new Error(result.error || "Import failed");
 
-      let finalResult = result;
-      if (useViewerStore.getState().autoOrientEnabled) {
-        setLoadingMessage("Analyzing orientation...");
-        try {
-          finalResult = await resolveAutoOrientedResult({
-            occt,
-            format,
-            bytes,
-            result,
-            autoOrientEnabled: true,
-          });
-        } catch (error) {
-          console.warn("Auto orient failed for", file.name, error);
+      let autoOrientResult = null;
+      setLoadingMessage("Analyzing orientation...");
+      try {
+        const orientedResult = await resolveAutoOrientedResult({
+          occt,
+          format,
+          bytes,
+          result,
+        });
+        if (orientedResult !== result) {
+          autoOrientResult = orientedResult;
         }
+      } catch (error) {
+        console.warn("Auto orient failed for", file.name, error);
       }
 
-      setModel(finalResult, file.name);
-      return finalResult;
+      setImportedModels(result, autoOrientResult, file.name);
+      const { orientationMode } = useViewerStore.getState();
+      if (orientationMode === "auto-orient" && autoOrientResult) {
+        return autoOrientResult;
+      }
+      return result;
     } finally {
       setLoading(false);
     }
-  }, [ensureModule, setLoading, setLoadingMessage, setModel]);
+  }, [ensureModule, setImportedModels, setLoading, setLoadingMessage]);
 
   return { importFile, ensureModule };
 }

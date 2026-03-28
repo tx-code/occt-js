@@ -1,5 +1,5 @@
 // demo/src/App.jsx
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { useViewerStore } from "./store/viewerStore";
 import { useOcct } from "./hooks/useOcct";
 import { useViewer } from "./hooks/useViewer";
@@ -35,14 +35,21 @@ export default function App() {
     setProjectionAction,
     toggleThemeAction,
   } = useViewerActions({
-    buildScene,
-    clearScene,
     desktopEnabled: windowsDesktopChrome,
     fileInputRef,
     fitAll,
     importFile,
     setProjection,
   });
+
+  useEffect(() => {
+    if (model) {
+      buildScene(model);
+      return;
+    }
+
+    clearScene();
+  }, [buildScene, clearScene, model]);
 
   return (
     <div className={shellLayout.rootClassName}>
@@ -74,7 +81,7 @@ export default function App() {
             onChange={(e) => { if (e.target.files[0]) importModelFile(e.target.files[0]); e.target.value = ""; }}
           />
 
-          <DropZone visible={!model} onFile={importModelFile} onSample={openSample} />
+          <DropZone visible={!model} onFile={importModelFile} />
           <LoadingOverlay />
           <Toolbar
             chromeIntegrated={windowsDesktopChrome}
