@@ -35,12 +35,30 @@ async function main() {
   const m = await factory();
 
   const cases = [
-    ["step", "ANC101.stp"],
-    ["iges", "bearing.igs"],
-    ["brep", "as1_pe_203.brep"],
+    {
+      format: "step",
+      fixture: "ANC101.stp",
+      expectedStrategy: "planar-base-with-cylinder-support",
+      minConfidence: 0.9,
+      expectsCylinderSupport: true,
+    },
+    {
+      format: "iges",
+      fixture: "bearing.igs",
+      expectedStrategy: "principal-inertia-fallback+projected-min-area-rect",
+      minConfidence: 0.5,
+      expectsCylinderSupport: false,
+    },
+    {
+      format: "brep",
+      fixture: "ANC101_isolated_components.brep",
+      expectedStrategy: "planar-base-with-cylinder-support",
+      minConfidence: 0.9,
+      expectsCylinderSupport: true,
+    },
   ];
 
-  for (const [format, fixture] of cases) {
+  for (const { format, fixture, expectedStrategy, minConfidence, expectsCylinderSupport } of cases) {
     const bytes = new Uint8Array(readFileSync(resolve("test", fixture)));
     const result = m.AnalyzeOptimalOrientation(format, bytes, { mode: "manufacturing" });
     assert(result.success, `${fixture}: orientation analysis should succeed`);
@@ -50,6 +68,9 @@ async function main() {
     assert(result.stage2, `${fixture}: stage2 diagnostics should be present`);
     assert(Array.isArray(result.stage1.detectedAxis) && result.stage1.detectedAxis.length === 3, `${fixture}: stage1.detectedAxis should be a 3D vector`);
     assert(typeof result.stage2.rotationAroundZDeg === "number", `${fixture}: stage2.rotationAroundZDeg should be numeric`);
+    assert(result.strategy === expectedStrategy, `${fixture}: strategy should be ${expectedStrategy}, got ${result.strategy}`);
+    assert(result.confidence >= minConfidence, `${fixture}: confidence should be >= ${minConfidence}, got ${result.confidence}`);
+    assert(result.stage1.usedCylinderSupport === expectsCylinderSupport, `${fixture}: usedCylinderSupport should be ${expectsCylinderSupport}`);
     assertOrthonormal(result.localFrame, fixture);
     assertSortedBbox(result.bbox, fixture);
   }
