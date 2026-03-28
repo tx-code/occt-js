@@ -10,6 +10,7 @@
 #include "importer-step.hpp"
 #include "importer-iges.hpp"
 #include "importer-brep.hpp"
+#include "orientation.hpp"
 
 using namespace emscripten;
 
@@ -236,6 +237,122 @@ ImportParams ParseImportParams(const val& jsParams)
     return params;
 }
 
+std::array<double, 3> ParseVector3(const val& jsValue, const std::array<double, 3>& fallback)
+{
+    std::array<double, 3> result = fallback;
+    if (jsValue.typeOf().as<std::string>() != "object" || jsValue.isNull()) {
+        return result;
+    }
+    if (jsValue["length"].as<unsigned>() < 3) {
+        return result;
+    }
+    result[0] = jsValue[0].as<double>();
+    result[1] = jsValue[1].as<double>();
+    result[2] = jsValue[2].as<double>();
+    return result;
+}
+
+OrientationParams ParseOrientationParams(const val& jsParams)
+{
+    OrientationParams params;
+    if (jsParams.typeOf().as<std::string>() != "object" || jsParams.isNull()) {
+        return params;
+    }
+
+    if (jsParams.hasOwnProperty("linearUnit")) {
+        std::string linearUnit = jsParams["linearUnit"].as<std::string>();
+        if (linearUnit == "millimeter") {
+            params.linearUnit = ImportParams::LinearUnit::Millimeter;
+        } else if (linearUnit == "centimeter") {
+            params.linearUnit = ImportParams::LinearUnit::Centimeter;
+        } else if (linearUnit == "meter") {
+            params.linearUnit = ImportParams::LinearUnit::Meter;
+        } else if (linearUnit == "inch") {
+            params.linearUnit = ImportParams::LinearUnit::Inch;
+        } else if (linearUnit == "foot") {
+            params.linearUnit = ImportParams::LinearUnit::Foot;
+        }
+    }
+
+    if (jsParams.hasOwnProperty("mode")) {
+        params.mode = jsParams["mode"].as<std::string>();
+    }
+
+    if (jsParams.hasOwnProperty("presetAxis")) {
+        val presetAxis = jsParams["presetAxis"];
+        if (presetAxis.typeOf().as<std::string>() == "object" && !presetAxis.isNull()) {
+            params.presetAxis.isSet = true;
+            if (presetAxis.hasOwnProperty("origin")) {
+                params.presetAxis.origin = ParseVector3(presetAxis["origin"], params.presetAxis.origin);
+            }
+            if (presetAxis.hasOwnProperty("direction")) {
+                params.presetAxis.direction = ParseVector3(presetAxis["direction"], params.presetAxis.direction);
+            }
+        }
+    }
+
+    return params;
+}
+
+val Vector3ToVal(const std::array<double, 3>& v)
+{
+    val arr = val::array();
+    arr.call<void>("push", v[0]);
+    arr.call<void>("push", v[1]);
+    arr.call<void>("push", v[2]);
+    return arr;
+}
+
+val OrientationResultToVal(const OrientationResult& result)
+{
+    val obj = val::object();
+    obj.set("success", result.success);
+    if (!result.success) {
+        obj.set("error", result.error);
+        return obj;
+    }
+
+    obj.set("transform", TransformToVal(result.transform));
+
+    val localFrame = val::object();
+    localFrame.set("origin", Vector3ToVal(result.localFrame.origin));
+    localFrame.set("xDir", Vector3ToVal(result.localFrame.xDir));
+    localFrame.set("yDir", Vector3ToVal(result.localFrame.yDir));
+    localFrame.set("zDir", Vector3ToVal(result.localFrame.zDir));
+    obj.set("localFrame", localFrame);
+
+    val bbox = val::object();
+    bbox.set("dx", result.bbox.dx);
+    bbox.set("dy", result.bbox.dy);
+    bbox.set("dz", result.bbox.dz);
+    obj.set("bbox", bbox);
+
+    obj.set("strategy", result.strategy);
+
+    val stage1 = val::object();
+    if (result.stage1.hasBaseFaceId) {
+        stage1.set("baseFaceId", result.stage1.baseFaceId);
+    }
+    stage1.set("usedCylinderSupport", result.stage1.usedCylinderSupport);
+    stage1.set("detectedAxis", Vector3ToVal(result.stage1.detectedAxis));
+    obj.set("stage1", stage1);
+
+    val stage2 = val::object();
+    stage2.set("rotationAroundZDeg", result.stage2.rotationAroundZDeg);
+    obj.set("stage2", stage2);
+
+    obj.set("confidence", result.confidence);
+
+    if (!result.sourceUnit.empty()) {
+        obj.set("sourceUnit", result.sourceUnit);
+    }
+    if (result.unitScaleToMeters > 0.0) {
+        obj.set("unitScaleToMeters", result.unitScaleToMeters);
+    }
+
+    return obj;
+}
+
 val BuildResult(const OcctSceneData& scene, const std::string& sourceFormat)
 {
     val result = val::object();
@@ -378,10 +495,20 @@ val ReadFile(const std::string& format, const val& content, const val& jsParams)
     return ReadByFormat(format, content, jsParams);
 }
 
+val AnalyzeOptimalOrientation(const std::string& format, const val& content, const val& jsParams)
+{
+    std::vector<uint8_t> buffer = ExtractBytes(content);
+    OrientationParams params = ParseOrientationParams(jsParams);
+    return OrientationResultToVal(
+        AnalyzeOptimalOrientationFromMemory(format, buffer.data(), buffer.size(), params)
+    );
+}
+
 EMSCRIPTEN_BINDINGS(occtjs)
 {
     function("ReadFile", &ReadFile);
     function("ReadStepFile", &ReadStepFile);
     function("ReadIgesFile", &ReadIgesFile);
     function("ReadBrepFile", &ReadBrepFile);
+    function("AnalyzeOptimalOrientation", &AnalyzeOptimalOrientation);
 }
