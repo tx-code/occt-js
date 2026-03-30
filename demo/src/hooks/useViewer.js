@@ -4,6 +4,7 @@ import { useViewerStore } from "../store/viewerStore";
 import { getCameraAttachOptions } from "../lib/camera-input.js";
 import { buildOcctScene } from "@tx-code/occt-babylon-loader";
 import {
+  createOcctEdgeOverlayBuilder,
   createCadPartMaterial,
   createCadVertexColorMaterial,
   createOcctBabylonViewer,
@@ -20,6 +21,7 @@ export function useViewer(canvasRef) {
   const meshGeoMapRef = useRef(new Map());
   const meshesRef = useRef([]);
   const edgeLinesRef = useRef([]);
+  const edgeOverlayBuilderRef = useRef(null);
   const transformNodesRef = useRef([]);
 
   const clearScene = useCallback(() => {
@@ -28,6 +30,8 @@ export function useViewer(canvasRef) {
         edgeMesh.dispose(false, true);
       }
     }
+    edgeOverlayBuilderRef.current?.dispose?.();
+    edgeOverlayBuilderRef.current = null;
 
     const viewerRuntime = viewerRuntimeRef.current;
     if (viewerRuntime) {
@@ -162,12 +166,9 @@ export function useViewer(canvasRef) {
       return mat;
     };
 
-    const edgeTubeMaterial = new BABYLON.StandardMaterial("edge_tube_mat", scene);
-    edgeTubeMaterial.diffuseColor = edgeColor;
-    edgeTubeMaterial.emissiveColor = edgeColor.scale(0.92);
-    edgeTubeMaterial.specularColor = BABYLON.Color3.Black();
-    edgeTubeMaterial.backFaceCulling = false;
-    edgeTubeMaterial.disableLighting = true;
+    edgeOverlayBuilderRef.current = createOcctEdgeOverlayBuilder(scene, {
+      color: edgeColor,
+    });
 
     const geoCache = new Map();
 
@@ -184,169 +185,8 @@ export function useViewer(canvasRef) {
     };
 
     const buildEdgeLines = (geo, parent) => {
-      if (!geo.edges || geo.edges.length === 0) return;
-
-      const positions = geo.positions || [];
-      let minX = Number.POSITIVE_INFINITY;
-      let minY = Number.POSITIVE_INFINITY;
-      let minZ = Number.POSITIVE_INFINITY;
-      let maxX = Number.NEGATIVE_INFINITY;
-      let maxY = Number.NEGATIVE_INFINITY;
-      let maxZ = Number.NEGATIVE_INFINITY;
-      for (let i = 0; i < positions.length; i += 3) {
-        const x = positions[i];
-        const y = positions[i + 1];
-        const z = positions[i + 2];
-        if (x < minX) minX = x;
-        if (y < minY) minY = y;
-        if (z < minZ) minZ = z;
-        if (x > maxX) maxX = x;
-        if (y > maxY) maxY = y;
-        if (z > maxZ) maxZ = z;
-      }
-
-      const hasBounds = Number.isFinite(minX) && Number.isFinite(maxX);
-      const cx = hasBounds ? (minX + maxX) * 0.5 : 0;
-      const cy = hasBounds ? (minY + maxY) * 0.5 : 0;
-      const cz = hasBounds ? (minZ + maxZ) * 0.5 : 0;
-      const dx = hasBounds ? (maxX - minX) : 1;
-      const dy = hasBounds ? (maxY - minY) : 1;
-      const dz = hasBounds ? (maxZ - minZ) : 1;
-      const diagonal = Math.max(Math.sqrt(dx * dx + dy * dy + dz * dz), 1);
-      const edgeOffset = diagonal * 0.00016;
-      const tubeRadius = Math.max(diagonal / 9000, 0.0004);
-      const tubeTessellation = diagonal > 3000 ? 4 : 6;
-
-      const lines = [];
-      let segmentCount = 0;
-
-      for (let edgeIndex = 0; edgeIndex < geo.edges.length; edgeIndex++) {
-        const edge = geo.edges[edgeIndex];
-        const pts = edge.points;
-        if (!pts || pts.length < 6) continue;
-
-        const path = [];
-        for (let i = 0; i < pts.length; i += 3) {
-          const px = pts[i];
-          const py = pts[i + 1];
-          const pz = pts[i + 2];
-
-          const ox = px - cx;
-          const oy = py - cy;
-          const oz = pz - cz;
-          const len = Math.sqrt(ox * ox + oy * oy + oz * oz);
-          if (len > 1e-8) {
-            const scale = edgeOffset / len;
-            path.push(new BABYLON.Vector3(px + ox * scale, py + oy * scale, pz + oz * scale));
-          } else {
-            path.push(new BABYLON.Vector3(px, py, pz));
-          }
-        }
-
-        if (path.length >= 2) {
-          lines.push(path);
-          segmentCount += path.length - 1;
-        }
-      }
-
-      if (lines.length === 0) return;
-
-      // Keep tubes for medium-size models; use greased lines for heavier geometry, then fallback.
-      const canUseTube = segmentCount <= 6000 && lines.length <= 1200;
-      if (!canUseTube) {
-        const canUseGreasedLine =
-          typeof BABYLON.CreateGreasedLine === "function" &&
-          segmentCount <= 90000 &&
-          lines.length <= 12000;
-
-        if (canUseGreasedLine) {
-          try {
-            const gl = BABYLON.CreateGreasedLine(
-              "edges_greased",
-              {
-                points: lines,
-                updatable: false,
-              },
-              {
-                materialType: 2, // GreasedLineMeshMaterialType.MATERIAL_TYPE_SIMPLE
-                color: edgeColor,
-                colorMode: 0, // GreasedLineMeshColorMode.COLOR_MODE_SET
-                useColors: false,
-                useDash: false,
-                cameraFacing: true,
-                sizeAttenuation: true,
-                width: 1.7,
-              },
-              scene,
-            );
-            if (gl) {
-              gl.parent = parent;
-              gl.isPickable = false;
-              gl.renderingGroupId = 1;
-              gl.alwaysSelectAsActiveMesh = true;
-              edgeLinesRef.current.push(gl);
-              return;
-            }
-          } catch {
-            // Fallback to standard line system below.
-          }
-        }
-
-        const ls = BABYLON.MeshBuilder.CreateLineSystem("edges", { lines, updatable: false }, scene);
-        ls.color = edgeColor;
-        ls.parent = parent;
-        ls.isPickable = false;
-        ls.alpha = 0.95;
-        ls.renderingGroupId = 1;
-        ls.alwaysSelectAsActiveMesh = true;
-        edgeLinesRef.current.push(ls);
-        return;
-      }
-
-      const mergedBatches = [];
-      let batch = [];
-      const mergeBatch = () => {
-        if (batch.length === 0) return;
-        const merged = batch.length === 1
-          ? batch[0]
-          : BABYLON.Mesh.MergeMeshes(batch, true, true, undefined, false, true);
-        if (merged) {
-          mergedBatches.push(merged);
-        } else {
-          mergedBatches.push(...batch);
-        }
-        batch = [];
-      };
-
-      for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
-        const tube = BABYLON.MeshBuilder.CreateTube(
-          `edge_tube_${lineIndex}`,
-          {
-            path: lines[lineIndex],
-            radius: tubeRadius,
-            tessellation: tubeTessellation,
-            cap: BABYLON.Mesh.NO_CAP,
-            sideOrientation: BABYLON.Mesh.DOUBLESIDE,
-            updatable: false,
-          },
-          scene,
-        );
-        tube.material = edgeTubeMaterial;
-        tube.isPickable = false;
-        batch.push(tube);
-        if (batch.length >= 180) {
-          mergeBatch();
-        }
-      }
-      mergeBatch();
-
-      for (const mesh of mergedBatches) {
-        mesh.parent = parent;
-        mesh.isPickable = false;
-        mesh.alwaysSelectAsActiveMesh = true;
-        mesh.renderingGroupId = 1;
-        edgeLinesRef.current.push(mesh);
-      }
+      const edgeOverlays = edgeOverlayBuilderRef.current?.build(geo, parent) || [];
+      edgeLinesRef.current.push(...edgeOverlays);
     };
 
     const buildPart = (nodeData, parent) => {

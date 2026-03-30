@@ -9,3 +9,4 @@ export {
 } from "./viewer-materials.js";
 export { resolveShadingNormals } from "./viewer-normals.js";
 export { applySceneTheme, resolveThemeClearColor } from "./viewer-theme.js";
+export { createOcctEdgeOverlayBuilder } from "./viewer-edges.js";
