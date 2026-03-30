@@ -59,6 +59,23 @@ test("viewer dispose restores the prior active camera", () => {
   hostCamera.dispose();
 });
 
+test("viewer loads an OCCT model into its root node", () => {
+  const scene = new Scene(new NullEngine());
+  const viewer = createOcctBabylonViewer(scene);
+  const model = {
+    sourceFormat: "step",
+    rootNodes: [],
+    geometries: [],
+    materials: [],
+    warnings: [],
+    stats: {},
+  };
+
+  viewer.loadOcctModel(model);
+  assert.ok(viewer.getSceneState());
+  assert.ok(viewer.getRootNode());
+});
+
 test("package exports resolve to the shipped entry file", () => {
   const packageJsonPath = resolve(packageDir, "package.json");
   const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"));
