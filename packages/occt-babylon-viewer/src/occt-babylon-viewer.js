@@ -1,5 +1,6 @@
 import { Vector3 } from "@babylonjs/core/Maths/math.vector.js";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode.js";
+import { buildOcctScene } from "../../occt-babylon-loader/src/index.js";
 import { VIEWER_ROOT_NAME, withViewerDefaults } from "./viewer-defaults.js";
 import {
   applyProjection,
@@ -46,6 +47,40 @@ export function createOcctBabylonViewer(scene, options = {}) {
     axesVisible: config.axes?.visible ?? true,
   };
   let gridHelpers = createGridHelpers(scene, createFallbackBounds());
+  let currentSceneResources = null;
+
+  function disposeCurrentSceneResources() {
+    if (!currentSceneResources) {
+      return;
+    }
+
+    const materials = new Set();
+    for (const mesh of currentSceneResources.meshes ?? []) {
+      if (!mesh || mesh.isDisposed()) {
+        continue;
+      }
+      if (mesh.material) {
+        materials.add(mesh.material);
+      }
+      mesh.dispose(false, true);
+    }
+
+    for (const transformNode of currentSceneResources.transformNodes ?? []) {
+      if (!transformNode || transformNode === rootNode || transformNode.isDisposed()) {
+        continue;
+      }
+      transformNode.dispose(false, true);
+    }
+
+    for (const material of materials) {
+      const disposed = typeof material?.isDisposed === "function" ? material.isDisposed() : false;
+      if (material && typeof material.dispose === "function" && !disposed) {
+        material.dispose();
+      }
+    }
+
+    currentSceneResources = null;
+  }
 
   function getSceneBounds() {
     if (rootNode.getChildren().length === 0) {
@@ -127,6 +162,8 @@ export function createOcctBabylonViewer(scene, options = {}) {
   syncGridVisibility();
 
   function clearModel() {
+    disposeCurrentSceneResources();
+
     const children = rootNode.getChildren().slice();
     for (const child of children) {
       child.dispose(false, true);
@@ -178,6 +215,30 @@ export function createOcctBabylonViewer(scene, options = {}) {
     return { ...sceneState };
   }
 
+  function loadOcctModel(model) {
+    clearModel();
+
+    currentSceneResources = buildOcctScene(model, scene, { createRootNode: false });
+    const topLevelNodes = [
+      ...(currentSceneResources.transformNodes ?? []),
+      ...(currentSceneResources.meshes ?? []),
+    ];
+    for (const node of topLevelNodes) {
+      if (node === rootNode) {
+        continue;
+      }
+      if (!node.parent) {
+        node.parent = rootNode;
+      }
+    }
+
+    replaceGridHelpers(getSceneBounds());
+    if (camera) {
+      fitAll();
+    }
+    return currentSceneResources;
+  }
+
   return {
     getScene() {
       return scene;
@@ -196,9 +257,7 @@ export function createOcctBabylonViewer(scene, options = {}) {
     setView,
     setGridVisible,
     setAxesVisible,
-    loadOcctModel() {
-      throw new Error("Not implemented yet");
-    },
+    loadOcctModel,
     dispose() {
       clearModel();
       if (gridHelpers) {

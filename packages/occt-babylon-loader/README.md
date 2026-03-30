@@ -24,3 +24,11 @@ import { loadWithOcctCore } from "@tx-code/occt-babylon-loader";
 const core = createOcctCore({ factory: globalThis.OcctJS });
 const model = await loadWithOcctCore(core, fileBytes, { fileName: "assembly.step" });
 ```
+
+## Build Scene Resources
+
+```js
+import { buildOcctScene } from "@tx-code/occt-babylon-loader";
+
+const resources = buildOcctScene(model, scene, { createRootNode: false });
+```
