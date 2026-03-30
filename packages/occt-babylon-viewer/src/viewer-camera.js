@@ -51,5 +51,9 @@ export function applyProjection(camera, mode, size, aspect) {
     return;
   }
 
+  if (mode !== "perspective") {
+    throw new Error(`Unknown projection mode: ${mode}`);
+  }
+
   camera.mode = Camera.PERSPECTIVE_CAMERA;
 }

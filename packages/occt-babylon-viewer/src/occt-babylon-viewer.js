@@ -36,6 +36,7 @@ export function createOcctBabylonViewer(scene, options = {}) {
 
   const config = withViewerDefaults(options);
   const rootNode = new TransformNode(VIEWER_ROOT_NAME, scene);
+  const previousActiveCamera = scene.activeCamera ?? null;
   const camera = config.createDefaultCameraController ? createDefaultCamera(scene) : null;
   const lights = config.createDefaultLights ? ensureDefaultLights(scene) : null;
   const sceneState = {
@@ -142,8 +143,15 @@ export function createOcctBabylonViewer(scene, options = {}) {
   }
 
   function setProjection(mode) {
+    if (!camera) {
+      return;
+    }
+
+    const bounds = getSceneBounds();
+    const size = getProjectionSize(bounds);
+    const aspect = camera.getEngine().getAspectRatio(camera);
+    applyProjection(camera, mode, size, aspect);
     sceneState.projectionMode = mode;
-    syncProjection();
   }
 
   function setView(direction) {
@@ -204,6 +212,11 @@ export function createOcctBabylonViewer(scene, options = {}) {
         lights.dir.dispose();
       }
       if (camera) {
+        if (scene.activeCamera === camera) {
+          scene.activeCamera = previousActiveCamera && !previousActiveCamera.isDisposed()
+            ? previousActiveCamera
+            : null;
+        }
         camera.dispose();
       }
       rootNode.dispose(false, true);

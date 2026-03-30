@@ -5,6 +5,7 @@ import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder.js";
 
 export function createGridHelpers(scene, bounds) {
   const extent = bounds.max.subtract(bounds.min);
+  const center = bounds.min.add(bounds.max).scale(0.5);
   const modelSize = extent.length();
   const gridSize = Math.max(modelSize * 4, 10);
   const maxDimension = Math.max(extent.x, extent.y, extent.z);
@@ -27,15 +28,17 @@ export function createGridHelpers(scene, bounds) {
   material.backFaceCulling = false;
 
   ground.material = material;
+  ground.position.x = center.x;
   ground.position.y = bounds.min.y - 0.01;
+  ground.position.z = center.z;
   ground.isPickable = false;
 
   const xAxis = MeshBuilder.CreateLines(
     "occt-viewer-x-axis",
     {
       points: [
-        new Vector3(-gridSize / 2, bounds.min.y, 0),
-        new Vector3(gridSize / 2, bounds.min.y, 0),
+        new Vector3(center.x - gridSize / 2, bounds.min.y, center.z),
+        new Vector3(center.x + gridSize / 2, bounds.min.y, center.z),
       ],
     },
     scene,
@@ -47,8 +50,8 @@ export function createGridHelpers(scene, bounds) {
     "occt-viewer-z-axis",
     {
       points: [
-        new Vector3(0, bounds.min.y, -gridSize / 2),
-        new Vector3(0, bounds.min.y, gridSize / 2),
+        new Vector3(center.x, bounds.min.y, center.z - gridSize / 2),
+        new Vector3(center.x, bounds.min.y, center.z + gridSize / 2),
       ],
     },
     scene,
