@@ -1,5 +1,13 @@
+import { Vector3 } from "@babylonjs/core/Maths/math.vector.js";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode.js";
 import { VIEWER_ROOT_NAME, withViewerDefaults } from "./viewer-defaults.js";
+import {
+  applyProjection,
+  applyStandardView,
+  createDefaultCamera,
+} from "./viewer-camera.js";
+import { createGridHelpers } from "./viewer-grid.js";
+import { ensureDefaultLights } from "./viewer-lights.js";
 
 function assertScene(scene) {
   if (!scene) {
@@ -7,17 +15,159 @@ function assertScene(scene) {
   }
 }
 
+function createFallbackBounds() {
+  return {
+    min: new Vector3(-1, -1, -1),
+    max: new Vector3(1, 1, 1),
+  };
+}
+
+function isFiniteBounds(bounds) {
+  return Number.isFinite(bounds?.min?.x) &&
+    Number.isFinite(bounds?.min?.y) &&
+    Number.isFinite(bounds?.min?.z) &&
+    Number.isFinite(bounds?.max?.x) &&
+    Number.isFinite(bounds?.max?.y) &&
+    Number.isFinite(bounds?.max?.z);
+}
+
 export function createOcctBabylonViewer(scene, options = {}) {
   assertScene(scene);
 
   const config = withViewerDefaults(options);
   const rootNode = new TransformNode(VIEWER_ROOT_NAME, scene);
+  const camera = config.createDefaultCameraController ? createDefaultCamera(scene) : null;
+  const lights = config.createDefaultLights ? ensureDefaultLights(scene) : null;
+  const sceneState = {
+    projectionMode: config.camera?.projection ?? "perspective",
+    view: config.camera?.view ?? "iso",
+    gridVisible: config.grid?.visible ?? true,
+    axesVisible: config.axes?.visible ?? true,
+  };
+  let gridHelpers = createGridHelpers(scene, createFallbackBounds());
+
+  function getSceneBounds() {
+    if (rootNode.getChildren().length === 0) {
+      return createFallbackBounds();
+    }
+
+    const bounds = rootNode.getHierarchyBoundingVectors(true);
+    return isFiniteBounds(bounds) ? bounds : createFallbackBounds();
+  }
+
+  function getProjectionSize(bounds) {
+    const extent = bounds.max.subtract(bounds.min);
+    return Math.max(extent.length() * 0.5, 1);
+  }
+
+  function syncProjection() {
+    if (!camera) {
+      return;
+    }
+
+    const bounds = getSceneBounds();
+    const size = getProjectionSize(bounds);
+    const aspect = camera.getEngine().getAspectRatio(camera);
+    applyProjection(camera, sceneState.projectionMode, size, aspect);
+  }
+
+  function syncGridVisibility() {
+    if (!gridHelpers) {
+      return;
+    }
+
+    gridHelpers.ground.isVisible = sceneState.gridVisible;
+    gridHelpers.xAxis.isVisible = sceneState.axesVisible;
+    gridHelpers.zAxis.isVisible = sceneState.axesVisible;
+  }
+
+  function replaceGridHelpers(bounds = getSceneBounds()) {
+    if (gridHelpers) {
+      gridHelpers.ground.dispose(false, true);
+      gridHelpers.xAxis.dispose(false, true);
+      gridHelpers.zAxis.dispose(false, true);
+    }
+
+    gridHelpers = createGridHelpers(scene, bounds);
+    syncGridVisibility();
+  }
+
+  function fitAll() {
+    if (!camera) {
+      return null;
+    }
+
+    const bounds = getSceneBounds();
+    const center = bounds.min.add(bounds.max).scale(0.5);
+    const extent = bounds.max.subtract(bounds.min);
+    const modelSize = extent.length();
+    const fov = camera.fov || 0.8;
+    const radius = (modelSize * 0.5) / Math.tan(fov * 0.5) * 1.2;
+
+    camera.target = center;
+    camera.radius = Math.max(radius, 1);
+    camera.lowerRadiusLimit = Math.max(modelSize * 0.01, 0.1);
+    camera.upperRadiusLimit = Math.max(modelSize * 10, 10);
+    camera.minZ = Math.max(modelSize * 0.001, 0.1);
+    camera.maxZ = Math.max(modelSize * 100, 100);
+
+    applyStandardView(camera, sceneState.view);
+    syncProjection();
+
+    return bounds;
+  }
+
+  if (camera) {
+    scene.activeCamera = camera;
+    applyStandardView(camera, sceneState.view);
+    fitAll();
+  }
+
+  syncGridVisibility();
 
   function clearModel() {
     const children = rootNode.getChildren().slice();
     for (const child of children) {
       child.dispose(false, true);
     }
+
+    replaceGridHelpers(createFallbackBounds());
+    if (camera) {
+      fitAll();
+    }
+  }
+
+  function getCamera() {
+    return camera;
+  }
+
+  function setProjection(mode) {
+    sceneState.projectionMode = mode;
+    syncProjection();
+  }
+
+  function setView(direction) {
+    if (!camera) {
+      return;
+    }
+
+    applyStandardView(camera, direction);
+    sceneState.view = direction;
+    fitAll();
+  }
+
+  function setGridVisible(visible) {
+    sceneState.gridVisible = visible;
+    syncGridVisibility();
+  }
+
+  function setAxesVisible(visible) {
+    sceneState.axesVisible = visible;
+    syncGridVisibility();
+  }
+
+  function getSceneState() {
+    return { ...sceneState };
   }
 
   return {
@@ -30,12 +180,32 @@ export function createOcctBabylonViewer(scene, options = {}) {
     getRootNode() {
       return rootNode;
     },
+    getCamera,
+    getSceneState,
     clearModel,
+    fitAll,
+    setProjection,
+    setView,
+    setGridVisible,
+    setAxesVisible,
     loadOcctModel() {
       throw new Error("Not implemented yet");
     },
     dispose() {
       clearModel();
+      if (gridHelpers) {
+        gridHelpers.ground.dispose(false, true);
+        gridHelpers.xAxis.dispose(false, true);
+        gridHelpers.zAxis.dispose(false, true);
+        gridHelpers = null;
+      }
+      if (lights) {
+        lights.hemi.dispose();
+        lights.dir.dispose();
+      }
+      if (camera) {
+        camera.dispose();
+      }
       rootNode.dispose(false, true);
     },
   };
