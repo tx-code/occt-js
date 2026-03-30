@@ -32,6 +32,12 @@ test.beforeEach(async ({ page }) => {
 test("viewer shell still renders after package extraction", async ({ page }) => {
   await expect(page.getByTestId("render-canvas")).toBeVisible();
   await expect(page.getByTestId("drop-zone")).toBeVisible();
+
+  await loadFixture(page);
+  const viewcube = page.getByTestId("viewcube");
+  await expect(viewcube).toBeVisible();
+  await viewcube.click();
+  await expect(page.getByTestId("stats-panel")).toBeVisible();
 });
 
 test("shows drop zone on initial load", async ({ page }) => {
@@ -341,3 +347,4 @@ test.describe("mobile layout", () => {
     expect(boxesOverlap(viewcubeBox, selectionBox)).toBe(false);
   });
 });
+

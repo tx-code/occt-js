@@ -1,0 +1,17 @@
+{
+  "name": "@tx-code/occt-babylon-widgets",
+  "version": "0.1.4",
+  "description": "Reusable Babylon viewer widgets for OCCT-powered applications",
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "files": [
+    "src"
+  ],
+  "license": "Apache-2.0",
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  }
+}

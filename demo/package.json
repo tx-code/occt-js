@@ -17,6 +17,7 @@
     "@tauri-apps/plugin-dialog": "^2.6.0",
     "@tauri-apps/plugin-fs": "^2.4.5",
     "@tx-code/occt-babylon-loader": "file:../packages/occt-babylon-loader",
+    "@tx-code/occt-babylon-widgets": "file:../packages/occt-babylon-widgets",
     "@tx-code/occt-babylon-viewer": "file:../packages/occt-babylon-viewer",
     "@tx-code/occt-core": "file:../packages/occt-core",
     "class-variance-authority": "^0.7.1",
