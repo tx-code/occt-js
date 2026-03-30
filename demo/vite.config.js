@@ -25,6 +25,9 @@ function serveTestFixtures() {
 
 export default defineConfig({
   plugins: [react(), tailwindcss(), serveTestFixtures()],
+  resolve: {
+    dedupe: ["@babylonjs/core", "@babylonjs/materials"],
+  },
   base: "./",
   server: { port: 5173, fs: { allow: [".."] } },
   build: { outDir: "dist" },

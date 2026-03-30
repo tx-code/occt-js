@@ -268,6 +268,7 @@ export function useViewer(canvasRef) {
     transformNodesRef.current.push(root);
     for (const rn of result.rootNodes || []) buildNode(rn, root);
 
+    viewerRuntime?.refreshHelpers?.();
     viewerRuntime?.fitAll();
     const gridVisible = useViewerStore.getState().gridVisible;
     viewerRuntime?.setGridVisible(gridVisible);

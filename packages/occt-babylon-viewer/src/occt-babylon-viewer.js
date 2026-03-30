@@ -153,6 +153,11 @@ export function createOcctBabylonViewer(scene, options = {}) {
     return bounds;
   }
 
+  function refreshHelpers() {
+    replaceGridHelpers(getSceneBounds());
+    syncProjection();
+  }
+
   if (camera) {
     scene.activeCamera = camera;
     applyStandardView(camera, sceneState.view);
@@ -253,6 +258,7 @@ export function createOcctBabylonViewer(scene, options = {}) {
     getSceneState,
     clearModel,
     fitAll,
+    refreshHelpers,
     setProjection,
     setView,
     setGridVisible,

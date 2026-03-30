@@ -3,6 +3,28 @@ import { Vector3 } from "@babylonjs/core/Maths/math.vector.js";
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial.js";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder.js";
 
+function createGridMaterial(scene, gridRatio) {
+  const GridMaterialCtor = globalThis?.BABYLON?.GridMaterial;
+  if (typeof GridMaterialCtor === "function") {
+    const gridMat = new GridMaterialCtor("gridMat", scene);
+    gridMat.mainColor = new Color3(0.04, 0.04, 0.05);
+    gridMat.lineColor = new Color3(0.48, 0.48, 0.54);
+    gridMat.opacity = 0.98;
+    gridMat.gridRatio = gridRatio;
+    gridMat.majorUnitFrequency = 10;
+    gridMat.minorUnitVisibility = 0.35;
+    gridMat.backFaceCulling = false;
+    return gridMat;
+  }
+
+  const fallback = new StandardMaterial("gridMatFallback", scene);
+  fallback.diffuseColor = new Color3(0.16, 0.16, 0.2);
+  fallback.emissiveColor = new Color3(0.12, 0.12, 0.16).scale(Math.max(1 / gridRatio, 0.2));
+  fallback.alpha = 0.98;
+  fallback.backFaceCulling = false;
+  return fallback;
+}
+
 export function createGridHelpers(scene, bounds) {
   const extent = bounds.max.subtract(bounds.min);
   const center = bounds.min.add(bounds.max).scale(0.5);
@@ -21,13 +43,7 @@ export function createGridHelpers(scene, bounds) {
     { width: gridSize, height: gridSize, subdivisions: 1 },
     scene,
   );
-  const material = new StandardMaterial("occt-viewer-grid-material", scene);
-  material.diffuseColor = new Color3(0.12, 0.12, 0.14);
-  material.emissiveColor = new Color3(0.04, 0.04, 0.05).scale(Math.max(1 / gridRatio, 0.1));
-  material.alpha = 0.98;
-  material.backFaceCulling = false;
-
-  ground.material = material;
+  ground.material = createGridMaterial(scene, gridRatio);
   ground.position.x = center.x;
   ground.position.y = bounds.min.y - 0.01;
   ground.position.z = center.z;
