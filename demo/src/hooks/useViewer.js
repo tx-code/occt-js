@@ -145,8 +145,6 @@ export function useViewer(canvasRef) {
 
     clearScene();
 
-    const edgeColor = new BABYLON.Color3(0.1, 0.1, 0.12);
-
     // Material cache
     const matCache = new Map();
     const fallbackCadColor = getCadVertexColorDefault();
@@ -166,9 +164,7 @@ export function useViewer(canvasRef) {
       return mat;
     };
 
-    edgeOverlayBuilderRef.current = createOcctEdgeOverlayBuilder(scene, {
-      color: edgeColor,
-    });
+    edgeOverlayBuilderRef.current = createOcctEdgeOverlayBuilder(scene);
 
     const geoCache = new Map();
 

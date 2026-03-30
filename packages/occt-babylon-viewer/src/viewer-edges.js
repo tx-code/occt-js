@@ -64,19 +64,20 @@ export function createOcctEdgeOverlayBuilder(scene, options = {}) {
     throw new TypeError("createOcctEdgeOverlayBuilder requires a Babylon scene");
   }
 
-  const edgeColor = toColor3(options.color, new Color3(0.1, 0.1, 0.12));
-  const edgeOffsetRatio = typeof options.edgeOffsetRatio === "number" ? options.edgeOffsetRatio : 0.00016;
-  const tubeRadiusDivisor = typeof options.tubeRadiusDivisor === "number" ? options.tubeRadiusDivisor : 9000;
-  const minTubeRadius = typeof options.minTubeRadius === "number" ? options.minTubeRadius : 0.0004;
+  const edgeColor = toColor3(options.color, new Color3(0.075, 0.082, 0.094));
+  const edgeOffsetRatio = typeof options.edgeOffsetRatio === "number" ? options.edgeOffsetRatio : 0.00012;
+  const tubeRadiusDivisor = typeof options.tubeRadiusDivisor === "number" ? options.tubeRadiusDivisor : 11000;
+  const minTubeRadius = typeof options.minTubeRadius === "number" ? options.minTubeRadius : 0.00025;
   const tubeBatchSize = typeof options.tubeBatchSize === "number" ? options.tubeBatchSize : 180;
   const tubeMaxSegments = typeof options.tubeMaxSegments === "number" ? options.tubeMaxSegments : 6000;
   const tubeMaxLines = typeof options.tubeMaxLines === "number" ? options.tubeMaxLines : 1200;
   const greasedMaxSegments = typeof options.greasedMaxSegments === "number" ? options.greasedMaxSegments : 90000;
   const greasedMaxLines = typeof options.greasedMaxLines === "number" ? options.greasedMaxLines : 12000;
+  const greasedWidth = typeof options.greasedWidth === "number" ? options.greasedWidth : 1.35;
 
   const tubeMaterial = new StandardMaterial("occt_edge_tube_mat", scene);
   tubeMaterial.diffuseColor = edgeColor;
-  tubeMaterial.emissiveColor = edgeColor.scale(0.92);
+  tubeMaterial.emissiveColor = edgeColor.scale(0.78);
   tubeMaterial.specularColor = Color3.Black();
   tubeMaterial.backFaceCulling = false;
   tubeMaterial.disableLighting = true;
@@ -209,7 +210,7 @@ export function createOcctEdgeOverlayBuilder(scene, options = {}) {
             useDash: false,
             cameraFacing: true,
             sizeAttenuation: true,
-            width: 1.7,
+            width: greasedWidth,
           },
           scene,
         );
@@ -229,7 +230,7 @@ export function createOcctEdgeOverlayBuilder(scene, options = {}) {
     lineSystem.color = edgeColor;
     lineSystem.parent = parent ?? null;
     lineSystem.isPickable = false;
-    lineSystem.alpha = 0.95;
+    lineSystem.alpha = 1;
     lineSystem.renderingGroupId = 1;
     lineSystem.alwaysSelectAsActiveMesh = true;
     return [lineSystem];
