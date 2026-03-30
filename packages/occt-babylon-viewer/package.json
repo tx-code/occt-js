@@ -1,0 +1,22 @@
+{
+  "name": "@tx-code/occt-babylon-viewer",
+  "version": "0.1.4",
+  "description": "Babylon.js viewer runtime helpers for OCCT-backed CAD models",
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "files": [
+    "src"
+  ],
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@babylonjs/core": "^9.0.0",
+    "@babylonjs/materials": "^9.0.0",
+    "@tx-code/occt-babylon-loader": "0.1.4"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  }
+}
