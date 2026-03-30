@@ -13,6 +13,62 @@ export function useViewer(canvasRef) {
   const transformNodesRef = useRef([]);
   const gridMeshesRef = useRef([]);
 
+  const darkClearColor = new BABYLON.Color4(0.1, 0.11, 0.13, 1);
+  const lightClearColor = new BABYLON.Color4(0.95, 0.96, 0.98, 1);
+  const fallbackPartColor = { r: 0.9, g: 0.91, b: 0.93 };
+
+  const applyCadMaterialPreset = useCallback((mat, colorLike) => {
+    const r = colorLike?.r ?? fallbackPartColor.r;
+    const g = colorLike?.g ?? fallbackPartColor.g;
+    const b = colorLike?.b ?? fallbackPartColor.b;
+
+    mat.backFaceCulling = false;
+    mat.twoSidedLighting = true;
+    mat.maxSimultaneousLights = 8;
+
+    const isPbr = "albedoColor" in mat && "metallic" in mat && "roughness" in mat;
+    if (isPbr) {
+      mat.disableLighting = false;
+      mat.albedoColor = new BABYLON.Color3(r, g, b);
+      mat.metallic = 0.0;
+      mat.roughness = 0.38;
+      mat.directIntensity = 1.2;
+      mat.environmentIntensity = 0.4;
+      mat.specularIntensity = 0.55;
+      mat.forceIrradianceInFragment = true;
+      mat.emissiveColor = new BABYLON.Color3(
+        Math.min(r * 0.004, 0.01),
+        Math.min(g * 0.004, 0.01),
+        Math.min(b * 0.004, 0.01)
+      );
+      return;
+    }
+
+    mat.disableLighting = false;
+    mat.ambientColor = new BABYLON.Color3(
+      Math.min(r * 0.22 + 0.04, 1),
+      Math.min(g * 0.22 + 0.04, 1),
+      Math.min(b * 0.22 + 0.04, 1)
+    );
+    mat.specularColor = new BABYLON.Color3(0.12, 0.12, 0.12);
+    mat.specularPower = 64;
+    mat.emissiveColor = new BABYLON.Color3(
+      Math.min(r * 0.008, 0.02),
+      Math.min(g * 0.008, 0.02),
+      Math.min(b * 0.008, 0.02)
+    );
+  }, []);
+
+  const applyGridTheme = useCallback((gridMat, theme) => {
+    const isDarkTheme = theme === "dark";
+    gridMat.mainColor = isDarkTheme ? new BABYLON.Color3(0, 0, 0) : new BABYLON.Color3(1, 1, 1);
+    gridMat.lineColor = isDarkTheme
+      ? new BABYLON.Color3(0.24, 0.24, 0.27)
+      : new BABYLON.Color3(0.74, 0.75, 0.78);
+    gridMat.opacity = isDarkTheme ? 0.8 : 0.9;
+    gridMat.minorUnitVisibility = isDarkTheme ? 0.1 : 0.22;
+  }, []);
+
   const clearScene = useCallback(() => {
     const scene = sceneRef.current;
     if (!scene) return;
@@ -46,7 +102,28 @@ export function useViewer(canvasRef) {
 
     const engine = new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true });
     const scene = new BABYLON.Scene(engine);
-    scene.clearColor = new BABYLON.Color4(0.1, 0.1, 0.12, 1);
+    scene.clearColor = darkClearColor.clone();
+    scene.ambientColor = new BABYLON.Color3(0.012, 0.012, 0.014);
+
+    const imageProcessing = scene.imageProcessingConfiguration;
+    imageProcessing.toneMappingEnabled = false;
+    imageProcessing.exposure = 1.03;
+    imageProcessing.contrast = 1.26;
+    imageProcessing.vignetteEnabled = false;
+    imageProcessing.colorCurvesEnabled = false;
+    imageProcessing.colorGradingEnabled = false;
+
+    let environmentTexture = null;
+    try {
+      environmentTexture = BABYLON.CubeTexture.CreateFromPrefilteredData(
+        "https://assets.babylonjs.com/environments/studio.env",
+        scene
+      );
+      scene.environmentTexture = environmentTexture;
+      scene.environmentIntensity = 0.38;
+    } catch {
+      environmentTexture = null;
+    }
 
     const camera = new BABYLON.ArcRotateCamera("cam", Math.PI / 4, Math.PI / 3, 100, BABYLON.Vector3.Zero(), scene);
     const { noPreventDefault } = getCameraAttachOptions();
@@ -56,13 +133,39 @@ export function useViewer(canvasRef) {
     camera.minZ = 0.1;
     camera.panningSensibility = 30;
 
-    const hemi = new BABYLON.HemisphericLight("hemi", new BABYLON.Vector3(0, -1, 0), scene);
-    hemi.intensity = 0.8;
-    hemi.groundColor = new BABYLON.Color3(0.75, 0.75, 0.8);
-    hemi.specular = new BABYLON.Color3(0.1, 0.1, 0.1);
+    const hemi = new BABYLON.HemisphericLight("hemi", new BABYLON.Vector3(0, 1, 0), scene);
+    hemi.intensity = 0.06;
+    hemi.groundColor = new BABYLON.Color3(0.18, 0.19, 0.21);
+    hemi.specular = new BABYLON.Color3(0.03, 0.03, 0.03);
 
-    const dir = new BABYLON.DirectionalLight("dir", new BABYLON.Vector3(-1, -2, 1), scene);
-    dir.intensity = 0.3;
+    // Camera-follow key light keeps the currently viewed side readable.
+    const dirHead = new BABYLON.DirectionalLight("dirHead", new BABYLON.Vector3(0, -1, 0), scene);
+    dirHead.intensity = 1.06;
+    dirHead.specular = new BABYLON.Color3(0.12, 0.12, 0.12);
+
+    // Low-intensity world fills preserve some global depth cues.
+    const dirFillA = new BABYLON.DirectionalLight("dirFillA", new BABYLON.Vector3(-0.35, -1, -0.2), scene);
+    dirFillA.intensity = 0.12;
+    dirFillA.specular = new BABYLON.Color3(0.03, 0.03, 0.03);
+
+    const dirFillB = new BABYLON.DirectionalLight("dirFillB", new BABYLON.Vector3(0.7, -0.6, 0.25), scene);
+    dirFillB.intensity = 0.08;
+
+    const dirTop = new BABYLON.DirectionalLight("dirTop", new BABYLON.Vector3(0, -1, 0), scene);
+    dirTop.intensity = 0.24;
+    dirTop.specular = new BABYLON.Color3(0.03, 0.03, 0.03);
+    dirFillB.specular = new BABYLON.Color3(0.02, 0.02, 0.02);
+
+    const updateHeadLight = () => {
+      const viewDir = camera.target.subtract(camera.position);
+      if (viewDir.lengthSquared() < 1e-8) return;
+      const view = viewDir.normalize();
+      const up = BABYLON.Axis.Y;
+      const right = BABYLON.Vector3.Cross(view, up).normalize();
+      dirHead.direction = view.scale(0.7).subtract(up.scale(0.35)).add(right.scale(0.28)).normalize();
+    };
+    updateHeadLight();
+    const headLightObserver = scene.onBeforeRenderObservable.add(updateHeadLight);
 
     engineRef.current = engine;
     sceneRef.current = scene;
@@ -74,6 +177,8 @@ export function useViewer(canvasRef) {
 
     return () => {
       window.removeEventListener("resize", onResize);
+      scene.onBeforeRenderObservable.remove(headLightObserver);
+      if (environmentTexture) environmentTexture.dispose();
       engine.dispose();
     };
   }, [canvasRef]);
@@ -92,13 +197,31 @@ export function useViewer(canvasRef) {
         }
         const scene = sceneRef.current;
         if (scene) {
-          scene.clearColor = theme === "dark"
-            ? new BABYLON.Color4(0.1, 0.1, 0.12, 1)
-            : new BABYLON.Color4(0.92, 0.92, 0.94, 1);
+          scene.clearColor = theme === "dark" ? darkClearColor.clone() : lightClearColor.clone();
+          for (const g of gridMeshesRef.current) {
+            const mat = g.material;
+            if (mat && mat.name === "gridMat") applyGridTheme(mat, theme);
+          }
         }
       }
     );
     return unsub;
+  }, [applyGridTheme]);
+
+  // Follow OS theme by default in demo.
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const apply = () => useViewerStore.getState().setTheme(media.matches ? "dark" : "light");
+    apply();
+
+    if (typeof media.addEventListener === "function") {
+      media.addEventListener("change", apply);
+      return () => media.removeEventListener("change", apply);
+    }
+
+    media.addListener(apply);
+    return () => media.removeListener(apply);
   }, []);
 
   // Sync faces/edges visibility from store
@@ -133,19 +256,16 @@ export function useViewer(canvasRef) {
 
     clearScene();
 
-    const defaultColor = new BABYLON.Color3(0.7, 0.7, 0.7);
-    const edgeColor = new BABYLON.Color3(0.15, 0.15, 0.18);
+    const edgeColor = new BABYLON.Color3(0.18, 0.18, 0.2);
 
     // Material cache
     const matCache = new Map();
     const getMat = (color) => {
-      if (!color) color = { r: 0.7, g: 0.7, b: 0.7 };
+      if (!color) color = fallbackPartColor;
       const key = `${(color.r * 255) | 0},${(color.g * 255) | 0},${(color.b * 255) | 0}`;
       if (matCache.has(key)) return matCache.get(key);
-      const mat = new BABYLON.StandardMaterial("mat_" + key, scene);
-      mat.diffuseColor = new BABYLON.Color3(color.r, color.g, color.b);
-      mat.backFaceCulling = false;
-      mat.twoSidedLighting = true;
+      const mat = new BABYLON.PBRMaterial("mat_" + key, scene);
+      applyCadMaterialPreset(mat, color);
       matCache.set(key, mat);
       return mat;
     };
@@ -215,17 +335,29 @@ export function useViewer(canvasRef) {
         const vd = new BABYLON.VertexData();
         vd.positions = positions;
         vd.indices = indices;
-        if (geo.normals && geo.normals.length > 0) vd.normals = new Float32Array(geo.normals);
+        // Recompute normals in viewer space to avoid inconsistent imported face normals
+        // causing orientation-dependent darkening.
+        const computedNormals = [];
+        BABYLON.VertexData.ComputeNormals(Array.from(positions), Array.from(indices), computedNormals);
+        vd.normals = new Float32Array(computedNormals);
 
         if (hasMultiColor && geo.faces) {
           const vertexCount = positions.length / 3;
           const colors = new Float32Array(vertexCount * 4);
+          const fr = fallbackPartColor.r;
+          const fg = fallbackPartColor.g;
+          const fb = fallbackPartColor.b;
           for (let v = 0; v < vertexCount; v++) {
-            colors[v * 4] = 0.7; colors[v * 4 + 1] = 0.7; colors[v * 4 + 2] = 0.7; colors[v * 4 + 3] = 1;
+            colors[v * 4] = fr;
+            colors[v * 4 + 1] = fg;
+            colors[v * 4 + 2] = fb;
+            colors[v * 4 + 3] = 1;
           }
           for (const face of geo.faces) {
             const c = face.color || geo.color || null;
-            const cr = c ? c.r : 0.7, cg = c ? c.g : 0.7, cb = c ? c.b : 0.7;
+            const cr = c ? c.r : fr;
+            const cg = c ? c.g : fg;
+            const cb = c ? c.b : fb;
             for (let i = face.firstIndex; i < face.firstIndex + face.indexCount; i++) {
               const vi = indices[i];
               colors[vi * 4] = cr; colors[vi * 4 + 1] = cg; colors[vi * 4 + 2] = cb; colors[vi * 4 + 3] = 1;
@@ -237,11 +369,11 @@ export function useViewer(canvasRef) {
         vd.applyToMesh(mesh);
 
         if (hasMultiColor) {
-          const mat = new BABYLON.StandardMaterial("mat_vcolor_" + geoIdx, scene);
-          mat.diffuseColor = new BABYLON.Color3(1, 1, 1);
-          mat.backFaceCulling = false;
-          mat.twoSidedLighting = true;
+          const mat = new BABYLON.PBRMaterial("mat_vcolor_" + geoIdx, scene);
+          mat.albedoColor = new BABYLON.Color3(1, 1, 1);
+          applyCadMaterialPreset(mat, { r: 0.8, g: 0.82, b: 0.86 });
           mesh.material = mat;
+          mesh.useVertexColors = true;
         } else {
           let meshColor = geo.color;
           if (geo.faces) {
@@ -312,13 +444,11 @@ export function useViewer(canvasRef) {
     }
 
     const gridMat = new BABYLON.GridMaterial("gridMat", scene);
-    gridMat.mainColor = new BABYLON.Color3(0, 0, 0);
-    gridMat.lineColor = new BABYLON.Color3(0.3, 0.3, 0.35);
-    gridMat.opacity = 0.98;
+    applyGridTheme(gridMat, useViewerStore.getState().theme);
     gridMat.gridRatio = gridRatio;
     gridMat.majorUnitFrequency = 10;
-    gridMat.minorUnitVisibility = 0.3;
     gridMat.backFaceCulling = false;
+    gridMat.disableLighting = true;
 
     ground.material = gridMat;
     ground.position.y = bounds.min.y - 0.01;
@@ -351,7 +481,7 @@ export function useViewer(canvasRef) {
     zAxis.isVisible = gridVisible;
 
     gridMeshesRef.current.push(ground, xAxis, zAxis);
-  }, [clearScene]);
+  }, [clearScene, applyCadMaterialPreset, applyGridTheme]);
 
   const fitAll = useCallback(() => {
     const camera = cameraRef.current;
