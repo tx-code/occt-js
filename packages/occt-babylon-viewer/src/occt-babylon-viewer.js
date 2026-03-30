@@ -1,6 +1,6 @@
 import { Vector3 } from "@babylonjs/core/Maths/math.vector.js";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode.js";
-import { buildOcctScene } from "../../occt-babylon-loader/src/index.js";
+import { buildOcctScene } from "@tx-code/occt-babylon-loader";
 import { VIEWER_ROOT_NAME, withViewerDefaults } from "./viewer-defaults.js";
 import {
   applyProjection,

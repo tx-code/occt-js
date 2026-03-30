@@ -62,7 +62,32 @@ test("viewer dispose restores the prior active camera", () => {
 test("viewer loads an OCCT model into its root node", () => {
   const scene = new Scene(new NullEngine());
   const viewer = createOcctBabylonViewer(scene);
+  const identity = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
   const model = {
+    sourceFormat: "step",
+    rootNodes: [
+      {
+        id: "node-1",
+        kind: "part",
+        name: "part-1",
+        transform: identity,
+        geometryIds: ["geom-1"],
+        materialIds: ["mat-1"],
+      },
+    ],
+    geometries: [
+      {
+        id: "geom-1",
+        positions: [0, 0, 0, 1, 0, 0, 0, 1, 0],
+        indices: [0, 1, 2],
+        normals: [0, 0, 1, 0, 0, 1, 0, 0, 1],
+      },
+    ],
+    materials: [{ id: "mat-1", baseColor: [0.6, 0.6, 0.8, 1] }],
+    warnings: [],
+    stats: {},
+  };
+  const emptyModel = {
     sourceFormat: "step",
     rootNodes: [],
     geometries: [],
@@ -71,7 +96,15 @@ test("viewer loads an OCCT model into its root node", () => {
     stats: {},
   };
 
-  viewer.loadOcctModel(model);
+  const firstLoad = viewer.loadOcctModel(model);
+  assert.equal(firstLoad.meshes.length, 1);
+  assert.equal(firstLoad.meshes[0].parent, viewer.getRootNode());
+
+  const firstMesh = firstLoad.meshes[0];
+  const secondLoad = viewer.loadOcctModel(emptyModel);
+  assert.equal(firstMesh.isDisposed(), true);
+  assert.equal(secondLoad.meshes.length, 0);
+
   assert.ok(viewer.getSceneState());
   assert.ok(viewer.getRootNode());
 });
