@@ -79,6 +79,11 @@ function applyCadShadingToResources(resources) {
 export function createOcctBabylonViewer(scene, options = {}) {
   assertScene(scene);
 
+  if (typeof scene.setRenderingAutoClearDepthStencil === "function") {
+    // Keep model depth for edge overlays rendered in group 1.
+    scene.setRenderingAutoClearDepthStencil(1, false);
+  }
+
   const config = withViewerDefaults(options);
   const rootNode = new TransformNode(VIEWER_ROOT_NAME, scene);
   const previousActiveCamera = scene.activeCamera ?? null;

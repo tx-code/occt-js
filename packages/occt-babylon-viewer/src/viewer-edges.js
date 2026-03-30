@@ -86,11 +86,11 @@ export function createOcctEdgeOverlayBuilder(scene, options = {}) {
   const tubeRadiusDivisor = typeof options.tubeRadiusDivisor === "number" ? options.tubeRadiusDivisor : 11000;
   const minTubeRadius = typeof options.minTubeRadius === "number" ? options.minTubeRadius : 0.00025;
   const tubeBatchSize = typeof options.tubeBatchSize === "number" ? options.tubeBatchSize : 180;
-  const tubeMaxSegments = typeof options.tubeMaxSegments === "number" ? options.tubeMaxSegments : 6000;
-  const tubeMaxLines = typeof options.tubeMaxLines === "number" ? options.tubeMaxLines : 1200;
+  const tubeMaxSegments = typeof options.tubeMaxSegments === "number" ? options.tubeMaxSegments : 0;
+  const tubeMaxLines = typeof options.tubeMaxLines === "number" ? options.tubeMaxLines : 0;
   const greasedMaxSegments = typeof options.greasedMaxSegments === "number" ? options.greasedMaxSegments : 90000;
   const greasedMaxLines = typeof options.greasedMaxLines === "number" ? options.greasedMaxLines : 12000;
-  const greasedWidth = typeof options.greasedWidth === "number" ? options.greasedWidth : 1.35;
+  const greasedWidth = typeof options.greasedWidth === "number" ? options.greasedWidth : 1.1;
 
   const tubeMaterial = new StandardMaterial("occt_edge_tube_mat", scene);
   tubeMaterial.diffuseColor = edgeColor;
@@ -98,6 +98,7 @@ export function createOcctEdgeOverlayBuilder(scene, options = {}) {
   tubeMaterial.specularColor = Color3.Black();
   tubeMaterial.backFaceCulling = false;
   tubeMaterial.disableLighting = true;
+  tubeMaterial.disableDepthWrite = true;
 
   function applyEdgeMeshColor(mesh) {
     if (!mesh || mesh.isDisposed?.()) {
@@ -111,6 +112,10 @@ export function createOcctEdgeOverlayBuilder(scene, options = {}) {
     const material = mesh.material;
     if (!material || material.isDisposed?.()) {
       return;
+    }
+
+    if ("disableDepthWrite" in material) {
+      material.disableDepthWrite = true;
     }
 
     if (typeof material.setColor === "function") {
