@@ -1,6 +1,6 @@
 {
   "name": "@tx-code/occt-babylon-viewer",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Babylon.js viewer runtime helpers for OCCT-backed CAD models",
   "type": "module",
   "main": "./src/index.js",

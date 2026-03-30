@@ -23,6 +23,12 @@ export function useViewer(canvasRef) {
   const transformNodesRef = useRef([]);
 
   const clearScene = useCallback(() => {
+    for (const edgeMesh of edgeLinesRef.current) {
+      if (edgeMesh && !edgeMesh.isDisposed?.()) {
+        edgeMesh.dispose(false, true);
+      }
+    }
+
     const viewerRuntime = viewerRuntimeRef.current;
     if (viewerRuntime) {
       viewerRuntime.clearModel();
@@ -135,17 +141,33 @@ export function useViewer(canvasRef) {
 
     clearScene();
 
-    const edgeColor = new BABYLON.Color3(0.15, 0.15, 0.18);
+    const edgeColor = new BABYLON.Color3(0.1, 0.1, 0.12);
 
     // Material cache
     const matCache = new Map();
+    const fallbackCadColor = getCadVertexColorDefault();
+    const resolveCadColor = (color) => {
+      if (!color) return fallbackCadColor;
+      if (typeof color.r !== "number" || typeof color.g !== "number" || typeof color.b !== "number") {
+        return fallbackCadColor;
+      }
+      return color;
+    };
     const getMat = (color) => {
-      const key = getCadMaterialKey(color);
+      const safeColor = resolveCadColor(color);
+      const key = getCadMaterialKey(safeColor);
       if (matCache.has(key)) return matCache.get(key);
-      const mat = createCadPartMaterial(scene, "mat_" + key, color);
+      const mat = createCadPartMaterial(scene, "mat_" + key, safeColor);
       matCache.set(key, mat);
       return mat;
     };
+
+    const edgeTubeMaterial = new BABYLON.StandardMaterial("edge_tube_mat", scene);
+    edgeTubeMaterial.diffuseColor = edgeColor;
+    edgeTubeMaterial.emissiveColor = edgeColor.scale(0.92);
+    edgeTubeMaterial.specularColor = BABYLON.Color3.Black();
+    edgeTubeMaterial.backFaceCulling = false;
+    edgeTubeMaterial.disableLighting = true;
 
     const geoCache = new Map();
 
@@ -163,22 +185,130 @@ export function useViewer(canvasRef) {
 
     const buildEdgeLines = (geo, parent) => {
       if (!geo.edges || geo.edges.length === 0) return;
+
+      const positions = geo.positions || [];
+      let minX = Number.POSITIVE_INFINITY;
+      let minY = Number.POSITIVE_INFINITY;
+      let minZ = Number.POSITIVE_INFINITY;
+      let maxX = Number.NEGATIVE_INFINITY;
+      let maxY = Number.NEGATIVE_INFINITY;
+      let maxZ = Number.NEGATIVE_INFINITY;
+      for (let i = 0; i < positions.length; i += 3) {
+        const x = positions[i];
+        const y = positions[i + 1];
+        const z = positions[i + 2];
+        if (x < minX) minX = x;
+        if (y < minY) minY = y;
+        if (z < minZ) minZ = z;
+        if (x > maxX) maxX = x;
+        if (y > maxY) maxY = y;
+        if (z > maxZ) maxZ = z;
+      }
+
+      const hasBounds = Number.isFinite(minX) && Number.isFinite(maxX);
+      const cx = hasBounds ? (minX + maxX) * 0.5 : 0;
+      const cy = hasBounds ? (minY + maxY) * 0.5 : 0;
+      const cz = hasBounds ? (minZ + maxZ) * 0.5 : 0;
+      const dx = hasBounds ? (maxX - minX) : 1;
+      const dy = hasBounds ? (maxY - minY) : 1;
+      const dz = hasBounds ? (maxZ - minZ) : 1;
+      const diagonal = Math.max(Math.sqrt(dx * dx + dy * dy + dz * dz), 1);
+      const edgeOffset = diagonal * 0.00016;
+      const tubeRadius = Math.max(diagonal / 9000, 0.0004);
+      const tubeTessellation = diagonal > 3000 ? 4 : 6;
+
       const lines = [];
-      for (const edge of geo.edges) {
+      let segmentCount = 0;
+
+      for (let edgeIndex = 0; edgeIndex < geo.edges.length; edgeIndex++) {
+        const edge = geo.edges[edgeIndex];
         const pts = edge.points;
         if (!pts || pts.length < 6) continue;
-        const line = [];
+
+        const path = [];
         for (let i = 0; i < pts.length; i += 3) {
-          line.push(new BABYLON.Vector3(pts[i], pts[i + 1], pts[i + 2]));
+          const px = pts[i];
+          const py = pts[i + 1];
+          const pz = pts[i + 2];
+
+          const ox = px - cx;
+          const oy = py - cy;
+          const oz = pz - cz;
+          const len = Math.sqrt(ox * ox + oy * oy + oz * oz);
+          if (len > 1e-8) {
+            const scale = edgeOffset / len;
+            path.push(new BABYLON.Vector3(px + ox * scale, py + oy * scale, pz + oz * scale));
+          } else {
+            path.push(new BABYLON.Vector3(px, py, pz));
+          }
         }
-        lines.push(line);
+
+        if (path.length >= 2) {
+          lines.push(path);
+          segmentCount += path.length - 1;
+        }
       }
+
       if (lines.length === 0) return;
-      const ls = BABYLON.MeshBuilder.CreateLineSystem("edges", { lines }, scene);
-      ls.color = edgeColor;
-      ls.parent = parent;
-      ls.isPickable = false;
-      edgeLinesRef.current.push(ls);
+
+      // Keep tubes for medium-size models; fall back for heavy geometry to preserve import latency.
+      const canUseTube = segmentCount <= 6000 && lines.length <= 1200;
+      if (!canUseTube) {
+        const ls = BABYLON.MeshBuilder.CreateLineSystem("edges", { lines, updatable: false }, scene);
+        ls.color = edgeColor;
+        ls.parent = parent;
+        ls.isPickable = false;
+        ls.alpha = 0.95;
+        ls.renderingGroupId = 1;
+        ls.alwaysSelectAsActiveMesh = true;
+        edgeLinesRef.current.push(ls);
+        return;
+      }
+
+      const mergedBatches = [];
+      let batch = [];
+      const mergeBatch = () => {
+        if (batch.length === 0) return;
+        const merged = batch.length === 1
+          ? batch[0]
+          : BABYLON.Mesh.MergeMeshes(batch, true, true, undefined, false, true);
+        if (merged) {
+          mergedBatches.push(merged);
+        } else {
+          mergedBatches.push(...batch);
+        }
+        batch = [];
+      };
+
+      for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+        const tube = BABYLON.MeshBuilder.CreateTube(
+          `edge_tube_${lineIndex}`,
+          {
+            path: lines[lineIndex],
+            radius: tubeRadius,
+            tessellation: tubeTessellation,
+            cap: BABYLON.Mesh.NO_CAP,
+            sideOrientation: BABYLON.Mesh.DOUBLESIDE,
+            updatable: false,
+          },
+          scene,
+        );
+        tube.material = edgeTubeMaterial;
+        tube.isPickable = false;
+        batch.push(tube);
+        if (batch.length >= 180) {
+          mergeBatch();
+        }
+      }
+      mergeBatch();
+
+      for (const mesh of mergedBatches) {
+        mesh.parent = parent;
+        mesh.isPickable = false;
+        mesh.alwaysSelectAsActiveMesh = true;
+        mesh.renderingGroupId = 1;
+        edgeLinesRef.current.push(mesh);
+      }
     };
 
     const buildPart = (nodeData, parent) => {
@@ -250,7 +380,7 @@ export function useViewer(canvasRef) {
               if (face.color) { meshColor = face.color; break; }
             }
           }
-          mesh.material = getMat(meshColor);
+          mesh.material = getMat(resolveCadColor(meshColor));
         }
 
         meshGeoMapRef.current.set(mesh, geo);

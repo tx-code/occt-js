@@ -82,12 +82,12 @@ export default function Toolbar({ chromeIntegrated = false, onOpenFile, onFitAll
   );
 
   const sep = <span className="w-px h-5 bg-zinc-700" />;
-  const mobileGroupClass = "shrink-0 rounded-xl border border-zinc-800 bg-zinc-900/80 p-1";
+  const mobileGroupClass = "shrink-0 rounded-xl border border-zinc-800 bg-zinc-900/80 p-0.5";
 
   return (
     <div className="absolute top-0 left-0 right-0 z-50 bg-zinc-950/85 backdrop-blur-sm border-b border-zinc-800" data-testid="toolbar">
       {/* Row 1: always visible */}
-      <div className="flex items-center gap-2 px-3 py-1.5">
+      <div className="flex items-center gap-2 px-3 py-1">
         {!chromeIntegrated && (
           <>
             <span className="text-cyan-400 font-semibold text-sm">occt-js</span>
@@ -137,7 +137,7 @@ export default function Toolbar({ chromeIntegrated = false, onOpenFile, onFitAll
 
       {/* Row 2: mobile expandable menu */}
       {menuOpen && (
-        <div className="md:hidden border-t border-zinc-800 px-3 py-1.5">
+        <div className="md:hidden border-t border-zinc-800 px-2 py-1">
           <div className="flex items-start gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <div className={mobileGroupClass}>
               <div className="mb-0.5 px-1 text-[9px] uppercase tracking-[0.18em] text-zinc-500">Import</div>
