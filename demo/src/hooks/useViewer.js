@@ -251,9 +251,47 @@ export function useViewer(canvasRef) {
 
       if (lines.length === 0) return;
 
-      // Keep tubes for medium-size models; fall back for heavy geometry to preserve import latency.
+      // Keep tubes for medium-size models; use greased lines for heavier geometry, then fallback.
       const canUseTube = segmentCount <= 6000 && lines.length <= 1200;
       if (!canUseTube) {
+        const canUseGreasedLine =
+          typeof BABYLON.CreateGreasedLine === "function" &&
+          segmentCount <= 90000 &&
+          lines.length <= 12000;
+
+        if (canUseGreasedLine) {
+          try {
+            const gl = BABYLON.CreateGreasedLine(
+              "edges_greased",
+              {
+                points: lines,
+                updatable: false,
+              },
+              {
+                materialType: 2, // GreasedLineMeshMaterialType.MATERIAL_TYPE_SIMPLE
+                color: edgeColor,
+                colorMode: 0, // GreasedLineMeshColorMode.COLOR_MODE_SET
+                useColors: false,
+                useDash: false,
+                cameraFacing: true,
+                sizeAttenuation: true,
+                width: 1.7,
+              },
+              scene,
+            );
+            if (gl) {
+              gl.parent = parent;
+              gl.isPickable = false;
+              gl.renderingGroupId = 1;
+              gl.alwaysSelectAsActiveMesh = true;
+              edgeLinesRef.current.push(gl);
+              return;
+            }
+          } catch {
+            // Fallback to standard line system below.
+          }
+        }
+
         const ls = BABYLON.MeshBuilder.CreateLineSystem("edges", { lines, updatable: false }, scene);
         ls.color = edgeColor;
         ls.parent = parent;
