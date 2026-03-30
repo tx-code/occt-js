@@ -22,3 +22,10 @@ test("ViewCube widget exposes attach/detach/dispose lifecycle", () => {
   widget.dispose();
   assert.equal(widget.getViewer(), null);
 });
+
+test("dispose does not rely on method-call this binding", () => {
+  const widget = createViewCubeWidget();
+  const dispose = widget.dispose;
+
+  assert.doesNotThrow(() => dispose());
+});

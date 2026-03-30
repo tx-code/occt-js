@@ -13,20 +13,21 @@ export default function ViewCube({ onCameraView, cameraRef }) {
   useEffect(() => {
     if (!model || !containerRef.current) return undefined;
 
-    widgetRef.current ??= createViewCubeWidget({ container: containerRef.current });
-    widgetRef.current.attach({
+    const widget = createViewCubeWidget({ container: containerRef.current });
+    widgetRef.current = widget;
+    widget.attach({
       getCamera: () => cameraRef?.current ?? null,
       setView: (direction, customView) => onCameraView?.(direction, customView),
     });
 
     return () => {
-      widgetRef.current?.detach();
+      widget.detach();
+      widget.dispose();
+      if (widgetRef.current === widget) {
+        widgetRef.current = null;
+      }
     };
   }, [cameraRef, model, onCameraView]);
-
-  useEffect(() => () => {
-    widgetRef.current?.dispose();
-  }, []);
 
   if (!model) return null;
 

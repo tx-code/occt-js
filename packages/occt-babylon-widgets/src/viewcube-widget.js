@@ -301,21 +301,23 @@ export function createViewCubeWidget(options = {}) {
     canvas.addEventListener("mouseleave", handleLeave);
   }
 
+  function detachViewer() {
+    viewer = null;
+    projection = null;
+    hoveredRegion = null;
+    resetCursor();
+    stopRenderLoop();
+  }
+
   return {
     attach(nextViewer) {
       viewer = nextViewer ?? null;
       syncCanvas();
       startRenderLoop();
     },
-    detach() {
-      viewer = null;
-      projection = null;
-      hoveredRegion = null;
-      resetCursor();
-      stopRenderLoop();
-    },
+    detach: detachViewer,
     dispose() {
-      this.detach();
+      detachViewer();
       if (canvas) {
         canvas.removeEventListener("mousemove", handleMove);
         canvas.removeEventListener("click", handleClick);
