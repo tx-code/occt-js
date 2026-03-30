@@ -54,3 +54,30 @@ test("edge overlay builder falls back to line system when thresholds are disable
   edgeMeshes[0].dispose(false, true);
   builder.dispose();
 });
+
+test("edge overlay builder updates line color when theme changes", () => {
+  const scene = new Scene(new NullEngine());
+  const parent = new TransformNode("parent", scene);
+  const builder = createOcctEdgeOverlayBuilder(scene, {
+    tubeMaxSegments: 0,
+    tubeMaxLines: 0,
+    greasedMaxSegments: 0,
+    greasedMaxLines: 0,
+    theme: "dark",
+  });
+
+  const edgeMeshes = builder.build(createSimpleGeometry(), parent);
+  const lineMesh = edgeMeshes[0];
+  const darkColor = lineMesh.color.clone();
+
+  builder.setTheme("light", edgeMeshes);
+  const lightColor = lineMesh.color.clone();
+
+  assert.notDeepEqual(
+    [darkColor.r, darkColor.g, darkColor.b],
+    [lightColor.r, lightColor.g, lightColor.b],
+  );
+
+  lineMesh.dispose(false, true);
+  builder.dispose();
+});

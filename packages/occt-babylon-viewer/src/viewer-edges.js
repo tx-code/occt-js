@@ -59,12 +59,29 @@ function computeBounds(positionsLike) {
   };
 }
 
+function normalizeTheme(themeLike) {
+  return themeLike === "light" ? "light" : "dark";
+}
+
+function resolveThemeEdgeColor(theme) {
+  if (theme === "light") {
+    return new Color3(0.064, 0.072, 0.084);
+  }
+  return new Color3(0.128, 0.136, 0.15);
+}
+
+function resolveThemeEmissiveScale(theme) {
+  return theme === "light" ? 0.62 : 0.8;
+}
+
 export function createOcctEdgeOverlayBuilder(scene, options = {}) {
   if (!scene) {
     throw new TypeError("createOcctEdgeOverlayBuilder requires a Babylon scene");
   }
 
-  const edgeColor = toColor3(options.color, new Color3(0.075, 0.082, 0.094));
+  let activeTheme = normalizeTheme(options.theme);
+  let edgeColor = toColor3(options.color, resolveThemeEdgeColor(activeTheme));
+  let emissiveScale = resolveThemeEmissiveScale(activeTheme);
   const edgeOffsetRatio = typeof options.edgeOffsetRatio === "number" ? options.edgeOffsetRatio : 0.00012;
   const tubeRadiusDivisor = typeof options.tubeRadiusDivisor === "number" ? options.tubeRadiusDivisor : 11000;
   const minTubeRadius = typeof options.minTubeRadius === "number" ? options.minTubeRadius : 0.00025;
@@ -77,10 +94,41 @@ export function createOcctEdgeOverlayBuilder(scene, options = {}) {
 
   const tubeMaterial = new StandardMaterial("occt_edge_tube_mat", scene);
   tubeMaterial.diffuseColor = edgeColor;
-  tubeMaterial.emissiveColor = edgeColor.scale(0.78);
+  tubeMaterial.emissiveColor = edgeColor.scale(emissiveScale);
   tubeMaterial.specularColor = Color3.Black();
   tubeMaterial.backFaceCulling = false;
   tubeMaterial.disableLighting = true;
+
+  function applyEdgeMeshColor(mesh) {
+    if (!mesh || mesh.isDisposed?.()) {
+      return;
+    }
+
+    if ("color" in mesh) {
+      mesh.color = edgeColor.clone();
+    }
+
+    const material = mesh.material;
+    if (!material || material.isDisposed?.()) {
+      return;
+    }
+
+    if (typeof material.setColor === "function") {
+      material.setColor(edgeColor.clone(), true);
+    }
+
+    if ("color" in material) {
+      material.color = edgeColor.clone();
+    }
+
+    if ("diffuseColor" in material) {
+      material.diffuseColor = edgeColor.clone();
+    }
+
+    if ("emissiveColor" in material) {
+      material.emissiveColor = edgeColor.scale(emissiveScale);
+    }
+  }
 
   function createLines(geometry) {
     const { center, diagonal } = computeBounds(geometry?.positions);
@@ -189,6 +237,7 @@ export function createOcctEdgeOverlayBuilder(scene, options = {}) {
         mesh.isPickable = false;
         mesh.alwaysSelectAsActiveMesh = true;
         mesh.renderingGroupId = 1;
+        applyEdgeMeshColor(mesh);
       }
       return mergedBatches;
     }
@@ -219,6 +268,7 @@ export function createOcctEdgeOverlayBuilder(scene, options = {}) {
           edgeMesh.isPickable = false;
           edgeMesh.renderingGroupId = 1;
           edgeMesh.alwaysSelectAsActiveMesh = true;
+          applyEdgeMeshColor(edgeMesh);
           return [edgeMesh];
         }
       } catch {
@@ -233,7 +283,20 @@ export function createOcctEdgeOverlayBuilder(scene, options = {}) {
     lineSystem.alpha = 1;
     lineSystem.renderingGroupId = 1;
     lineSystem.alwaysSelectAsActiveMesh = true;
+    applyEdgeMeshColor(lineSystem);
     return [lineSystem];
+  }
+
+  function setTheme(theme, edgeMeshes = []) {
+    activeTheme = normalizeTheme(theme);
+    edgeColor = toColor3(options.color, resolveThemeEdgeColor(activeTheme));
+    emissiveScale = resolveThemeEmissiveScale(activeTheme);
+    tubeMaterial.diffuseColor = edgeColor;
+    tubeMaterial.emissiveColor = edgeColor.scale(emissiveScale);
+
+    for (const mesh of edgeMeshes) {
+      applyEdgeMeshColor(mesh);
+    }
   }
 
   function dispose() {
@@ -245,6 +308,7 @@ export function createOcctEdgeOverlayBuilder(scene, options = {}) {
 
   return {
     build,
+    setTheme,
     dispose,
   };
 }

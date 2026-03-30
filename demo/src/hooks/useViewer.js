@@ -100,6 +100,7 @@ export function useViewer(canvasRef) {
       if (scene) {
         viewerRuntimeRef.current?.setTheme(theme);
       }
+      edgeOverlayBuilderRef.current?.setTheme?.(theme, edgeLinesRef.current);
     };
 
     applyTheme(useViewerStore.getState().theme);
@@ -164,7 +165,9 @@ export function useViewer(canvasRef) {
       return mat;
     };
 
-    edgeOverlayBuilderRef.current = createOcctEdgeOverlayBuilder(scene);
+    edgeOverlayBuilderRef.current = createOcctEdgeOverlayBuilder(scene, {
+      theme: useViewerStore.getState().theme,
+    });
 
     const geoCache = new Map();
 
