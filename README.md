@@ -70,7 +70,7 @@ Windows build failures retain a log file at `build/wasm-build.log`. If a paralle
 set BUILD_JOBS=1 && tools\build_wasm_win.bat Release
 ```
 
-## Repository Layout (2026-03-24)
+## Repository Layout (2026-03-30)
 
 This stays a single `occt-js` repository without Babylon fork maintenance.  
 Within this repository we keep two maintained modules:
@@ -81,6 +81,12 @@ Within this repository we keep two maintained modules:
 - `@tx-code/occt-babylon-loader` (`packages/occt-babylon-loader`)
   - Babylon-facing model loader and scene builder.
   - Delegates CAD parsing to `occt-core`.
+
+## Babylon Packages
+
+- `@tx-code/occt-babylon-loader`: OCCT model to Babylon nodes.
+- `@tx-code/occt-babylon-viewer`: scene-first Babylon viewer runtime helpers.
+- `@tx-code/occt-babylon-widgets`: optional viewer widgets such as ViewCube.
 
 ## API
 

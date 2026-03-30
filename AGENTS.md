@@ -31,7 +31,16 @@ The desktop app is additive. It must not replace or break the web app or the roo
 - `demo/src-tauri/`
   - Tauri desktop shell
 - `packages/`
-  - package-layer modules such as `occt-core` and `occt-babylon-loader`
+  - package-layer modules such as `occt-core`, `occt-babylon-loader`, `occt-babylon-viewer`, and `occt-babylon-widgets`
+
+### Babylon Package Surfaces
+
+- `packages/occt-babylon-loader/`
+  - Babylon node/material construction from OCCT model data
+- `packages/occt-babylon-viewer/`
+  - Babylon viewer runtime for caller-supplied scenes
+- `packages/occt-babylon-widgets/`
+  - Optional Babylon viewer widgets with no React dependency
 
 ## Canonical Build Contracts
 
