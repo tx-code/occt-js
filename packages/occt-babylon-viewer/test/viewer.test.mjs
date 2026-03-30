@@ -5,6 +5,8 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Scene } from "@babylonjs/core/scene.js";
 import { NullEngine } from "@babylonjs/core/Engines/nullEngine.js";
+import { ArcRotateCamera } from "@babylonjs/core/Cameras/arcRotateCamera.js";
+import { Vector3 } from "@babylonjs/core/Maths/math.vector.js";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode.js";
 import { createOcctBabylonViewer } from "../src/index.js";
 
@@ -32,6 +34,29 @@ test("viewer manages a dedicated OCCT root node and clears it", () => {
 
   viewer.clearModel();
   assert.equal(viewer.getRootNode(), root);
+});
+
+test("viewer dispose restores the prior active camera", () => {
+  const engine = new NullEngine();
+  const scene = new Scene(engine);
+  const hostCamera = new ArcRotateCamera(
+    "host-camera",
+    Math.PI / 4,
+    Math.PI / 3,
+    30,
+    Vector3.Zero(),
+    scene,
+  );
+  scene.activeCamera = hostCamera;
+
+  const viewer = createOcctBabylonViewer(scene);
+  assert.notEqual(scene.activeCamera, hostCamera);
+
+  viewer.dispose();
+  assert.equal(scene.activeCamera, hostCamera);
+  assert.equal(hostCamera.isDisposed(), false);
+
+  hostCamera.dispose();
 });
 
 test("package exports resolve to the shipped entry file", () => {

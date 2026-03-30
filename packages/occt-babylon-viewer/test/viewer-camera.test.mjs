@@ -14,3 +14,10 @@ test("viewer exposes projection and standard view controls", () => {
   assert.equal(typeof viewer.getCamera, "function");
   assert.ok(viewer.getCamera());
 });
+
+test("viewer rejects unknown projection modes", () => {
+  const scene = new Scene(new NullEngine());
+  const viewer = createOcctBabylonViewer(scene);
+
+  assert.throws(() => viewer.setProjection("diagonal"), /Unknown projection mode/);
+});
