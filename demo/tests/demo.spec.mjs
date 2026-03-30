@@ -23,6 +23,15 @@ async function loadFixture(page, fileName = "simple_part.step") {
 
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
+  const enterDemo = page.getByRole("button", { name: "Enter Demo" });
+  if (await enterDemo.count()) {
+    await enterDemo.first().click();
+  }
+});
+
+test("viewer shell still renders after package extraction", async ({ page }) => {
+  await expect(page.getByTestId("render-canvas")).toBeVisible();
+  await expect(page.getByTestId("drop-zone")).toBeVisible();
 });
 
 test("shows drop zone on initial load", async ({ page }) => {

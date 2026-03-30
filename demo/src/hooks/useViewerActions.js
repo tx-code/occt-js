@@ -8,9 +8,8 @@ import { createDesktopActionMap, isEditableTarget } from "../lib/viewer-actions"
 export function useViewerActions({
   desktopEnabled,
   fileInputRef,
-  fitAll,
   importFile,
-  setProjection,
+  viewerRuntimeRef,
 } = {}) {
   const resetViewer = useViewerStore((s) => s.reset);
   const setProjectionMode = useViewerStore((s) => s.setProjection);
@@ -67,10 +66,14 @@ export function useViewerActions({
     resetViewer();
   }, [resetViewer]);
 
+  const fitAll = useCallback(() => {
+    viewerRuntimeRef?.current?.fitAll();
+  }, [viewerRuntimeRef]);
+
   const setProjectionAction = useCallback((mode) => {
-    setProjection(mode);
+    viewerRuntimeRef?.current?.setProjection(mode);
     setProjectionMode(mode);
-  }, [setProjection, setProjectionMode]);
+  }, [setProjectionMode, viewerRuntimeRef]);
 
   const toggleThemeAction = useCallback(() => {
     toggleTheme();

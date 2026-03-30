@@ -43,6 +43,8 @@ export function useOcct() {
       return {
         moduleUrl: distBase + "occt-js.js",
         locateFile: (fileName) => distBase + fileName,
+        fallbackModuleUrl: CDN + "occt-js.js",
+        fallbackLocateFile: (fileName) => CDN + fileName,
       };
     })()
       .then((runtime) => {
@@ -65,13 +67,24 @@ export function useOcct() {
       const runtime = await ensureRuntime();
 
       if (!window.OcctJS) {
-        const script = document.createElement("script");
-        script.src = runtime.moduleUrl;
-        document.head.appendChild(script);
-        await new Promise((resolve, reject) => {
-          script.onload = resolve;
-          script.onerror = reject;
-        });
+        const loadScript = (url) =>
+          new Promise((resolve, reject) => {
+            const script = document.createElement("script");
+            script.src = url;
+            script.onload = resolve;
+            script.onerror = reject;
+            document.head.appendChild(script);
+          });
+
+        try {
+          await loadScript(runtime.moduleUrl);
+        } catch (error) {
+          if (!runtime.fallbackModuleUrl) {
+            throw error;
+          }
+          await loadScript(runtime.fallbackModuleUrl);
+          runtime.locateFile = runtime.fallbackLocateFile;
+        }
       }
 
       const module = await window.OcctJS({ locateFile: runtime.locateFile });

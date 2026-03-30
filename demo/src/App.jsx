@@ -21,7 +21,7 @@ export default function App() {
   const model = useViewerStore((s) => s.model);
   const { importFile } = useOcct();
   const viewerRefs = useViewer(canvasRef);
-  const { buildScene, clearScene, fitAll, setCameraView, setProjection, takeSnapshot } = viewerRefs;
+  const { buildScene, clearScene, fitAll, setCameraView, takeSnapshot } = viewerRefs;
   usePicking(viewerRefs);
   const fileInputRef = useRef(null);
   const windowsDesktopChrome = shouldUseWindowsCustomChrome();
@@ -37,9 +37,8 @@ export default function App() {
   } = useViewerActions({
     desktopEnabled: windowsDesktopChrome,
     fileInputRef,
-    fitAll,
     importFile,
-    setProjection,
+    viewerRuntimeRef: viewerRefs.viewerRuntimeRef,
   });
 
   useEffect(() => {
