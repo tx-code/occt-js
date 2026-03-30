@@ -8,6 +8,7 @@ import { NullEngine } from "@babylonjs/core/Engines/nullEngine.js";
 import { ArcRotateCamera } from "@babylonjs/core/Cameras/arcRotateCamera.js";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector.js";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode.js";
+import { Mesh } from "@babylonjs/core/Meshes/mesh.js";
 import { createOcctBabylonViewer } from "../src/index.js";
 
 const packageDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -61,7 +62,22 @@ test("viewer dispose restores the prior active camera", () => {
 
 test("viewer loads an OCCT model into its root node", () => {
   const scene = new Scene(new NullEngine());
-  const viewer = createOcctBabylonViewer(scene);
+  const viewer = createOcctBabylonViewer(scene, {
+    sceneBuilder: (nextModel, activeScene) => {
+      const hasParts = Array.isArray(nextModel?.rootNodes) && nextModel.rootNodes.length > 0;
+      const meshes = hasParts ? [new Mesh("stub-part", activeScene)] : [];
+      return {
+        meshes,
+        particleSystems: [],
+        skeletons: [],
+        animationGroups: [],
+        transformNodes: [],
+        geometries: [],
+        lights: [],
+        spriteManagers: [],
+      };
+    },
+  });
   const identity = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
   const model = {
     sourceFormat: "step",
@@ -107,6 +123,15 @@ test("viewer loads an OCCT model into its root node", () => {
 
   assert.ok(viewer.getSceneState());
   assert.ok(viewer.getRootNode());
+});
+
+test("viewer load requires sceneBuilder", () => {
+  const scene = new Scene(new NullEngine());
+  const viewer = createOcctBabylonViewer(scene);
+  assert.throws(
+    () => viewer.loadOcctModel({ rootNodes: [], geometries: [], materials: [] }),
+    /sceneBuilder function/,
+  );
 });
 
 test("package exports resolve to the shipped entry file", () => {

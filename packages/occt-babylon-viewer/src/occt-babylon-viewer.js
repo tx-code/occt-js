@@ -1,6 +1,5 @@
 import { Vector3 } from "@babylonjs/core/Maths/math.vector.js";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode.js";
-import { buildOcctScene } from "@tx-code/occt-babylon-loader";
 import { VIEWER_ROOT_NAME, withViewerDefaults } from "./viewer-defaults.js";
 import {
   applyProjection,
@@ -13,6 +12,12 @@ import { ensureDefaultLights } from "./viewer-lights.js";
 function assertScene(scene) {
   if (!scene) {
     throw new TypeError("createOcctBabylonViewer requires a Babylon scene");
+  }
+}
+
+function assertSceneBuilder(sceneBuilder) {
+  if (typeof sceneBuilder !== "function") {
+    throw new TypeError("loadOcctModel requires a sceneBuilder function in viewer options or load options");
   }
 }
 
@@ -220,10 +225,12 @@ export function createOcctBabylonViewer(scene, options = {}) {
     return { ...sceneState };
   }
 
-  function loadOcctModel(model) {
+  function loadOcctModel(model, loadOptions = {}) {
+    const sceneBuilder = loadOptions.sceneBuilder ?? config.sceneBuilder;
+    assertSceneBuilder(sceneBuilder);
     clearModel();
 
-    currentSceneResources = buildOcctScene(model, scene, { createRootNode: false });
+    currentSceneResources = sceneBuilder(model, scene, { createRootNode: false });
     const topLevelNodes = [
       ...(currentSceneResources.transformNodes ?? []),
       ...(currentSceneResources.meshes ?? []),

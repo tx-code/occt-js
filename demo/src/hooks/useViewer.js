@@ -2,6 +2,7 @@
 import { useRef, useEffect, useCallback } from "react";
 import { useViewerStore } from "../store/viewerStore";
 import { getCameraAttachOptions } from "../lib/camera-input.js";
+import { buildOcctScene } from "@tx-code/occt-babylon-loader";
 import { createOcctBabylonViewer } from "@tx-code/occt-babylon-viewer";
 
 export function useViewer(canvasRef) {
@@ -44,7 +45,7 @@ export function useViewer(canvasRef) {
     const engine = new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true });
     const scene = new BABYLON.Scene(engine);
     scene.clearColor = new BABYLON.Color4(0.1, 0.1, 0.12, 1);
-    const viewerRuntime = createOcctBabylonViewer(scene);
+    const viewerRuntime = createOcctBabylonViewer(scene, { sceneBuilder: buildOcctScene });
     const camera = viewerRuntime.getCamera();
     const { noPreventDefault } = getCameraAttachOptions();
     camera?.attachControl(canvas, noPreventDefault);

@@ -13,12 +13,15 @@ Babylon.js viewer runtime helpers for OCCT-backed CAD models.
 
 ```js
 import { createOcctBabylonViewer } from "@tx-code/occt-babylon-viewer";
+import { buildOcctScene } from "@tx-code/occt-babylon-loader";
 import { createViewCubeWidget } from "@tx-code/occt-babylon-widgets";
 
-const viewer = createOcctBabylonViewer(scene);
+const viewer = createOcctBabylonViewer(scene, { sceneBuilder: buildOcctScene });
 const viewCube = createViewCubeWidget({ container: viewCubeElement });
 viewCube.attach(viewer);
 ```
+
+`sceneBuilder` is intentionally injected so viewer runtime and loader package stay decoupled at module-resolution time.
 
 ## API
 

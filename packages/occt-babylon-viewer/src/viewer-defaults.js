@@ -10,5 +10,6 @@ export function withViewerDefaults(options = {}) {
     camera: options.camera ?? {},
     lights: options.lights ?? {},
     theme: options.theme ?? "dark",
+    sceneBuilder: typeof options.sceneBuilder === "function" ? options.sceneBuilder : null,
   };
 }
