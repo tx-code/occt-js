@@ -3,7 +3,14 @@ import { useRef, useEffect, useCallback } from "react";
 import { useViewerStore } from "../store/viewerStore";
 import { getCameraAttachOptions } from "../lib/camera-input.js";
 import { buildOcctScene } from "@tx-code/occt-babylon-loader";
-import { createOcctBabylonViewer } from "@tx-code/occt-babylon-viewer";
+import {
+  createCadPartMaterial,
+  createCadVertexColorMaterial,
+  createOcctBabylonViewer,
+  getCadMaterialKey,
+  getCadVertexColorDefault,
+  resolveShadingNormals,
+} from "@tx-code/occt-babylon-viewer";
 
 export function useViewer(canvasRef) {
   const engineRef = useRef(null);
@@ -44,8 +51,10 @@ export function useViewer(canvasRef) {
 
     const engine = new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true });
     const scene = new BABYLON.Scene(engine);
-    scene.clearColor = new BABYLON.Color4(0.1, 0.1, 0.12, 1);
-    const viewerRuntime = createOcctBabylonViewer(scene, { sceneBuilder: buildOcctScene });
+    const viewerRuntime = createOcctBabylonViewer(scene, {
+      sceneBuilder: buildOcctScene,
+      theme: useViewerStore.getState().theme,
+    });
     const camera = viewerRuntime.getCamera();
     const { noPreventDefault } = getCameraAttachOptions();
     camera?.attachControl(canvas, noPreventDefault);
@@ -69,23 +78,25 @@ export function useViewer(canvasRef) {
 
   // Sync theme from store
   useEffect(() => {
+    const applyTheme = (theme) => {
+      if (theme === "dark") {
+        document.documentElement.classList.add("dark");
+        document.documentElement.classList.remove("light");
+      } else {
+        document.documentElement.classList.add("light");
+        document.documentElement.classList.remove("dark");
+      }
+      const scene = sceneRef.current;
+      if (scene) {
+        viewerRuntimeRef.current?.setTheme(theme);
+      }
+    };
+
+    applyTheme(useViewerStore.getState().theme);
+
     const unsub = useViewerStore.subscribe(
       (state) => state.theme,
-      (theme) => {
-        if (theme === "dark") {
-          document.documentElement.classList.add("dark");
-          document.documentElement.classList.remove("light");
-        } else {
-          document.documentElement.classList.add("light");
-          document.documentElement.classList.remove("dark");
-        }
-        const scene = sceneRef.current;
-        if (scene) {
-          scene.clearColor = theme === "dark"
-            ? new BABYLON.Color4(0.1, 0.1, 0.12, 1)
-            : new BABYLON.Color4(0.92, 0.92, 0.94, 1);
-        }
-      }
+      applyTheme
     );
     return unsub;
   }, []);
@@ -124,19 +135,14 @@ export function useViewer(canvasRef) {
 
     clearScene();
 
-    const defaultColor = new BABYLON.Color3(0.7, 0.7, 0.7);
     const edgeColor = new BABYLON.Color3(0.15, 0.15, 0.18);
 
     // Material cache
     const matCache = new Map();
     const getMat = (color) => {
-      if (!color) color = { r: 0.7, g: 0.7, b: 0.7 };
-      const key = `${(color.r * 255) | 0},${(color.g * 255) | 0},${(color.b * 255) | 0}`;
+      const key = getCadMaterialKey(color);
       if (matCache.has(key)) return matCache.get(key);
-      const mat = new BABYLON.StandardMaterial("mat_" + key, scene);
-      mat.diffuseColor = new BABYLON.Color3(color.r, color.g, color.b);
-      mat.backFaceCulling = false;
-      mat.twoSidedLighting = true;
+      const mat = createCadPartMaterial(scene, "mat_" + key, color);
       matCache.set(key, mat);
       return mat;
     };
@@ -206,17 +212,23 @@ export function useViewer(canvasRef) {
         const vd = new BABYLON.VertexData();
         vd.positions = positions;
         vd.indices = indices;
-        if (geo.normals && geo.normals.length > 0) vd.normals = new Float32Array(geo.normals);
+        vd.normals = resolveShadingNormals(positions, indices, geo.normals, { mode: "recompute" });
 
         if (hasMultiColor && geo.faces) {
           const vertexCount = positions.length / 3;
           const colors = new Float32Array(vertexCount * 4);
+          const fallbackColor = getCadVertexColorDefault();
           for (let v = 0; v < vertexCount; v++) {
-            colors[v * 4] = 0.7; colors[v * 4 + 1] = 0.7; colors[v * 4 + 2] = 0.7; colors[v * 4 + 3] = 1;
+            colors[v * 4] = fallbackColor.r;
+            colors[v * 4 + 1] = fallbackColor.g;
+            colors[v * 4 + 2] = fallbackColor.b;
+            colors[v * 4 + 3] = 1;
           }
           for (const face of geo.faces) {
             const c = face.color || geo.color || null;
-            const cr = c ? c.r : 0.7, cg = c ? c.g : 0.7, cb = c ? c.b : 0.7;
+            const cr = c ? c.r : fallbackColor.r;
+            const cg = c ? c.g : fallbackColor.g;
+            const cb = c ? c.b : fallbackColor.b;
             for (let i = face.firstIndex; i < face.firstIndex + face.indexCount; i++) {
               const vi = indices[i];
               colors[vi * 4] = cr; colors[vi * 4 + 1] = cg; colors[vi * 4 + 2] = cb; colors[vi * 4 + 3] = 1;
@@ -228,11 +240,9 @@ export function useViewer(canvasRef) {
         vd.applyToMesh(mesh);
 
         if (hasMultiColor) {
-          const mat = new BABYLON.StandardMaterial("mat_vcolor_" + geoIdx, scene);
-          mat.diffuseColor = new BABYLON.Color3(1, 1, 1);
-          mat.backFaceCulling = false;
-          mat.twoSidedLighting = true;
+          const mat = createCadVertexColorMaterial(scene, "mat_vcolor_" + geoIdx);
           mesh.material = mat;
+          mesh.useVertexColors = true;
         } else {
           let meshColor = geo.color;
           if (geo.faces) {

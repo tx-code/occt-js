@@ -6,8 +6,10 @@ import {
   applyStandardView,
   createDefaultCamera,
 } from "./viewer-camera.js";
-import { createGridHelpers } from "./viewer-grid.js";
+import { applyGridTheme, createGridHelpers } from "./viewer-grid.js";
 import { ensureDefaultLights } from "./viewer-lights.js";
+import { applyCadMaterialPreset, CAD_DEFAULT_PART_COLOR } from "./viewer-materials.js";
+import { applySceneTheme } from "./viewer-theme.js";
 
 function assertScene(scene) {
   if (!scene) {
@@ -37,6 +39,43 @@ function isFiniteBounds(bounds) {
     Number.isFinite(bounds?.max?.z);
 }
 
+function resolveMaterialBaseColor(material) {
+  if (!material) {
+    return CAD_DEFAULT_PART_COLOR;
+  }
+
+  if ("albedoColor" in material && material.albedoColor) {
+    return {
+      r: material.albedoColor.r,
+      g: material.albedoColor.g,
+      b: material.albedoColor.b,
+    };
+  }
+
+  if ("diffuseColor" in material && material.diffuseColor) {
+    return {
+      r: material.diffuseColor.r,
+      g: material.diffuseColor.g,
+      b: material.diffuseColor.b,
+    };
+  }
+
+  return CAD_DEFAULT_PART_COLOR;
+}
+
+function applyCadShadingToResources(resources) {
+  const materials = new Set();
+  for (const mesh of resources?.meshes ?? []) {
+    if (mesh?.material) {
+      materials.add(mesh.material);
+    }
+  }
+
+  for (const material of materials) {
+    applyCadMaterialPreset(material, resolveMaterialBaseColor(material), { usePbr: true });
+  }
+}
+
 export function createOcctBabylonViewer(scene, options = {}) {
   assertScene(scene);
 
@@ -44,14 +83,16 @@ export function createOcctBabylonViewer(scene, options = {}) {
   const rootNode = new TransformNode(VIEWER_ROOT_NAME, scene);
   const previousActiveCamera = scene.activeCamera ?? null;
   const camera = config.createDefaultCameraController ? createDefaultCamera(scene) : null;
-  const lights = config.createDefaultLights ? ensureDefaultLights(scene) : null;
   const sceneState = {
     projectionMode: config.camera?.projection ?? "perspective",
     view: config.camera?.view ?? "iso",
     gridVisible: config.grid?.visible ?? true,
     axesVisible: config.axes?.visible ?? true,
+    theme: config.theme ?? "dark",
   };
-  let gridHelpers = createGridHelpers(scene, createFallbackBounds());
+  applySceneTheme(scene, sceneState.theme);
+  const lights = config.createDefaultLights ? ensureDefaultLights(scene, camera) : null;
+  let gridHelpers = createGridHelpers(scene, createFallbackBounds(), { theme: sceneState.theme });
   let currentSceneResources = null;
 
   function disposeCurrentSceneResources() {
@@ -129,7 +170,8 @@ export function createOcctBabylonViewer(scene, options = {}) {
       gridHelpers.zAxis.dispose(false, true);
     }
 
-    gridHelpers = createGridHelpers(scene, bounds);
+    gridHelpers = createGridHelpers(scene, bounds, { theme: sceneState.theme });
+    applyGridTheme(gridHelpers.ground.material, sceneState.theme);
     syncGridVisibility();
   }
 
@@ -221,6 +263,14 @@ export function createOcctBabylonViewer(scene, options = {}) {
     syncGridVisibility();
   }
 
+  function setTheme(theme) {
+    sceneState.theme = theme === "light" ? "light" : "dark";
+    applySceneTheme(scene, sceneState.theme);
+    if (gridHelpers?.ground?.material) {
+      applyGridTheme(gridHelpers.ground.material, sceneState.theme);
+    }
+  }
+
   function getSceneState() {
     return { ...sceneState };
   }
@@ -231,6 +281,7 @@ export function createOcctBabylonViewer(scene, options = {}) {
     clearModel();
 
     currentSceneResources = sceneBuilder(model, scene, { createRootNode: false });
+    applyCadShadingToResources(currentSceneResources);
     const topLevelNodes = [
       ...(currentSceneResources.transformNodes ?? []),
       ...(currentSceneResources.meshes ?? []),
@@ -268,6 +319,7 @@ export function createOcctBabylonViewer(scene, options = {}) {
     refreshHelpers,
     setProjection,
     setView,
+    setTheme,
     setGridVisible,
     setAxesVisible,
     loadOcctModel,
@@ -280,8 +332,7 @@ export function createOcctBabylonViewer(scene, options = {}) {
         gridHelpers = null;
       }
       if (lights) {
-        lights.hemi.dispose();
-        lights.dir.dispose();
+        lights.dispose?.();
       }
       if (camera) {
         if (scene.activeCamera === camera) {

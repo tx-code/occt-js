@@ -3,29 +3,59 @@ import { Vector3 } from "@babylonjs/core/Maths/math.vector.js";
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial.js";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder.js";
 
-function createGridMaterial(scene, gridRatio) {
+export function applyGridTheme(material, theme = "dark") {
+  if (!material) {
+    return;
+  }
+
+  const isDarkTheme = theme !== "light";
+  const main = isDarkTheme
+    ? new Color3(0, 0, 0)
+    : new Color3(1, 1, 1);
+  const line = isDarkTheme
+    ? new Color3(0.24, 0.24, 0.27)
+    : new Color3(0.74, 0.75, 0.78);
+
+  if ("mainColor" in material) {
+    material.mainColor = main;
+  }
+  if ("lineColor" in material) {
+    material.lineColor = line;
+  }
+  if ("opacity" in material) {
+    material.opacity = isDarkTheme ? 0.8 : 0.9;
+  }
+  if ("minorUnitVisibility" in material) {
+    material.minorUnitVisibility = isDarkTheme ? 0.1 : 0.22;
+  }
+}
+
+function createGridMaterial(scene, gridRatio, theme = "dark") {
   const GridMaterialCtor = globalThis?.BABYLON?.GridMaterial;
   if (typeof GridMaterialCtor === "function") {
     const gridMat = new GridMaterialCtor("gridMat", scene);
-    gridMat.mainColor = new Color3(0.04, 0.04, 0.05);
-    gridMat.lineColor = new Color3(0.48, 0.48, 0.54);
-    gridMat.opacity = 0.98;
+    applyGridTheme(gridMat, theme);
     gridMat.gridRatio = gridRatio;
     gridMat.majorUnitFrequency = 10;
-    gridMat.minorUnitVisibility = 0.35;
     gridMat.backFaceCulling = false;
+    gridMat.disableLighting = true;
     return gridMat;
   }
 
   const fallback = new StandardMaterial("gridMatFallback", scene);
-  fallback.diffuseColor = new Color3(0.16, 0.16, 0.2);
-  fallback.emissiveColor = new Color3(0.12, 0.12, 0.16).scale(Math.max(1 / gridRatio, 0.2));
-  fallback.alpha = 0.98;
+  fallback.diffuseColor = theme === "light"
+    ? new Color3(0.9, 0.91, 0.94)
+    : new Color3(0.16, 0.16, 0.2);
+  fallback.emissiveColor = theme === "light"
+    ? new Color3(0.72, 0.74, 0.78).scale(0.2)
+    : new Color3(0.12, 0.12, 0.16).scale(Math.max(1 / gridRatio, 0.2));
+  fallback.alpha = theme === "light" ? 0.9 : 0.8;
   fallback.backFaceCulling = false;
   return fallback;
 }
 
-export function createGridHelpers(scene, bounds) {
+export function createGridHelpers(scene, bounds, options = {}) {
+  const theme = options.theme ?? "dark";
   const extent = bounds.max.subtract(bounds.min);
   const center = bounds.min.add(bounds.max).scale(0.5);
   const modelSize = extent.length();
@@ -43,7 +73,7 @@ export function createGridHelpers(scene, bounds) {
     { width: gridSize, height: gridSize, subdivisions: 1 },
     scene,
   );
-  ground.material = createGridMaterial(scene, gridRatio);
+  ground.material = createGridMaterial(scene, gridRatio, theme);
   ground.position.x = center.x;
   ground.position.y = bounds.min.y - 0.01;
   ground.position.z = center.z;

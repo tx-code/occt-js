@@ -16,7 +16,7 @@ export const useViewerStore = create(subscribeWithSelector((set, get) => ({
   gridVisible: true,
   projectionMode: "perspective", // "perspective" | "orthographic"
   treeOpen: false,
-  theme: "light", // "dark" | "light"
+  theme: "dark", // "dark" | "light"
   orientationMode: "auto-orient", // "raw" | "auto-orient"
 
   // Selection (serializable summary)

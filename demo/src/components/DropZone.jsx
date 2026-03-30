@@ -2,9 +2,12 @@
 import { useCallback, useState } from "react";
 import { Button } from "./ui/button";
 import OrientationModeToggle from "./OrientationModeToggle";
+import { useViewerStore } from "../store/viewerStore";
 
 export default function DropZone({ onFile, visible }) {
   const [dragOver, setDragOver] = useState(false);
+  const theme = useViewerStore((s) => s.theme);
+  const isLight = theme === "light";
 
   const handleDrop = useCallback((e) => {
     e.preventDefault();
@@ -16,21 +19,29 @@ export default function DropZone({ onFile, visible }) {
 
   return (
     <div
-      className={`absolute inset-0 z-50 flex items-center justify-center bg-zinc-950/95 transition-opacity ${dragOver ? "bg-zinc-950/98" : ""}`}
+      className={`absolute inset-0 z-50 flex items-center justify-center transition-opacity ${
+        isLight
+          ? (dragOver ? "bg-zinc-100/98" : "bg-zinc-100/95")
+          : (dragOver ? "bg-zinc-950/98" : "bg-zinc-950/95")
+      }`}
       onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
       onDragLeave={() => setDragOver(false)}
       onDrop={handleDrop}
       data-testid="drop-zone"
     >
       <div
-        className={`w-[min(92vw,34rem)] rounded-3xl border border-zinc-800/90 bg-zinc-950/90 p-8 text-center shadow-2xl shadow-black/30 transition-colors ${
-          dragOver ? "border-cyan-400/70" : "border-zinc-800/90"
+        className={`w-[min(92vw,34rem)] rounded-3xl p-8 text-center transition-colors ${
+          isLight
+            ? "border border-zinc-300/90 bg-white/90 shadow-2xl shadow-zinc-300/35"
+            : "border border-zinc-800/90 bg-zinc-950/90 shadow-2xl shadow-black/30"
+        } ${
+          dragOver ? "border-cyan-400/70" : (isLight ? "border-zinc-300/90" : "border-zinc-800/90")
         }`}
       >
         <div className="space-y-3">
-          <p className="text-[11px] uppercase tracking-[0.28em] text-zinc-500">Import CAD</p>
-          <h2 className="text-2xl font-semibold text-zinc-100">Open STEP, IGES, or BREP</h2>
-          <p className="mx-auto max-w-md text-sm leading-6 text-zinc-500">
+          <p className={`text-[11px] uppercase tracking-[0.28em] ${isLight ? "text-zinc-500" : "text-zinc-500"}`}>Import CAD</p>
+          <h2 className={`text-2xl font-semibold ${isLight ? "text-zinc-900" : "text-zinc-100"}`}>Open STEP, IGES, or BREP</h2>
+          <p className={`mx-auto max-w-md text-sm leading-6 ${isLight ? "text-zinc-600" : "text-zinc-500"}`}>
             Choose how the model should land in the viewer, then browse or drop a file.
           </p>
         </div>
@@ -54,7 +65,7 @@ export default function DropZone({ onFile, visible }) {
           onChange={(e) => { if (e.target.files[0]) onFile(e.target.files[0]); e.target.value = ""; }}
           data-testid="file-input"
         />
-        <p className="mt-4 text-xs text-zinc-600">
+        <p className={`mt-4 text-xs ${isLight ? "text-zinc-500" : "text-zinc-600"}`}>
           Drag and drop is supported too.
         </p>
       </div>
