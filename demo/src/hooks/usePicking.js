@@ -1,5 +1,11 @@
 // demo/src/hooks/usePicking.js
 import { useEffect, useRef, useCallback } from "react";
+import {
+  createOcctVertexPreviewPoints,
+  createScreenSpaceVertexMarker,
+  getOcctVertexCoords,
+  pickOcctClosestVertex,
+} from "@tx-code/occt-babylon-viewer";
 import { useViewerStore } from "../store/viewerStore";
 
 // ---------------------------------------------------------------------------
@@ -69,13 +75,18 @@ function distanceToEdgePolyline(px, py, pz, points) {
   return Math.sqrt(minSq);
 }
 
-function distanceToVertex(px, py, pz, vx, vy, vz) {
-  const dx = px - vx, dy = py - vy, dz = pz - vz;
-  return Math.sqrt(dx * dx + dy * dy + dz * dz);
-}
-
 function getPickThreshold(engine, camera) {
   return (5 / engine.getRenderHeight()) * camera.radius * 2;
+}
+
+function toIntArray(values) {
+  if (Array.isArray(values)) {
+    return values;
+  }
+  if (ArrayBuffer.isView(values)) {
+    return Array.from(values);
+  }
+  return [];
 }
 
 function worldToLocal(worldPoint, mesh, BABYLON) {
@@ -100,20 +111,8 @@ function findClosestEdge(localPt, geo, threshold) {
   return null;
 }
 
-function findClosestVertex(localPt, geo, threshold) {
-  if (!geo.vertices || geo.vertices.length === 0) return null;
-  let bestVtx = null;
-  let bestDist = Infinity;
-  for (let i = 0; i < geo.vertices.length; i++) {
-    const v = geo.vertices[i];
-    const d = distanceToVertex(localPt.x, localPt.y, localPt.z, v.x, v.y, v.z);
-    if (d < bestDist) {
-      bestDist = d;
-      bestVtx = { index: i, vertex: v, dist: d };
-    }
-  }
-  if (bestVtx && bestVtx.dist < threshold) return bestVtx;
-  return null;
+function getSourceMesh(mesh) {
+  return mesh?.sourceMesh || mesh;
 }
 
 // ---------------------------------------------------------------------------
@@ -445,18 +444,21 @@ function createVertexHighlight(scene, pickedMesh, geo, vertexIndex, camera, BABY
   ensureColors(BABYLON);
   const v = geo.vertices[vertexIndex];
   if (!v) return [];
+  const coords = getOcctVertexCoords(v);
+  if (!coords) return [];
   const worldMatrix = pickedMesh.getWorldMatrix();
-  const localPt = new BABYLON.Vector3(v.x, v.y, v.z);
+  const localPt = new BABYLON.Vector3(coords.x, coords.y, coords.z);
   const worldPt = BABYLON.Vector3.TransformCoordinates(localPt, worldMatrix);
-  const diameter = camera.radius * 0.008;
-  const sphere = BABYLON.MeshBuilder.CreateSphere("sel_vtx_" + vertexIndex, { diameter }, scene);
-  sphere.position = worldPt;
-  const mat = new BABYLON.StandardMaterial("sel_vtx_mat_" + vertexIndex, scene);
-  mat.diffuseColor = PICK_COLORS.select;
-  mat.emissiveColor = PICK_COLORS.selectEmissive;
-  sphere.material = mat;
-  sphere.isPickable = false;
-  return [sphere, mat];
+  const marker = createScreenSpaceVertexMarker(scene, worldPt, camera, BABYLON, {
+    markerType: "select",
+    coreColor: PICK_COLORS.select,
+    ringColor: new BABYLON.Color3(0.04, 0.05, 0.06),
+    corePixelSize: 7.2,
+    ringScale: 1.42,
+    ringAlpha: 0.76,
+    coreAlpha: 0.97,
+  });
+  return marker ? [marker] : [];
 }
 
 // ---------------------------------------------------------------------------
@@ -478,11 +480,13 @@ function buildFaceDetail(geo, faceId, meshUniqueId) {
 function buildEdgeDetail(geo, edgeIndex, meshUniqueId) {
   const edge = geo.edges[edgeIndex];
   if (!edge) return null;
+  const ownerFaces = toIntArray(edge.ownerFaceIds ?? edge.ownerFaces);
+  const freeEdge = edge.isFreeEdge ?? edge.freeEdge ?? false;
   const info = {
     edgeId: edgeIndex,
     pointCount: edge.points ? edge.points.length / 3 : 0,
-    freeEdge: edge.freeEdge || false,
-    ownerFaces: edge.ownerFaces || [],
+    freeEdge: !!freeEdge,
+    ownerFaces,
   };
   return { mode: "edge", id: `edge:${meshUniqueId}:${edgeIndex}`, meshUniqueId, info };
 }
@@ -490,11 +494,13 @@ function buildEdgeDetail(geo, edgeIndex, meshUniqueId) {
 function buildVertexDetail(geo, vertexIndex, meshUniqueId) {
   const v = geo.vertices[vertexIndex];
   if (!v) return null;
+  const coords = getOcctVertexCoords(v);
+  if (!coords) return null;
   const info = {
-    vertexId: vertexIndex,
-    x: v.x,
-    y: v.y,
-    z: v.z,
+    vertexId: Number.isFinite(v.id) ? v.id : vertexIndex,
+    x: coords.x,
+    y: coords.y,
+    z: coords.z,
   };
   return { mode: "vertex", id: `vertex:${meshUniqueId}:${vertexIndex}`, meshUniqueId, info };
 }
@@ -508,6 +514,7 @@ export function usePicking(viewerRefs) {
   const faceTintStateRef = useRef(new WeakMap());
   const hoverDirtyRef = useRef(false);
   const clearHoverRef = useRef(null); // set when setup() runs
+  const vertexPreviewRef = useRef([]);
 
   const clearAllSelections = useCallback(() => {
     for (const entry of selectionSetRef.current.values()) {
@@ -522,7 +529,7 @@ export function usePicking(viewerRefs) {
 
   useEffect(() => {
     if (!viewerRefs) return;
-    const { engineRef, sceneRef, cameraRef, meshGeoMapRef } = viewerRefs;
+    const { engineRef, sceneRef, cameraRef, meshGeoMapRef, meshesRef } = viewerRefs;
 
     // Wait for scene to be ready
     const intervalId = setInterval(() => {
@@ -534,9 +541,34 @@ export function usePicking(viewerRefs) {
 
     let observer = null;
     let hoverObserver = null;
-    let renderCanvas = null;
-    let pointerMoveHandler = null;
-    let pointerLeaveHandler = null;
+      let renderCanvas = null;
+      let pointerMoveHandler = null;
+      let pointerLeaveHandler = null;
+
+      function clearVertexPreview() {
+        for (const disposable of vertexPreviewRef.current) {
+          if (disposable && typeof disposable.dispose === "function") {
+            disposable.dispose();
+          }
+        }
+        vertexPreviewRef.current = [];
+      }
+
+      function refreshVertexPreview(activeScene, BABYLON) {
+        clearVertexPreview();
+        if (useViewerStore.getState().pickMode !== "vertex") {
+          return;
+        }
+        if (!activeScene || !BABYLON) {
+          return;
+        }
+        vertexPreviewRef.current = createOcctVertexPreviewPoints(
+          activeScene,
+          meshesRef.current || [],
+          (mesh) => meshGeoMapRef.current.get(getSourceMesh(mesh)),
+          BABYLON,
+        );
+      }
 
     function setup(scene) {
       const BABYLON = window.BABYLON;
@@ -583,12 +615,6 @@ export function usePicking(viewerRefs) {
           removeSelection(key);
         }
         pushToStore();
-      }
-
-      function getSourceMesh(pickedMesh) {
-        // For instances, get the source mesh which has the geometry data
-        if (pickedMesh.sourceMesh) return pickedMesh.sourceMesh;
-        return pickedMesh;
       }
 
       function handleFacePick(pickResult, ctrlKey) {
@@ -670,7 +696,7 @@ export function usePicking(viewerRefs) {
         pushToStore();
       }
 
-      function handleVertexPick(pickResult, ctrlKey) {
+      function handleVertexPick(pickResult, ctrlKey, pointerX, pointerY) {
         const pickedMesh = pickResult.pickedMesh;
         if (!pickedMesh || !pickResult.pickedPoint) return;
         const sourceMesh = getSourceMesh(pickedMesh);
@@ -682,8 +708,17 @@ export function usePicking(viewerRefs) {
         if (!engine || !camera) return;
 
         const localPt = worldToLocal(pickResult.pickedPoint, pickedMesh, BABYLON);
-        const threshold = getPickThreshold(engine, camera);
-        const result = findClosestVertex(localPt, geo, threshold);
+        const result = pickOcctClosestVertex({
+          pickedMesh,
+          geometry: geo,
+          localPoint: localPt,
+          pointerX,
+          pointerY,
+          scene,
+          camera,
+          engine,
+          BABYLON,
+        });
         if (!result) return;
 
         const key = `vertex:${pickedMesh.uniqueId}:${result.index}`;
@@ -720,18 +755,22 @@ export function usePicking(viewerRefs) {
 
       function createVertexHoverHL(worldMatrix, vertex) {
         if (!vertex) return [];
-        const localPt = new BABYLON.Vector3(vertex.x, vertex.y, vertex.z);
+        const coords = getOcctVertexCoords(vertex);
+        if (!coords) return [];
+        const localPt = new BABYLON.Vector3(coords.x, coords.y, coords.z);
         const worldPt = BABYLON.Vector3.TransformCoordinates(localPt, worldMatrix);
         const camera = cameraRef.current;
-        const diameter = camera ? camera.radius * 0.008 : 0.01;
-        const sphere = BABYLON.MeshBuilder.CreateSphere("hover_vtx_" + Math.random(), { diameter }, scene);
-        sphere.position = worldPt;
-        const mat = new BABYLON.StandardMaterial("hover_vtx_mat_" + Math.random(), scene);
-        mat.diffuseColor = PICK_COLORS.hover;
-        mat.emissiveColor = PICK_COLORS.hover;
-        sphere.material = mat;
-        sphere.isPickable = false;
-        return [sphere, mat];
+        if (!camera) return [];
+        const marker = createScreenSpaceVertexMarker(scene, worldPt, camera, BABYLON, {
+          markerType: "hover",
+          coreColor: PICK_COLORS.hover,
+          ringColor: new BABYLON.Color3(0.03, 0.04, 0.05),
+          corePixelSize: 7.2,
+          ringScale: 1.42,
+          ringAlpha: 0.68,
+          coreAlpha: 0.92,
+        });
+        return marker ? [marker] : [];
       }
 
       function processHover() {
@@ -766,8 +805,17 @@ export function usePicking(viewerRefs) {
           if (result) { hoveredMode = "edge"; hoveredId = result.index; }
         } else if (pickMode === "vertex") {
           const localPt = worldToLocal(pickResult.pickedPoint, pickedMesh, BABYLON);
-          const threshold = getPickThreshold(engine, camera);
-          const result = findClosestVertex(localPt, geo, threshold);
+          const result = pickOcctClosestVertex({
+            pickedMesh,
+            geometry: geo,
+            localPoint: localPt,
+            pointerX: scene.pointerX,
+            pointerY: scene.pointerY,
+            scene,
+            camera,
+            engine,
+            BABYLON,
+          });
           if (result) { hoveredMode = "vertex"; hoveredId = result.index; }
         }
 
@@ -820,6 +868,7 @@ export function usePicking(viewerRefs) {
         renderCanvas.addEventListener("pointerleave", pointerLeaveHandler);
       }
       hoverObserver = scene.onBeforeRenderObservable.add(processHover);
+      refreshVertexPreview(scene, BABYLON);
 
       observer = scene.onPointerObservable.add((pointerInfo) => {
         const type = pointerInfo.type;
@@ -861,7 +910,12 @@ export function usePicking(viewerRefs) {
               handleEdgePick(pickResult, ctrlKey);
               break;
             case "vertex":
-              handleVertexPick(pickResult, ctrlKey);
+              handleVertexPick(
+                pickResult,
+                ctrlKey,
+                pointerInfo.event.offsetX,
+                pointerInfo.event.offsetY,
+              );
               break;
           }
           return;
@@ -874,6 +928,16 @@ export function usePicking(viewerRefs) {
       (state) => state.pickMode,
       () => {
         clearAllSelections();
+        if (clearHoverRef.current) clearHoverRef.current();
+        for (const disposable of vertexPreviewRef.current) {
+          if (disposable && typeof disposable.dispose === "function") {
+            disposable.dispose();
+          }
+        }
+        vertexPreviewRef.current = [];
+        const scene = sceneRef.current;
+        const BABYLON = window.BABYLON;
+        refreshVertexPreview(scene, BABYLON);
       }
     );
 
@@ -893,6 +957,12 @@ export function usePicking(viewerRefs) {
       }
       clearAllSelections();
       if (clearHoverRef.current) clearHoverRef.current();
+      for (const disposable of vertexPreviewRef.current) {
+        if (disposable && typeof disposable.dispose === "function") {
+          disposable.dispose();
+        }
+      }
+      vertexPreviewRef.current = [];
       faceTintStateRef.current = new WeakMap();
       unsub();
     };

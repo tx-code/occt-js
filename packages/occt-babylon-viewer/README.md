@@ -46,5 +46,43 @@ Utility exports for CAD-quality shading and theme parity:
 - `createCadVertexColorMaterial(scene, name, options?)`
 - `createViewerLinePass(scene, options?)`
 - `buildOcctEdgeLinePassBatch(geometry, options?)`
+- `createScreenSpaceVertexMarker(scene, worldPoint, camera, BABYLON, options?)`
+- `pickOcctClosestVertex({ pickedMesh, geometry, localPoint, pointerX, pointerY, scene, camera, engine, BABYLON, ... })`
+- `createOcctVertexPreviewPoints(scene, meshes, resolveGeometry, BABYLON, options?)`
+- `getOcctVertexCoords(vertex)`
 - `resolveShadingNormals(positions, indices, sourceNormals, options?)`
 - `applySceneTheme(scene, theme)`
+
+Vertex picking/preview helpers are package-level APIs, so non-demo apps can reuse the same behavior:
+
+```js
+import {
+  pickOcctClosestVertex,
+  createOcctVertexPreviewPoints,
+  createScreenSpaceVertexMarker,
+} from "@tx-code/occt-babylon-viewer";
+
+const result = pickOcctClosestVertex({
+  pickedMesh,
+  geometry,
+  localPoint,
+  pointerX: event.offsetX,
+  pointerY: event.offsetY,
+  scene,
+  camera,
+  engine,
+  BABYLON,
+});
+
+const previewDisposables = createOcctVertexPreviewPoints(
+  scene,
+  meshes,
+  (mesh) => meshGeoMap.get(mesh.sourceMesh || mesh),
+  BABYLON,
+);
+
+const marker = createScreenSpaceVertexMarker(scene, worldPoint, camera, BABYLON, {
+  markerType: "select",
+  coreColor: new BABYLON.Color3(0.0, 1.0, 0.3),
+});
+```

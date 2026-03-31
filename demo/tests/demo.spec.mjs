@@ -80,6 +80,81 @@ async function getProjectedModelCornerPoint(page) {
   };
 }
 
+async function getProjectedPreviewVertexPoint(page) {
+  const canvas = page.locator("[data-testid='render-canvas']");
+  const box = await canvas.boundingBox();
+  const uv = await page.evaluate(() => {
+    const scene = window.BABYLON?.EngineStore?.LastCreatedScene;
+    const BABYLON = window.BABYLON;
+    if (!scene || !BABYLON || !scene.activeCamera) return null;
+
+    const engine = scene.getEngine();
+    const camera = scene.activeCamera;
+    const viewport = camera.viewport.toGlobal(engine.getRenderWidth(), engine.getRenderHeight());
+    const preview = scene.meshes.find((candidate) =>
+      candidate?.name === "__vertex_preview__" &&
+      candidate?.isVisible &&
+      !candidate?.isDisposed?.()
+    );
+    if (!preview) return null;
+
+    const positions = preview.getVerticesData(BABYLON.VertexBuffer.PositionKind);
+    if (!positions || positions.length < 3) return null;
+
+    const stride = Math.max(1, Math.floor((positions.length / 3) / 4000));
+    let best = null;
+    const threshold = (5 / Math.max(engine.getRenderHeight(), 1)) * (camera.radius || 1) * 2 * 3.0;
+
+    for (let i = 0; i < positions.length; i += stride * 3) {
+      const world = new BABYLON.Vector3(positions[i], positions[i + 1], positions[i + 2]);
+      const projected = BABYLON.Vector3.Project(
+        world,
+        BABYLON.Matrix.Identity(),
+        scene.getTransformMatrix(),
+        viewport
+      );
+
+      const u = projected.x / engine.getRenderWidth();
+      const v = projected.y / engine.getRenderHeight();
+      if (u < 0.12 || u > 0.88 || v < 0.12 || v > 0.88) {
+        continue;
+      }
+      if (projected.z < 0 || projected.z > 1) {
+        continue;
+      }
+
+      const picked = scene.pick(projected.x, projected.y, (mesh) =>
+        mesh?.isVisible &&
+        !mesh?.metadata?.occtLinePassManaged &&
+        mesh?.name !== "__vertex_preview__"
+      );
+      if (!picked?.hit || !picked?.pickedPoint) {
+        continue;
+      }
+
+      const worldDist = BABYLON.Vector3.Distance(world, picked.pickedPoint);
+      if (!Number.isFinite(worldDist) || worldDist > threshold * 1.2) {
+        continue;
+      }
+
+      const centerDist = (u - 0.5) * (u - 0.5) + (v - 0.5) * (v - 0.5);
+      if (!best || centerDist < best.centerDist) {
+        best = { u, v, centerDist };
+      }
+    }
+    return best ? { u: best.u, v: best.v } : null;
+  });
+
+  if (!box || !uv) {
+    return null;
+  }
+
+  return {
+    x: box.x + uv.u * box.width,
+    y: box.y + uv.v * box.height,
+  };
+}
+
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
   const enterDemo = page.getByRole("button", { name: "Enter Demo" });
@@ -432,6 +507,57 @@ test("edge hover keeps xray highlight batches in edge mode", async ({ page }) =>
   expect(hoverVisible.visibleSegments).toBeGreaterThan(0);
   expect(hoverXray).not.toBeNull();
   expect(hoverXray.visibleSegments).toBeGreaterThan(0);
+});
+
+test("vertex pick mode renders preview points and clears them when mode changes", async ({ page }) => {
+  await loadFixture(page);
+  await expect(page.locator("[data-testid='stats-panel']")).toBeVisible();
+
+  await page.click("[data-testid='pick-vertex']");
+  await expect(page.locator("[data-testid='pick-vertex']")).toHaveClass(/cyan/);
+
+  const previewStats = await page.evaluate(() => {
+    const scene = window.BABYLON?.EngineStore?.LastCreatedScene;
+    const mesh = scene?.meshes?.find((candidate) => candidate?.name === "__vertex_preview__");
+    return mesh
+      ? {
+        visible: mesh.isVisible,
+        vertexCount: mesh.getTotalVertices?.() ?? 0,
+      }
+      : null;
+  });
+  expect(previewStats).not.toBeNull();
+  expect(previewStats.visible).toBe(true);
+  expect(previewStats.vertexCount).toBeGreaterThan(0);
+
+  await page.click("[data-testid='pick-face']");
+  await expect(page.locator("[data-testid='pick-face']")).toHaveClass(/cyan/);
+
+  const previewAfterSwitch = await page.evaluate(() => {
+    const scene = window.BABYLON?.EngineStore?.LastCreatedScene;
+    return scene?.meshes?.some((candidate) => candidate?.name === "__vertex_preview__" && !candidate.isDisposed?.()) ?? false;
+  });
+  expect(previewAfterSwitch).toBe(false);
+});
+
+test("vertex pick mode selects a vertex and creates a visible marker", async ({ page }) => {
+  await loadFixture(page);
+  await expect(page.locator("[data-testid='stats-panel']")).toBeVisible();
+
+  await page.click("[data-testid='pick-vertex']");
+  await expect(page.locator("[data-testid='pick-vertex']")).toHaveClass(/cyan/);
+
+  const target = await getProjectedPreviewVertexPoint(page);
+  expect(target).not.toBeNull();
+  await page.mouse.click(target.x, target.y);
+
+  await expect(page.locator("[data-testid='selection-panel']")).toBeVisible({ timeout: 5000 });
+  await expect(page.locator("[data-testid='selection-panel']")).toContainText(/Vertex/i);
+
+  const markerCount = await page.evaluate(() =>
+    document.querySelectorAll("[data-vertex-marker='select']").length
+  );
+  expect(markerCount).toBeGreaterThan(0);
 });
 
 // ---------------------------------------------------------------------------

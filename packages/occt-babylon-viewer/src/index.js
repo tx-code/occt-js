@@ -15,3 +15,9 @@ export {
 } from "./viewer-materials.js";
 export { resolveShadingNormals } from "./viewer-normals.js";
 export { applySceneTheme, resolveThemeClearColor } from "./viewer-theme.js";
+export { createScreenSpaceVertexMarker } from "./viewer-vertex-markers.js";
+export {
+  createOcctVertexPreviewPoints,
+  getOcctVertexCoords,
+  pickOcctClosestVertex,
+} from "./viewer-vertex.js";
