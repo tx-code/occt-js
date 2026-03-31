@@ -43,7 +43,7 @@ function normalizeLayerStyle(style) {
   return {
     mode: style?.mode === "halo" ? "halo" : "base",
     widthScale: typeof style?.widthScale === "number" ? style.widthScale : 1,
-    capExtension: typeof style?.capExtension === "number" ? style.capExtension : 1,
+    capExtension: typeof style?.capExtension === "number" ? style.capExtension : 0,
     haloInnerCutoff: typeof style?.haloInnerCutoff === "number" ? style.haloInnerCutoff : 0.5,
     alphaScale: typeof style?.alphaScale === "number" ? style.alphaScale : 1,
     blending: style?.blending === true,

@@ -101,7 +101,7 @@ function resolveLayerStyle(input) {
   return {
     mode,
     widthScale: typeof input?.widthScale === "number" ? input.widthScale : 1,
-    capExtension: typeof input?.capExtension === "number" ? input.capExtension : 1,
+    capExtension: typeof input?.capExtension === "number" ? input.capExtension : 0,
     alphaScale: typeof input?.alphaScale === "number" ? input.alphaScale : 1,
     haloInnerCutoff: typeof input?.haloInnerCutoff === "number" ? input.haloInnerCutoff : 0.5,
     blending: input?.blending === true,

@@ -21,6 +21,65 @@ async function loadFixture(page, fileName = "simple_part.step") {
   await expect(page.locator("[data-testid='toolbar']")).toBeVisible({ timeout: 30_000 });
 }
 
+async function getLinePassLayerStats(page, layer) {
+  return page.evaluate((targetLayer) => {
+    const scene = window.BABYLON?.EngineStore?.LastCreatedScene;
+    if (!scene) return null;
+    const mesh = scene.meshes.find((candidate) => candidate.metadata?.occtLinePassLayer === targetLayer);
+    return mesh?.metadata?.occtLinePassStats ?? null;
+  }, layer);
+}
+
+async function getProjectedModelCornerPoint(page) {
+  const canvas = page.locator("[data-testid='render-canvas']");
+  const box = await canvas.boundingBox();
+  const uv = await page.evaluate(() => {
+    const scene = window.BABYLON?.EngineStore?.LastCreatedScene;
+    const BABYLON = window.BABYLON;
+    if (!scene || !BABYLON || !scene.activeCamera) return null;
+
+    const engine = scene.getEngine();
+    const camera = scene.activeCamera;
+    const mesh = scene.meshes.find((candidate) =>
+      candidate?.isVisible &&
+      !candidate.metadata?.occtLinePassManaged &&
+      typeof candidate.getTotalVertices === "function" &&
+      candidate.getTotalVertices() > 0
+    );
+    if (!mesh) return null;
+
+    const viewport = camera.viewport.toGlobal(engine.getRenderWidth(), engine.getRenderHeight());
+    const corners = mesh.getBoundingInfo().boundingBox.vectorsWorld;
+    let best = null;
+    for (const corner of corners) {
+      const projected = BABYLON.Vector3.Project(
+        corner,
+        BABYLON.Matrix.Identity(),
+        scene.getTransformMatrix(),
+        viewport
+      );
+      const u = projected.x / engine.getRenderWidth();
+      const v = projected.y / engine.getRenderHeight();
+      if (u < 0.05 || u > 0.95 || v < 0.05 || v > 0.95) {
+        continue;
+      }
+      if (!best || projected.z < best.z) {
+        best = { u, v, z: projected.z };
+      }
+    }
+    return best ? { u: best.u, v: best.v } : null;
+  });
+
+  if (!box || !uv) {
+    return null;
+  }
+
+  return {
+    x: box.x + uv.u * box.width,
+    y: box.y + uv.v * box.height,
+  };
+}
+
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
   const enterDemo = page.getByRole("button", { name: "Enter Demo" });
@@ -317,17 +376,12 @@ test("hover on an already selected face does not add duplicate face outlines", a
   await page.mouse.move(x, y);
   await page.waitForTimeout(300);
 
-  const outlineCount = await page.evaluate(() => {
-    const scene = window.BABYLON?.EngineStore?.LastCreatedScene;
-    if (!scene) return 0;
-    return scene.meshes.filter((mesh) =>
-      typeof mesh?.name === "string" &&
-      mesh.name.startsWith("sel_face_edges_") &&
-      !mesh.isDisposed?.()
-    ).length;
-  });
+  const selectStats = await getLinePassLayerStats(page, "cad-highlight-select-visible");
+  const hoverStats = await getLinePassLayerStats(page, "cad-highlight-hover-visible");
 
-  expect(outlineCount).toBeLessThanOrEqual(1);
+  expect(selectStats).not.toBeNull();
+  expect(selectStats.visibleSegments).toBeGreaterThan(0);
+  expect(hoverStats?.visibleSegments ?? 0).toBe(0);
 });
 
 test("hover highlight keeps xray layer alive", async ({ page }) => {
@@ -339,16 +393,45 @@ test("hover highlight keeps xray layer alive", async ({ page }) => {
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.waitForTimeout(300);
 
-  const xrayStats = await page.evaluate(() => {
-    const scene = window.BABYLON?.EngineStore?.LastCreatedScene;
-    const mesh = scene?.meshes?.find((candidate) =>
-      candidate.metadata?.occtLinePassLayer === "cad-highlight-hover-xray"
-    );
-    return mesh?.metadata?.occtLinePassStats ?? null;
-  });
+  const xrayStats = await getLinePassLayerStats(page, "cad-highlight-hover-xray");
 
   expect(xrayStats).not.toBeNull();
   expect(xrayStats.visibleSegments).toBeGreaterThan(0);
+});
+
+test("edge pick mode creates selection highlight batches", async ({ page }) => {
+  await loadFixture(page);
+  await expect(page.locator("[data-testid='stats-panel']")).toBeVisible();
+
+  await page.click("[data-testid='pick-edge']");
+  await expect(page.locator("[data-testid='pick-edge']")).toHaveClass(/cyan/);
+
+  const target = await getProjectedModelCornerPoint(page);
+  expect(target).not.toBeNull();
+  await page.mouse.click(target.x + 6, target.y + 6);
+  await expect(page.locator("[data-testid='selection-panel']")).toBeVisible({ timeout: 5000 });
+
+  const selectStats = await getLinePassLayerStats(page, "cad-highlight-select-visible");
+  expect(selectStats).not.toBeNull();
+  expect(selectStats.visibleSegments).toBeGreaterThan(0);
+});
+
+test("edge hover keeps xray highlight batches in edge mode", async ({ page }) => {
+  await loadFixture(page);
+  await expect(page.locator("[data-testid='stats-panel']")).toBeVisible();
+
+  await page.click("[data-testid='pick-edge']");
+  const target = await getProjectedModelCornerPoint(page);
+  expect(target).not.toBeNull();
+  await page.mouse.move(target.x + 8, target.y + 8);
+  await page.waitForTimeout(350);
+
+  const hoverVisible = await getLinePassLayerStats(page, "cad-highlight-hover-visible");
+  const hoverXray = await getLinePassLayerStats(page, "cad-highlight-hover-xray");
+  expect(hoverVisible).not.toBeNull();
+  expect(hoverVisible.visibleSegments).toBeGreaterThan(0);
+  expect(hoverXray).not.toBeNull();
+  expect(hoverXray.visibleSegments).toBeGreaterThan(0);
 });
 
 // ---------------------------------------------------------------------------
