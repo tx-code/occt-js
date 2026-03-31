@@ -4,7 +4,7 @@ import { resolveResource } from "@tauri-apps/api/path";
 import { useViewerStore } from "../store/viewerStore";
 import { getOcctFormatFromFileName, resolveAutoOrientedResult } from "../lib/auto-orient";
 
-const CDN = "https://unpkg.com/@tx-code/occt-js@0.1.6/dist/";
+const CDN = "https://unpkg.com/@tx-code/occt-js@0.1.7/dist/";
 
 function getWebDistBase() {
   if (import.meta.env.DEV) {
