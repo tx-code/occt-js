@@ -4,6 +4,7 @@ import {
   normalizeLinePassBatch,
   normalizeLinePassBatches,
 } from "../src/viewer-line-pass-batch.js";
+import { buildLinePassMeshData } from "../src/viewer-line-pass-mesh.js";
 
 test("normalizeLinePassBatch converts point triples into typed arrays and segment metadata", () => {
   const batch = normalizeLinePassBatch({
@@ -51,4 +52,37 @@ test("normalizeLinePassBatches filters null entries and assigns stable fallback 
   assert.equal(batches.length, 2);
   assert.equal(batches[0].id, "line-pass-batch-0");
   assert.equal(batches[1].id, "line-pass-batch-1");
+});
+
+test("buildLinePassMeshData skips segments marked by breakSegmentIndices", () => {
+  const [batch] = normalizeLinePassBatches([{
+    layer: "toolpath",
+    points: [
+      0, 0, 0,
+      1, 0, 0,
+      2, 0, 0,
+      2, 1, 0,
+    ],
+    segmentDashPeriods: [0, 6, 0],
+    breakSegmentIndices: [1],
+  }]);
+
+  const meshData = buildLinePassMeshData([batch]);
+
+  assert.equal(meshData.visibleSegmentCount, 2);
+  assert.deepEqual(Array.from(meshData.segmentDashPeriods), [0, 0, 0, 0, 0, 0, 0, 0]);
+});
+
+test("buildLinePassMeshData emits four vertices and six indices per visible segment", () => {
+  const [batch] = normalizeLinePassBatches([{
+    layer: "cad-edges",
+    points: [0, 0, 0, 1, 0, 0, 1, 1, 0],
+  }]);
+
+  const meshData = buildLinePassMeshData([batch]);
+
+  assert.equal(meshData.visibleSegmentCount, 2);
+  assert.equal(meshData.positions.length, 2 * 4 * 3);
+  assert.equal(meshData.indices.length, 2 * 6);
+  assert.equal(meshData.segmentColors.length, 2 * 4 * 4);
 });
