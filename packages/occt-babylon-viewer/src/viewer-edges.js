@@ -5,6 +5,63 @@ import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder.js";
 import { CreateGreasedLine } from "@babylonjs/core/Meshes/Builders/greasedLineBuilder.js";
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial.js";
 
+function themeCadEdgeColor(theme) {
+  return theme === "light"
+    ? [0.064, 0.072, 0.084, 1.0]
+    : [0.128, 0.136, 0.15, 1.0];
+}
+
+export function buildOcctEdgeLinePassBatch(geometry, options = {}) {
+  if (!geometry?.edges?.length) {
+    return null;
+  }
+
+  const points = [];
+  const segmentColors = [];
+  const segmentDashPeriods = [];
+  const breakSegmentIndices = [];
+  const color = themeCadEdgeColor(options.theme === "light" ? "light" : "dark");
+  let accumulatedSegments = 0;
+  let hasAnyEdge = false;
+
+  for (const edge of geometry.edges) {
+    const raw = edge?.points;
+    if (!raw || raw.length < 6 || raw.length % 3 !== 0) {
+      continue;
+    }
+
+    if (hasAnyEdge) {
+      breakSegmentIndices.push(accumulatedSegments);
+    }
+
+    points.push(...raw);
+    const localSegmentCount = raw.length / 3 - 1;
+    for (let index = 0; index < localSegmentCount; index += 1) {
+      segmentColors.push(...color);
+      segmentDashPeriods.push(0);
+    }
+
+    accumulatedSegments += localSegmentCount;
+    hasAnyEdge = true;
+  }
+
+  if (points.length < 6) {
+    return null;
+  }
+
+  return {
+    id: options.id ?? "cad-edges",
+    layer: "cad-edges",
+    points,
+    segmentColors,
+    segmentDashPeriods,
+    breakSegmentIndices,
+    width: typeof options.width === "number" ? options.width : 1.5,
+    depthBiasPerPixel: typeof options.depthBiasPerPixel === "number" ? options.depthBiasPerPixel : 1,
+    pickable: false,
+  };
+}
+
 function toColor3(colorLike, fallback) {
   if (!colorLike || typeof colorLike !== "object") {
     return fallback;

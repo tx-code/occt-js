@@ -1,9 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { Scene } from "@babylonjs/core/scene.js";
-import { NullEngine } from "@babylonjs/core/Engines/nullEngine.js";
-import { TransformNode } from "@babylonjs/core/Meshes/transformNode.js";
-import { createOcctEdgeOverlayBuilder } from "../src/index.js";
+import { buildOcctEdgeLinePassBatch } from "../src/index.js";
 
 function createSimpleGeometry() {
   return {
@@ -15,69 +12,12 @@ function createSimpleGeometry() {
   };
 }
 
-test("edge overlay builder returns tube meshes for small geometry", () => {
-  const scene = new Scene(new NullEngine());
-  const parent = new TransformNode("parent", scene);
-  const builder = createOcctEdgeOverlayBuilder(scene, {
-    tubeMaxSegments: 9999,
-    tubeMaxLines: 9999,
-  });
+test("buildOcctEdgeLinePassBatch converts OCCT edge polylines into a CAD edge batch", () => {
+  const batch = buildOcctEdgeLinePassBatch(createSimpleGeometry(), { theme: "dark" });
 
-  const edgeMeshes = builder.build(createSimpleGeometry(), parent);
-
-  assert.ok(edgeMeshes.length >= 1);
-  assert.equal(edgeMeshes[0].parent, parent);
-  assert.equal(edgeMeshes[0].isPickable, false);
-
-  for (const mesh of edgeMeshes) {
-    mesh.dispose(false, true);
-  }
-  builder.dispose();
-});
-
-test("edge overlay builder falls back to line system when thresholds are disabled", () => {
-  const scene = new Scene(new NullEngine());
-  const parent = new TransformNode("parent", scene);
-  const builder = createOcctEdgeOverlayBuilder(scene, {
-    tubeMaxSegments: 0,
-    tubeMaxLines: 0,
-    greasedMaxSegments: 0,
-    greasedMaxLines: 0,
-  });
-
-  const edgeMeshes = builder.build(createSimpleGeometry(), parent);
-
-  assert.equal(edgeMeshes.length, 1);
-  assert.equal(edgeMeshes[0].getClassName(), "LinesMesh");
-  assert.equal(edgeMeshes[0].parent, parent);
-
-  edgeMeshes[0].dispose(false, true);
-  builder.dispose();
-});
-
-test("edge overlay builder updates line color when theme changes", () => {
-  const scene = new Scene(new NullEngine());
-  const parent = new TransformNode("parent", scene);
-  const builder = createOcctEdgeOverlayBuilder(scene, {
-    tubeMaxSegments: 0,
-    tubeMaxLines: 0,
-    greasedMaxSegments: 0,
-    greasedMaxLines: 0,
-    theme: "dark",
-  });
-
-  const edgeMeshes = builder.build(createSimpleGeometry(), parent);
-  const lineMesh = edgeMeshes[0];
-  const darkColor = lineMesh.color.clone();
-
-  builder.setTheme("light", edgeMeshes);
-  const lightColor = lineMesh.color.clone();
-
-  assert.notDeepEqual(
-    [darkColor.r, darkColor.g, darkColor.b],
-    [lightColor.r, lightColor.g, lightColor.b],
-  );
-
-  lineMesh.dispose(false, true);
-  builder.dispose();
+  assert.ok(batch);
+  assert.equal(batch.layer, "cad-edges");
+  assert.equal(batch.width > 0, true);
+  assert.equal(batch.points.length, 12);
+  assert.deepEqual(Array.from(batch.segmentDashPeriods), [0, 0]);
 });

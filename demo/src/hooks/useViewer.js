@@ -4,10 +4,11 @@ import { useViewerStore } from "../store/viewerStore";
 import { getCameraAttachOptions } from "../lib/camera-input.js";
 import { buildOcctScene } from "@tx-code/occt-babylon-loader";
 import {
-  createOcctEdgeOverlayBuilder,
+  buildOcctEdgeLinePassBatch,
   createCadPartMaterial,
   createCadVertexColorMaterial,
   createOcctBabylonViewer,
+  createViewerLinePass,
   getCadMaterialKey,
   getCadVertexColorDefault,
   resolveShadingNormals,
@@ -21,17 +22,12 @@ export function useViewer(canvasRef) {
   const meshGeoMapRef = useRef(new Map());
   const meshesRef = useRef([]);
   const edgeLinesRef = useRef([]);
-  const edgeOverlayBuilderRef = useRef(null);
+  const linePassRef = useRef(null);
   const transformNodesRef = useRef([]);
 
   const clearScene = useCallback(() => {
-    for (const edgeMesh of edgeLinesRef.current) {
-      if (edgeMesh && !edgeMesh.isDisposed?.()) {
-        edgeMesh.dispose(false, true);
-      }
-    }
-    edgeOverlayBuilderRef.current?.dispose?.();
-    edgeOverlayBuilderRef.current = null;
+    linePassRef.current?.dispose?.();
+    linePassRef.current = null;
 
     const viewerRuntime = viewerRuntimeRef.current;
     if (viewerRuntime) {
@@ -100,7 +96,7 @@ export function useViewer(canvasRef) {
       if (scene) {
         viewerRuntimeRef.current?.setTheme(theme);
       }
-      edgeOverlayBuilderRef.current?.setTheme?.(theme, edgeLinesRef.current);
+      linePassRef.current?.setTheme?.(theme);
     };
 
     applyTheme(useViewerStore.getState().theme);
@@ -118,6 +114,7 @@ export function useViewer(canvasRef) {
       (state) => ({ facesVisible: state.facesVisible, edgesVisible: state.edgesVisible }),
       ({ facesVisible, edgesVisible }) => {
         for (const m of meshesRef.current) m.isVisible = facesVisible;
+        linePassRef.current?.setVisible?.("cad-edges", edgesVisible);
         for (const l of edgeLinesRef.current) l.isVisible = edgesVisible;
       },
       { equalityFn: (a, b) => a.facesVisible === b.facesVisible && a.edgesVisible === b.edgesVisible }
@@ -165,9 +162,10 @@ export function useViewer(canvasRef) {
       return mat;
     };
 
-    edgeOverlayBuilderRef.current = createOcctEdgeOverlayBuilder(scene, {
+    linePassRef.current = createViewerLinePass(scene, {
       theme: useViewerStore.getState().theme,
     });
+    const cadEdgeBatches = [];
 
     const geoCache = new Map();
 
@@ -183,9 +181,13 @@ export function useViewer(canvasRef) {
       node.rotationQuaternion = r;
     };
 
-    const buildEdgeLines = (geo, parent) => {
-      const edgeOverlays = edgeOverlayBuilderRef.current?.build(geo, parent) || [];
-      edgeLinesRef.current.push(...edgeOverlays);
+    const buildEdgeLines = (geo) => {
+      const batch = buildOcctEdgeLinePassBatch(geo, {
+        theme: useViewerStore.getState().theme,
+      });
+      if (batch) {
+        cadEdgeBatches.push(batch);
+      }
     };
 
     const buildPart = (nodeData, parent) => {
@@ -205,8 +207,7 @@ export function useViewer(canvasRef) {
           inst.parent = parent;
           applyTransform(inst, nodeData.transform);
           meshesRef.current.push(inst);
-          // Edge lines for instances (createInstance doesn't copy children)
-          buildEdgeLines(geo, inst);
+          buildEdgeLines(geo);
           continue; // not return — there may be more meshIndices for this node
         }
 
@@ -263,7 +264,7 @@ export function useViewer(canvasRef) {
         meshGeoMapRef.current.set(mesh, geo);
         geoCache.set(cacheKey, mesh);
         meshesRef.current.push(mesh);
-        buildEdgeLines(geo, mesh);
+        buildEdgeLines(geo);
       }
     };
 
@@ -285,6 +286,10 @@ export function useViewer(canvasRef) {
     root.parent = viewerRuntime?.getRootNode() ?? null;
     transformNodesRef.current.push(root);
     for (const rn of result.rootNodes || []) buildNode(rn, root);
+
+    linePassRef.current?.updateBatches(cadEdgeBatches);
+    edgeLinesRef.current = scene.meshes.filter((mesh) => mesh.metadata?.occtLinePassLayer === "cad-edges");
+    linePassRef.current?.setVisible?.("cad-edges", useViewerStore.getState().edgesVisible);
 
     viewerRuntime?.refreshHelpers?.();
     viewerRuntime?.fitAll();

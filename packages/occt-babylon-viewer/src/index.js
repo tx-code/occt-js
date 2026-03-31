@@ -4,6 +4,7 @@ export {
   normalizeLinePassBatch,
   normalizeLinePassBatches,
 } from "./viewer-line-pass-batch.js";
+export { buildOcctEdgeLinePassBatch, createOcctEdgeOverlayBuilder } from "./viewer-edges.js";
 export {
   applyCadMaterialPreset,
   CAD_DEFAULT_PART_COLOR,
@@ -14,4 +15,3 @@ export {
 } from "./viewer-materials.js";
 export { resolveShadingNormals } from "./viewer-normals.js";
 export { applySceneTheme, resolveThemeClearColor } from "./viewer-theme.js";
-export { createOcctEdgeOverlayBuilder } from "./viewer-edges.js";
