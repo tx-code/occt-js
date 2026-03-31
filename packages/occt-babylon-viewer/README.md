@@ -44,6 +44,7 @@ Utility exports for CAD-quality shading and theme parity:
 
 - `createCadPartMaterial(scene, name, colorLike, options?)`
 - `createCadVertexColorMaterial(scene, name, options?)`
-- `createOcctEdgeOverlayBuilder(scene, options?)`
+- `createViewerLinePass(scene, options?)`
+- `buildOcctEdgeLinePassBatch(geometry, options?)`
 - `resolveShadingNormals(positions, indices, sourceNormals, options?)`
 - `applySceneTheme(scene, theme)`

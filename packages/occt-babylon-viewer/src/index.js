@@ -4,7 +4,7 @@ export {
   normalizeLinePassBatch,
   normalizeLinePassBatches,
 } from "./viewer-line-pass-batch.js";
-export { buildOcctEdgeLinePassBatch, createOcctEdgeOverlayBuilder } from "./viewer-edges.js";
+export { buildOcctEdgeLinePassBatch } from "./viewer-edges.js";
 export {
   applyCadMaterialPreset,
   CAD_DEFAULT_PART_COLOR,
