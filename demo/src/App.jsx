@@ -16,14 +16,23 @@ import DesktopChrome from "./components/DesktopChrome";
 import { shouldUseWindowsCustomChrome } from "./lib/desktop-runtime";
 import { getAppShellLayout } from "./lib/app-shell";
 
+function canAutoLoadSample() {
+  if (typeof navigator !== "undefined" && navigator.webdriver) {
+    return false;
+  }
+  return true;
+}
+
 export default function App() {
   const canvasRef = useRef(null);
   const model = useViewerStore((s) => s.model);
+  const loading = useViewerStore((s) => s.loading);
   const { importFile } = useOcct();
   const viewerRefs = useViewer(canvasRef);
   const { buildScene, clearScene, fitAll, setCameraView, takeSnapshot } = viewerRefs;
   usePicking(viewerRefs);
   const fileInputRef = useRef(null);
+  const sampleBootstrappedRef = useRef(false);
   const windowsDesktopChrome = shouldUseWindowsCustomChrome();
   const shellLayout = getAppShellLayout(windowsDesktopChrome);
   const {
@@ -49,6 +58,14 @@ export default function App() {
 
     clearScene();
   }, [buildScene, clearScene, model]);
+
+  useEffect(() => {
+    if (sampleBootstrappedRef.current) return;
+    if (!canAutoLoadSample()) return;
+    if (model || loading) return;
+    sampleBootstrappedRef.current = true;
+    openSample();
+  }, [loading, model, openSample]);
 
   return (
     <div className={shellLayout.rootClassName}>

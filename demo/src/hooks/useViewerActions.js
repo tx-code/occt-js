@@ -26,12 +26,19 @@ export function useViewerActions({
   const openSample = useCallback(async () => {
     try {
       let blob = null;
+      let selectedName = "sample-model.step";
 
       for (const candidate of getSampleModelCandidates()) {
         try {
           const resp = await fetch(candidate);
           if (!resp.ok) continue;
           blob = await resp.blob();
+          const cleanCandidate = candidate.split("?")[0];
+          const parts = cleanCandidate.split("/");
+          const maybeName = parts[parts.length - 1];
+          if (maybeName) {
+            selectedName = maybeName;
+          }
           break;
         } catch {
           // Keep trying other sample sources.
@@ -40,7 +47,7 @@ export function useViewerActions({
 
       if (!blob) throw new Error("Sample file is unavailable in this runtime");
 
-      const file = new File([blob], "simple_part.step");
+      const file = new File([blob], selectedName);
       await importModelFile(file);
     } catch (err) {
       alert("Error loading sample: " + err.message);
