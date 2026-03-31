@@ -71,6 +71,43 @@ test("raw and auto-orient modes can be switched after import", async ({ page }) 
   await expect(rawButton).not.toHaveClass(/cyan/);
 });
 
+test("raw and auto-orient keep CAD edge line-pass meshes alive", async ({ page }) => {
+  await loadFixture(page, "ANC101.stp");
+
+  const getCadEdgeStats = async () => page.evaluate(() => {
+    const scene = window.BABYLON?.EngineStore?.LastCreatedScene;
+    const meshes = scene.meshes.filter((mesh) => mesh.metadata?.occtLinePassLayer === "cad-edges");
+    return {
+      meshCount: meshes.length,
+      visible: meshes.every((mesh) => mesh.isVisible),
+    };
+  });
+
+  expect((await getCadEdgeStats()).meshCount).toBeGreaterThan(0);
+
+  await page.click("[data-testid='orientation-mode-raw-toolbar']");
+  expect((await getCadEdgeStats()).meshCount).toBeGreaterThan(0);
+
+  await page.click("[data-testid='orientation-mode-auto-toolbar']");
+  expect((await getCadEdgeStats()).meshCount).toBeGreaterThan(0);
+});
+
+test("mock toolpath layer renders both solid and dashed segments", async ({ page }) => {
+  await loadFixture(page, "simple_part.step");
+  await page.click("[data-testid='toggle-toolpath']");
+
+  const toolpathStats = await page.evaluate(() => {
+    const scene = window.BABYLON?.EngineStore?.LastCreatedScene;
+    const mesh = scene.meshes.find((candidate) => candidate.metadata?.occtLinePassLayer === "toolpath");
+    return mesh?.metadata?.occtLinePassStats ?? null;
+  });
+
+  expect(toolpathStats).not.toBeNull();
+  expect(toolpathStats.visibleSegments).toBeGreaterThan(0);
+  expect(toolpathStats.dashedSegments).toBeGreaterThan(0);
+  expect(toolpathStats.solidSegments).toBeGreaterThan(0);
+});
+
 test("preloads occt engine on initial load", async ({ page }) => {
   await expect(page.locator("script[src*='occt-js.js']")).toHaveCount(1, { timeout: 15_000 });
 });

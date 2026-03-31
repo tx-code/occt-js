@@ -10,9 +10,11 @@ export default function Toolbar({ chromeIntegrated = false, onOpenFile, onFitAll
   const facesVisible = useViewerStore((s) => s.facesVisible);
   const edgesVisible = useViewerStore((s) => s.edgesVisible);
   const gridVisible = useViewerStore((s) => s.gridVisible);
+  const toolpathVisible = useViewerStore((s) => s.toolpathVisible);
   const toggleFaces = useViewerStore((s) => s.toggleFaces);
   const toggleEdges = useViewerStore((s) => s.toggleEdges);
   const toggleGrid = useViewerStore((s) => s.toggleGrid);
+  const toggleToolpath = useViewerStore((s) => s.toggleToolpath);
   const pickMode = useViewerStore((s) => s.pickMode);
   const setPickMode = useViewerStore((s) => s.setPickMode);
   const projectionMode = useViewerStore((s) => s.projectionMode);
@@ -49,6 +51,9 @@ export default function Toolbar({ chromeIntegrated = false, onOpenFile, onFitAll
       </Button>
       <Button size="sm" variant={gridVisible ? "active" : "default"} onClick={toggleGrid} data-testid="toggle-grid">
         Grid
+      </Button>
+      <Button size="sm" variant={toolpathVisible ? "active" : "default"} onClick={toggleToolpath} data-testid="toggle-toolpath">
+        Toolpath
       </Button>
     </>
   );

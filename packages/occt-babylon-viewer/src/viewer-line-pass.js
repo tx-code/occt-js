@@ -28,6 +28,16 @@ function applyMeshDataToLayerMesh(mesh, meshData) {
   mesh.setVerticesData("lineWidth", meshData.segmentWidths, true, 1);
 }
 
+function countDashedSegments(meshData) {
+  let dashedVertexCount = 0;
+  for (const value of meshData.segmentDashPeriods) {
+    if (value > 0) {
+      dashedVertexCount += 1;
+    }
+  }
+  return dashedVertexCount / 4;
+}
+
 export function createViewerLinePass(scene, options = {}) {
   if (!scene) {
     throw new TypeError("createViewerLinePass requires a Babylon scene");
@@ -56,11 +66,14 @@ export function createViewerLinePass(scene, options = {}) {
     }
 
     applyMeshDataToLayerMesh(mesh, meshData);
+    const dashedSegments = countDashedSegments(meshData);
     mesh.metadata = {
       occtLinePassManaged: true,
       occtLinePassLayer: layer,
       occtLinePassStats: {
         visibleSegments: meshData.visibleSegmentCount,
+        dashedSegments,
+        solidSegments: meshData.visibleSegmentCount - dashedSegments,
       },
     };
     return mesh;

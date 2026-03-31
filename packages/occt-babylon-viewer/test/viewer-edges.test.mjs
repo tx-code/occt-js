@@ -19,5 +19,7 @@ test("buildOcctEdgeLinePassBatch converts OCCT edge polylines into a CAD edge ba
   assert.equal(batch.layer, "cad-edges");
   assert.equal(batch.width > 0, true);
   assert.equal(batch.points.length, 12);
-  assert.deepEqual(Array.from(batch.segmentDashPeriods), [0, 0]);
+  assert.deepEqual(Array.from(batch.segmentDashPeriods), [0, 0, 0]);
+  assert.deepEqual(Array.from(batch.breakSegmentIndices), [1]);
+  assert.equal(batch.segmentColors.length, 12);
 });

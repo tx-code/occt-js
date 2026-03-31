@@ -21,7 +21,6 @@ export function buildOcctEdgeLinePassBatch(geometry, options = {}) {
   const segmentDashPeriods = [];
   const breakSegmentIndices = [];
   const color = themeCadEdgeColor(options.theme === "light" ? "light" : "dark");
-  let accumulatedSegments = 0;
   let hasAnyEdge = false;
 
   for (const edge of geometry.edges) {
@@ -31,7 +30,13 @@ export function buildOcctEdgeLinePassBatch(geometry, options = {}) {
     }
 
     if (hasAnyEdge) {
-      breakSegmentIndices.push(accumulatedSegments);
+      // A bridge segment is created when appending the next edge polyline.
+      // Mark that bridge as a break and provide placeholder segment metadata
+      // so per-segment arrays stay aligned with the flattened point list.
+      const bridgeSegmentIndex = points.length / 3 - 1;
+      breakSegmentIndices.push(bridgeSegmentIndex);
+      segmentColors.push(...color);
+      segmentDashPeriods.push(0);
     }
 
     points.push(...raw);
@@ -41,7 +46,6 @@ export function buildOcctEdgeLinePassBatch(geometry, options = {}) {
       segmentDashPeriods.push(0);
     }
 
-    accumulatedSegments += localSegmentCount;
     hasAnyEdge = true;
   }
 

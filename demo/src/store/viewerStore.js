@@ -14,6 +14,7 @@ export const useViewerStore = create(subscribeWithSelector((set, get) => ({
   facesVisible: true,
   edgesVisible: true,
   gridVisible: true,
+  toolpathVisible: false,
   projectionMode: "perspective", // "perspective" | "orthographic"
   treeOpen: false,
   theme: "dark", // "dark" | "light"
@@ -71,6 +72,7 @@ export const useViewerStore = create(subscribeWithSelector((set, get) => ({
   toggleFaces: () => set((s) => ({ facesVisible: !s.facesVisible })),
   toggleEdges: () => set((s) => ({ edgesVisible: !s.edgesVisible })),
   toggleGrid: () => set((s) => ({ gridVisible: !s.gridVisible })),
+  toggleToolpath: () => set((s) => ({ toolpathVisible: !s.toolpathVisible })),
   setProjection: (mode) => set({ projectionMode: mode }),
   setPickMode: (mode) => set({ pickMode: mode, selectedItems: [], selectedDetail: null }),
   setTreeOpen: (open) => set({ treeOpen: open }),

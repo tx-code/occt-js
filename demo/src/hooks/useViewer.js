@@ -2,6 +2,7 @@
 import { useRef, useEffect, useCallback } from "react";
 import { useViewerStore } from "../store/viewerStore";
 import { getCameraAttachOptions } from "../lib/camera-input.js";
+import { createMockToolpathBatches } from "../lib/mock-toolpath.js";
 import { buildOcctScene } from "@tx-code/occt-babylon-loader";
 import {
   buildOcctEdgeLinePassBatch,
@@ -24,10 +25,33 @@ export function useViewer(canvasRef) {
   const edgeLinesRef = useRef([]);
   const linePassRef = useRef(null);
   const transformNodesRef = useRef([]);
+  const cadEdgeBatchesRef = useRef([]);
+
+  const applyLinePassBatches = useCallback(() => {
+    const scene = sceneRef.current;
+    const linePass = linePassRef.current;
+    if (!scene || !linePass) {
+      return;
+    }
+
+    const batches = [...cadEdgeBatchesRef.current];
+    if (useViewerStore.getState().toolpathVisible) {
+      batches.push(...createMockToolpathBatches());
+    }
+
+    linePass.updateBatches(batches);
+    edgeLinesRef.current = scene.meshes.filter((mesh) =>
+      mesh.metadata?.occtLinePassLayer === "cad-edges" ||
+      mesh.metadata?.occtLinePassLayer === "toolpath"
+    );
+    linePass.setVisible("cad-edges", useViewerStore.getState().edgesVisible);
+    linePass.setVisible("toolpath", useViewerStore.getState().toolpathVisible);
+  }, []);
 
   const clearScene = useCallback(() => {
     linePassRef.current?.dispose?.();
     linePassRef.current = null;
+    cadEdgeBatchesRef.current = [];
 
     const viewerRuntime = viewerRuntimeRef.current;
     if (viewerRuntime) {
@@ -134,6 +158,16 @@ export function useViewer(canvasRef) {
     );
     return unsub;
   }, []);
+
+  useEffect(() => {
+    const unsub = useViewerStore.subscribe(
+      (state) => state.toolpathVisible,
+      () => {
+        applyLinePassBatches();
+      }
+    );
+    return unsub;
+  }, [applyLinePassBatches]);
 
   // Build scene from OCCT result
   const buildScene = useCallback((result) => {
@@ -287,16 +321,15 @@ export function useViewer(canvasRef) {
     transformNodesRef.current.push(root);
     for (const rn of result.rootNodes || []) buildNode(rn, root);
 
-    linePassRef.current?.updateBatches(cadEdgeBatches);
-    edgeLinesRef.current = scene.meshes.filter((mesh) => mesh.metadata?.occtLinePassLayer === "cad-edges");
-    linePassRef.current?.setVisible?.("cad-edges", useViewerStore.getState().edgesVisible);
+    cadEdgeBatchesRef.current = cadEdgeBatches;
+    applyLinePassBatches();
 
     viewerRuntime?.refreshHelpers?.();
     viewerRuntime?.fitAll();
     const gridVisible = useViewerStore.getState().gridVisible;
     viewerRuntime?.setGridVisible(gridVisible);
     viewerRuntime?.setAxesVisible(gridVisible);
-  }, [clearScene]);
+  }, [applyLinePassBatches, clearScene]);
 
   const fitAll = useCallback(() => {
     viewerRuntimeRef.current?.fitAll();
