@@ -23,3 +23,18 @@ test("buildOcctEdgeLinePassBatch converts OCCT edge polylines into a CAD edge ba
   assert.deepEqual(Array.from(batch.breakSegmentIndices), [1]);
   assert.equal(batch.segmentColors.length, 12);
 });
+
+test("buildOcctEdgeLinePassBatch applies an optional transform matrix", () => {
+  const batch = buildOcctEdgeLinePassBatch(createSimpleGeometry(), {
+    theme: "dark",
+    transformMatrix: [
+      1, 0, 0, 0,
+      0, 1, 0, 0,
+      0, 0, 1, 0,
+      10, 20, 30, 1,
+    ],
+  });
+
+  assert.ok(batch);
+  assert.deepEqual(Array.from(batch.points.slice(0, 6)), [10, 20, 30, 30, 20, 30]);
+});

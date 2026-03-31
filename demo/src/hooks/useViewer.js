@@ -215,9 +215,11 @@ export function useViewer(canvasRef) {
       node.rotationQuaternion = r;
     };
 
-    const buildEdgeLines = (geo) => {
+    const buildEdgeLines = (geo, renderNode) => {
+      const worldMatrix = renderNode?.computeWorldMatrix?.(true)?.toArray?.() ?? null;
       const batch = buildOcctEdgeLinePassBatch(geo, {
         theme: useViewerStore.getState().theme,
+        transformMatrix: worldMatrix,
       });
       if (batch) {
         cadEdgeBatches.push(batch);
@@ -241,7 +243,7 @@ export function useViewer(canvasRef) {
           inst.parent = parent;
           applyTransform(inst, nodeData.transform);
           meshesRef.current.push(inst);
-          buildEdgeLines(geo);
+          buildEdgeLines(geo, inst);
           continue; // not return — there may be more meshIndices for this node
         }
 
@@ -298,7 +300,7 @@ export function useViewer(canvasRef) {
         meshGeoMapRef.current.set(mesh, geo);
         geoCache.set(cacheKey, mesh);
         meshesRef.current.push(mesh);
-        buildEdgeLines(geo);
+        buildEdgeLines(geo, mesh);
       }
     };
 

@@ -23,6 +23,7 @@ function applyMeshDataToLayerMesh(mesh, meshData) {
   vertexData.applyToMesh(mesh, true);
   mesh.setVerticesData("nextPosition", meshData.nextPositions, true, 3);
   mesh.setVerticesData("sideFlag", meshData.sideFlags, true, 1);
+  mesh.setVerticesData("along", meshData.alongFactors, true, 1);
   mesh.setVerticesData("color", meshData.segmentColors, true, 4);
   mesh.setVerticesData("dashPeriod", meshData.segmentDashPeriods, true, 1);
   mesh.setVerticesData("lineWidth", meshData.segmentWidths, true, 1);
@@ -61,7 +62,7 @@ export function createViewerLinePass(scene, options = {}) {
       mesh.material = createLinePassMaterial(scene, activeTheme);
       mesh.alwaysSelectAsActiveMesh = true;
       mesh.isPickable = false;
-      mesh.renderingGroupId = 1;
+      mesh.renderingGroupId = 0;
       meshesByLayer.set(layer, mesh);
     }
 

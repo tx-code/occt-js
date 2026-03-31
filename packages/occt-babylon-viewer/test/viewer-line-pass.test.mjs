@@ -90,6 +90,19 @@ test("buildLinePassMeshData emits four vertices and six indices per visible segm
   assert.equal(meshData.segmentColors.length, 2 * 4 * 4);
 });
 
+test("buildLinePassMeshData emits along factors for segment start/end vertices", () => {
+  const [batch] = normalizeLinePassBatches([{
+    layer: "cad-edges",
+    points: [0, 0, 0, 3, 0, 0],
+  }]);
+
+  const meshData = buildLinePassMeshData([batch]);
+
+  assert.deepEqual(Array.from(meshData.sideFlags), [-1, 1, -1, 1]);
+  assert.deepEqual(Array.from(meshData.alongFactors), [0, 0, 1, 1]);
+  assert.deepEqual(Array.from(meshData.nextPositions), [3, 0, 0, 3, 0, 0, 3, 0, 0, 3, 0, 0]);
+});
+
 test("createViewerLinePass creates layer-backed meshes and toggles visibility", () => {
   const scene = new Scene(new NullEngine());
   const linePass = createViewerLinePass(scene, { theme: "dark" });
@@ -108,6 +121,7 @@ test("createViewerLinePass creates layer-backed meshes and toggles visibility", 
   assert.ok(mesh);
   assert.equal(mesh.metadata.occtLinePassManaged, true);
   assert.equal(mesh.metadata.occtLinePassStats.visibleSegments, 1);
+  assert.deepEqual(Array.from(mesh.getVerticesData("along")), [0, 0, 1, 1]);
 
   linePass.setVisible("cad-edges", false);
   assert.equal(mesh.isVisible, false);

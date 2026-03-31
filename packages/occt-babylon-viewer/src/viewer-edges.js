@@ -11,6 +11,28 @@ function themeCadEdgeColor(theme) {
     : [0.128, 0.136, 0.15, 1.0];
 }
 
+function resolveTransformMatrix(transformMatrixLike) {
+  if (!transformMatrixLike) {
+    return null;
+  }
+  const matrix = Array.from(transformMatrixLike);
+  return matrix.length === 16 ? matrix : null;
+}
+
+function transformPointWithMatrix(matrix, x, y, z) {
+  if (!matrix) {
+    return [x, y, z];
+  }
+  const tx = matrix[0] * x + matrix[4] * y + matrix[8] * z + matrix[12];
+  const ty = matrix[1] * x + matrix[5] * y + matrix[9] * z + matrix[13];
+  const tz = matrix[2] * x + matrix[6] * y + matrix[10] * z + matrix[14];
+  const tw = matrix[3] * x + matrix[7] * y + matrix[11] * z + matrix[15];
+  if (Math.abs(tw) > 1e-8 && Math.abs(tw - 1) > 1e-8) {
+    return [tx / tw, ty / tw, tz / tw];
+  }
+  return [tx, ty, tz];
+}
+
 export function buildOcctEdgeLinePassBatch(geometry, options = {}) {
   if (!geometry?.edges?.length) {
     return null;
@@ -21,6 +43,7 @@ export function buildOcctEdgeLinePassBatch(geometry, options = {}) {
   const segmentDashPeriods = [];
   const breakSegmentIndices = [];
   const color = themeCadEdgeColor(options.theme === "light" ? "light" : "dark");
+  const transformMatrix = resolveTransformMatrix(options.transformMatrix);
   let hasAnyEdge = false;
 
   for (const edge of geometry.edges) {
@@ -39,7 +62,15 @@ export function buildOcctEdgeLinePassBatch(geometry, options = {}) {
       segmentDashPeriods.push(0);
     }
 
-    points.push(...raw);
+    for (let pointIndex = 0; pointIndex < raw.length; pointIndex += 3) {
+      const [x, y, z] = transformPointWithMatrix(
+        transformMatrix,
+        raw[pointIndex],
+        raw[pointIndex + 1],
+        raw[pointIndex + 2],
+      );
+      points.push(x, y, z);
+    }
     const localSegmentCount = raw.length / 3 - 1;
     for (let index = 0; index < localSegmentCount; index += 1) {
       segmentColors.push(...color);

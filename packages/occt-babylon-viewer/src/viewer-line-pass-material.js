@@ -15,6 +15,7 @@ function ensureLinePassShaders() {
     attribute vec3 position;
     attribute vec3 nextPosition;
     attribute float sideFlag;
+    attribute float along;
     attribute vec4 color;
     attribute float dashPeriod;
     attribute float lineWidth;
@@ -41,8 +42,9 @@ function ensureLinePassShaders() {
       vec2 pixelToNdc = vec2(2.0 / max(viewportSize.x, 1.0), 2.0 / max(viewportSize.y, 1.0));
       vec2 offset = normal * sideFlag * lineWidth * 0.5 * pixelToNdc;
 
-      gl_Position = clipA;
-      gl_Position.xy += offset * clipA.w;
+      vec4 clipBase = mix(clipA, clipB, along);
+      gl_Position = clipBase;
+      gl_Position.xy += offset * clipBase.w;
 
       vColor = color;
       vDashPeriod = dashPeriod;
@@ -81,9 +83,9 @@ export function createLinePassMaterial(scene, theme = "dark") {
   ensureLinePassShaders();
 
   const material = new ShaderMaterial(`occt_line_pass_${theme}`, scene, SHADER_NAME, {
-    attributes: ["position", "nextPosition", "sideFlag", "color", "dashPeriod", "lineWidth"],
+    attributes: ["position", "nextPosition", "sideFlag", "along", "color", "dashPeriod", "lineWidth"],
     uniforms: ["world", "view", "projection", "viewportSize"],
-    needAlphaBlending: true,
+    needAlphaBlending: false,
   });
 
   material.backFaceCulling = false;
@@ -92,6 +94,9 @@ export function createLinePassMaterial(scene, theme = "dark") {
   material.separateCullingPass = false;
   material.alpha = 1;
   material.forceDepthWrite = false;
+  // Use fixed-function depth bias to avoid coplanar z-fighting without x-ray artifacts.
+  material.zOffset = -1;
+  material.zOffsetUnits = -2;
   material.onBindObservable.add(() => {
     updateViewportUniform(material);
   });

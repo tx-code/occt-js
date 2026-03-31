@@ -66,6 +66,7 @@ export function buildLinePassMeshData(batches = []) {
   const sideFlags = new Float32Array(visibleSegmentCount * 4);
   const segmentDashPeriods = new Float32Array(visibleSegmentCount * 4);
   const segmentWidths = new Float32Array(visibleSegmentCount * 4);
+  const alongFactors = new Float32Array(visibleSegmentCount * 4);
   const segmentColors = visibleSegmentCount > 0 ? new Float32Array(visibleSegmentCount * 4 * 4) : new Float32Array(0);
   const indices = new Uint32Array(visibleSegmentCount * 6);
 
@@ -76,10 +77,14 @@ export function buildLinePassMeshData(batches = []) {
     const colorBase = vertexBase * 4;
     const indexBase = segmentIndex * 6;
 
+    const sidePattern = [-1, 1, -1, 1];
+    const alongPattern = [0, 0, 1, 1];
     for (let vertexOffset = 0; vertexOffset < 4; vertexOffset += 1) {
+      const vertexIndex = vertexBase + vertexOffset;
       positions.set(segment.start, positionBase + vertexOffset * 3);
       nextPositions.set(segment.end, positionBase + vertexOffset * 3);
-      sideFlags[vertexBase + vertexOffset] = vertexOffset < 2 ? -1 : 1;
+      sideFlags[vertexIndex] = sidePattern[vertexOffset];
+      alongFactors[vertexIndex] = alongPattern[vertexOffset];
       segmentDashPeriods[vertexBase + vertexOffset] = segment.dashPeriod;
       segmentWidths[vertexBase + vertexOffset] = segment.width;
       segmentColors.set(segment.color, colorBase + vertexOffset * 4);
@@ -100,6 +105,7 @@ export function buildLinePassMeshData(batches = []) {
     positions,
     nextPositions,
     sideFlags,
+    alongFactors,
     segmentDashPeriods,
     segmentColors: visibleSegmentCount > 0 ? segmentColors : defaultColorArray(0),
     segmentWidths,
