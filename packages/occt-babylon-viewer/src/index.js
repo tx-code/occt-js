@@ -1,4 +1,9 @@
 export { createOcctBabylonViewer } from "./occt-babylon-viewer.js";
+export { createViewerLinePass } from "./viewer-line-pass.js";
+export {
+  normalizeLinePassBatch,
+  normalizeLinePassBatches,
+} from "./viewer-line-pass-batch.js";
 export {
   applyCadMaterialPreset,
   CAD_DEFAULT_PART_COLOR,

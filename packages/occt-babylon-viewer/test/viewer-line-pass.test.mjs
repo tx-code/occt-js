@@ -1,10 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { Scene } from "@babylonjs/core/scene.js";
+import { NullEngine } from "@babylonjs/core/Engines/nullEngine.js";
 import {
   normalizeLinePassBatch,
   normalizeLinePassBatches,
 } from "../src/viewer-line-pass-batch.js";
 import { buildLinePassMeshData } from "../src/viewer-line-pass-mesh.js";
+import { createViewerLinePass } from "../src/viewer-line-pass.js";
 
 test("normalizeLinePassBatch converts point triples into typed arrays and segment metadata", () => {
   const batch = normalizeLinePassBatch({
@@ -85,4 +88,30 @@ test("buildLinePassMeshData emits four vertices and six indices per visible segm
   assert.equal(meshData.positions.length, 2 * 4 * 3);
   assert.equal(meshData.indices.length, 2 * 6);
   assert.equal(meshData.segmentColors.length, 2 * 4 * 4);
+});
+
+test("createViewerLinePass creates layer-backed meshes and toggles visibility", () => {
+  const scene = new Scene(new NullEngine());
+  const linePass = createViewerLinePass(scene, { theme: "dark" });
+
+  linePass.updateBatches([{
+    id: "cad",
+    layer: "cad-edges",
+    points: [0, 0, 0, 1, 0, 0],
+  }]);
+
+  const diagnostics = linePass.getDiagnostics();
+  assert.equal(diagnostics.batchCount, 1);
+  assert.equal(diagnostics.segmentCount, 1);
+
+  const mesh = scene.meshes.find((candidate) => candidate.metadata?.occtLinePassLayer === "cad-edges");
+  assert.ok(mesh);
+  assert.equal(mesh.metadata.occtLinePassManaged, true);
+  assert.equal(mesh.metadata.occtLinePassStats.visibleSegments, 1);
+
+  linePass.setVisible("cad-edges", false);
+  assert.equal(mesh.isVisible, false);
+
+  linePass.dispose();
+  assert.equal(scene.meshes.filter((candidate) => candidate.metadata?.occtLinePassManaged).length, 0);
 });
