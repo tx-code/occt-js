@@ -302,6 +302,55 @@ test("hovering over model changes cursor", async ({ page }) => {
   expect(cursor).toBe("pointer");
 });
 
+test("hover on an already selected face does not add duplicate face outlines", async ({ page }) => {
+  await loadFixture(page);
+  await expect(page.locator("[data-testid='stats-panel']")).toBeVisible();
+
+  const canvas = page.locator("[data-testid='render-canvas']");
+  const box = await canvas.boundingBox();
+  const x = box.x + box.width / 2;
+  const y = box.y + box.height / 2;
+
+  await page.mouse.click(x, y);
+  await expect(page.locator("[data-testid='selection-panel']")).toBeVisible({ timeout: 5000 });
+
+  await page.mouse.move(x, y);
+  await page.waitForTimeout(300);
+
+  const outlineCount = await page.evaluate(() => {
+    const scene = window.BABYLON?.EngineStore?.LastCreatedScene;
+    if (!scene) return 0;
+    return scene.meshes.filter((mesh) =>
+      typeof mesh?.name === "string" &&
+      mesh.name.startsWith("sel_face_edges_") &&
+      !mesh.isDisposed?.()
+    ).length;
+  });
+
+  expect(outlineCount).toBeLessThanOrEqual(1);
+});
+
+test("hover highlight keeps xray layer alive", async ({ page }) => {
+  await loadFixture(page);
+  await expect(page.locator("[data-testid='stats-panel']")).toBeVisible();
+
+  const canvas = page.locator("[data-testid='render-canvas']");
+  const box = await canvas.boundingBox();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.waitForTimeout(300);
+
+  const xrayStats = await page.evaluate(() => {
+    const scene = window.BABYLON?.EngineStore?.LastCreatedScene;
+    const mesh = scene?.meshes?.find((candidate) =>
+      candidate.metadata?.occtLinePassLayer === "cad-highlight-hover-xray"
+    );
+    return mesh?.metadata?.occtLinePassStats ?? null;
+  });
+
+  expect(xrayStats).not.toBeNull();
+  expect(xrayStats.visibleSegments).toBeGreaterThan(0);
+});
+
 // ---------------------------------------------------------------------------
 // Drag preserves selection
 // ---------------------------------------------------------------------------

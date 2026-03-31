@@ -129,3 +129,59 @@ test("createViewerLinePass creates layer-backed meshes and toggles visibility", 
   linePass.dispose();
   assert.equal(scene.meshes.filter((candidate) => candidate.metadata?.occtLinePassManaged).length, 0);
 });
+
+test("createViewerLinePass applies custom layer styles for highlight halo passes", () => {
+  const scene = new Scene(new NullEngine());
+  const linePass = createViewerLinePass(scene, {
+    theme: "dark",
+    layerStyles: {
+      "cad-highlight-hover-visible": {
+        mode: "halo",
+        capExtension: 1.2,
+        widthScale: 2.2,
+        haloInnerCutoff: 0.6,
+        blending: false,
+        depthFunction: "lequal",
+        renderingGroupId: 1,
+        alphaIndex: 22,
+      },
+      "cad-highlight-hover-xray": {
+        mode: "base",
+        blending: true,
+        depthFunction: "always",
+        renderingGroupId: 1,
+        alphaIndex: 23,
+      },
+    },
+  });
+
+  linePass.updateBatches([
+    {
+      id: "hover-visible",
+      layer: "cad-highlight-hover-visible",
+      points: [0, 0, 0, 1, 0, 0],
+      segmentColors: [0, 0.8, 1, 0.9],
+    },
+    {
+      id: "hover-xray",
+      layer: "cad-highlight-hover-xray",
+      points: [0, 0, 0, 1, 0, 0],
+      segmentColors: [0, 0.8, 1, 0.45],
+    },
+  ]);
+
+  const visibleMesh = scene.meshes.find((candidate) => candidate.metadata?.occtLinePassLayer === "cad-highlight-hover-visible");
+  const xrayMesh = scene.meshes.find((candidate) => candidate.metadata?.occtLinePassLayer === "cad-highlight-hover-xray");
+  assert.ok(visibleMesh);
+  assert.ok(xrayMesh);
+  assert.equal(visibleMesh.metadata.occtLinePassStyle.mode, "halo");
+  assert.equal(visibleMesh.metadata.occtLinePassStyle.capExtension, 1.2);
+  assert.equal(visibleMesh.metadata.occtLinePassStyle.widthScale, 2.2);
+  assert.equal(visibleMesh.metadata.occtLinePassStyle.haloInnerCutoff, 0.6);
+  assert.equal(visibleMesh.metadata.occtLinePassStyle.renderingGroupId, 1);
+  assert.equal(visibleMesh.alphaIndex, 22);
+  assert.equal(xrayMesh.metadata.occtLinePassStyle.depthFunction, "always");
+  assert.equal(xrayMesh.alphaIndex, 23);
+
+  linePass.dispose();
+});

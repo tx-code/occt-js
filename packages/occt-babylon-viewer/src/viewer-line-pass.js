@@ -39,6 +39,22 @@ function countDashedSegments(meshData) {
   return dashedVertexCount / 4;
 }
 
+function normalizeLayerStyle(style) {
+  return {
+    mode: style?.mode === "halo" ? "halo" : "base",
+    widthScale: typeof style?.widthScale === "number" ? style.widthScale : 1,
+    capExtension: typeof style?.capExtension === "number" ? style.capExtension : 1,
+    haloInnerCutoff: typeof style?.haloInnerCutoff === "number" ? style.haloInnerCutoff : 0.5,
+    alphaScale: typeof style?.alphaScale === "number" ? style.alphaScale : 1,
+    blending: style?.blending === true,
+    depthFunction: style?.depthFunction === "always" ? "always" : "lequal",
+    zOffset: typeof style?.zOffset === "number" ? style.zOffset : -1,
+    zOffsetUnits: typeof style?.zOffsetUnits === "number" ? style.zOffsetUnits : -2,
+    renderingGroupId: Number.isInteger(style?.renderingGroupId) ? style.renderingGroupId : 0,
+    alphaIndex: Number.isFinite(style?.alphaIndex) ? style.alphaIndex : 0,
+  };
+}
+
 export function createViewerLinePass(scene, options = {}) {
   if (!scene) {
     throw new TypeError("createViewerLinePass requires a Babylon scene");
@@ -55,14 +71,24 @@ export function createViewerLinePass(scene, options = {}) {
     lastError: null,
   };
 
+  const layerStyles = options.layerStyles && typeof options.layerStyles === "object"
+    ? options.layerStyles
+    : {};
+
+  function resolveLayerStyle(layer) {
+    return normalizeLayerStyle(layerStyles[layer] ?? null);
+  }
+
   function ensureLayerMesh(layer, meshData) {
+    const layerStyle = resolveLayerStyle(layer);
     let mesh = meshesByLayer.get(layer);
     if (!mesh || mesh.isDisposed?.()) {
       mesh = new Mesh(`line_pass_${layer}`, scene);
-      mesh.material = createLinePassMaterial(scene, activeTheme);
+      mesh.material = createLinePassMaterial(scene, activeTheme, layerStyle);
       mesh.alwaysSelectAsActiveMesh = true;
       mesh.isPickable = false;
-      mesh.renderingGroupId = 0;
+      mesh.renderingGroupId = layerStyle.renderingGroupId;
+      mesh.alphaIndex = layerStyle.alphaIndex;
       meshesByLayer.set(layer, mesh);
     }
 
@@ -76,6 +102,7 @@ export function createViewerLinePass(scene, options = {}) {
         dashedSegments,
         solidSegments: meshData.visibleSegmentCount - dashedSegments,
       },
+      occtLinePassStyle: layerStyle,
     };
     return mesh;
   }
@@ -113,9 +140,12 @@ export function createViewerLinePass(scene, options = {}) {
     },
     setTheme(theme) {
       activeTheme = theme === "light" ? "light" : "dark";
-      for (const mesh of meshesByLayer.values()) {
+      for (const [layer, mesh] of meshesByLayer.entries()) {
+        const layerStyle = resolveLayerStyle(layer);
         mesh.material?.dispose?.();
-        mesh.material = createLinePassMaterial(scene, activeTheme);
+        mesh.material = createLinePassMaterial(scene, activeTheme, layerStyle);
+        mesh.renderingGroupId = layerStyle.renderingGroupId;
+        mesh.alphaIndex = layerStyle.alphaIndex;
       }
     },
     setVisible(layer, visible) {

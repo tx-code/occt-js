@@ -15,6 +15,162 @@ import {
   resolveShadingNormals,
 } from "@tx-code/occt-babylon-viewer";
 
+const LINE_PASS_LAYER_STYLES = Object.freeze({
+  "cad-edges": Object.freeze({
+    mode: "base",
+    capExtension: 0.9,
+    widthScale: 1,
+    renderingGroupId: 0,
+    alphaIndex: 0,
+    depthFunction: "lequal",
+    blending: false,
+    zOffset: -1,
+    zOffsetUnits: -2,
+  }),
+  toolpath: Object.freeze({
+    mode: "base",
+    capExtension: 0.9,
+    widthScale: 1,
+    renderingGroupId: 0,
+    alphaIndex: 1,
+    depthFunction: "lequal",
+    blending: false,
+    zOffset: -1,
+    zOffsetUnits: -2,
+  }),
+  "cad-highlight-select-visible": Object.freeze({
+    mode: "halo",
+    capExtension: 1.15,
+    widthScale: 2.35,
+    haloInnerCutoff: 0.58,
+    renderingGroupId: 1,
+    alphaIndex: 22,
+    depthFunction: "lequal",
+    blending: false,
+    zOffset: -1,
+    zOffsetUnits: -1,
+  }),
+  "cad-highlight-select-xray": Object.freeze({
+    mode: "base",
+    capExtension: 1.08,
+    widthScale: 1.25,
+    renderingGroupId: 1,
+    alphaIndex: 21,
+    depthFunction: "always",
+    blending: true,
+    zOffset: 0,
+    zOffsetUnits: 0,
+  }),
+  "cad-highlight-hover-visible": Object.freeze({
+    mode: "halo",
+    capExtension: 1.05,
+    widthScale: 2.2,
+    haloInnerCutoff: 0.6,
+    renderingGroupId: 1,
+    alphaIndex: 24,
+    depthFunction: "lequal",
+    blending: false,
+    zOffset: -1,
+    zOffsetUnits: -1,
+  }),
+  "cad-highlight-hover-xray": Object.freeze({
+    mode: "base",
+    capExtension: 1.05,
+    widthScale: 1.2,
+    renderingGroupId: 1,
+    alphaIndex: 23,
+    depthFunction: "always",
+    blending: true,
+    zOffset: 0,
+    zOffsetUnits: 0,
+  }),
+});
+
+function rgba(color, alpha) {
+  return [color[0], color[1], color[2], alpha];
+}
+
+function buildPolylineHighlightBatch({
+  id,
+  layer,
+  lines,
+  color,
+  width = 1.5,
+}) {
+  const points = [];
+  const segmentColors = [];
+  const segmentDashPeriods = [];
+  const breakSegmentIndices = [];
+  let hasAnyLine = false;
+
+  for (const line of lines || []) {
+    if (!line || line.length < 6 || line.length % 3 !== 0) {
+      continue;
+    }
+
+    if (hasAnyLine) {
+      const bridgeSegmentIndex = points.length / 3 - 1;
+      breakSegmentIndices.push(bridgeSegmentIndex);
+      segmentColors.push(...color);
+      segmentDashPeriods.push(0);
+    }
+
+    for (let index = 0; index < line.length; index += 3) {
+      points.push(line[index], line[index + 1], line[index + 2]);
+    }
+
+    const segmentCount = line.length / 3 - 1;
+    for (let segmentIndex = 0; segmentIndex < segmentCount; segmentIndex += 1) {
+      segmentColors.push(...color);
+      segmentDashPeriods.push(0);
+    }
+
+    hasAnyLine = true;
+  }
+
+  if (points.length < 6) {
+    return null;
+  }
+
+  return {
+    id,
+    layer,
+    points,
+    segmentColors,
+    segmentDashPeriods,
+    breakSegmentIndices,
+    width,
+  };
+}
+
+function buildHighlightBatchSet(kind, token, lines, config) {
+  const visibleBatch = buildPolylineHighlightBatch({
+    id: `${token}:visible`,
+    layer: config.visibleLayer,
+    lines,
+    color: rgba(config.color, config.visibleAlpha),
+    width: config.width,
+  });
+  const xrayBatch = config.xrayAlpha > 0
+    ? buildPolylineHighlightBatch({
+      id: `${token}:xray`,
+      layer: config.xrayLayer,
+      lines,
+      color: rgba(config.color, config.xrayAlpha),
+      width: config.width,
+    })
+    : null;
+
+  const batches = [];
+  if (visibleBatch) {
+    batches.push(visibleBatch);
+  }
+  if (xrayBatch) {
+    batches.push(xrayBatch);
+  }
+  return batches;
+}
+
 export function useViewer(canvasRef) {
   const engineRef = useRef(null);
   const sceneRef = useRef(null);
@@ -26,6 +182,29 @@ export function useViewer(canvasRef) {
   const linePassRef = useRef(null);
   const transformNodesRef = useRef([]);
   const cadEdgeBatchesRef = useRef([]);
+  const edgeHighlightBatchesRef = useRef({
+    hover: new Map(),
+    select: new Map(),
+  });
+
+  const edgeHighlightConfig = useRef({
+    hover: {
+      visibleLayer: "cad-highlight-hover-visible",
+      xrayLayer: "cad-highlight-hover-xray",
+      color: [0, 0.8, 1.0],
+      visibleAlpha: 1,
+      xrayAlpha: 0.55,
+      width: 1.5,
+    },
+    select: {
+      visibleLayer: "cad-highlight-select-visible",
+      xrayLayer: "cad-highlight-select-xray",
+      color: [0, 1.0, 0.3],
+      visibleAlpha: 1.0,
+      xrayAlpha: 0,
+      width: 1.5,
+    },
+  });
 
   const applyLinePassBatches = useCallback(() => {
     const scene = sceneRef.current;
@@ -35,6 +214,11 @@ export function useViewer(canvasRef) {
     }
 
     const batches = [...cadEdgeBatchesRef.current];
+    for (const highlightMap of [edgeHighlightBatchesRef.current.select, edgeHighlightBatchesRef.current.hover]) {
+      for (const highlightBatches of highlightMap.values()) {
+        batches.push(...highlightBatches);
+      }
+    }
     if (useViewerStore.getState().toolpathVisible) {
       batches.push(...createMockToolpathBatches());
     }
@@ -52,6 +236,8 @@ export function useViewer(canvasRef) {
     linePassRef.current?.dispose?.();
     linePassRef.current = null;
     cadEdgeBatchesRef.current = [];
+    edgeHighlightBatchesRef.current.hover.clear();
+    edgeHighlightBatchesRef.current.select.clear();
 
     const viewerRuntime = viewerRuntimeRef.current;
     if (viewerRuntime) {
@@ -198,6 +384,7 @@ export function useViewer(canvasRef) {
 
     linePassRef.current = createViewerLinePass(scene, {
       theme: useViewerStore.getState().theme,
+      layerStyles: LINE_PASS_LAYER_STYLES,
     });
     const cadEdgeBatches = [];
 
@@ -406,6 +593,43 @@ export function useViewer(canvasRef) {
     });
   }, []);
 
+  const setEdgeHighlight = useCallback((kind, token, lines) => {
+    if (kind !== "hover" && kind !== "select") {
+      return;
+    }
+
+    const map = edgeHighlightBatchesRef.current[kind];
+    const config = edgeHighlightConfig.current[kind];
+    const batches = buildHighlightBatchSet(kind, token, lines, config);
+    if (batches.length === 0) {
+      map.delete(token);
+    } else {
+      map.set(token, batches);
+    }
+    applyLinePassBatches();
+  }, [applyLinePassBatches]);
+
+  const clearEdgeHighlight = useCallback((kind, token) => {
+    if (kind !== "hover" && kind !== "select") {
+      return;
+    }
+
+    const map = edgeHighlightBatchesRef.current[kind];
+    if (map.delete(token)) {
+      applyLinePassBatches();
+    }
+  }, [applyLinePassBatches]);
+
+  const clearAllEdgeHighlights = useCallback(() => {
+    const hoverCount = edgeHighlightBatchesRef.current.hover.size;
+    const selectCount = edgeHighlightBatchesRef.current.select.size;
+    edgeHighlightBatchesRef.current.hover.clear();
+    edgeHighlightBatchesRef.current.select.clear();
+    if (hoverCount > 0 || selectCount > 0) {
+      applyLinePassBatches();
+    }
+  }, [applyLinePassBatches]);
+
   return {
     engineRef,
     sceneRef,
@@ -420,5 +644,8 @@ export function useViewer(canvasRef) {
     setCameraView,
     setProjection,
     takeSnapshot,
+    setEdgeHighlight,
+    clearEdgeHighlight,
+    clearAllEdgeHighlights,
   };
 }
