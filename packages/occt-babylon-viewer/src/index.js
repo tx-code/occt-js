@@ -21,3 +21,4 @@ export {
   getOcctVertexCoords,
   pickOcctClosestVertex,
 } from "./viewer-vertex.js";
+export { createPointerClickTracker } from "./viewer-pointer-click.js";

@@ -1,6 +1,7 @@
 // demo/src/hooks/usePicking.js
 import { useEffect, useRef, useCallback } from "react";
 import {
+  createPointerClickTracker,
   createOcctVertexPreviewPoints,
   createScreenSpaceVertexMarker,
   getOcctVertexCoords,
@@ -28,7 +29,6 @@ function ensureColors(BABYLON) {
   PICK_COLORS.edge = new BABYLON.Color3(0.0, 1.0, 0.3);
 }
 
-const DRAG_THRESHOLD_PX = 5;
 const HIGHLIGHT_STYLE = Object.freeze({
   hover: Object.freeze({
     faceGain: 1.02,
@@ -575,7 +575,7 @@ export function usePicking(viewerRefs) {
       if (!BABYLON) return;
       ensureColors(BABYLON);
 
-      let pointerDownPos = null;
+      const pointerClickTracker = createPointerClickTracker();
 
       // Sync selectionSet → store
       function pushToStore() {
@@ -874,19 +874,16 @@ export function usePicking(viewerRefs) {
         const type = pointerInfo.type;
 
         if (type === BABYLON.PointerEventTypes.POINTERDOWN) {
-          pointerDownPos = { x: pointerInfo.event.clientX, y: pointerInfo.event.clientY };
+          pointerClickTracker.onPointerDown(pointerInfo.event);
           return;
         }
 
         if (type === BABYLON.PointerEventTypes.POINTERUP) {
-          if (!pointerDownPos) return;
-          const dx = pointerInfo.event.clientX - pointerDownPos.x;
-          const dy = pointerInfo.event.clientY - pointerDownPos.y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          pointerDownPos = null;
+          const pointerUp = pointerClickTracker.consumePointerUp(pointerInfo.event);
+          if (!pointerUp.tracked) return;
 
           // If dragged, don't trigger selection
-          if (dist > DRAG_THRESHOLD_PX) return;
+          if (!pointerUp.click) return;
 
           clearHover();
 
