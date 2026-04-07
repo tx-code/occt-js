@@ -2,8 +2,10 @@ import { TransformNode } from "@babylonjs/core/Meshes/transformNode.js";
 import { Mesh } from "@babylonjs/core/Meshes/mesh.js";
 import { VertexData } from "@babylonjs/core/Meshes/mesh.vertexData.js";
 import { Matrix, Quaternion, Vector3 } from "@babylonjs/core/Maths/math.vector.js";
-import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial.js";
-import { Color3 } from "@babylonjs/core/Maths/math.color.js";
+import {
+  createCadPartMaterial,
+  resolveShadingNormals,
+} from "@tx-code/occt-babylon-viewer";
 
 const OCCT_ROOT_NAME = "__OCCT_ROOT__";
 const IDENTITY_MATRIX = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
@@ -27,11 +29,12 @@ function applyTransform(node, transform) {
 function toMaterialMap(model, scene) {
   const materialMap = new Map();
   for (const materialDto of model.materials ?? []) {
-    const material = new StandardMaterial(materialDto.id, scene);
-    const color = materialDto.baseColor ?? [0.7, 0.7, 0.7, 1];
-    material.diffuseColor = new Color3(color[0], color[1], color[2]);
-    material.backFaceCulling = false;
-    material.twoSidedLighting = true;
+    const color = materialDto.baseColor ?? [0.9, 0.91, 0.93, 1];
+    const material = createCadPartMaterial(scene, materialDto.id, {
+      b: color[2],
+      g: color[1],
+      r: color[0],
+    });
     materialMap.set(materialDto.id, material);
   }
   return materialMap;
@@ -41,17 +44,33 @@ function toGeometryMap(model) {
   return new Map((model.geometries ?? []).map((geometry) => [geometry.id, geometry]));
 }
 
+function resolveMaterialId(nodeDto, index, materialMap) {
+  const materialIds = Array.isArray(nodeDto.materialIds) ? nodeDto.materialIds : [];
+  const candidate = materialIds[index] ?? materialIds[0];
+  if (candidate && materialMap.has(candidate)) {
+    return candidate;
+  }
+
+  const first = materialMap.keys().next().value;
+  return typeof first === "string" ? first : undefined;
+}
+
 function applyGeometry(mesh, geometry) {
   if (!geometry) {
     return;
   }
 
+  const positions = new Float32Array(geometry.positions ?? []);
+  const indices = new Uint32Array(geometry.indices ?? []);
   const vertexData = new VertexData();
-  vertexData.positions = new Float32Array(geometry.positions ?? []);
-  vertexData.indices = new Uint32Array(geometry.indices ?? []);
-  if (Array.isArray(geometry.normals) && geometry.normals.length > 0) {
-    vertexData.normals = new Float32Array(geometry.normals);
-  }
+  vertexData.positions = positions;
+  vertexData.indices = indices;
+  vertexData.normals = resolveShadingNormals(
+    positions,
+    indices,
+    Array.isArray(geometry.normals) ? geometry.normals : [],
+    { mode: "recompute" },
+  );
   vertexData.applyToMesh(mesh);
 }
 
@@ -70,7 +89,7 @@ function buildPartMeshes(nodeDto, parent, scene, geometryMap, materialMap, geome
   for (let i = 0; i < geometryIds.length; i++) {
     const geometryId = geometryIds[i];
     const geometry = geometryMap.get(geometryId);
-    const materialId = Array.isArray(nodeDto.materialIds) ? nodeDto.materialIds[i] : undefined;
+    const materialId = resolveMaterialId(nodeDto, i, materialMap);
     const cacheKey = `${geometryId}|${materialId ?? ""}`;
     const meshName = i === 0
       ? nodeDto.name ?? `occt_part_${nodeDto.id}`

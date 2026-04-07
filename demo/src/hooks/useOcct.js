@@ -1,10 +1,16 @@
 import { useRef, useEffect, useCallback } from "react";
 import { convertFileSrc, isTauri } from "@tauri-apps/api/core";
 import { resolveResource } from "@tauri-apps/api/path";
+import { inferOcctFormatFromFileName } from "@tx-code/occt-babylon-loader";
+import { createOcctCore, resolveAutoOrientedModel } from "@tx-code/occt-core";
 import { useViewerStore } from "../store/viewerStore";
-import { getOcctFormatFromFileName, resolveAutoOrientedResult } from "../lib/auto-orient";
 
 const CDN = "https://unpkg.com/@tx-code/occt-js@0.1.7/dist/";
+const DEFAULT_IMPORT_PARAMS = Object.freeze({
+  readColors: true,
+  readNames: true,
+  rootMode: "multiple-shapes",
+});
 
 function getWebDistBase() {
   if (import.meta.env.DEV) {
@@ -106,26 +112,30 @@ export function useOcct() {
     setLoading(true, "Loading engine...");
     try {
       const occt = await ensureModule();
-      const format = getOcctFormatFromFileName(file.name);
+      const format = inferOcctFormatFromFileName(file.name);
       if (!format) throw new Error("Unsupported format: " + file.name);
 
       const buffer = await file.arrayBuffer();
       const bytes = new Uint8Array(buffer);
+      const core = createOcctCore({
+        factory: async () => occt,
+      });
 
       setLoadingMessage("Parsing model...");
-      const methods = { step: "ReadStepFile", iges: "ReadIgesFile", brep: "ReadBrepFile" };
-      const result = occt[methods[format]](bytes, {});
-
-      if (!result.success) throw new Error(result.error || "Import failed");
+      const result = await core.importModel(bytes, {
+        fileName: file.name,
+        format,
+        importParams: DEFAULT_IMPORT_PARAMS,
+      });
 
       let autoOrientResult = null;
       setLoadingMessage("Analyzing orientation...");
       try {
-        const orientedResult = await resolveAutoOrientedResult({
+        const orientedResult = await resolveAutoOrientedModel({
           occt,
           format,
           bytes,
-          result,
+          model: result,
         });
         if (orientedResult !== result) {
           autoOrientResult = orientedResult;

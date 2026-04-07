@@ -1,6 +1,11 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { createOcctCore, normalizeOcctFormat, normalizeOcctResult } from "../src/index.js";
+import {
+  createOcctCore,
+  normalizeOcctFormat,
+  normalizeOcctResult,
+  resolveAutoOrientedModel,
+} from "../src/index.js";
 
 const EMPTY_STATS = {
   rootCount: 0,
@@ -206,5 +211,83 @@ describe("createOcctCore", () => {
 
     const supported = await core.getSupportedFormats();
     assert.deepEqual(supported, ["step", "iges", "brep"]);
+  });
+});
+
+describe("resolveAutoOrientedModel", () => {
+  it("applies successful OCCT orientation analysis in Babylon coordinates", async () => {
+    const model = {
+      rootNodes: [
+        {
+          id: "node-a",
+          kind: "part",
+          transform: [
+            1, 0, 0, 0,
+            0, 1, 0, 0,
+            0, 0, 1, 0,
+            0, 0, 0, 1,
+          ],
+          children: [],
+          geometryIds: [],
+          materialIds: [],
+        },
+      ],
+    };
+
+    const oriented = await resolveAutoOrientedModel({
+      bytes: new Uint8Array([1, 2, 3]),
+      format: "step",
+      model,
+      occt: {
+        AnalyzeOptimalOrientation() {
+          return {
+            success: true,
+            transform: [
+              1, 0, 0, 0,
+              0, 1, 0, 0,
+              0, 0, 1, 0,
+              0, 0, 0, 1,
+            ],
+          };
+        },
+      },
+    });
+
+    assert.notEqual(oriented, model);
+    assert.deepEqual(oriented.rootNodes[0].transform, [
+      1, 0, 0, 0,
+      0, 0, -1, 0,
+      0, 1, 0, 0,
+      0, 0, 0, 1,
+    ]);
+  });
+
+  it("returns the original model when orientation analysis is unavailable", async () => {
+    const model = {
+      rootNodes: [
+        {
+          id: "node-a",
+          kind: "part",
+          transform: [
+            1, 0, 0, 0,
+            0, 1, 0, 0,
+            0, 0, 1, 0,
+            0, 0, 0, 1,
+          ],
+          children: [],
+          geometryIds: [],
+          materialIds: [],
+        },
+      ],
+    };
+
+    const oriented = await resolveAutoOrientedModel({
+      bytes: new Uint8Array([1, 2, 3]),
+      format: "step",
+      model,
+      occt: {},
+    });
+
+    assert.equal(oriented, model);
   });
 });

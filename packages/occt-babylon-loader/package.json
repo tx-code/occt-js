@@ -13,6 +13,7 @@
   "license": "Apache-2.0",
   "peerDependencies": {
     "@tx-code/occt-core": "^0.1.7",
+    "@tx-code/occt-babylon-viewer": "^0.1.7",
     "@babylonjs/core": "^8.0.0"
   },
   "scripts": {

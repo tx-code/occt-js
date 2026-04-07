@@ -4,8 +4,9 @@ import { useViewerStore } from "../store/viewerStore";
 function TreeNode({ node, depth = 0 }) {
   const [expanded, setExpanded] = useState(depth < 2);
   const hasChildren = node.children && node.children.length > 0;
-  const hasMeshes = node.meshes && node.meshes.length > 0;
-  const isAssembly = node.isAssembly || hasChildren;
+  const geometryIds = Array.isArray(node.geometryIds) ? node.geometryIds : [];
+  const hasGeometry = geometryIds.length > 0;
+  const isAssembly = node.kind === "assembly" || hasChildren;
 
   return (
     <div>
@@ -22,13 +23,13 @@ function TreeNode({ node, depth = 0 }) {
         <span className={isAssembly ? "text-zinc-400" : "text-cyan-400"}>
           {isAssembly ? "📁" : "📄"}
         </span>
-        <span className="truncate text-zinc-300">{node.name || `Node ${node.id || ""}`}</span>
-        {hasMeshes && !isAssembly && (
-          <span className="text-zinc-600 text-[10px] ml-auto">{node.meshes.length} geo</span>
+        <span className="truncate text-zinc-300">{node.name || `Node ${node.id || node.nodeId || ""}`}</span>
+        {hasGeometry && !isAssembly && (
+          <span className="text-zinc-600 text-[10px] ml-auto">{geometryIds.length} geo</span>
         )}
       </div>
       {expanded && hasChildren && node.children.map((child, i) => (
-        <TreeNode key={child.id || i} node={child} depth={depth + 1} />
+        <TreeNode key={child.id || child.nodeId || i} node={child} depth={depth + 1} />
       ))}
     </div>
   );
@@ -69,7 +70,7 @@ export default function ModelTreeDrawer() {
         </div>
         <div className="overflow-y-auto p-1" style={{ maxHeight: "calc(100vh - 6rem)" }}>
           {(model.rootNodes || []).map((node, i) => (
-            <TreeNode key={node.id || i} node={node} />
+            <TreeNode key={node.id || node.nodeId || i} node={node} />
           ))}
         </div>
       </div>

@@ -6,6 +6,7 @@ const IDENTITY_MATRIX = [
   0, 0, 1, 0,
   0, 0, 0, 1,
 ];
+const DEFAULT_CAD_BASE_COLOR = [0.9, 0.91, 0.93, 1];
 
 function toArray(input) {
   if (!input) {
@@ -168,8 +169,31 @@ function normalizeGeometry(mesh, index) {
 }
 
 function collectMaterialColors(raw, geometries) {
+  function normalizeMaterialColor(material) {
+    if (!material) {
+      return null;
+    }
+
+    const direct = normalizeColor(material);
+    if (direct) {
+      return direct;
+    }
+
+    if (typeof material !== "object") {
+      return null;
+    }
+
+    const record = material;
+    return normalizeColor(
+      record.baseColor ??
+      record.color ??
+      record.diffuseColor ??
+      record.albedoColor,
+    );
+  }
+
   const fromRawMaterials = Array.isArray(raw?.materials)
-    ? raw.materials.map((mat) => normalizeColor(mat)).filter(Boolean)
+    ? raw.materials.map((mat) => normalizeMaterialColor(mat)).filter(Boolean)
     : [];
 
   if (fromRawMaterials.length > 0) {
@@ -200,6 +224,14 @@ function normalizeMaterials(raw, geometries) {
     unique.set(key, {
       id: `mat_${unique.size}`,
       baseColor: color,
+    });
+  }
+
+  if (unique.size === 0) {
+    const fallback = DEFAULT_CAD_BASE_COLOR.slice();
+    unique.set(colorKey(fallback), {
+      id: "mat_0",
+      baseColor: fallback,
     });
   }
 
@@ -326,9 +358,10 @@ export function normalizeOcctResult(rawResult, options = {}) {
 
   const geometries = rawGeometries.map(normalizeGeometry);
   const { materials, keyToMaterialId } = normalizeMaterials(rawResult, geometries);
+  const fallbackMaterialId = materials[0]?.id;
 
   for (const geometry of geometries) {
-    geometry.materialId = materialIdForColor(geometry.color, keyToMaterialId);
+    geometry.materialId = materialIdForColor(geometry.color, keyToMaterialId) ?? fallbackMaterialId;
   }
 
   const context = { geometries };

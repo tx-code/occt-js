@@ -26,6 +26,16 @@ function serveTestFixtures() {
 export default defineConfig({
   plugins: [react(), tailwindcss(), serveTestFixtures()],
   resolve: {
+    alias: {
+      "@tx-code/occt-babylon-viewer": resolve(
+        __dirname,
+        "..",
+        "packages",
+        "occt-babylon-viewer",
+        "src",
+        "index.js",
+      ),
+    },
     dedupe: ["@babylonjs/core", "@babylonjs/materials"],
   },
   base: "./",

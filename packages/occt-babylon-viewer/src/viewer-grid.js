@@ -2,6 +2,7 @@ import { Color3 } from "@babylonjs/core/Maths/math.color.js";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector.js";
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial.js";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder.js";
+import { GridMaterial } from "@babylonjs/materials/grid/gridMaterial.js";
 
 export function applyGridTheme(material, theme = "dark") {
   if (!material) {
@@ -31,27 +32,26 @@ export function applyGridTheme(material, theme = "dark") {
 }
 
 function createGridMaterial(scene, gridRatio, theme = "dark") {
-  const GridMaterialCtor = globalThis?.BABYLON?.GridMaterial;
-  if (typeof GridMaterialCtor === "function") {
-    const gridMat = new GridMaterialCtor("gridMat", scene);
+  try {
+    const gridMat = new GridMaterial("gridMat", scene);
     applyGridTheme(gridMat, theme);
     gridMat.gridRatio = gridRatio;
     gridMat.majorUnitFrequency = 10;
     gridMat.backFaceCulling = false;
     gridMat.disableLighting = true;
     return gridMat;
+  } catch {
+    const fallback = new StandardMaterial("gridMatFallback", scene);
+    fallback.diffuseColor = theme === "light"
+      ? new Color3(0.9, 0.91, 0.94)
+      : new Color3(0.16, 0.16, 0.2);
+    fallback.emissiveColor = theme === "light"
+      ? new Color3(0.72, 0.74, 0.78).scale(0.2)
+      : new Color3(0.12, 0.12, 0.16).scale(Math.max(1 / gridRatio, 0.2));
+    fallback.alpha = theme === "light" ? 0.9 : 0.8;
+    fallback.backFaceCulling = false;
+    return fallback;
   }
-
-  const fallback = new StandardMaterial("gridMatFallback", scene);
-  fallback.diffuseColor = theme === "light"
-    ? new Color3(0.9, 0.91, 0.94)
-    : new Color3(0.16, 0.16, 0.2);
-  fallback.emissiveColor = theme === "light"
-    ? new Color3(0.72, 0.74, 0.78).scale(0.2)
-    : new Color3(0.12, 0.12, 0.16).scale(Math.max(1 / gridRatio, 0.2));
-  fallback.alpha = theme === "light" ? 0.9 : 0.8;
-  fallback.backFaceCulling = false;
-  return fallback;
 }
 
 export function createGridHelpers(scene, bounds, options = {}) {
