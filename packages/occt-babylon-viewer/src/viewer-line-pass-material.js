@@ -1,3 +1,4 @@
+import { Constants } from "@babylonjs/core/Engines/constants.js";
 import { Effect } from "@babylonjs/core/Materials/effect.js";
 import { ShaderMaterial } from "@babylonjs/core/Materials/shaderMaterial.js";
 import { Vector2 } from "@babylonjs/core/Maths/math.vector.js";
@@ -153,8 +154,10 @@ export function createLinePassMaterial(scene, theme = "dark", layerStyleInput = 
   material.zOffset = style.zOffset;
   material.zOffsetUnits = style.zOffsetUnits;
 
-  const engine = scene.getEngine();
-  material.depthFunction = style.depthFunction === "always" ? engine.ALWAYS : engine.LEQUAL;
+  // Babylon exposes depth test enums through Constants, not engine instances.
+  material.depthFunction = style.depthFunction === "always"
+    ? Constants.ALWAYS
+    : Constants.LEQUAL;
 
   material.onBindObservable.add(() => {
     updateMaterialUniforms(material, style);

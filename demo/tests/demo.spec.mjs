@@ -21,6 +21,20 @@ async function loadFixture(page, fileName = "simple_part.step") {
   await expect(page.locator("[data-testid='toolbar']")).toBeVisible({ timeout: 30_000 });
 }
 
+function trackViewerErrors(page) {
+  const errors = [];
+  page.on("pageerror", (error) => {
+    errors.push(`pageerror:${error.message}`);
+  });
+  page.on("console", (message) => {
+    const text = message.text();
+    if (text.includes("GL_INVALID_ENUM")) {
+      errors.push(`console:${text}`);
+    }
+  });
+  return errors;
+}
+
 async function getLinePassLayerStats(page, layer) {
   return page.evaluate((targetLayer) => {
     const scene = window.BABYLON?.EngineStore?.LastCreatedScene;
@@ -320,6 +334,7 @@ test("fit button works", async ({ page }) => {
 // ---------------------------------------------------------------------------
 
 test("clicking on model shows face selection panel", async ({ page }) => {
+  const errors = trackViewerErrors(page);
   await loadFixture(page);
   await expect(page.locator("[data-testid='stats-panel']")).toBeVisible();
 
@@ -328,6 +343,20 @@ test("clicking on model shows face selection panel", async ({ page }) => {
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
 
   await expect(page.locator("[data-testid='selection-panel']")).toBeVisible({ timeout: 5000 });
+  expect(errors).toEqual([]);
+});
+
+test("clicking on model does not emit WebGL invalid depth-function errors", async ({ page }) => {
+  const errors = trackViewerErrors(page);
+  await loadFixture(page);
+  await expect(page.locator("[data-testid='stats-panel']")).toBeVisible();
+
+  const canvas = page.locator("[data-testid='render-canvas']");
+  const box = await canvas.boundingBox();
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await page.waitForTimeout(500);
+
+  expect(errors).toEqual([]);
 });
 
 // ---------------------------------------------------------------------------

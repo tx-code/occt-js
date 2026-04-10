@@ -1,14 +1,39 @@
 // demo/src/components/SelectionPanel.jsx
 import { useViewerStore } from "../store/viewerStore";
 
-function ColorSwatch({ color }) {
+function resolveColorChannels(color) {
   if (!color) return null;
-  const hex = `rgb(${Math.round(color.r * 255)}, ${Math.round(color.g * 255)}, ${Math.round(color.b * 255)})`;
+
+  // occt-core normalizes CAD colors to [r, g, b, a], but some demo-only paths
+  // still produce Babylon-style { r, g, b } objects.
+  if (Array.isArray(color) || ArrayBuffer.isView(color)) {
+    const values = Array.from(color);
+    if (values.length < 3) return null;
+    const [r, g, b] = values;
+    if (![r, g, b].every(Number.isFinite)) return null;
+    return { r, g, b };
+  }
+
+  if (
+    Number.isFinite(color.r) &&
+    Number.isFinite(color.g) &&
+    Number.isFinite(color.b)
+  ) {
+    return { r: color.r, g: color.g, b: color.b };
+  }
+
+  return null;
+}
+
+function ColorSwatch({ color }) {
+  const channels = resolveColorChannels(color);
+  if (!channels) return null;
+  const hex = `rgb(${Math.round(channels.r * 255)}, ${Math.round(channels.g * 255)}, ${Math.round(channels.b * 255)})`;
   return (
     <span
       className="inline-block w-3 h-3 rounded-sm border border-zinc-600"
       style={{ backgroundColor: hex }}
-      title={`R:${color.r.toFixed(2)} G:${color.g.toFixed(2)} B:${color.b.toFixed(2)}`}
+      title={`R:${channels.r.toFixed(2)} G:${channels.g.toFixed(2)} B:${channels.b.toFixed(2)}`}
     />
   );
 }

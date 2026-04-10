@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { Scene } from "@babylonjs/core/scene.js";
 import { NullEngine } from "@babylonjs/core/Engines/nullEngine.js";
+import { Constants } from "@babylonjs/core/Engines/constants.js";
 import {
   normalizeLinePassBatch,
   normalizeLinePassBatches,
@@ -182,6 +183,8 @@ test("createViewerLinePass applies custom layer styles for highlight halo passes
   assert.equal(visibleMesh.alphaIndex, 22);
   assert.equal(xrayMesh.metadata.occtLinePassStyle.depthFunction, "always");
   assert.equal(xrayMesh.alphaIndex, 23);
+  assert.equal(visibleMesh.material.depthFunction, Constants.LEQUAL);
+  assert.equal(xrayMesh.material.depthFunction, Constants.ALWAYS);
 
   linePass.dispose();
 });
