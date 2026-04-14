@@ -13,7 +13,7 @@
 ### Exact Topology References
 
 - [ ] **REF-01**: Downstream JS code can address exact face, edge, and vertex elements through a stable reference shape that includes exact-model identity and enough occurrence context for repeated measurement calls.
-- [ ] **REF-02**: Downstream JS code can resolve exact face, edge, and vertex references directly from the ids already exported in the current mesh/topology payload instead of introducing a second viewer-specific id system.
+- [ ] **REF-02**: Downstream JS code can resolve exact face, edge, and vertex references from the ids already exported in the current mesh/topology payload through an explicit imported-topology-id mapping layer instead of introducing a second viewer-specific id system.
 - [ ] **REF-03**: Downstream JS code can classify exact topology references into primitive geometry families such as line, circle, plane, cylinder, cone, or sphere so app-side measurement semantics can compose on top.
 
 ### Primitive Exact Measurements
@@ -54,23 +54,24 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| LIFE-01 | TBD | Pending |
-| LIFE-02 | TBD | Pending |
-| REF-01 | TBD | Pending |
-| REF-02 | TBD | Pending |
-| REF-03 | TBD | Pending |
-| MEAS-01 | TBD | Pending |
-| MEAS-02 | TBD | Pending |
-| MEAS-03 | TBD | Pending |
-| MEAS-04 | TBD | Pending |
-| MEAS-05 | TBD | Pending |
-| ADAPT-01 | TBD | Pending |
-| ADAPT-02 | TBD | Pending |
+| LIFE-01 | Phase 5 | Planned |
+| LIFE-02 | Phase 5 | Planned |
+| REF-01 | Phase 6 | Planned |
+| REF-02 | Phase 6 | Planned |
+| REF-03 | Phase 7 | Planned |
+| MEAS-01 | Phase 8 | Planned |
+| MEAS-02 | Phase 8 | Planned |
+| MEAS-03 | Phase 7 | Planned |
+| MEAS-04 | Phase 8 | Planned |
+| MEAS-05 | Phase 8 | Planned |
+| ADAPT-01 | Phase 8 | Planned |
+| ADAPT-02 | Phase 8 | Planned |
 
 **Coverage:**
 - v1.1 requirements: 12 total
-- Mapped to phases: 0
-- Unmapped: 12
+- Mapped to phases: 12
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-14*
+*Last updated: 2026-04-14 after v1.1 roadmap creation*
