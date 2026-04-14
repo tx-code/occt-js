@@ -12,6 +12,10 @@ function assert(condition, message) {
   }
 }
 
+function hasOwn(value, key) {
+  return !!value && Object.prototype.hasOwnProperty.call(value, key);
+}
+
 function dot(a, b) {
   return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 }
@@ -46,6 +50,22 @@ function assertVectorNear(actual, expected, label) {
   }
 }
 
+function assertOrientationContract(result, label) {
+  assert(result.success, `${label}: orientation analysis should succeed`);
+  assert(Array.isArray(result.transform) && result.transform.length === 16, `${label}: transform should be a 4x4 matrix`);
+  assert(result.localFrame, `${label}: localFrame should be present`);
+  assert(result.bbox, `${label}: bbox should be present`);
+  assert(result.stage1, `${label}: stage1 diagnostics should be present`);
+  assert(result.stage2, `${label}: stage2 diagnostics should be present`);
+  assert(Array.isArray(result.stage1.detectedAxis) && result.stage1.detectedAxis.length === 3, `${label}: stage1.detectedAxis should be a 3D vector`);
+  assert(typeof result.stage1.usedCylinderSupport === "boolean", `${label}: stage1.usedCylinderSupport should be boolean`);
+  assert(typeof result.stage2.rotationAroundZDeg === "number", `${label}: stage2.rotationAroundZDeg should be numeric`);
+
+  const hasSourceUnit = hasOwn(result, "sourceUnit");
+  const hasUnitScale = hasOwn(result, "unitScaleToMeters");
+  assert(hasSourceUnit === hasUnitScale, `${label}: unit metadata should appear as a pair`);
+}
+
 async function main() {
   const factory = loadOcctFactory();
   const m = await factory();
@@ -57,13 +77,7 @@ async function main() {
     const fixture = golden.fixture;
     const bytes = new Uint8Array(readFileSync(resolve("test", fixture)));
     const result = m.AnalyzeOptimalOrientation(format, bytes, { mode: "manufacturing" });
-    assert(result.success, `${fixture}: orientation analysis should succeed`);
-    assert(result.localFrame, `${fixture}: localFrame should be present`);
-    assert(result.bbox, `${fixture}: bbox should be present`);
-    assert(result.stage1, `${fixture}: stage1 diagnostics should be present`);
-    assert(result.stage2, `${fixture}: stage2 diagnostics should be present`);
-    assert(Array.isArray(result.stage1.detectedAxis) && result.stage1.detectedAxis.length === 3, `${fixture}: stage1.detectedAxis should be a 3D vector`);
-    assert(typeof result.stage2.rotationAroundZDeg === "number", `${fixture}: stage2.rotationAroundZDeg should be numeric`);
+    assertOrientationContract(result, fixture);
     assert(result.strategy === golden.strategy, `${fixture}: strategy should be ${golden.strategy}, got ${result.strategy}`);
     assert(result.stage1.usedCylinderSupport === golden.usedCylinderSupport, `${fixture}: usedCylinderSupport should be ${golden.usedCylinderSupport}`);
     assertNear(result.confidence, golden.confidence, `${fixture}: confidence`, 1e-9, 1e-9);
@@ -77,11 +91,23 @@ async function main() {
     assertNear(result.bbox.dx, golden.bbox.dx, `${fixture}: bbox.dx`);
     assertNear(result.bbox.dy, golden.bbox.dy, `${fixture}: bbox.dy`);
     assertNear(result.bbox.dz, golden.bbox.dz, `${fixture}: bbox.dz`);
+
+    if (golden.strategy.startsWith("planar-base") || golden.strategy.startsWith("largest-planar-base")) {
+      assert(hasOwn(result.stage1, "baseFaceId"), `${fixture}: planar-base strategies should report stage1.baseFaceId`);
+      assert(typeof result.stage1.baseFaceId === "number" && result.stage1.baseFaceId > 0, `${fixture}: stage1.baseFaceId should be a positive number`);
+    } else {
+      assert(!hasOwn(result.stage1, "baseFaceId"), `${fixture}: non-planar strategies should omit stage1.baseFaceId`);
+    }
+
     if (golden.sourceUnit) {
       assert(result.sourceUnit === golden.sourceUnit, `${fixture}: sourceUnit should be ${golden.sourceUnit}, got ${result.sourceUnit}`);
+    } else {
+      assert(!hasOwn(result, "sourceUnit"), `${fixture}: sourceUnit should be absent`);
     }
     if (golden.unitScaleToMeters !== undefined) {
       assertNear(result.unitScaleToMeters, golden.unitScaleToMeters, `${fixture}: unitScaleToMeters`, 1e-12, 1e-12);
+    } else {
+      assert(!hasOwn(result, "unitScaleToMeters"), `${fixture}: unitScaleToMeters should be absent`);
     }
     assertOrthonormal(result.localFrame, fixture);
     assertSortedBbox(result.bbox, fixture);
@@ -96,8 +122,10 @@ async function main() {
     },
   });
   assert(preset.success, "preset-axis analysis should succeed");
-  assert(preset.stage1, "preset-axis analysis should still report stage1");
+  assertOrientationContract(preset, "preset-axis analysis");
   assert(Array.isArray(preset.stage1.detectedAxis) && preset.stage1.detectedAxis.length === 3, "preset-axis analysis should expose detectedAxis");
+  assert(/^preset-axis/.test(preset.strategy), `preset-axis analysis should report a preset-axis strategy, got ${preset.strategy}`);
+  assert(!hasOwn(preset.stage1, "baseFaceId"), "preset-axis analysis should not fabricate a planar baseFaceId");
 
   console.log("PASS test_optimal_orientation_reference");
 }
