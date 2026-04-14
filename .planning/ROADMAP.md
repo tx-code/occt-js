@@ -25,7 +25,7 @@ This roadmap keeps `occt-js` centered on the runtime-first Wasm carrier. v1.0 sh
 
 </details>
 
-- [ ] **Phase 5: Exact Model Lifecycle Contract** - Add a stateful exact-model lane with explicit retain/release semantics beside the existing stateless imports.
+- [x] **Phase 5: Exact Model Lifecycle Contract** - Add a stateful exact-model lane with explicit retain/release semantics beside the existing stateless imports.
 - [ ] **Phase 6: Occurrence-Scoped Exact Ref Mapping** - Resolve exact face, edge, and vertex refs from current exported topology ids through an explicit mapping layer.
 - [ ] **Phase 7: Primitive Exact Geometry Queries** - Expose geometry classification and single-entity exact measurements needed for app-side composition.
 - [ ] **Phase 8: Pairwise Measurement Contract Hardening** - Ship pairwise exact measurements, JS-friendly adapters, and runtime-first contract hardening.
@@ -116,7 +116,7 @@ Plans:
 
 Plans:
 - [x] 05-01-PLAN.md — Add the retained exact-model store and exact open/release root APIs
-- [ ] 05-02-PLAN.md — Lock lifecycle typings, failure DTOs, and root verification for invalid-after-release behavior
+- [x] 05-02-PLAN.md — Lock lifecycle typings, failure DTOs, and root verification for invalid-after-release behavior
 
 ### Phase 6: Occurrence-Scoped Exact Ref Mapping
 **Goal**: Downstream JS can resolve exact face, edge, and vertex refs from today’s exported topology ids while preserving exact-model identity and occurrence context.
@@ -181,7 +181,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 2. Root Runtime Contract | 3/3 | Complete | 2026-04-14 |
 | 3. Downstream Consumption Contract | 3/3 | Complete | 2026-04-14 |
 | 4. Release & Governance Flow | 3/3 | Complete | 2026-04-14 |
-| 5. Exact Model Lifecycle Contract | 1/2 | In Progress | - |
+| 5. Exact Model Lifecycle Contract | 2/2 | Complete | 2026-04-14 |
 | 6. Occurrence-Scoped Exact Ref Mapping | 0/2 | Not started | - |
 | 7. Primitive Exact Geometry Queries | 0/2 | Not started | - |
 | 8. Pairwise Measurement Contract Hardening | 0/3 | Not started | - |
