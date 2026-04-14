@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import {
@@ -53,4 +53,14 @@ test("assertTypeDefinitionsPresent fails when tracked type definitions are missi
     () => assertTypeDefinitionsPresent(repoRoot),
     /git restore --source=HEAD -- dist\/occt-js\.d\.ts/
   );
+});
+
+test("assertTypeDefinitionsPresent does not require built dist runtime artifacts", () => {
+  const repoRoot = mkdtempSync(path.join(tmpdir(), "occt-js-prereqs-"));
+  const typesPath = path.join(repoRoot, "dist", "occt-js.d.ts");
+
+  mkdirSync(path.dirname(typesPath), { recursive: true });
+  writeFileSync(typesPath, "export {};\n");
+
+  assert.doesNotThrow(() => assertTypeDefinitionsPresent(repoRoot));
 });
