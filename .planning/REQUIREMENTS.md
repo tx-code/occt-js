@@ -7,7 +7,7 @@
 
 ### Exact Model Lifecycle
 
-- [ ] **LIFE-01**: Downstream JS code can import STEP, IGES, or BREP bytes and keep an exact-model handle alive after import so later measurement calls do not depend on mesh-only output.
+- [x] **LIFE-01**: Downstream JS code can import STEP, IGES, or BREP bytes and keep an exact-model handle alive after import so later measurement calls do not depend on mesh-only output.
 - [ ] **LIFE-02**: Downstream JS code can explicitly retain and release exact-model handles with predictable lifetime behavior and actionable failure semantics.
 
 ### Exact Topology References
@@ -54,7 +54,7 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| LIFE-01 | Phase 5 | Planned |
+| LIFE-01 | Phase 5 | Completed |
 | LIFE-02 | Phase 5 | Planned |
 | REF-01 | Phase 6 | Planned |
 | REF-02 | Phase 6 | Planned |

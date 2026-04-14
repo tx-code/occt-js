@@ -115,7 +115,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 05-01-PLAN.md — Add the retained exact-model store and exact open/release root APIs
+- [x] 05-01-PLAN.md — Add the retained exact-model store and exact open/release root APIs
 - [ ] 05-02-PLAN.md — Lock lifecycle typings, failure DTOs, and root verification for invalid-after-release behavior
 
 ### Phase 6: Occurrence-Scoped Exact Ref Mapping
@@ -181,7 +181,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 2. Root Runtime Contract | 3/3 | Complete | 2026-04-14 |
 | 3. Downstream Consumption Contract | 3/3 | Complete | 2026-04-14 |
 | 4. Release & Governance Flow | 3/3 | Complete | 2026-04-14 |
-| 5. Exact Model Lifecycle Contract | 0/2 | Not started | - |
+| 5. Exact Model Lifecycle Contract | 1/2 | In Progress | - |
 | 6. Occurrence-Scoped Exact Ref Mapping | 0/2 | Not started | - |
 | 7. Primitive Exact Geometry Queries | 0/2 | Not started | - |
 | 8. Pairwise Measurement Contract Hardening | 0/3 | Not started | - |
