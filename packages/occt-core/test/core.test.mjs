@@ -17,6 +17,10 @@ const EMPTY_STATS = {
   reusedInstanceCount: 0,
 };
 
+function hasOwn(object, key) {
+  return Object.prototype.hasOwnProperty.call(object, key);
+}
+
 describe("normalizeOcctFormat", () => {
   it("maps known extensions to canonical formats", () => {
     assert.equal(normalizeOcctFormat("step"), "step");
@@ -35,6 +39,8 @@ describe("normalizeOcctResult", () => {
     const result = normalizeOcctResult({
       success: true,
       sourceFormat: "step",
+      sourceUnit: "MM",
+      unitScaleToMeters: 0.001,
       rootNodes: [
         {
           id: "n1",
@@ -78,6 +84,8 @@ describe("normalizeOcctResult", () => {
     });
 
     assert.equal(result.sourceFormat, "step");
+    assert.equal(result.sourceUnit, "MM");
+    assert.equal(result.unitScaleToMeters, 0.001);
     assert.equal(result.rootNodes[0].kind, "part");
     assert.deepEqual(result.rootNodes[0].geometryIds, ["geo_0"]);
     assert.equal(result.geometries[0].id, "geo_0");
@@ -90,6 +98,9 @@ describe("normalizeOcctResult", () => {
     assert.deepEqual(result.geometries[0].edges[0].ownerFaceIds, [1]);
     assert.equal(result.geometries[0].vertices[0].id, 1);
     assert.deepEqual(result.geometries[0].triangleToFaceMap, [1]);
+    assert.deepEqual(result.warnings, []);
+    assert.equal(result.stats.rootCount, 1);
+    assert.equal(result.stats.materialCount, 1);
   });
 
   it("normalizes occt-import-js style output", () => {
@@ -130,9 +141,127 @@ describe("normalizeOcctResult", () => {
     assert.equal(result.stats.rootCount, 1);
     assert.equal(result.stats.nodeCount, 2);
   });
+
+  it("keeps unit metadata absent when the raw payload omits it", () => {
+    const result = normalizeOcctResult({
+      success: true,
+      rootNodes: [],
+      geometries: [],
+      materials: [],
+      warnings: ["note"],
+      stats: {},
+    }, { sourceFormat: "brep" });
+
+    assert.equal(hasOwn(result, "sourceUnit"), false);
+    assert.equal(hasOwn(result, "unitScaleToMeters"), false);
+    assert.deepEqual(result.warnings, [{ code: "WARNING", message: "note" }]);
+  });
+
+  it("normalizes legacy face payloads into the canonical face DTO shape", () => {
+    const result = normalizeOcctResult({
+      success: true,
+      root: {
+        meshes: [0],
+        children: [],
+      },
+      meshes: [{
+        name: "legacy",
+        color: [255, 128, 0],
+        faceRanges: [{
+          first: 3,
+          last: 8,
+          color: [0, 255, 0],
+        }],
+        edges: [{
+          positionIndices: new Uint32Array([0, 1, 2]),
+        }],
+        attributes: {
+          position: { array: [0, 0, 0, 1, 0, 0, 0, 1, 0] },
+        },
+        index: { array: [0, 1, 2] },
+      }],
+    }, { sourceFormat: "step" });
+
+    const face = result.geometries[0].faces[0];
+    assert.deepEqual(Object.keys(face).sort(), ["color", "edgeIndices", "firstIndex", "id", "indexCount", "name"]);
+    assert.equal(hasOwn(face, "first"), false);
+    assert.equal(hasOwn(face, "last"), false);
+    assert.deepEqual(face.color, [0, 1, 0, 1]);
+    assert.deepEqual(result.geometries[0].color, [1, 128 / 255, 0, 1]);
+    assert.equal(Array.isArray(result.geometries[0].edges[0]), false);
+  });
 });
 
 describe("createOcctCore", () => {
+  it("prefers an explicit factory over factoryGlobalName and forwards wasmBinary", async () => {
+    const calls = [];
+    const wasmBinary = new Uint8Array([9, 8, 7]);
+    globalThis.OcctJS = async () => {
+      calls.push("global");
+      return {};
+    };
+
+    try {
+      const core = createOcctCore({
+        factory: async (overrides) => {
+          calls.push(["factory", overrides]);
+          return {
+            ReadStepFile: () => ({ success: true, rootNodes: [], geometries: [], materials: [], warnings: [], stats: EMPTY_STATS }),
+          };
+        },
+        factoryGlobalName: "OcctJS",
+        wasmBinary,
+      });
+
+      await core.getSupportedFormats();
+      assert.deepEqual(calls, [["factory", { wasmBinary }]]);
+    } finally {
+      delete globalThis.OcctJS;
+    }
+  });
+
+  it("resolves a named global factory when no explicit factory is provided", async () => {
+    const calls = [];
+    globalThis.CustomOcctFactory = async (overrides) => {
+      calls.push(overrides);
+      return {
+        ReadStepFile: () => ({ success: true, rootNodes: [], geometries: [], materials: [], warnings: [], stats: EMPTY_STATS }),
+      };
+    };
+
+    try {
+      const core = createOcctCore({
+        factoryGlobalName: "CustomOcctFactory",
+      });
+
+      await core.getSupportedFormats();
+      assert.deepEqual(calls, [undefined]);
+    } finally {
+      delete globalThis.CustomOcctFactory;
+    }
+  });
+
+  it("uses wasmBinaryLoader when wasmBinary is not provided", async () => {
+    let loaderCalls = 0;
+    let capturedOverrides = null;
+    const core = createOcctCore({
+      factory: async (overrides) => {
+        capturedOverrides = overrides;
+        return {
+          ReadStepFile: () => ({ success: true, rootNodes: [], geometries: [], materials: [], warnings: [], stats: EMPTY_STATS }),
+        };
+      },
+      wasmBinaryLoader: async () => {
+        loaderCalls += 1;
+        return new Uint8Array([1, 2, 3]).buffer;
+      },
+    });
+
+    await core.getSupportedFormats();
+    assert.equal(loaderCalls, 1);
+    assert.deepEqual(Array.from(capturedOverrides.wasmBinary), [1, 2, 3]);
+  });
+
   it("routes to format-specific wasm methods", async () => {
     const core = createOcctCore({
       factory: async () => ({
@@ -167,6 +296,35 @@ describe("createOcctCore", () => {
     await assert.rejects(
       core.importModel(new Uint8Array([1, 2, 3]), { format: "step" }),
       /boom/
+    );
+  });
+
+  it("infers the format from fileName when format is omitted", async () => {
+    let called = null;
+    const core = createOcctCore({
+      factory: async () => ({
+        ReadIgesFile: (bytes) => {
+          called = Array.from(bytes);
+          return { success: true, rootNodes: [], geometries: [], materials: [], warnings: [], stats: EMPTY_STATS };
+        },
+      }),
+    });
+
+    const model = await core.importModel(new Uint8Array([4, 5, 6]), { fileName: "part.igs" });
+    assert.deepEqual(called, [4, 5, 6]);
+    assert.equal(model.sourceFormat, "iges");
+  });
+
+  it("rejects when neither format nor fileName is provided", async () => {
+    const core = createOcctCore({
+      factory: async () => ({
+        ReadStepFile: () => ({ success: true, rootNodes: [], geometries: [], materials: [], warnings: [], stats: EMPTY_STATS }),
+      }),
+    });
+
+    await assert.rejects(
+      core.importModel(new Uint8Array([1, 2, 3]), {}),
+      /format|file name/i
     );
   });
 

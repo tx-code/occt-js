@@ -25,6 +25,19 @@ function formatFromFileName(fileName) {
   return match ? match[1] : null;
 }
 
+function normalizeWasmBinary(binary) {
+  if (binary instanceof Uint8Array) {
+    return binary;
+  }
+  if (binary instanceof ArrayBuffer) {
+    return new Uint8Array(binary);
+  }
+  if (ArrayBuffer.isView(binary)) {
+    return new Uint8Array(binary.buffer, binary.byteOffset, binary.byteLength);
+  }
+  throw new Error("Unsupported wasmBinary value. Expected ArrayBuffer or ArrayBufferView.");
+}
+
 async function resolveFactory(options) {
   if (typeof options.factory === "function") {
     return options.factory;
@@ -61,10 +74,10 @@ export class OcctCoreClient {
       const overrides = {};
 
       if (this._options.wasmBinary) {
-        overrides.wasmBinary = this._options.wasmBinary;
+        overrides.wasmBinary = normalizeWasmBinary(this._options.wasmBinary);
       } else if (typeof this._options.wasmBinaryLoader === "function") {
         const wasmBinary = await this._options.wasmBinaryLoader();
-        overrides.wasmBinary = wasmBinary instanceof Uint8Array ? wasmBinary : new Uint8Array(wasmBinary);
+        overrides.wasmBinary = normalizeWasmBinary(wasmBinary);
       }
 
       const module = await factory(Object.keys(overrides).length ? overrides : undefined);
@@ -96,7 +109,11 @@ export class OcctCoreClient {
     const bytes = toUint8Array(content);
 
     const guessedFormat = formatFromFileName(options.fileName);
-    const normalizedFormat = normalizeOcctFormat(options.format ?? guessedFormat ?? "step");
+    const requestedFormat = options.format ?? guessedFormat;
+    if (requestedFormat == null) {
+      throw new Error("importModel requires an explicit format or a fileName with a supported extension.");
+    }
+    const normalizedFormat = normalizeOcctFormat(requestedFormat);
     const methodName = getReadMethodName(normalizedFormat);
 
     let rawResult;

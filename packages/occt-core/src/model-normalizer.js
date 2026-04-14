@@ -30,6 +30,7 @@ function normalizeColor(input) {
   let g;
   let b;
   let a = 1;
+  let alphaProvided = false;
 
   if (Array.isArray(input)) {
     if (input.length < 3) {
@@ -38,6 +39,7 @@ function normalizeColor(input) {
     [r, g, b] = input;
     if (input.length > 3 && Number.isFinite(input[3])) {
       a = input[3];
+      alphaProvided = true;
     }
   } else if (typeof input === "object") {
     if (!Number.isFinite(input.r) || !Number.isFinite(input.g) || !Number.isFinite(input.b)) {
@@ -48,18 +50,24 @@ function normalizeColor(input) {
     b = input.b;
     if (Number.isFinite(input.a)) {
       a = input.a;
+      alphaProvided = true;
     }
   } else {
     return null;
   }
 
-  const scale = Math.max(Math.abs(r), Math.abs(g), Math.abs(b), Math.abs(a)) > 1 ? 255 : 1;
+  const scale = Math.max(
+    Math.abs(r),
+    Math.abs(g),
+    Math.abs(b),
+    alphaProvided ? Math.abs(a) : 0,
+  ) > 1 ? 255 : 1;
   const normalize = (value) => {
     const v = value / scale;
     return Math.min(1, Math.max(0, v));
   };
 
-  return [normalize(r), normalize(g), normalize(b), normalize(a)];
+  return [normalize(r), normalize(g), normalize(b), alphaProvided ? normalize(a) : 1];
 }
 
 function colorKey(color) {
@@ -70,6 +78,30 @@ function colorKey(color) {
     .slice(0, 4)
     .map((component) => Math.round(component * 255))
     .join(",");
+}
+
+function normalizeLegacyFace(range, index) {
+  const firstIndex = Number.isFinite(range?.firstIndex)
+    ? range.firstIndex
+    : Number.isFinite(range?.first)
+      ? range.first
+      : 0;
+  const lastIndex = Number.isFinite(range?.lastIndex)
+    ? range.lastIndex
+    : Number.isFinite(range?.last)
+      ? range.last
+      : firstIndex;
+
+  return {
+    id: range?.id ?? index,
+    name: typeof range?.name === "string" ? range.name : "",
+    firstIndex,
+    indexCount: Number.isFinite(range?.indexCount)
+      ? range.indexCount
+      : Math.max(0, lastIndex - firstIndex + 1),
+    edgeIndices: toArray(range?.edgeIndices),
+    color: normalizeColor(range?.color),
+  };
 }
 
 function getMeshIndices(node) {
@@ -90,11 +122,7 @@ function normalizeFaces(mesh) {
       : Array.isArray(mesh?.brep_faces)
         ? mesh.brep_faces
         : [];
-    return source.map((range) => ({
-      first: Number.isFinite(range?.first) ? range.first : 0,
-      last: Number.isFinite(range?.last) ? range.last : 0,
-      color: normalizeColor(range?.color),
-    }));
+    return source.map((range, index) => normalizeLegacyFace(range, index));
   }
 
   return mesh.faces.map((face) => ({
@@ -112,7 +140,9 @@ function normalizeEdges(mesh) {
     return [];
   }
 
-  return mesh.edges.map((edge) => {
+  const positions = toArray(mesh?.positions ?? mesh?.attributes?.position?.array);
+
+  return mesh.edges.map((edge, index) => {
     if (!edge) return null;
 
     // New topology format: edge has id, points, ownerFaceIds, isFreeEdge
@@ -131,7 +161,23 @@ function normalizeEdges(mesh) {
     const source = Array.isArray(edge.positionIndices) || ArrayBuffer.isView(edge.positionIndices)
       ? Array.from(edge.positionIndices)
       : Array.isArray(edge) ? edge : [];
-    return source.filter((index) => Number.isInteger(index) && index >= 0);
+    const positionIndices = source.filter((positionIndex) => Number.isInteger(positionIndex) && positionIndex >= 0);
+    const points = [];
+    for (const positionIndex of positionIndices) {
+      const base = positionIndex * 3;
+      if (base + 2 >= positions.length) {
+        continue;
+      }
+      points.push(positions[base], positions[base + 1], positions[base + 2]);
+    }
+    return {
+      id: edge.id ?? index,
+      name: typeof edge.name === "string" ? edge.name : "",
+      points,
+      ownerFaceIds: toArray(edge.ownerFaceIds ?? edge.faceIds),
+      isFreeEdge: edge.isFreeEdge ?? false,
+      color: normalizeColor(edge.color),
+    };
   }).filter(Boolean);
 }
 
@@ -394,15 +440,22 @@ export function normalizeOcctResult(rawResult, options = {}) {
     ...(rawResult.stats && typeof rawResult.stats === "object" ? rawResult.stats : {}),
   };
 
-  return {
+  const result = {
     sourceFormat,
     sourceFileName: options.sourceFileName,
-    sourceUnit: rawResult.sourceUnit,
-    unitScaleToMeters: rawResult.unitScaleToMeters,
     rootNodes,
     geometries,
     materials,
     warnings,
     stats,
   };
+
+  if (typeof rawResult.sourceUnit === "string" && rawResult.sourceUnit.length > 0) {
+    result.sourceUnit = rawResult.sourceUnit;
+  }
+  if (Number.isFinite(rawResult.unitScaleToMeters) && rawResult.unitScaleToMeters > 0) {
+    result.unitScaleToMeters = rawResult.unitScaleToMeters;
+  }
+
+  return result;
 }
