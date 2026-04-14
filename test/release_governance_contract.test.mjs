@@ -59,3 +59,23 @@ test("release skill stays a thin AGENTS shim and keeps secondary surfaces condit
   assert.equal(skill.includes("tauri:build"), false);
   assert.equal(skill.includes("@tx-code/occt-babylon-loader"), false);
 });
+
+test("planning artifacts keep requirement traceability current", () => {
+  const requirements = readRepoText(".planning/REQUIREMENTS.md");
+
+  assert.match(requirements, /\| CORE-01 \| Phase 1 \| Completed \|/);
+  assert.match(requirements, /\| CONS-02 \| Phase 3 \| Completed \|/);
+  assert.match(requirements, /\| DIST-02 \| Phase 4 \| Completed \|/);
+});
+
+test("planning state stays aligned to the root Wasm carrier", () => {
+  const project = readRepoText(".planning/PROJECT.md");
+  const roadmap = readRepoText(".planning/ROADMAP.md");
+  const state = readRepoText(".planning/STATE.md");
+  const coreValue = "Downstream applications can reliably consume the OCCT Wasm runtime and its root API contract without build drift or packaging surprises.";
+
+  assert.match(project, new RegExp(coreValue.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  assert.match(state, new RegExp(coreValue.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  assert.match(roadmap, /test\/release_governance_contract\.test\.mjs/);
+  assert.match(roadmap, /npm run test:release:root/);
+});

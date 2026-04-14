@@ -20,8 +20,8 @@ progress:
 
 See: .planning/PROJECT.md (updated 2026-04-14)
 
-**Core value:** Downstream developers can reliably import real CAD files and reuse the same viewer/runtime stack without breaking the root Wasm release contract.
-**Current focus:** Phase 04 is planned; next step is executing the release and governance plans around the root Wasm carrier (`release-governance-flow`)
+**Core value:** Downstream applications can reliably consume the OCCT Wasm runtime and its root API contract without build drift or packaging surprises.
+**Current focus:** Phase 04 is executing; the governance baseline is `npm run test:release:root`, with `test/release_governance_contract.test.mjs` guarding release and planning drift around the root Wasm carrier (`release-governance-flow`)
 
 ## Current Position
 

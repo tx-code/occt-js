@@ -72,11 +72,11 @@ Plans:
 **Depends on**: Phase 3
 **Requirements**: [CONS-03, DIST-01, DIST-02]
 **UI hint**: no
-**Canonical refs**: AGENTS.md, README.md, package.json, packages/occt-core/README.md, .planning/PROJECT.md, .planning/REQUIREMENTS.md
+**Canonical refs**: AGENTS.md, README.md, package.json, packages/occt-core/README.md, .planning/PROJECT.md, .planning/REQUIREMENTS.md, test/release_governance_contract.test.mjs
 **Success Criteria** (what must be TRUE):
-  1. Maintainers can identify the correct verification command set for root runtime and downstream consumption changes.
+  1. Maintainers can identify the correct verification command set for root runtime and downstream consumption changes, centered on `npm run test:release:root`.
   2. Public docs and planning artifacts point to the root Wasm carrier as the authoritative product contract.
-  3. Every active requirement remains traceable to exactly one roadmap phase for future GSD execution.
+  3. Every active requirement remains traceable to exactly one roadmap phase for future GSD execution, and governance drift is guarded by `test/release_governance_contract.test.mjs`.
 **Plans**: 3 plans
 
 Plans:

@@ -7,21 +7,21 @@
 
 ### Root Runtime
 
-- [ ] **CORE-01**: Maintainer can rebuild `dist/occt-js.js` and `dist/occt-js.wasm` from a clean Windows worktree using the documented `build/wasm/emsdk` toolchain path.
-- [ ] **CORE-02**: Downstream JS code can import STEP, IGES, or BREP bytes through the root package APIs and receive the canonical structured scene payload with `sourceFormat`, `rootNodes`, `geometries`, `materials`, `warnings`, `stats`, `sourceUnit`, and `unitScaleToMeters` when available.
-- [ ] **CORE-03**: Downstream JS code can choose explicit root-shape behavior for supported formats and get predictable `one-shape` / `multiple-shapes` semantics across STEP, IGES, and BREP.
-- [ ] **CORE-04**: Downstream JS code can request manufacturing-oriented optimal orientation analysis for single-part STEP, IGES, and BREP inputs and receive transform plus diagnostics.
+- [x] **CORE-01**: Maintainer can rebuild `dist/occt-js.js` and `dist/occt-js.wasm` from a clean Windows worktree using the documented `build/wasm/emsdk` toolchain path.
+- [x] **CORE-02**: Downstream JS code can import STEP, IGES, or BREP bytes through the root package APIs and receive the canonical structured scene payload with `sourceFormat`, `rootNodes`, `geometries`, `materials`, `warnings`, `stats`, `sourceUnit`, and `unitScaleToMeters` when available.
+- [x] **CORE-03**: Downstream JS code can choose explicit root-shape behavior for supported formats and get predictable `one-shape` / `multiple-shapes` semantics across STEP, IGES, and BREP.
+- [x] **CORE-04**: Downstream JS code can request manufacturing-oriented optimal orientation analysis for single-part STEP, IGES, and BREP inputs and receive transform plus diagnostics.
 
 ### Consumption Contract
 
-- [ ] **CONS-01**: Downstream code can consume `@tx-code/occt-js` as a packaged Wasm carrier and locate `occt-js.wasm` reliably in bundler and vendored-package workflows.
-- [ ] **CONS-02**: Downstream code can use `@tx-code/occt-core` as the engine-agnostic OCCT adapter and model normalizer on top of the root Wasm package.
-- [ ] **CONS-03**: Root package changes do not require downstream consumers to adopt repo-local Babylon/demo layers in order to keep working.
+- [x] **CONS-01**: Downstream code can consume `@tx-code/occt-js` as a packaged Wasm carrier and locate `occt-js.wasm` reliably in bundler and vendored-package workflows.
+- [x] **CONS-02**: Downstream code can use `@tx-code/occt-core` as the engine-agnostic OCCT adapter and model normalizer on top of the root Wasm package.
+- [x] **CONS-03**: Root package changes do not require downstream consumers to adopt repo-local Babylon/demo layers in order to keep working.
 
 ### Distribution & Governance
 
-- [ ] **DIST-01**: Maintainer can identify and run the correct verification commands for the root runtime and its consumption contract before release work lands.
-- [ ] **DIST-02**: Public docs and planning artifacts identify the root Wasm carrier as the authoritative product surface, with secondary surfaces clearly marked as non-core.
+- [x] **DIST-01**: Maintainer can identify and run the correct verification commands for the root runtime and its consumption contract before release work lands.
+- [x] **DIST-02**: Public docs and planning artifacts identify the root Wasm carrier as the authoritative product surface, with secondary surfaces clearly marked as non-core.
 
 ## v2 Requirements
 
@@ -48,15 +48,15 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CORE-01 | Phase 1 | Pending |
-| CORE-02 | Phase 2 | Pending |
-| CORE-03 | Phase 2 | Pending |
-| CORE-04 | Phase 2 | Pending |
-| CONS-01 | Phase 3 | Pending |
-| CONS-02 | Phase 3 | Pending |
-| CONS-03 | Phase 4 | Pending |
-| DIST-01 | Phase 4 | Pending |
-| DIST-02 | Phase 4 | Pending |
+| CORE-01 | Phase 1 | Completed |
+| CORE-02 | Phase 2 | Completed |
+| CORE-03 | Phase 2 | Completed |
+| CORE-04 | Phase 2 | Completed |
+| CONS-01 | Phase 3 | Completed |
+| CONS-02 | Phase 3 | Completed |
+| CONS-03 | Phase 4 | Completed |
+| DIST-01 | Phase 4 | Completed |
+| DIST-02 | Phase 4 | Completed |
 
 **Coverage:**
 - v1 requirements: 9 total
@@ -65,4 +65,4 @@
 
 ---
 *Requirements defined: 2026-04-14*
-*Last updated: 2026-04-14 after initial definition*
+*Last updated: 2026-04-14 after Phase 04 governance alignment*

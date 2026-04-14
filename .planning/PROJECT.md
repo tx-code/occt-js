@@ -16,12 +16,13 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 - ✓ Import results preserve tree-shaped `rootNodes`, geometry/material payloads, names/colors, and source-unit metadata where the source format provides it.
 - ✓ Root API supports explicit root-shape selection and manufacturing-oriented orientation analysis for supported CAD formats.
 - ✓ Reusable package layers and demo surfaces exist around the runtime, but they are downstream of the root Wasm contract.
+- ✓ Root release verification is now anchored on `npm run test:release:root` plus `test/release_governance_contract.test.mjs`.
+- ✓ Demo, Babylon, and Tauri checks remain conditional secondary-surface verification rather than unconditional root release gates.
 
 ### Active
 
-- [ ] Stabilize `@tx-code/occt-js` as a consumable OCCT Wasm carrier with a reliable root API and `dist/` artifact contract.
-- [ ] Raise release confidence through reproducible builds, vendor-friendly packaging, and contract-focused docs/tests.
-- [ ] Keep non-core Babylon/demo/desktop surfaces from constraining or redefining the root runtime mission.
+- [ ] Define the next milestone beyond v1 runtime hardening.
+- [ ] Preserve the runtime-first contract as future analytics, CI automation, or secondary-surface work is added.
 
 ### Out of Scope
 
@@ -49,10 +50,12 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Use GSD as the primary repository workflow | The repo still needs disciplined planning, but the primary object being managed is the Wasm runtime contract rather than the whole viewer stack | — Pending |
-| Initialize planning from current docs instead of running a separate codebase map first | The repository already has strong local docs and the user explicitly asked to bootstrap from them first | — Pending |
+| Use GSD as the primary repository workflow | The repo still needs disciplined planning, but the primary object being managed is the Wasm runtime contract rather than the whole viewer stack | ✓ Good |
+| Initialize planning from current docs instead of running a separate codebase map first | The repository already has strong local docs and the user explicitly asked to bootstrap from them first | ✓ Good |
 | Treat the root Wasm package as the strategic product surface | Downstream consumers primarily need the OCCT Wasm carrier; viewer/demo layers are secondary and should not dominate planning | ✓ Good |
 | Keep existing `AGENTS.md` as the authoritative repo instruction file | The repo already consolidated agent guidance there; generic regeneration would risk overwriting local rules | ✓ Good |
+| Use `npm run test:release:root` as the canonical root release gate | One command is easier to document, test, and reuse across README, AGENTS, skills, and future planning | ✓ Good |
+| Keep demo, Babylon, and Tauri checks conditional secondary-surface verification | Root release flow must stay aligned with the Wasm carrier boundary and avoid secondary-surface gate creep | ✓ Good |
 
 ## Evolution
 
@@ -72,4 +75,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-14 after initialization*
+*Last updated: 2026-04-14 after Phase 04 governance alignment*
