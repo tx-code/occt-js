@@ -45,3 +45,4 @@ Notes:
 - `createOcctCore(...)` stays package-first and engine-agnostic. It does not require Babylon or any repo-local demo layer.
 - Pass `format` explicitly when you already know it, or pass `fileName` and let `occt-core` infer the format from the extension.
 - Use `wasmBinary` when you already have the bytes in memory, or `wasmBinaryLoader` when the adapter should fetch them lazily.
+- Root release verification is driven by `npm run test:release:root` from the repository root; demo, Babylon, and Tauri checks remain conditional secondary-surface verification.

@@ -7,9 +7,11 @@ description: Use when preparing or executing a new @tx-code/occt-js release from
 
 ## Overview
 
-This skill is the repository-specific release checklist for `occt-js`.
+This skill is a thin release shim for `occt-js`.
 
-The release is only complete when version files are updated, verification passes, `@tx-code/occt-js` is published to npm, the published version is confirmed, and the release commit is pushed.
+Repository-wide policy lives in `AGENTS.md`. Use that file as the source of truth for release boundaries, root-vs-secondary surfaces, and conditional secondary-surface verification.
+
+This skill only keeps the release-specific mechanics that must remain local: version bumps, the canonical root release gate, publish/token handling, publish confirmation, and push order.
 
 ## When to Use
 
@@ -24,18 +26,16 @@ Do not use this skill for ordinary feature commits that are not being released.
 
 ## Release Scope
 
-For this repository, release preparation touches these files:
+For root package releases, always inspect and update only the files that are actually part of the release:
 
 - `package.json`
 - `packages/occt-core/package.json`
-- `packages/occt-babylon-loader/package.json`
-- `demo/src/hooks/useOcct.js`
 
 Current project rules:
 
 - Only `@tx-code/occt-js` is published to npm.
-- `@tx-code/occt-core` and `@tx-code/occt-babylon-loader` are version-bumped in-repo for consistency, but are not published unless the human explicitly asks.
-- The demo must point at the new published root package version in production.
+- `@tx-code/occt-core` may be version-bumped in-repo for consistency, but is not published unless the human explicitly asks.
+- Secondary-surface files are conditional release scope only when the touched-file set requires them.
 
 ## Pre-Release Checks
 
@@ -66,36 +66,41 @@ Update:
 
 - root `package.json` version
 - `packages/occt-core/package.json` version
-- `packages/occt-babylon-loader/package.json` version
-- `packages/occt-babylon-loader/package.json` peer dependency on `@tx-code/occt-core`
-- demo CDN version in `demo/src/hooks/useOcct.js`
 
 After editing, verify the new version appears where expected:
 
 ```powershell
-rg -n "0\.1\.[0-9]+|@tx-code/occt-js@" package.json packages demo
+rg -n "0\.1\.[0-9]+|@tx-code/occt-js@" package.json packages
 ```
 
 ## Verification
 
-Run all of these before committing the release:
+Run the canonical root release gate before committing the release:
 
 ```powershell
-npm test
-cd demo; npm run build
-cd ..; npx playwright test
+npm run test:release:root
 ```
 
 Required result:
 
-- root tests pass
-- demo production build succeeds
-- Playwright suite passes
+- the root release gate passes
+
+## Conditional Secondary-Surface Verification
+
+If the release also touches secondary surfaces, follow `AGENTS.md` and run the corresponding secondary-surface verification for those touched paths.
+
+Typical triggers:
+
+- `demo/` or `demo/tests/`
+- `demo/src-tauri/`
+- `packages/occt-babylon-loader/`
+- `packages/occt-babylon-viewer/`
+- `packages/occt-babylon-widgets/`
 
 Notes:
 
-- The demo loads local `dist/` in dev/test and npm CDN in production. This avoids the old failure mode where bumping the demo CDN to an unpublished version broke local verification before publish.
-- `vite build` may warn that `new URL("../../../dist/", import.meta.url)` is unresolved at build time. That warning is acceptable as long as the build succeeds and tests pass.
+- Keep the skill thin: repo policy and conditional verification rules belong in `AGENTS.md`.
+- Secondary-surface verification is conditional; it is not part of the unconditional root release gate.
 
 ## Commit
 
@@ -103,17 +108,7 @@ Stage only the intended release files and the release-related code/test changes:
 
 ```powershell
 git add package.json `
-  packages/occt-core/package.json `
-  packages/occt-babylon-loader/package.json `
-  demo/src/App.jsx `
-  demo/src/components/LoadingOverlay.jsx `
-  demo/src/components/SelectionPanel.jsx `
-  demo/src/components/StatsPanel.jsx `
-  demo/src/components/Toolbar.jsx `
-  demo/src/components/ViewCube.jsx `
-  demo/src/hooks/useOcct.js `
-  demo/src/store/viewerStore.js `
-  demo/tests/demo.spec.mjs
+  packages/occt-core/package.json
 ```
 
 Then commit:
@@ -189,11 +184,11 @@ Do not accidentally commit:
 
 ### Forgetting the demo CDN bump
 
-If `demo/src/hooks/useOcct.js` still points at the previous package version, the published demo will keep loading the old release.
+Only relevant when the release actually includes demo production changes; otherwise this is not part of the unconditional root release flow.
 
 ### Treating subpackages as published artifacts
 
-Do not attempt to publish `@tx-code/occt-core` or `@tx-code/occt-babylon-loader` unless explicitly requested. They are not currently present on npm.
+Do not attempt to publish `@tx-code/occt-core` unless explicitly requested. It is not currently part of the default publish flow.
 
 ### Committing the npm token
 
@@ -209,13 +204,9 @@ npm view @tx-code/occt-js version
 # 2. bump files
 # package.json
 # packages/occt-core/package.json
-# packages/occt-babylon-loader/package.json
-# demo/src/hooks/useOcct.js
 
 # 3. verify
-npm test
-cd demo; npm run build
-cd ..; npx playwright test
+npm run test:release:root
 
 # 4. commit
 git add <intended files>

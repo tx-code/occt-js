@@ -34,3 +34,28 @@ test("authoritative root release command surface excludes unconditional secondar
   assert.equal(releaseCommand.includes("tauri"), false);
   assert.equal(releaseCommand.includes("occt-babylon"), false);
 });
+
+test("release docs keep the root Wasm carrier authoritative", () => {
+  const readme = readRepoText("README.md");
+  const occtCoreReadme = readRepoText("packages/occt-core/README.md");
+  const agents = readRepoText("AGENTS.md");
+
+  assert.match(readme, /npm run test:release:root/);
+  assert.match(occtCoreReadme, /npm run test:release:root/);
+  assert.match(agents, /npm run test:release:root/);
+  assert.match(readme, /root Wasm carrier/i);
+  assert.match(agents, /conditional secondary-surface verification/i);
+});
+
+test("release skill stays a thin AGENTS shim and keeps secondary surfaces conditional", () => {
+  const skill = readRepoText(".codex/skills/releasing-occt-js/SKILL.md");
+
+  assert.match(skill, /AGENTS\.md/);
+  assert.match(skill, /npm run test:release:root/);
+  assert.match(skill, /conditional/i);
+  assert.equal(skill.includes("cd demo; npm run build"), false);
+  assert.equal(skill.includes("npx playwright test"), false);
+  assert.equal(skill.includes("demo/src/hooks/useOcct.js"), false);
+  assert.equal(skill.includes("tauri:build"), false);
+  assert.equal(skill.includes("@tx-code/occt-babylon-loader"), false);
+});

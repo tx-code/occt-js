@@ -107,6 +107,13 @@ Maintainers have two root verification entrypoints:
 - `npm test`
   - full root runtime verification after `npm run build:wasm:win`
 
+Maintainers have one root release gate:
+
+- `npm run test:release:root`
+  - canonical runtime-first release verification for the root Wasm carrier
+  - covers the Windows Wasm build, governance contract tests, `packages/occt-core`, and the full root runtime suite
+  - excludes unconditional demo, Babylon, and Tauri checks
+
 Root tests require the `dist/` Wasm artifacts to exist first:
 
 ```bash
@@ -181,12 +188,15 @@ Important details:
 - browser and viewer interaction tests belong under `demo/tests/`
 - if the root Wasm contract changes, verify root tests first
 - if viewer behavior changes, verify `demo` build and relevant viewer tests
+- use `npm run test:release:root` for root release verification
+- keep conditional secondary-surface verification limited to changes under `demo/`, `demo/src-tauri/`, or Babylon package surfaces
 
 ## Release Boundaries
 
 - the root package publishes the Wasm runtime
 - `demo/` is not the published npm package
 - desktop work must not become a prerequisite for npm release
+- demo, Babylon, and Tauri checks are conditional secondary-surface verification, not unconditional root release gates
 - documentation for agent behavior should live here, not be duplicated in tool-specific files
 
 ## Working Norms

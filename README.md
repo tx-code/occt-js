@@ -143,6 +143,18 @@ Run the full root verification gate after `npm run build:wasm:win` has produced 
 npm test
 ```
 
+## Release Gate
+
+Use `npm run test:release:root` as the authoritative root release verification command:
+
+```bash
+npm run test:release:root
+```
+
+This gate is runtime-first. It covers the Windows Wasm build, root governance contracts, `@tx-code/occt-core`, and the full root runtime suite.
+
+Demo, Babylon, and Tauri surfaces are conditional secondary-surface verification only. Run their checks when your release changes `demo/`, `demo/tests/`, `demo/src-tauri/`, or the Babylon package surfaces.
+
 ## Repository Layout (2026-04-14)
 
 This stays a single `occt-js` repository. The primary downstream contract is centered on:
