@@ -10,7 +10,7 @@ This roadmap treats the root Wasm package as the strategic product surface and e
 - Integer phases (1, 2, 3): Planned milestone work
 - Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
 
-- [ ] **Phase 1: Wasm Build & Dist Baseline** - Lock the reproducible Windows Wasm build path and canonical `dist/` artifact contract.
+- [x] **Phase 1: Wasm Build & Dist Baseline** - Lock the reproducible Windows Wasm build path and canonical `dist/` artifact contract.
 - [ ] **Phase 2: Root Runtime Contract** - Harden and verify the root import, root-mode, source-unit, and orientation API contract.
 - [ ] **Phase 3: Downstream Consumption Contract** - Tighten vendored/package consumption behavior for `@tx-code/occt-js` and `@tx-code/occt-core`.
 - [ ] **Phase 4: Release & Governance Flow** - Converge docs, verification expectations, and planning traceability around the root Wasm carrier.
@@ -30,9 +30,9 @@ This roadmap treats the root Wasm package as the strategic product surface and e
 **Plans**: 3 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — Resolve the Windows script/CMake artifact-origin contract and retained-log behavior
-- [ ] 01-02-PLAN.md — Expand fast preflight coverage for prerequisites, missing `dist/` artifacts, and current `dist/` consumers
-- [ ] 01-03-PLAN.md — Reconcile README, AGENTS, and root npm commands around the finalized Windows baseline
+- [x] 01-01-PLAN.md — Resolve the Windows script/CMake artifact-origin contract and retained-log behavior
+- [x] 01-02-PLAN.md — Expand fast preflight coverage for prerequisites, missing `dist/` artifacts, and current `dist/` consumers
+- [x] 01-03-PLAN.md — Reconcile README, AGENTS, and root npm commands around the finalized Windows baseline
 
 ### Phase 2: Root Runtime Contract
 **Goal**: Harden the root Wasm import contract for supported CAD formats, root-shape modes, unit metadata, and orientation analysis.
@@ -91,7 +91,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Wasm Build & Dist Baseline | 0/3 | Not started | - |
+| 1. Wasm Build & Dist Baseline | 3/3 | Completed | 2026-04-14 |
 | 2. Root Runtime Contract | 0/3 | Not started | - |
 | 3. Downstream Consumption Contract | 0/3 | Not started | - |
 | 4. Release & Governance Flow | 0/3 | Not started | - |
