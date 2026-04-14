@@ -47,7 +47,7 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 02-01-PLAN.md — Tighten direct-vs-generic import payload parity for STEP, IGES, and BREP
+- [x] 02-01-PLAN.md — Tighten direct-vs-generic import payload parity for STEP, IGES, and BREP
 - [ ] 02-02-PLAN.md — Make root-mode and unit-metadata semantics explicit for XDE and BREP imports
 - [ ] 02-03-PLAN.md — Stabilize optimal-orientation diagnostics and golden-reference coverage
 
@@ -92,6 +92,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Wasm Build & Dist Baseline | 3/3 | Completed | 2026-04-14 |
-| 2. Root Runtime Contract | 0/3 | Not started | - |
+| 2. Root Runtime Contract | 1/3 | In Progress | - |
 | 3. Downstream Consumption Contract | 0/3 | Not started | - |
 | 4. Release & Governance Flow | 0/3 | Not started | - |

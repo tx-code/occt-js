@@ -5,6 +5,15 @@ import { loadOcctFactory } from "./load_occt_factory.mjs";
 
 const factory = loadOcctFactory();
 const __dirname = dirname(fileURLToPath(import.meta.url));
+const CANONICAL_STAT_KEYS = [
+  "rootCount",
+  "nodeCount",
+  "partCount",
+  "geometryCount",
+  "materialCount",
+  "triangleCount",
+  "reusedInstanceCount",
+];
 
 function assert(condition, message) {
   if (!condition) {
@@ -16,6 +25,17 @@ assert.equal = function(actual, expected, message) {
     throw new Error(message + ` (got ${actual}, expected ${expected})`);
   }
 };
+assert.deepEqual = function(actual, expected, message) {
+  const actualJson = JSON.stringify(actual);
+  const expectedJson = JSON.stringify(expected);
+  if (actualJson !== expectedJson) {
+    throw new Error(message);
+  }
+};
+
+function hasOwn(value, key) {
+  return !!value && Object.prototype.hasOwnProperty.call(value, key);
+}
 
 function flattenNodes(nodes) {
   const result = [];
@@ -34,8 +54,123 @@ function hasValidColor(color) {
   return !!(color && typeof color.r === "number" && typeof color.g === "number" && typeof color.b === "number");
 }
 
-function validateTopology(result, label) {
-  const g = result.geometries[0];
+function rollingChecksum(values) {
+  let checksum = 2166136261;
+  for (const value of values) {
+    checksum = Math.imul(checksum ^ Number(value), 16777619) >>> 0;
+  }
+  return checksum >>> 0;
+}
+
+function colorSignature(color) {
+  if (!hasValidColor(color)) {
+    return null;
+  }
+  return { r: color.r, g: color.g, b: color.b };
+}
+
+function nodeSignature(node) {
+  return {
+    id: node.id,
+    name: node.name,
+    isAssembly: node.isAssembly,
+    meshes: [...node.meshes],
+    transform: [...node.transform],
+    children: node.children.map(nodeSignature),
+  };
+}
+
+function geometrySignature(geometry) {
+  return {
+    name: geometry.name,
+    color: colorSignature(geometry.color),
+    positionsLength: geometry.positions.length,
+    normalsLength: geometry.normals.length,
+    indicesLength: geometry.indices.length,
+    indexChecksum: rollingChecksum(geometry.indices),
+    triangleToFaceMapLength: geometry.triangleToFaceMap.length,
+    triangleToFaceMapChecksum: rollingChecksum(geometry.triangleToFaceMap),
+    faces: geometry.faces.map((face) => ({
+      id: face.id,
+      name: face.name,
+      firstIndex: face.firstIndex,
+      indexCount: face.indexCount,
+      edgeIndices: [...face.edgeIndices],
+      color: colorSignature(face.color),
+    })),
+    edges: geometry.edges.map((edge) => ({
+      id: edge.id,
+      name: edge.name,
+      isFreeEdge: edge.isFreeEdge,
+      pointCount: edge.points.length,
+      ownerFaceIds: [...edge.ownerFaceIds],
+      color: colorSignature(edge.color),
+    })),
+    vertices: geometry.vertices.map((vertex) => ({
+      id: vertex.id,
+      position: [...vertex.position],
+    })),
+  };
+}
+
+function resultSignature(result) {
+  return {
+    sourceFormat: result.sourceFormat,
+    sourceUnit: hasOwn(result, "sourceUnit") ? result.sourceUnit : null,
+    unitScaleToMeters: hasOwn(result, "unitScaleToMeters") ? result.unitScaleToMeters : null,
+    rootNodes: result.rootNodes.map(nodeSignature),
+    geometries: result.geometries.map(geometrySignature),
+    materials: result.materials.map((material) => ({ r: material.r, g: material.g, b: material.b })),
+    warnings: [...result.warnings],
+    stats: Object.fromEntries(CANONICAL_STAT_KEYS.map((key) => [key, result.stats[key]])),
+  };
+}
+
+function assertCanonicalResultShape(result, label, format) {
+  assert(result && typeof result === "object", `${label}: result must be an object`);
+  assert.equal(result.success, true, `${label}: success should be true`);
+  assert.equal(result.sourceFormat, format, `${label}: sourceFormat should be normalized`);
+  assert(Array.isArray(result.rootNodes), `${label}: rootNodes should be an array`);
+  assert(Array.isArray(result.geometries), `${label}: geometries should be an array`);
+  assert(Array.isArray(result.materials), `${label}: materials should be an array`);
+  assert(Array.isArray(result.warnings), `${label}: warnings should be an array`);
+  assert(result.stats && typeof result.stats === "object", `${label}: stats should be an object`);
+
+  for (const key of CANONICAL_STAT_KEYS) {
+    assert(typeof result.stats[key] === "number", `${label}: stats.${key} should be a number`);
+  }
+
+  assert.equal(result.stats.rootCount, result.rootNodes.length, `${label}: stats.rootCount should match rootNodes.length`);
+  assert.equal(result.stats.geometryCount, result.geometries.length, `${label}: stats.geometryCount should match geometries.length`);
+  assert.equal(result.stats.materialCount, result.materials.length, `${label}: stats.materialCount should match materials.length`);
+
+  const hasSourceUnit = hasOwn(result, "sourceUnit");
+  const hasUnitScale = hasOwn(result, "unitScaleToMeters");
+  assert.equal(hasSourceUnit, hasUnitScale, `${label}: source unit metadata should appear as a pair`);
+
+  if (hasSourceUnit) {
+    assert(typeof result.sourceUnit === "string" && result.sourceUnit.length > 0, `${label}: sourceUnit should be a non-empty string`);
+    assert(typeof result.unitScaleToMeters === "number" && result.unitScaleToMeters > 0, `${label}: unitScaleToMeters should be a positive number`);
+  }
+}
+
+function assertEntryPointParity(module, format, fixtureBytes, directMethod, label) {
+  const direct = module[directMethod](fixtureBytes, {});
+  const generic = module.ReadFile(format, fixtureBytes, {});
+
+  assertCanonicalResultShape(direct, `${label} direct`, format);
+  assertCanonicalResultShape(generic, `${label} generic`, format);
+  assert.deepEqual(
+    resultSignature(direct),
+    resultSignature(generic),
+    `${label}: direct and generic entrypoints should share the same canonical payload signature`,
+  );
+
+  return { direct, generic };
+}
+
+function validateTopology(geometry, label) {
+  const g = geometry;
 
   // Faces: sequential 1-based IDs
   assert(g.faces.length > 0, `${label}: should have faces`);
@@ -101,6 +236,13 @@ function validateTopology(result, label) {
   }
 }
 
+function validateAllTopologies(result, label) {
+  assert(result.geometries.length > 0, `${label}: should have at least one geometry`);
+  for (let i = 0; i < result.geometries.length; i++) {
+    validateTopology(result.geometries[i], `${label}: geometry[${i}]`);
+  }
+}
+
 async function main() {
   const m = await factory();
 
@@ -125,22 +267,24 @@ async function main() {
   const unsupported = m.ReadFile("obj", bad, {});
   assert(unsupported && unsupported.success === false, "ReadFile(unknown) should return success=false");
 
-  const igesFixture = new Uint8Array(readFileSync(resolve(__dirname, "cube_10x10.igs")));
-  const igesOk = m.ReadIgesFile(igesFixture, {});
-  assert(igesOk && igesOk.success === true, "ReadIgesFile should import a valid IGES file");
-  assert(igesOk.stats && igesOk.stats.triangleCount > 0, "IGES import should produce triangles");
-  validateTopology(igesOk, "IGES");
+  const stepFixture = new Uint8Array(readFileSync(resolve(__dirname, "simple_part.step")));
+  const stepParity = assertEntryPointParity(m, "step", stepFixture, "ReadStepFile", "STEP simple_part.step");
+  validateAllTopologies(stepParity.direct, "STEP direct");
+  validateAllTopologies(stepParity.generic, "STEP generic");
 
-  const igesViaReadFile = m.ReadFile("iges", igesFixture, {});
-  assert(igesViaReadFile && igesViaReadFile.success === true, "ReadFile(iges) should import a valid IGES file");
-  assert(igesViaReadFile.stats && igesViaReadFile.stats.triangleCount > 0, "ReadFile(iges) should produce triangles");
-  validateTopology(igesViaReadFile, "IGES via ReadFile");
+  const igesFixture = new Uint8Array(readFileSync(resolve(__dirname, "cube_10x10.igs")));
+  const igesParity = assertEntryPointParity(m, "iges", igesFixture, "ReadIgesFile", "IGES cube_10x10.igs");
+  assert(igesParity.direct.stats && igesParity.direct.stats.triangleCount > 0, "IGES import should produce triangles");
+  assert(igesParity.generic.stats && igesParity.generic.stats.triangleCount > 0, "ReadFile(iges) should produce triangles");
+  validateAllTopologies(igesParity.direct, "IGES direct");
+  validateAllTopologies(igesParity.generic, "IGES via ReadFile");
 
   const brepFixture = new Uint8Array(readFileSync(resolve(__dirname, "as1_pe_203.brep")));
-  const brepOk = m.ReadFile("brep", brepFixture, {});
-  assert(brepOk && brepOk.success === true, "ReadFile(brep) should import a valid BREP file");
-  assert(brepOk.stats && brepOk.stats.triangleCount > 0, "ReadFile(brep) should produce triangles");
-  validateTopology(brepOk, "BREP");
+  const brepParity = assertEntryPointParity(m, "brep", brepFixture, "ReadBrepFile", "BREP as1_pe_203.brep");
+  assert(brepParity.direct.stats && brepParity.direct.stats.triangleCount > 0, "ReadBrepFile should import a valid BREP file");
+  assert(brepParity.generic.stats && brepParity.generic.stats.triangleCount > 0, "ReadFile(brep) should produce triangles");
+  validateAllTopologies(brepParity.direct, "BREP direct");
+  validateAllTopologies(brepParity.generic, "BREP via ReadFile");
 
   const realisticBrepFixture = new Uint8Array(readFileSync(resolve(__dirname, "ANC101_isolated_components.brep")));
   const realisticBrepOk = m.ReadFile("brep", realisticBrepFixture, {});
