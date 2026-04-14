@@ -1,6 +1,6 @@
 # @tx-code/occt-core
 
-Core runtime module for OCCT WebAssembly adapters.
+Engine-agnostic adapter layer on top of `@tx-code/occt-js`.
 
 ## What It Provides
 
@@ -9,18 +9,25 @@ Core runtime module for OCCT WebAssembly adapters.
 - Result normalization for both `occt-js` and `occt-import-js` style payloads
 - Canonical scene graph with deduplicated geometry/material data
 
+## Install
+
+```bash
+npm install @tx-code/occt-js @tx-code/occt-core
+```
+
 ## Quick Example
 
 ```js
+import OcctJS from "@tx-code/occt-js";
+import occtWasmUrl from "@tx-code/occt-js/dist/occt-js.wasm?url";
 import { createOcctCore } from "@tx-code/occt-core";
 
 const core = createOcctCore({
-  factory: globalThis.OcctJS,
-  wasmBinary: await fetch("/occt-js.wasm").then((r) => r.arrayBuffer()),
+  factory: OcctJS,
+  wasmBinaryLoader: () => fetch(occtWasmUrl).then((response) => response.arrayBuffer()),
 });
 
 const model = await core.importModel(stepBytes, {
-  format: "step",
   fileName: "part.step",
   importParams: {
     rootMode: "one-shape",
@@ -32,3 +39,9 @@ const model = await core.importModel(stepBytes, {
   },
 });
 ```
+
+Notes:
+
+- `createOcctCore(...)` stays package-first and engine-agnostic. It does not require Babylon or any repo-local demo layer.
+- Pass `format` explicitly when you already know it, or pass `fileName` and let `occt-core` infer the format from the extension.
+- Use `wasmBinary` when you already have the bytes in memory, or `wasmBinaryLoader` when the adapter should fetch them lazily.

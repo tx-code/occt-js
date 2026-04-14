@@ -1,6 +1,6 @@
 # occt-js
 
-WebAssembly build of [OpenCASCADE Technology (OCCT)](https://dev.opencascade.org/) v7.9.3 for CAD import and triangulation. Designed for use in browser-based CAD viewers (e.g., Babylon.js).
+WebAssembly build of [OpenCASCADE Technology (OCCT)](https://dev.opencascade.org/) v7.9.3 for CAD import and triangulation. The canonical downstream path is the packaged Wasm carrier `@tx-code/occt-js`, optionally wrapped by the engine-agnostic adapter `@tx-code/occt-core`.
 
 **[Live Demo](https://tx-code.github.io/occt-js/)** — drag and drop STEP/IGES/BREP files, face/edge/vertex picking, hover preview
 
@@ -13,6 +13,63 @@ WebAssembly build of [OpenCASCADE Technology (OCCT)](https://dev.opencascade.org
 - Manufacturing-oriented single-part orientation analysis for STEP / IGES / BREP
 - Embind-based API returning a structured scene graph
 - Babylon.js demo with interactive face/edge/vertex selection
+
+## Downstream Packages
+
+- `@tx-code/occt-js`
+  The root Wasm carrier. It publishes `dist/occt-js.js`, `dist/occt-js.wasm`, and `dist/occt-js.d.ts`.
+- `@tx-code/occt-core`
+  The engine-agnostic adapter layer on top of `@tx-code/occt-js` for normalized import flow and package-first downstream use.
+- `@tx-code/occt-babylon-*`, `demo/`, and `demo/src-tauri/`
+  Optional secondary surfaces for Babylon and local app development. They are not required to consume the root Wasm runtime.
+
+## Package Usage
+
+Install the packaged Wasm carrier:
+
+```bash
+npm install @tx-code/occt-js
+```
+
+The packaged contract supports two downstream Wasm resolution patterns:
+
+1. Keep `occt-js.js` and `occt-js.wasm` adjacent in the published package layout.
+2. Pass either `locateFile` or `wasmBinary` when initializing the module.
+
+```js
+import OcctJS from "@tx-code/occt-js";
+import occtWasmUrl from "@tx-code/occt-js/dist/occt-js.wasm?url";
+
+const occt = await OcctJS({
+  locateFile(filename, scriptDirectory) {
+    if (filename === "occt-js.wasm") {
+      return occtWasmUrl;
+    }
+    return new URL(filename, scriptDirectory).toString();
+  },
+});
+
+const occtWithBinary = await OcctJS({
+  wasmBinary: await fetch(occtWasmUrl).then((response) => response.arrayBuffer()),
+});
+```
+
+Use `@tx-code/occt-core` when you want a package-first adapter over the root Wasm carrier:
+
+```bash
+npm install @tx-code/occt-js @tx-code/occt-core
+```
+
+```js
+import OcctJS from "@tx-code/occt-js";
+import occtWasmUrl from "@tx-code/occt-js/dist/occt-js.wasm?url";
+import { createOcctCore } from "@tx-code/occt-core";
+
+const core = createOcctCore({
+  factory: OcctJS,
+  wasmBinaryLoader: () => fetch(occtWasmUrl).then((response) => response.arrayBuffer()),
+});
+```
 
 ## Prerequisites
 
@@ -51,7 +108,7 @@ bash tools/build_wasm.sh
 ```
 
 Output files are written to `dist/`:
-- `occt-js.js` — ES module loader
+- `occt-js.js` — packaged JavaScript loader
 - `occt-js.wasm` — WebAssembly binary
 - `occt-js.d.ts` — tracked TypeScript definitions published with the package
 
@@ -86,17 +143,24 @@ Run the full root verification gate after `npm run build:wasm:win` has produced 
 npm test
 ```
 
-## Repository Layout (2026-03-30)
+## Repository Layout (2026-04-14)
 
-This stays a single `occt-js` repository without Babylon fork maintenance.  
-Within this repository we keep two maintained modules:
+This stays a single `occt-js` repository. The primary downstream contract is centered on:
 
+- `@tx-code/occt-js`
+  - Root Wasm carrier with the canonical packaged runtime artifacts.
 - `@tx-code/occt-core` (`packages/occt-core`)
-  - OCCT Wasm runtime binding and normalized CAD model output.
+  - Engine-agnostic adapter with normalized CAD model output.
   - Unified import API for `step` / `iges` / `brep`.
+
+Secondary repository-local layers remain available for demos and Babylon integrations:
+
 - `@tx-code/occt-babylon-loader` (`packages/occt-babylon-loader`)
   - Babylon-facing model loader and scene builder.
-  - Delegates CAD parsing to `occt-core`.
+- `@tx-code/occt-babylon-viewer` (`packages/occt-babylon-viewer`)
+  - Scene-first Babylon viewer runtime helpers.
+- `@tx-code/occt-babylon-widgets` (`packages/occt-babylon-widgets`)
+  - Optional viewer widgets such as ViewCube.
 
 ## Babylon Packages
 
@@ -107,9 +171,14 @@ Within this repository we keep two maintained modules:
 ## API
 
 ```js
-import OcctJS from './dist/occt-js.js';
+import OcctJS from "@tx-code/occt-js";
+import occtWasmUrl from "@tx-code/occt-js/dist/occt-js.wasm?url";
 
-const occt = await OcctJS();
+const occt = await OcctJS({
+    locateFile(filename) {
+        return filename === "occt-js.wasm" ? occtWasmUrl : filename;
+    }
+});
 
 const buffer = new Uint8Array(/* ... CAD file bytes ... */);
 const result = occt.ReadFile("step", buffer, {

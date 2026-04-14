@@ -44,3 +44,21 @@ test("Tauri bundles only the canonical dist runtime artifacts", () => {
   assert.equal(resourceEntries.some(([from]) => from.includes("build/wasm")), false);
   assert.equal(resourceEntries.some(([, to]) => to.includes("build/wasm")), false);
 });
+
+test("root README documents the packaged wasm carrier and supported wasm resolution hooks", () => {
+  const readme = readRepoText("README.md");
+
+  assert.ok(readme.includes("@tx-code/occt-js"));
+  assert.ok(readme.includes("locateFile"));
+  assert.ok(readme.includes("wasmBinary"));
+  assert.ok(readme.includes("occt-js.wasm"));
+});
+
+test("occt-core README documents the package-first adapter path without requiring Babylon layers", () => {
+  const readme = readRepoText("packages/occt-core/README.md");
+
+  assert.ok(readme.includes("@tx-code/occt-core"));
+  assert.ok(readme.includes("createOcctCore"));
+  assert.ok(readme.includes("@tx-code/occt-js"));
+  assert.equal(readme.includes("@tx-code/occt-babylon-loader"), false);
+});
