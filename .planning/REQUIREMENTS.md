@@ -3,66 +3,74 @@
 **Defined:** 2026-04-14
 **Core Value:** Downstream applications can reliably consume the OCCT Wasm runtime and its root API contract without build drift or packaging surprises.
 
-## v1 Requirements
+## v1.1 Requirements
 
-### Root Runtime
+### Exact Model Lifecycle
 
-- [x] **CORE-01**: Maintainer can rebuild `dist/occt-js.js` and `dist/occt-js.wasm` from a clean Windows worktree using the documented `build/wasm/emsdk` toolchain path.
-- [x] **CORE-02**: Downstream JS code can import STEP, IGES, or BREP bytes through the root package APIs and receive the canonical structured scene payload with `sourceFormat`, `rootNodes`, `geometries`, `materials`, `warnings`, `stats`, `sourceUnit`, and `unitScaleToMeters` when available.
-- [x] **CORE-03**: Downstream JS code can choose explicit root-shape behavior for supported formats and get predictable `one-shape` / `multiple-shapes` semantics across STEP, IGES, and BREP.
-- [x] **CORE-04**: Downstream JS code can request manufacturing-oriented optimal orientation analysis for single-part STEP, IGES, and BREP inputs and receive transform plus diagnostics.
+- [ ] **LIFE-01**: Downstream JS code can import STEP, IGES, or BREP bytes and keep an exact-model handle alive after import so later measurement calls do not depend on mesh-only output.
+- [ ] **LIFE-02**: Downstream JS code can explicitly retain and release exact-model handles with predictable lifetime behavior and actionable failure semantics.
 
-### Consumption Contract
+### Exact Topology References
 
-- [x] **CONS-01**: Downstream code can consume `@tx-code/occt-js` as a packaged Wasm carrier and locate `occt-js.wasm` reliably in bundler and vendored-package workflows.
-- [x] **CONS-02**: Downstream code can use `@tx-code/occt-core` as the engine-agnostic OCCT adapter and model normalizer on top of the root Wasm package.
-- [x] **CONS-03**: Root package changes do not require downstream consumers to adopt repo-local Babylon/demo layers in order to keep working.
+- [ ] **REF-01**: Downstream JS code can address exact face, edge, and vertex elements through a stable reference shape that includes exact-model identity and enough occurrence context for repeated measurement calls.
+- [ ] **REF-02**: Downstream JS code can resolve exact face, edge, and vertex references directly from the ids already exported in the current mesh/topology payload instead of introducing a second viewer-specific id system.
+- [ ] **REF-03**: Downstream JS code can classify exact topology references into primitive geometry families such as line, circle, plane, cylinder, cone, or sphere so app-side measurement semantics can compose on top.
 
-### Distribution & Governance
+### Primitive Exact Measurements
 
-- [x] **DIST-01**: Maintainer can identify and run the correct verification commands for the root runtime and its consumption contract before release work lands.
-- [x] **DIST-02**: Public docs and planning artifacts identify the root Wasm carrier as the authoritative product surface, with secondary surfaces clearly marked as non-core.
+- [ ] **MEAS-01**: Downstream JS code can measure exact distance between supported topology-reference pairs and receive both the numeric result and attach points needed for app-side annotation.
+- [ ] **MEAS-02**: Downstream JS code can measure exact angle between supported topology-reference pairs and receive the angle plus origin and direction vectors needed for app-side annotation.
+- [ ] **MEAS-03**: Downstream JS code can measure single-entity primitives including radius, center, edge length, face area, and evaluated face normal using exact topology references.
+- [ ] **MEAS-04**: Downstream JS code can measure exact thickness for supported parallel-wall scenarios and receive both the numeric result and attach points needed for app-side annotation.
+- [ ] **MEAS-05**: Downstream JS code receives structured exact-measurement success and failure DTOs with overlay-ready anchors and explicit invalid-handle, invalid-id, and unsupported-geometry errors.
 
-## v2 Requirements
+### Downstream Adapter & Release Contract
 
-### Automation
+- [ ] **ADAPT-01**: `@tx-code/occt-core` can expose JS-friendly adapters and DTOs for exact-model handles, topology references, and primitive measurement results without hiding the root Wasm contract.
+- [ ] **ADAPT-02**: Root docs, package typings, and release verification cover the exact-measurement foundation while keeping app-level selection UX, overlays, and semantic feature recognition explicitly out of scope.
 
-- **AUTO-01**: Maintainer can run CI that rebuilds Wasm and verifies root, package, demo, and desktop contracts automatically.
-- **AUTO-02**: Maintainer can publish coordinated version updates across the root package and Babylon package modules from a scripted release flow.
+## Future Requirements
 
-### Product Extension
+### App-Side Measurement Semantics
 
-- **EXT-01**: Downstream apps can consume richer CAD analytics beyond the current orientation heuristics.
-- **EXT-02**: Secondary Babylon/demo layers can evolve without becoming mandatory dependencies of the root Wasm package.
+- **SEM-01**: Downstream apps can infer higher-level measurement candidates such as hole, chamfer, centerline, or nominal-vs-thickness semantics from primitive exact measurements.
+- **SEM-02**: Downstream apps can run multi-pick measurement sessions with preview, candidate ranking, and pinning UX on top of exact references.
+
+### Mesh Fallbacks & UX
+
+- **UX-01**: Downstream apps can fall back from exact topology references to mesh or point measurements when exact refs are unavailable.
+- **UX-02**: Demo or downstream viewers can render measurement overlays, callouts, and workplanes consistently for exact-measurement results.
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| Requiring Babylon/demo package adoption for root runtime consumers | Downstream consumers such as `imos-app` mainly need the Wasm/runtime surface |
-| Expanding root runtime to non-OCCT mesh exchange formats in this milestone | Current milestone is about hardening existing STEP/IGES/BREP runtime surfaces |
-| Making Tauri build success a prerequisite for root npm publishing | Root release must stay independent of desktop packaging |
-| Promoting viewer/demo concerns to the main release gate | These are secondary surfaces, not the strategic product boundary |
+| Hole, chamfer, draft, and similar semantic feature recognition in the runtime | These build on top of primitive exact measurement and belong in downstream app logic after the kernel contract exists |
+| Measurement session state machines, preview candidate ranking, or pinning UX | This milestone is limited to wasm/core foundations, not viewer behavior |
+| Overlay rendering, annotation layout, or workplane visualization | These are downstream app concerns above the runtime contract |
+| Replacing the current mesh/topology import payload with an exact-only API | Existing import and triangulation consumers must keep working alongside the new exact-measurement foundation |
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CORE-01 | Phase 1 | Completed |
-| CORE-02 | Phase 2 | Completed |
-| CORE-03 | Phase 2 | Completed |
-| CORE-04 | Phase 2 | Completed |
-| CONS-01 | Phase 3 | Completed |
-| CONS-02 | Phase 3 | Completed |
-| CONS-03 | Phase 4 | Completed |
-| DIST-01 | Phase 4 | Completed |
-| DIST-02 | Phase 4 | Completed |
+| LIFE-01 | TBD | Pending |
+| LIFE-02 | TBD | Pending |
+| REF-01 | TBD | Pending |
+| REF-02 | TBD | Pending |
+| REF-03 | TBD | Pending |
+| MEAS-01 | TBD | Pending |
+| MEAS-02 | TBD | Pending |
+| MEAS-03 | TBD | Pending |
+| MEAS-04 | TBD | Pending |
+| MEAS-05 | TBD | Pending |
+| ADAPT-01 | TBD | Pending |
+| ADAPT-02 | TBD | Pending |
 
 **Coverage:**
-- v1 requirements: 9 total
-- Mapped to phases: 9
-- Unmapped: 0 ✓
+- v1.1 requirements: 12 total
+- Mapped to phases: 0
+- Unmapped: 12
 
 ---
 *Requirements defined: 2026-04-14*
-*Last updated: 2026-04-14 after Phase 04 governance alignment*
