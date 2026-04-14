@@ -19,18 +19,18 @@ created: 2026-04-14
 |----------|-------|
 | **Framework** | Node.js built-in test runner plus existing root `node` script execution |
 | **Config file** | none |
-| **Quick run command** | `node --test test/wasm_build_prereqs.test.mjs test/load_occt_factory.test.mjs test/dist_contract_consumers.test.mjs test/wasm_build_contract.test.mjs` |
+| **Quick run command** | `node --test test/wasm_build_prereqs.test.mjs test/load_occt_factory.test.mjs` |
 | **Full suite command** | `npm run build:wasm:win && npm test` |
-| **Estimated runtime** | ~180 seconds |
+| **Estimated runtime** | ~5 seconds default quick run / ~15 seconds task-specific fast suite / ~180 seconds full suite |
 
 ---
 
 ## Sampling Rate
 
-- **After every task commit:** Run `node --test test/wasm_build_prereqs.test.mjs test/load_occt_factory.test.mjs test/dist_contract_consumers.test.mjs test/wasm_build_contract.test.mjs`
+- **After every task commit:** Run the task's `<automated>` command from the map below; the default phase quick loop is `node --test test/wasm_build_prereqs.test.mjs test/load_occt_factory.test.mjs`.
 - **After every plan wave:** Run `npm run build:wasm:win && npm test`
 - **Before `/gsd-verify-work`:** `npm run build:wasm:win && npm test` must be green
-- **Max feedback latency:** 180 seconds
+- **Max feedback latency:** 15 seconds
 
 ---
 
@@ -39,7 +39,7 @@ created: 2026-04-14
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
 | 01-01-01 | 01 | 1 | CORE-01 | T-01-01 / T-01-02 | Script and CMake contract keep `dist/` canonical and preserve retained diagnostics | unit | `node --test test/wasm_build_contract.test.mjs` | ✅ | ⬜ pending |
-| 01-01-02 | 01 | 1 | CORE-01 | T-01-01 / T-01-02 | Clean Windows flow produces canonical `dist/` artifacts and keeps `build/wasm-build.log` plus retry guidance | smoke | `npm run build:wasm:win && npm test` | ✅ | ⬜ pending |
+| 01-01-02 | 01 | 1 | CORE-01 | T-01-01 / T-01-02 | Task-level checks keep the canonical `dist/` contract and retained diagnostics tight; the clean Windows rebuild remains the wave gate proof | smoke | `node --test test/wasm_build_contract.test.mjs` | ✅ | ⬜ pending |
 | 01-02-01 | 02 | 1 | CORE-01 | T-01-03 | Fast preflight catches missing submodule/toolchain/type-definition/runtime-artifact states with actionable messaging | unit | `node --test test/wasm_build_prereqs.test.mjs test/load_occt_factory.test.mjs` | ✅ | ⬜ pending |
 | 01-02-02 | 02 | 1 | CORE-01 | T-01-04 | Package, demo, and Tauri references stay anchored to canonical `dist/` artifacts | unit | `node --test test/wasm_build_prereqs.test.mjs test/load_occt_factory.test.mjs test/dist_contract_consumers.test.mjs` | ✅ | ⬜ pending |
 | 01-03-01 | 03 | 2 | CORE-01 | T-01-06 | Root command surface exposes fast preflight separately from full runtime verification | cli | `npm pkg get scripts.test scripts.test:wasm:preflight` | ✅ | ⬜ pending |
@@ -67,7 +67,7 @@ All phase behaviors have automated verification.
 - [x] Sampling continuity: no 3 consecutive tasks without automated verify
 - [x] Wave 0 covers all MISSING references
 - [x] No watch-mode flags
-- [x] Feedback latency < 180s
+- [x] Feedback latency < 30s
 - [x] `nyquist_compliant: true` set in frontmatter
 
 **Approval:** pending
