@@ -7,6 +7,49 @@ function assert(condition, message) {
     throw new Error(message);
   }
 }
+assert.equal = function(actual, expected, message) {
+  if (actual !== expected) {
+    throw new Error(`${message} (got ${actual}, expected ${expected})`);
+  }
+};
+assert.deepEqual = function(actual, expected, message) {
+  const actualJson = JSON.stringify(actual);
+  const expectedJson = JSON.stringify(expected);
+  if (actualJson !== expectedJson) {
+    throw new Error(message);
+  }
+};
+
+function hasOwn(value, key) {
+  return !!value && Object.prototype.hasOwnProperty.call(value, key);
+}
+
+function rootSignature(result) {
+  return result.rootNodes.map((node) => ({
+    name: node.name,
+    isAssembly: node.isAssembly,
+    childCount: node.children.length,
+    meshCount: node.meshes.length,
+  }));
+}
+
+function assertUnitMetadataAbsent(result, label) {
+  assert.equal(hasOwn(result, "sourceUnit"), false, `${label}: BREP should not expose sourceUnit`);
+  assert.equal(hasOwn(result, "unitScaleToMeters"), false, `${label}: BREP should not expose unitScaleToMeters`);
+}
+
+function assertReadParity(module, fixtureBytes, params, label) {
+  const direct = module.ReadBrepFile(fixtureBytes, params);
+  const generic = module.ReadFile("brep", fixtureBytes, params);
+
+  assert(direct.success, `${label}: direct import should succeed`);
+  assert(generic.success, `${label}: generic import should succeed`);
+  assert.deepEqual(rootSignature(direct), rootSignature(generic), `${label}: direct and generic root signatures should match`);
+  assertUnitMetadataAbsent(direct, `${label} direct`);
+  assertUnitMetadataAbsent(generic, `${label} generic`);
+
+  return { direct, generic };
+}
 
 async function main() {
   const factory = loadOcctFactory();
@@ -15,33 +58,23 @@ async function main() {
   const brepFixture = new Uint8Array(readFileSync(resolve("test", "as1_pe_203.brep")));
   const multiRootFixture = new Uint8Array(readFileSync(resolve("test", "nonmanifold_cells.brep")));
 
-  const brepDefault = m.ReadBrepFile(brepFixture, {});
-  assert(brepDefault.success, "ReadBrepFile default import should succeed");
-  assert(brepDefault.rootNodes.length === 1, `default BREP rootMode should return one root, got ${brepDefault.rootNodes.length}`);
+  const brepDefault = assertReadParity(m, brepFixture, {}, "BREP default as1_pe_203.brep").direct;
+  assert.equal(brepDefault.rootNodes.length, 1, "default BREP rootMode should return one root");
 
-  const brepOneShape = m.ReadBrepFile(brepFixture, { rootMode: "one-shape" });
-  assert(brepOneShape.success, "ReadBrepFile one-shape import should succeed");
-  assert(brepOneShape.rootNodes.length === 1, `BREP one-shape should return one root, got ${brepOneShape.rootNodes.length}`);
+  const brepOneShape = assertReadParity(m, brepFixture, { rootMode: "one-shape" }, "BREP one-shape as1_pe_203.brep").direct;
+  assert.equal(brepOneShape.rootNodes.length, 1, "BREP one-shape should return one root");
 
-  const brepMultiple = m.ReadBrepFile(brepFixture, { rootMode: "multiple-shapes" });
-  assert(brepMultiple.success, "ReadBrepFile multiple-shapes import should succeed");
-  assert(brepMultiple.rootNodes.length > 1, `BREP multiple-shapes should return more than one root, got ${brepMultiple.rootNodes.length}`);
+  const brepMultiple = assertReadParity(m, brepFixture, { rootMode: "multiple-shapes" }, "BREP multiple-shapes as1_pe_203.brep").direct;
+  assert.equal(brepMultiple.rootNodes.length, 3, "BREP multiple-shapes should expose the three direct top-level children in as1_pe_203.brep");
 
-  const brepDispatch = m.ReadFile("brep", brepFixture, { rootMode: "multiple-shapes" });
-  assert(brepDispatch.success, "ReadFile(brep) multiple-shapes import should succeed");
-  assert(brepDispatch.rootNodes.length === brepMultiple.rootNodes.length, "ReadFile(brep) should match ReadBrepFile root count");
+  const isolatedDefault = assertReadParity(m, multiRootFixture, {}, "BREP default nonmanifold_cells.brep").direct;
+  assert.equal(isolatedDefault.rootNodes.length, 1, "default realistic BREP rootMode should return one root");
 
-  const isolatedDefault = m.ReadBrepFile(multiRootFixture, {});
-  assert(isolatedDefault.success, "ReadBrepFile default import should succeed for nonmanifold_cells.brep");
-  assert(isolatedDefault.rootNodes.length === 1, `default realistic BREP rootMode should return one root, got ${isolatedDefault.rootNodes.length}`);
+  const isolatedOneShape = assertReadParity(m, multiRootFixture, { rootMode: "one-shape" }, "BREP one-shape nonmanifold_cells.brep").direct;
+  assert.equal(isolatedOneShape.rootNodes.length, 1, "BREP one-shape should keep nonmanifold_cells.brep as one root");
 
-  const isolatedMultiple = m.ReadBrepFile(multiRootFixture, { rootMode: "multiple-shapes" });
-  assert(isolatedMultiple.success, "ReadBrepFile multiple-shapes import should succeed for nonmanifold_cells.brep");
-  assert(isolatedMultiple.rootNodes.length > 1, `realistic BREP multiple-shapes should return more than one root, got ${isolatedMultiple.rootNodes.length}`);
-
-  const isolatedDispatch = m.ReadFile("brep", multiRootFixture, { rootMode: "multiple-shapes" });
-  assert(isolatedDispatch.success, "ReadFile(brep) multiple-shapes import should succeed for nonmanifold_cells.brep");
-  assert(isolatedDispatch.rootNodes.length === isolatedMultiple.rootNodes.length, "ReadFile(brep) should match realistic BREP root count");
+  const isolatedMultiple = assertReadParity(m, multiRootFixture, { rootMode: "multiple-shapes" }, "BREP multiple-shapes nonmanifold_cells.brep").direct;
+  assert.equal(isolatedMultiple.rootNodes.length, 15, "BREP multiple-shapes should expose the 15 direct top-level children in nonmanifold_cells.brep");
 
   console.log("PASS test_brep_root_mode");
 }

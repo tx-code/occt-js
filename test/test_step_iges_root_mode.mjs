@@ -7,6 +7,22 @@ function assert(condition, message) {
     throw new Error(message);
   }
 }
+assert.equal = function(actual, expected, message) {
+  if (actual !== expected) {
+    throw new Error(`${message} (got ${actual}, expected ${expected})`);
+  }
+};
+assert.deepEqual = function(actual, expected, message) {
+  const actualJson = JSON.stringify(actual);
+  const expectedJson = JSON.stringify(expected);
+  if (actualJson !== expectedJson) {
+    throw new Error(message);
+  }
+};
+
+function hasOwn(value, key) {
+  return !!value && Object.prototype.hasOwnProperty.call(value, key);
+}
 
 function flattenNodes(nodes) {
   const result = [];
@@ -21,6 +37,50 @@ function flattenNodes(nodes) {
   return result;
 }
 
+function rootSignature(result) {
+  return result.rootNodes.map((node) => ({
+    name: node.name,
+    isAssembly: node.isAssembly,
+    childCount: node.children.length,
+    meshCount: node.meshes.length,
+  }));
+}
+
+function assertUnitMetadata(result, label) {
+  const hasSourceUnit = hasOwn(result, "sourceUnit");
+  const hasUnitScale = hasOwn(result, "unitScaleToMeters");
+  assert.equal(hasSourceUnit, hasUnitScale, `${label}: unit metadata should appear as a pair`);
+
+  if (hasSourceUnit) {
+    assert(typeof result.sourceUnit === "string" && result.sourceUnit.length > 0, `${label}: sourceUnit should be a non-empty string`);
+    assert(typeof result.unitScaleToMeters === "number" && result.unitScaleToMeters > 0, `${label}: unitScaleToMeters should be a positive number`);
+  }
+}
+
+function assertSameUnitMetadata(direct, generic, label) {
+  assertUnitMetadata(direct, `${label} direct`);
+  assertUnitMetadata(generic, `${label} generic`);
+  assert.equal(hasOwn(direct, "sourceUnit"), hasOwn(generic, "sourceUnit"), `${label}: direct and generic should agree on sourceUnit presence`);
+  assert.equal(hasOwn(direct, "unitScaleToMeters"), hasOwn(generic, "unitScaleToMeters"), `${label}: direct and generic should agree on unitScaleToMeters presence`);
+
+  if (hasOwn(direct, "sourceUnit")) {
+    assert.equal(direct.sourceUnit, generic.sourceUnit, `${label}: direct and generic sourceUnit should match`);
+    assert.equal(direct.unitScaleToMeters, generic.unitScaleToMeters, `${label}: direct and generic unitScaleToMeters should match`);
+  }
+}
+
+function assertReadParity(module, format, fixtureBytes, params, directMethod, label) {
+  const direct = module[directMethod](fixtureBytes, params);
+  const generic = module.ReadFile(format, fixtureBytes, params);
+
+  assert(direct.success, `${label}: direct import should succeed`);
+  assert(generic.success, `${label}: generic import should succeed`);
+  assert.deepEqual(rootSignature(direct), rootSignature(generic), `${label}: direct and generic root signatures should match`);
+  assertSameUnitMetadata(direct, generic, label);
+
+  return { direct, generic };
+}
+
 async function main() {
   const factory = loadOcctFactory();
   const m = await factory();
@@ -30,52 +90,42 @@ async function main() {
   const realisticMultiRootStep = new Uint8Array(readFileSync(resolve("test", "chassis-2roots.stp")));
   const inchStep = new Uint8Array(readFileSync(resolve("test", "as1-oc-214_inches.stp")));
 
-  const stepDefault = m.ReadStepFile(multiRootStep, {});
-  assert(stepDefault.success, "ReadStepFile default import should succeed for two_free_shapes.step");
-  assert(stepDefault.rootNodes.length === 1, `default STEP rootMode should return one root, got ${stepDefault.rootNodes.length}`);
+  const stepDefault = assertReadParity(m, "step", multiRootStep, {}, "ReadStepFile", "STEP default two_free_shapes.step").direct;
+  assert.equal(stepDefault.rootNodes.length, 1, "default STEP rootMode should return one root");
   assert(stepDefault.rootNodes[0].isAssembly, "default STEP one-shape root should be an assembly wrapper");
-  assert(stepDefault.rootNodes[0].children.length === 2, `default STEP one-shape root should expose both free shapes as children, got ${stepDefault.rootNodes[0].children.length}`);
+  assert.equal(stepDefault.rootNodes[0].children.length, 2, "default STEP one-shape root should expose both free shapes as children");
 
-  const stepOneShape = m.ReadStepFile(multiRootStep, { rootMode: "one-shape" });
-  assert(stepOneShape.success, "ReadStepFile one-shape import should succeed for two_free_shapes.step");
-  assert(stepOneShape.rootNodes.length === 1, `STEP one-shape should return one root, got ${stepOneShape.rootNodes.length}`);
-  assert(stepOneShape.rootNodes[0].children.length === 2, `STEP one-shape should expose both free shapes as children, got ${stepOneShape.rootNodes[0].children.length}`);
+  const stepOneShape = assertReadParity(m, "step", multiRootStep, { rootMode: "one-shape" }, "ReadStepFile", "STEP one-shape two_free_shapes.step").direct;
+  assert.equal(stepOneShape.rootNodes.length, 1, "STEP one-shape should return one root");
+  assert(stepOneShape.rootNodes[0].isAssembly, "STEP one-shape should preserve the synthetic assembly wrapper");
+  assert.equal(stepOneShape.rootNodes[0].children.length, 2, "STEP one-shape should expose both free shapes as children");
 
-  const stepMultiple = m.ReadStepFile(multiRootStep, { rootMode: "multiple-shapes" });
-  assert(stepMultiple.success, "ReadStepFile multiple-shapes import should succeed for two_free_shapes.step");
-  assert(stepMultiple.rootNodes.length > 1, `STEP multiple-shapes should return more than one root, got ${stepMultiple.rootNodes.length}`);
+  const stepMultiple = assertReadParity(m, "step", multiRootStep, { rootMode: "multiple-shapes" }, "ReadStepFile", "STEP multiple-shapes two_free_shapes.step").direct;
+  assert.equal(stepMultiple.rootNodes.length, 2, "STEP multiple-shapes should return both free shapes as roots");
   assert(stepMultiple.rootNodes.every((node) => node.children.length === 0), "STEP multiple-shapes roots should remain direct free-shape nodes for this fixture");
 
-  const stepDispatch = m.ReadFile("step", multiRootStep, { rootMode: "multiple-shapes" });
-  assert(stepDispatch.success, "ReadFile(step) multiple-shapes import should succeed");
-  assert(stepDispatch.rootNodes.length === stepMultiple.rootNodes.length, "ReadFile(step) should match ReadStepFile root count");
+  const realisticDefault = assertReadParity(m, "step", realisticMultiRootStep, {}, "ReadStepFile", "STEP default chassis-2roots.stp").direct;
+  assert.equal(realisticDefault.rootNodes.length, 1, "default realistic STEP rootMode should return one root");
+  assert(realisticDefault.rootNodes[0].isAssembly, "default realistic STEP rootMode should preserve the synthetic assembly wrapper");
 
-  const realisticDefault = m.ReadStepFile(realisticMultiRootStep, {});
-  assert(realisticDefault.success, "ReadStepFile default import should succeed for chassis-2roots.stp");
-  assert(realisticDefault.rootNodes.length === 1, `default realistic STEP rootMode should return one root, got ${realisticDefault.rootNodes.length}`);
+  const realisticOneShape = assertReadParity(m, "step", realisticMultiRootStep, { rootMode: "one-shape" }, "ReadStepFile", "STEP one-shape chassis-2roots.stp").direct;
+  assert.equal(realisticOneShape.rootNodes.length, 1, "STEP one-shape should return one logical root for chassis-2roots.stp");
 
-  const realisticMultiple = m.ReadStepFile(realisticMultiRootStep, { rootMode: "multiple-shapes" });
-  assert(realisticMultiple.success, "ReadStepFile multiple-shapes import should succeed for chassis-2roots.stp");
-  assert(realisticMultiple.rootNodes.length > 1, `realistic STEP multiple-shapes should return more than one root, got ${realisticMultiple.rootNodes.length}`);
+  const realisticMultiple = assertReadParity(m, "step", realisticMultiRootStep, { rootMode: "multiple-shapes" }, "ReadStepFile", "STEP multiple-shapes chassis-2roots.stp").direct;
+  assert.equal(realisticMultiple.rootNodes.length, 2, "realistic STEP multiple-shapes should return both free shapes as roots");
 
-  const realisticDispatch = m.ReadFile("step", realisticMultiRootStep, { rootMode: "multiple-shapes" });
-  assert(realisticDispatch.success, "ReadFile(step) multiple-shapes import should succeed for chassis-2roots.stp");
-  assert(realisticDispatch.rootNodes.length === realisticMultiple.rootNodes.length, "ReadFile(step) should match realistic STEP root count");
-
-  const inchStepDefault = m.ReadStepFile(inchStep, {});
-  assert(inchStepDefault.success, "ReadStepFile default import should succeed for as1-oc-214_inches.stp");
-  assert(typeof inchStepDefault.sourceUnit === "string" && inchStepDefault.sourceUnit.length > 0, "inch STEP import should report sourceUnit");
-  assert(typeof inchStepDefault.unitScaleToMeters === "number" && inchStepDefault.unitScaleToMeters > 0, "inch STEP import should report a positive unitScaleToMeters");
+  const inchStepDefault = assertReadParity(m, "step", inchStep, {}, "ReadStepFile", "STEP default as1-oc-214_inches.stp").direct;
   const inchNodes = flattenNodes(inchStepDefault.rootNodes);
   assert(inchNodes.length > 0, "inch STEP import should produce at least one node");
 
-  const igesDefault = m.ReadIgesFile(igesFixture, {});
-  assert(igesDefault.success, "ReadIgesFile default import should succeed");
-  assert(igesDefault.rootNodes.length === 1, `default IGES rootMode should return one root, got ${igesDefault.rootNodes.length}`);
+  const igesDefault = assertReadParity(m, "iges", igesFixture, {}, "ReadIgesFile", "IGES default cube_10x10.igs").direct;
+  assert.equal(igesDefault.rootNodes.length, 1, "default IGES rootMode should return one root");
 
-  const igesDispatch = m.ReadFile("iges", igesFixture, {});
-  assert(igesDispatch.success, "ReadFile(iges) default import should succeed");
-  assert(igesDispatch.rootNodes.length === 1, `ReadFile(iges) default rootMode should return one root, got ${igesDispatch.rootNodes.length}`);
+  const igesOneShape = assertReadParity(m, "iges", igesFixture, { rootMode: "one-shape" }, "ReadIgesFile", "IGES one-shape cube_10x10.igs").direct;
+  assert.equal(igesOneShape.rootNodes.length, 1, "IGES one-shape should return one root");
+
+  const igesMultiple = assertReadParity(m, "iges", igesFixture, { rootMode: "multiple-shapes" }, "ReadIgesFile", "IGES multiple-shapes cube_10x10.igs").direct;
+  assert.equal(igesMultiple.rootNodes.length, 1, "IGES multiple-shapes should remain one root for cube_10x10.igs");
 
   console.log("PASS test_step_iges_root_mode");
 }
