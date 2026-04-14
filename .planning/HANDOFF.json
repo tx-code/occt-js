@@ -1,0 +1,86 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-04-14T10:26:00.915Z",
+  "phase": "01",
+  "phase_name": "wasm-build-dist-baseline",
+  "phase_dir": ".planning/phases/01-wasm-build-dist-baseline",
+  "plan": 1,
+  "task": 5,
+  "total_tasks": 7,
+  "status": "paused",
+  "completed_tasks": [
+    {
+      "id": 1,
+      "name": "01-01 Task 1: Lock the Windows build-path invariants in a fast contract test",
+      "status": "done",
+      "commit": "a5235aa"
+    },
+    {
+      "id": 2,
+      "name": "01-01 Task 2: Reconcile CMake and Windows batch scripts to generate the canonical dist artifacts directly",
+      "status": "done",
+      "commit": "a5235aa"
+    },
+    {
+      "id": 3,
+      "name": "01-02 Task 1: Expand fast prereq and dist-preflight helpers without pulling in the full runtime suite",
+      "status": "done",
+      "commit": "66c35c4"
+    },
+    {
+      "id": 4,
+      "name": "01-02 Task 2: Add a static consumer-contract test for every current dist runtime consumer",
+      "status": "done",
+      "commit": "4d3cfd1"
+    }
+  ],
+  "remaining_tasks": [
+    {
+      "id": 5,
+      "name": "Wave 1 gate: clean Windows build plus root test suite",
+      "status": "in_progress"
+    },
+    {
+      "id": 6,
+      "name": "01-03 Task 1: Add explicit fast preflight npm command",
+      "status": "not_started"
+    },
+    {
+      "id": 7,
+      "name": "01-03 Task 2: Rewrite root docs around the finalized Windows build baseline",
+      "status": "not_started"
+    }
+  ],
+  "blockers": [
+    {
+      "description": "Closed executor agents left a live mingw32-make build running in the main repository, which keeps writing build/wasm-build.log and contaminates any new npm run build:wasm:win gate attempts.",
+      "type": "technical",
+      "workaround": "Before resuming, check for lingering mingw32-make/cmd/python processes from the 18:00 build window. Either wait for them to finish and inspect build/wasm-build.log, or terminate them before rerunning the Wave 1 gate."
+    }
+  ],
+  "human_actions_pending": [],
+  "decisions": [
+    {
+      "decision": "Keep 01-01 task-level verification anchored to test/wasm_build_contract.test.mjs only, with the full npm run build:wasm:win plus npm test flow reserved for the Wave 1 gate.",
+      "rationale": "This keeps Nyquist feedback fast without introducing a same-wave dependency on 01-02's dist consumer test.",
+      "phase": "01"
+    },
+    {
+      "decision": "Use node --test test/wasm_build_prereqs.test.mjs test/load_occt_factory.test.mjs as the default phase quick loop.",
+      "rationale": "Those files exist at the start of Wave 1, so the validation contract stays executable before new tests are added.",
+      "phase": "01"
+    },
+    {
+      "decision": "Do not create 01-01-SUMMARY.md or 01-02-SUMMARY.md until the Wave 1 build gate passes.",
+      "rationale": "GSD treats SUMMARY.md presence as a completion marker; writing one early would incorrectly mark the plans complete while the gate is still unresolved.",
+      "phase": "01"
+    }
+  ],
+  "uncommitted_files": [
+    ".planning/STATE.md",
+    ".planning/HANDOFF.json",
+    ".planning/phases/01-wasm-build-dist-baseline/.continue-here.md"
+  ],
+  "next_action": "Start by checking whether the lingering mingw32-make processes have exited. If they have, inspect build/wasm-build.log for success or failure and then rerun the Wave 1 gate command in a clean shell: powershell -NoProfile -Command \"npm run build:wasm:win; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; if (!(Test-Path 'dist/occt-js.js')) { throw 'Missing dist/occt-js.js' }; if (!(Test-Path 'dist/occt-js.wasm')) { throw 'Missing dist/occt-js.wasm' }; npm test; exit $LASTEXITCODE\". Only after that passes should you create 01-01/01-02 summaries and begin 01-03.",
+  "context_notes": "Wave 1 implementation landed successfully at the task level: 01-01 is in commit a5235aa and 01-02 landed as c14010d, 66c35c4, 935c446, and 4d3cfd1. Task-level tests are green. The only thing preventing Wave 2 is a contaminated build gate caused by lingering background build processes from a closed executor."
+}
