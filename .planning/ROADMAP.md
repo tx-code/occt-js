@@ -2,7 +2,7 @@
 
 ## Overview
 
-This roadmap treats the root Wasm package as the strategic product surface and everything else as secondary context. The goal of the next milestone is to harden `@tx-code/occt-js` as a reproducible, vendor-friendly OCCT Wasm carrier with a stable root API and `dist/` contract for downstream consumers such as `imos-app`.
+This roadmap captures the v1.0 runtime-hardening milestone that established `@tx-code/occt-js` as a reproducible, vendor-friendly OCCT Wasm carrier with a stable root API and `dist/` contract for downstream consumers such as `imos-app`.
 
 ## Phases
 
@@ -13,7 +13,7 @@ This roadmap treats the root Wasm package as the strategic product surface and e
 - [x] **Phase 1: Wasm Build & Dist Baseline** - Lock the reproducible Windows Wasm build path and canonical `dist/` artifact contract.
 - [x] **Phase 2: Root Runtime Contract** - Harden and verify the root import, root-mode, source-unit, and orientation API contract.
 - [x] **Phase 3: Downstream Consumption Contract** - Tighten vendored/package consumption behavior for `@tx-code/occt-js` and `@tx-code/occt-core`.
-- [ ] **Phase 4: Release & Governance Flow** - Converge docs, verification expectations, and planning traceability around the root Wasm carrier.
+- [x] **Phase 4: Release & Governance Flow** - Converge docs, verification expectations, and planning traceability around the root Wasm carrier.
 
 ## Phase Details
 
@@ -80,9 +80,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 04-01-PLAN.md — Establish the canonical `test:release:root` release gate and root governance contract test
-- [ ] 04-02-PLAN.md — Reconcile README, AGENTS, `occt-core`, and the release skill around the runtime-first release boundary
-- [ ] 04-03-PLAN.md — Synchronize `.planning` traceability and state with the finalized Phase 4 governance contract
+- [x] 04-01-PLAN.md — Establish the canonical `test:release:root` release gate and root governance contract test
+- [x] 04-02-PLAN.md — Reconcile README, AGENTS, `occt-core`, and the release skill around the runtime-first release boundary
+- [x] 04-03-PLAN.md — Synchronize `.planning` traceability and state with the finalized Phase 4 governance contract
 
 ## Progress
 
@@ -94,4 +94,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 1. Wasm Build & Dist Baseline | 3/3 | Completed | 2026-04-14 |
 | 2. Root Runtime Contract | 3/3 | Completed | 2026-04-14 |
 | 3. Downstream Consumption Contract | 3/3 | Completed | 2026-04-14 |
-| 4. Release & Governance Flow | 0/3 | Not started | - |
+| 4. Release & Governance Flow | 3/3 | Completed | 2026-04-14 |

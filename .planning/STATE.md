@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Phase 04 planning complete; ready to execute
-last_updated: "2026-04-14T13:15:53.2872884Z"
-last_activity: 2026-04-14 -- Phase 4 planning complete
+status: complete
+stopped_at: Phase 04 complete; ready to audit and archive milestone
+last_updated: "2026-04-14T15:35:00Z"
+last_activity: 2026-04-14 -- Phase 4 complete
 progress:
   total_phases: 4
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 12
-  completed_plans: 9
-  percent: 75
+  completed_plans: 12
+  percent: 100
 ---
 
 # Project State
@@ -21,22 +21,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-14)
 
 **Core value:** Downstream applications can reliably consume the OCCT Wasm runtime and its root API contract without build drift or packaging surprises.
-**Current focus:** Phase 04 is executing; the governance baseline is `npm run test:release:root`, with `test/release_governance_contract.test.mjs` guarding release and planning drift around the root Wasm carrier (`release-governance-flow`)
+**Current focus:** Phase 04 is complete; the governance baseline is `npm run test:release:root`, with `test/release_governance_contract.test.mjs` and the live `occt-core` carrier smoke test guarding release drift before milestone archival.
 
 ## Current Position
 
-Phase: 04 of 4 (release-governance-flow) — PLANNED
-Plan: 3 planned (0 executed)
-Status: Ready to execute
-Last activity: 2026-04-14 -- Phase 4 planning complete
+Phase: 04 of 4 (release-governance-flow) — COMPLETE
+Plan: 3 of 3 complete
+Status: Phase 04 complete
+Last activity: 2026-04-14 -- Phase 4 complete
 
-Progress: [████████░░] 75%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 9
+- Total plans completed: 12
 - Average duration: 0 min
 - Total execution time: 0.0 hours
 
@@ -47,10 +47,11 @@ Progress: [████████░░] 75%
 | 1 | 3 | 0.0h | 0 min |
 | 2 | 3 | 0.0h | 0 min |
 | 3 | 3 | 0.0h | 0 min |
+| 4 | 3 | 0.0h | 0 min |
 
 **Recent Trend:**
 
-- Last 5 plans: 03-01, 03-02, 03-03, 04-01, 04-02
+- Last 5 plans: 03-02, 03-03, 04-01, 04-02, 04-03
 - Trend: Stable
 
 ## Accumulated Context
@@ -67,6 +68,7 @@ Recent decisions affecting current work:
 - Phase 01: `npm run test:wasm:preflight` is the fast verification gate before full `npm test`
 - Phase 03: The packaged downstream contract centers on `@tx-code/occt-js` and `@tx-code/occt-core`, with Babylon/demo layers treated as optional secondaries
 - Phase 03: Downstream consumers must provide explicit Wasm resolution through adjacent packaging, `locateFile`, or `wasmBinary`
+- Phase 04: `npm run test:release:root` is the canonical release gate and now includes a live `createOcctCore(...)` smoke test against the built root carrier
 
 ### Pending Todos
 
@@ -74,11 +76,11 @@ None yet.
 
 ### Blockers/Concerns
 
-- No active planning blockers remain.
-- Next step is executing the three Phase 04 release/governance tasks.
+- No active execution blockers remain.
+- Next step is auditing and archiving milestone v1.0 before starting the measurement milestone.
 
 ## Session Continuity
 
 Last session: 2026-04-14T11:31:10.141Z
-Stopped at: Phase 04 planning complete; ready to execute
-Resume file: .planning/phases/04-release-governance-flow/04-01-PLAN.md
+Stopped at: Phase 04 complete; ready to audit and archive milestone
+Resume file: .planning/v1.0-MILESTONE-AUDIT.md

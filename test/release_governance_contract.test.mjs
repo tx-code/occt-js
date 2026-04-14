@@ -79,3 +79,22 @@ test("planning state stays aligned to the root Wasm carrier", () => {
   assert.match(roadmap, /test\/release_governance_contract\.test\.mjs/);
   assert.match(roadmap, /npm run test:release:root/);
 });
+
+test("planning state marks phase 4 governance work complete", () => {
+  const roadmap = readRepoText(".planning/ROADMAP.md");
+  const state = readRepoText(".planning/STATE.md");
+
+  assert.match(roadmap, /- \[x\] \*\*Phase 4: Release & Governance Flow\*\*/);
+  assert.match(roadmap, /- \[x\] 04-01-PLAN\.md/);
+  assert.match(roadmap, /- \[x\] 04-02-PLAN\.md/);
+  assert.match(roadmap, /- \[x\] 04-03-PLAN\.md/);
+  assert.match(roadmap, /\| 4\. Release & Governance Flow \| 3\/3 \| Completed \| 2026-04-14 \|/);
+
+  assert.match(state, /status:\s*complete/i);
+  assert.match(state, /completed_phases:\s*4/);
+  assert.match(state, /completed_plans:\s*12/);
+  assert.match(state, /percent:\s*100/);
+  assert.match(state, /Phase:\s*04 of 4 .*COMPLETE/i);
+  assert.match(state, /Status:\s*Phase 04 complete/i);
+  assert.match(state, /Progress:\s*\[██████████\]\s*100%/);
+});
