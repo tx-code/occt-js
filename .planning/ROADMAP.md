@@ -77,12 +77,12 @@ Plans:
   1. Maintainers can identify the correct verification command set for root runtime and downstream consumption changes.
   2. Public docs and planning artifacts point to the root Wasm carrier as the authoritative product contract.
   3. Every active requirement remains traceable to exactly one roadmap phase for future GSD execution.
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 04-01: Audit runtime-focused verification expectations and release notes
-- [ ] 04-02: Reconcile README, AGENTS, and `occt-core` docs with the runtime-first contract
-- [ ] 04-03: Keep planning traceability and workflow guidance aligned for future phases
+- [ ] 04-01-PLAN.md — Establish the canonical `test:release:root` release gate and root governance contract test
+- [ ] 04-02-PLAN.md — Reconcile README, AGENTS, `occt-core`, and the release skill around the runtime-first release boundary
+- [ ] 04-03-PLAN.md — Synchronize `.planning` traceability and state with the finalized Phase 4 governance contract
 
 ## Progress
 
