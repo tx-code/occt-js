@@ -12,8 +12,8 @@
 
 ### Exact Topology References
 
-- [ ] **REF-01**: Downstream JS code can address exact face, edge, and vertex elements through a stable reference shape that includes exact-model identity and enough occurrence context for repeated measurement calls.
-- [ ] **REF-02**: Downstream JS code can resolve exact face, edge, and vertex references from the ids already exported in the current mesh/topology payload through an explicit imported-topology-id mapping layer instead of introducing a second viewer-specific id system.
+- [x] **REF-01**: Downstream JS code can address exact face, edge, and vertex elements through a stable reference shape that includes exact-model identity and enough occurrence context for repeated measurement calls.
+- [x] **REF-02**: Downstream JS code can resolve exact face, edge, and vertex references from the ids already exported in the current mesh/topology payload through an explicit imported-topology-id mapping layer instead of introducing a second viewer-specific id system.
 - [ ] **REF-03**: Downstream JS code can classify exact topology references into primitive geometry families such as line, circle, plane, cylinder, cone, or sphere so app-side measurement semantics can compose on top.
 
 ### Primitive Exact Measurements
@@ -56,8 +56,8 @@
 |-------------|-------|--------|
 | LIFE-01 | Phase 5 | Completed |
 | LIFE-02 | Phase 5 | Completed |
-| REF-01 | Phase 6 | Planned |
-| REF-02 | Phase 6 | Planned |
+| REF-01 | Phase 6 | Completed |
+| REF-02 | Phase 6 | Completed |
 | REF-03 | Phase 7 | Planned |
 | MEAS-01 | Phase 8 | Planned |
 | MEAS-02 | Phase 8 | Planned |
@@ -74,4 +74,4 @@
 
 ---
 *Requirements defined: 2026-04-14*
-*Last updated: 2026-04-14 after Phase 05 completion*
+*Last updated: 2026-04-15 after Phase 06 completion*

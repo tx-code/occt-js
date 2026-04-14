@@ -26,7 +26,7 @@ This roadmap keeps `occt-js` centered on the runtime-first Wasm carrier. v1.0 sh
 </details>
 
 - [x] **Phase 5: Exact Model Lifecycle Contract** - Add a stateful exact-model lane with explicit retain/release semantics beside the existing stateless imports.
-- [ ] **Phase 6: Occurrence-Scoped Exact Ref Mapping** - Resolve exact face, edge, and vertex refs from current exported topology ids through an explicit mapping layer.
+- [x] **Phase 6: Occurrence-Scoped Exact Ref Mapping** - Resolve exact face, edge, and vertex refs from current exported topology ids through an explicit mapping layer.
 - [ ] **Phase 7: Primitive Exact Geometry Queries** - Expose geometry classification and single-entity exact measurements needed for app-side composition.
 - [ ] **Phase 8: Pairwise Measurement Contract Hardening** - Ship pairwise exact measurements, JS-friendly adapters, and runtime-first contract hardening.
 
@@ -132,8 +132,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 06-01-PLAN.md — Add internal imported-topology-id mapping and occurrence-scoped exact-ref DTOs
-- [ ] 06-02-PLAN.md — Expose core-side ref resolution from normalized model data and repeated-call validation
+- [x] 06-01-PLAN.md — Add internal imported-topology-id mapping and occurrence-scoped exact-ref DTOs
+- [x] 06-02-PLAN.md — Expose core-side ref resolution from normalized model data and repeated-call validation
 
 ### Phase 7: Primitive Exact Geometry Queries
 **Goal**: Downstream JS can classify exact refs and retrieve exact single-entity primitives needed for app-side measurement composition.
@@ -182,6 +182,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 3. Downstream Consumption Contract | 3/3 | Complete | 2026-04-14 |
 | 4. Release & Governance Flow | 3/3 | Complete | 2026-04-14 |
 | 5. Exact Model Lifecycle Contract | 2/2 | Complete | 2026-04-14 |
-| 6. Occurrence-Scoped Exact Ref Mapping | 0/2 | Not started | - |
+| 6. Occurrence-Scoped Exact Ref Mapping | 2/2 | Complete | 2026-04-15 |
 | 7. Primitive Exact Geometry Queries | 0/2 | Not started | - |
 | 8. Pairwise Measurement Contract Hardening | 0/3 | Not started | - |
