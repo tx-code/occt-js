@@ -81,6 +81,7 @@ struct OcctSceneData {
 struct OcctExactImportData {
     OcctSceneData scene;
     TopoDS_Shape exactShape;
+    std::vector<TopoDS_Shape> exactGeometryShapes;
 };
 
 struct OcctLifecycleResult {

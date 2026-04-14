@@ -23,7 +23,11 @@ std::array<float, 16> IdentityMatrix()
     return {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
 }
 
-void ExtractShapeMeshes(const TopoDS_Shape& shape, OcctSceneData& scene, OcctNodeData& node)
+void ExtractShapeMeshes(
+    const TopoDS_Shape& shape,
+    OcctSceneData& scene,
+    OcctNodeData& node,
+    std::vector<TopoDS_Shape>* exactGeometryShapes = nullptr)
 {
     std::map<uintptr_t, int> shapeHashToMeshIndex;
 
@@ -44,6 +48,9 @@ void ExtractShapeMeshes(const TopoDS_Shape& shape, OcctSceneData& scene, OcctNod
         int meshIdx = static_cast<int>(scene.meshes.size());
         scene.meshes.push_back(std::move(meshData));
         shapeHashToMeshIndex[reinterpret_cast<uintptr_t>(tshapePtr)] = meshIdx;
+        if (exactGeometryShapes != nullptr) {
+            exactGeometryShapes->push_back(subShape);
+        }
         node.meshIndices.push_back(meshIdx);
     };
 
@@ -110,7 +117,8 @@ std::vector<TopoDS_Shape> CollectRootShapes(const TopoDS_Shape& shape, const Imp
 void AppendRootNode(const TopoDS_Shape& shape,
                     const std::string& nodeId,
                     const std::string& nodeName,
-                    OcctSceneData& scene)
+                    OcctSceneData& scene,
+                    std::vector<TopoDS_Shape>* exactGeometryShapes = nullptr)
 {
     scene.nodes.emplace_back();
     OcctNodeData& root = scene.nodes.back();
@@ -119,7 +127,7 @@ void AppendRootNode(const TopoDS_Shape& shape,
     root.isAssembly = false;
     root.transform = IdentityMatrix();
 
-    ExtractShapeMeshes(shape, scene, root);
+    ExtractShapeMeshes(shape, scene, root, exactGeometryShapes);
 }
 
 } // namespace
@@ -161,7 +169,12 @@ OcctExactImportData ImportExactBrepFromMemory(
                 : baseName;
 
             const int rootIndex = static_cast<int>(scene.nodes.size());
-            AppendRootNode(rootShapes[i], std::to_string(rootIndex), nodeName, scene);
+            AppendRootNode(
+                rootShapes[i],
+                std::to_string(rootIndex),
+                nodeName,
+                scene,
+                &imported.exactGeometryShapes);
 
             if (!scene.nodes[rootIndex].meshIndices.empty()) {
                 scene.rootNodeIndices.push_back(rootIndex);
@@ -174,6 +187,10 @@ OcctExactImportData ImportExactBrepFromMemory(
         }
 
         imported.exactShape = meshingShape;
+        if (imported.exactGeometryShapes.size() != scene.meshes.size()) {
+            scene.error = "Failed to align exact geometry bindings with exported geometries.";
+            return imported;
+        }
         scene.success = true;
     }
     catch (const Standard_Failure& ex) {

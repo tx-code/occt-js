@@ -45,6 +45,7 @@ ExactModelStore& ExactModelStore::Instance()
 
 int ExactModelStore::Register(
     const TopoDS_Shape& exactShape,
+    const std::vector<TopoDS_Shape>& exactGeometryShapes,
     const std::string& sourceFormat,
     const std::string& sourceUnit,
     double unitScaleToMeters)
@@ -64,6 +65,7 @@ int ExactModelStore::Register(
     entry.sourceUnit = sourceUnit;
     entry.unitScaleToMeters = unitScaleToMeters;
     entry.exactShape = exactShape;
+    entry.exactGeometryShapes = exactGeometryShapes;
     state.liveEntries.emplace(exactModelId, std::move(entry));
     return exactModelId;
 }

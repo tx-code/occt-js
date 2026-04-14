@@ -367,6 +367,17 @@ val LifecycleResultToVal(const OcctLifecycleResult& result)
     return obj;
 }
 
+val ExactGeometryBindingsToVal(size_t geometryCount)
+{
+    val bindings = val::array();
+    for (size_t index = 0; index < geometryCount; ++index) {
+        val binding = val::object();
+        binding.set("exactShapeHandle", static_cast<int>(index + 1));
+        bindings.call<void>("push", binding);
+    }
+    return bindings;
+}
+
 val BuildResult(const OcctSceneData& scene, const std::string& sourceFormat)
 {
     val result = val::object();
@@ -522,6 +533,7 @@ val OpenExactByFormat(const std::string& format, const val& content, const val& 
 
     const int exactModelId = ExactModelStore::Instance().Register(
         imported.exactShape,
+        imported.exactGeometryShapes,
         normalizedFormat,
         imported.scene.sourceUnit,
         imported.scene.unitScaleToMeters
@@ -535,6 +547,7 @@ val OpenExactByFormat(const std::string& format, const val& content, const val& 
 
     val result = BuildResult(imported.scene, normalizedFormat);
     result.set("exactModelId", exactModelId);
+    result.set("exactGeometryBindings", ExactGeometryBindingsToVal(imported.exactGeometryShapes.size()));
     return result;
 }
 

@@ -81,6 +81,11 @@ export interface OcctJSResult {
 
 export interface OcctJSExactOpenResult extends OcctJSResult {
     exactModelId?: number;
+    exactGeometryBindings?: OcctJSExactGeometryBinding[];
+}
+
+export interface OcctJSExactGeometryBinding {
+    exactShapeHandle: number;
 }
 
 export interface OcctJSLifecycleSuccess {

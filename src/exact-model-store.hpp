@@ -11,6 +11,7 @@ struct ExactModelEntry {
     std::string sourceUnit;
     double unitScaleToMeters = 0.0;
     TopoDS_Shape exactShape;
+    std::vector<TopoDS_Shape> exactGeometryShapes;
 };
 
 class ExactModelStore {
@@ -19,6 +20,7 @@ public:
 
     int Register(
         const TopoDS_Shape& exactShape,
+        const std::vector<TopoDS_Shape>& exactGeometryShapes,
         const std::string& sourceFormat,
         const std::string& sourceUnit,
         double unitScaleToMeters);

@@ -192,7 +192,8 @@ void ExtractShapeMeshes(const TopoDS_Shape& shape,
                         const Handle(XCAFDoc_ColorTool)& colorTool,
                         OcctSceneData& scene,
                         OcctNodeData& node,
-                        std::map<uintptr_t, int>& shapeHashToMeshIndex)
+                        std::map<uintptr_t, int>& shapeHashToMeshIndex,
+                        std::vector<TopoDS_Shape>* exactGeometryShapes = nullptr)
 {
     auto extractOne = [&](const TopoDS_Shape& subShape) {
         auto* tshapePtr = subShape.IsNull() ? nullptr : subShape.TShape().get();
@@ -229,6 +230,9 @@ void ExtractShapeMeshes(const TopoDS_Shape& shape,
         int meshIdx = static_cast<int>(scene.meshes.size());
         scene.meshes.push_back(std::move(meshData));
         shapeHashToMeshIndex[reinterpret_cast<uintptr_t>(tshapePtr)] = meshIdx;
+        if (exactGeometryShapes != nullptr) {
+            exactGeometryShapes->push_back(subShape);
+        }
         node.meshIndices.push_back(meshIdx);
     };
 
@@ -253,7 +257,8 @@ void TraverseLabel(const TDF_Label& label,
                    const Handle(XCAFDoc_ColorTool)& colorTool,
                    const ImportParams& params,
                    OcctSceneData& scene,
-                   std::map<uintptr_t, int>& shapeCache)
+                   std::map<uintptr_t, int>& shapeCache,
+                   std::vector<TopoDS_Shape>* exactGeometryShapes = nullptr)
 {
     int nodeIndex = static_cast<int>(scene.nodes.size());
     scene.nodes.emplace_back();
@@ -282,7 +287,14 @@ void TraverseLabel(const TDF_Label& label,
         scene.nodes[nodeIndex].isAssembly = false;
         TopoDS_Shape shape = shapeTool->GetShape(refLabel);
         if (!shape.IsNull()) {
-            ExtractShapeMeshes(shape, shapeTool, colorTool, scene, scene.nodes[nodeIndex], shapeCache);
+            ExtractShapeMeshes(
+                shape,
+                shapeTool,
+                colorTool,
+                scene,
+                scene.nodes[nodeIndex],
+                shapeCache,
+                exactGeometryShapes);
         }
     } else {
         scene.nodes[nodeIndex].isAssembly = true;
@@ -290,7 +302,14 @@ void TraverseLabel(const TDF_Label& label,
             TDF_Label childLabel = it.Value();
             if (IsFreeShape(childLabel, shapeTool)) {
                 int childIdx = static_cast<int>(scene.nodes.size());
-                TraverseLabel(childLabel, shapeTool, colorTool, params, scene, shapeCache);
+                TraverseLabel(
+                    childLabel,
+                    shapeTool,
+                    colorTool,
+                    params,
+                    scene,
+                    shapeCache,
+                    exactGeometryShapes);
                 scene.nodes[nodeIndex].childIndices.push_back(childIdx);
             }
         }
@@ -301,7 +320,8 @@ void AppendRootNodes(const TDF_LabelSequence& freeShapes,
                      const Handle(XCAFDoc_ShapeTool)& shapeTool,
                      const Handle(XCAFDoc_ColorTool)& colorTool,
                      const ImportParams& params,
-                     OcctSceneData& scene)
+                     OcctSceneData& scene,
+                     std::vector<TopoDS_Shape>* exactGeometryShapes = nullptr)
 {
     std::map<uintptr_t, int> shapeCache;
 
@@ -316,7 +336,8 @@ void AppendRootNodes(const TDF_LabelSequence& freeShapes,
                 colorTool,
                 params,
                 scene,
-                shapeCache);
+                shapeCache,
+                exactGeometryShapes);
             scene.rootNodeIndices.push_back(rootIdx);
         }
         return;
@@ -339,7 +360,8 @@ void AppendRootNodes(const TDF_LabelSequence& freeShapes,
             colorTool,
             params,
             scene,
-            shapeCache);
+            shapeCache,
+            exactGeometryShapes);
         scene.nodes[rootIdx].childIndices.push_back(childIdx);
     }
 
@@ -517,10 +539,15 @@ OcctExactImportData ImportExactXdeFromMemory(
             }
         }
 
-        AppendRootNodes(freeShapes, shapeTool, colorTool, params, scene);
+        AppendRootNodes(freeShapes, shapeTool, colorTool, params, scene, &imported.exactGeometryShapes);
         imported.exactShape = BuildExactRootShape(freeShapes, shapeTool);
         if (imported.exactShape.IsNull()) {
             scene.error = "Failed to build the retained exact root shape.";
+            app->Close(doc);
+            return imported;
+        }
+        if (imported.exactGeometryShapes.size() != scene.meshes.size()) {
+            scene.error = "Failed to align exact geometry bindings with exported geometries.";
             app->Close(doc);
             return imported;
         }
