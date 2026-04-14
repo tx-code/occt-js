@@ -286,22 +286,16 @@ if exist build\wasm\occt-js.wasm copy /Y build\wasm\occt-js.wasm dist\occt-js.wa
 
 None - all claims in this research were verified from the current codebase, shell audit, or official documentation, so no user confirmation is required before planning. [VERIFIED: codebase file][VERIFIED: shell command][CITED: https://emscripten.org/docs/getting_started/downloads.html]
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Which location is authoritative for freshly generated `occt-js.js` and `occt-js.wasm` during the Windows build?**
-   - What we know: `CMakeLists.txt` sets `RUNTIME_OUTPUT_DIRECTORY` to `dist/`, while `tools/build_wasm_win_dist.bat` copies from `build\\wasm`. [VERIFIED: codebase file][CITED: https://cmake.org/cmake/help/latest/prop_tgt/RUNTIME_OUTPUT_DIRECTORY.html]
-   - What's unclear: the actual clean-build artifact origin for the current Windows generator path in this repo. [VERIFIED: codebase file]
-   - Recommendation: make Wave 0 capture a clean Windows build log plus artifact locations before changing docs or wrapper logic. [VERIFIED: codebase file]
+   - Resolution: `dist/occt-js.js` and `dist/occt-js.wasm` are the only authoritative runtime artifacts for maintainers and downstream consumers per D-03. Phase 01 execution must empirically verify the clean-Windows artifact origin and then reconcile scripts/CMake so `build\\wasm` is no longer treated as a competing consumer-facing source. [VERIFIED: codebase file]
 
 2. **Should explicit Git and CMake prerequisite detection be in scope, or is retained-log diagnosis sufficient?**
-   - What we know: current fast tests only cover missing submodule, missing local emsdk marker, missing tracked type definitions, and missing `dist/occt-js.js`. [VERIFIED: codebase file]
-   - What's unclear: whether Success Criterion 2 should be satisfied by docs plus retained logs, or by new first-class prereq checks for external executables as well. [VERIFIED: codebase file]
-   - Recommendation: lock this during planning because it changes script scope, test scope, and acceptance criteria wording. [VERIFIED: codebase file]
+   - Resolution: actionable early detection for missing Git/CMake is in scope when it can be added cheaply to the existing Windows flow, but retained `build/wasm-build.log` diagnostics remain mandatory fallback behavior per D-07. Phase 01 should improve failure messaging without turning into heavyweight environment-bootstrap redesign. [VERIFIED: codebase file]
 
 3. **Do we want an automated guard for demo/Tauri `dist/` references in this phase?**
-   - What we know: `demo/src/hooks/useOcct.js`, `demo/src-tauri/tauri.conf.json`, and `package.json` all depend on the `dist/` contract, but current Phase 01 fast tests do not assert those config references. [VERIFIED: codebase file]
-   - What's unclear: whether config alignment should remain a manual audit item or get a cheap static test in this phase. [VERIFIED: codebase file]
-   - Recommendation: decide this up front so plan tasks do not drift into viewer-feature work while still protecting the contract. [VERIFIED: codebase file]
+   - Resolution: yes. A cheap static consumer-contract guard is in scope because it protects the existing `dist/` runtime contract for package metadata, local web dev, and Tauri packaging without drifting into viewer-feature testing. [VERIFIED: codebase file]
 
 ## Environment Availability
 
