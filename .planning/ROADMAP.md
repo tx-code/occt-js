@@ -12,7 +12,7 @@ This roadmap treats the root Wasm package as the strategic product surface and e
 
 - [x] **Phase 1: Wasm Build & Dist Baseline** - Lock the reproducible Windows Wasm build path and canonical `dist/` artifact contract.
 - [x] **Phase 2: Root Runtime Contract** - Harden and verify the root import, root-mode, source-unit, and orientation API contract.
-- [ ] **Phase 3: Downstream Consumption Contract** - Tighten vendored/package consumption behavior for `@tx-code/occt-js` and `@tx-code/occt-core`.
+- [x] **Phase 3: Downstream Consumption Contract** - Tighten vendored/package consumption behavior for `@tx-code/occt-js` and `@tx-code/occt-core`.
 - [ ] **Phase 4: Release & Governance Flow** - Converge docs, verification expectations, and planning traceability around the root Wasm carrier.
 
 ## Phase Details
@@ -64,9 +64,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 03-01-PLAN.md — Audit `occt-js` packaged entrypoints and wasm-locate behavior
-- [ ] 03-02-PLAN.md — Audit `occt-core` public API and normalization guarantees
-- [ ] 03-03-PLAN.md — Reconcile packaging/docs with vendored downstream usage
+- [x] 03-01-PLAN.md — Audit `occt-js` packaged entrypoints and wasm-locate behavior
+- [x] 03-02-PLAN.md — Audit `occt-core` public API and normalization guarantees
+- [x] 03-03-PLAN.md — Reconcile packaging/docs with vendored downstream usage
 ### Phase 4: Release & Governance Flow
 **Goal**: Converge repo docs, verification expectations, and planning traceability around the root Wasm carrier rather than secondary viewer/demo surfaces.
 **Depends on**: Phase 3
@@ -93,5 +93,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Wasm Build & Dist Baseline | 3/3 | Completed | 2026-04-14 |
 | 2. Root Runtime Contract | 3/3 | Completed | 2026-04-14 |
-| 3. Downstream Consumption Contract | 0/3 | Planned | - |
+| 3. Downstream Consumption Contract | 3/3 | Completed | 2026-04-14 |
 | 4. Release & Governance Flow | 0/3 | Not started | - |
