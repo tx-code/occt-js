@@ -21,21 +21,34 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 
 ### Active
 
-- [ ] Define the next milestone beyond v1 runtime hardening.
-- [ ] Preserve the runtime-first contract as future analytics, CI automation, or secondary-surface work is added.
+- [ ] Expose stable exact-model lifecycle APIs so downstream apps can retain and release imported BRep/STEP/IGES shapes for later measurement work.
+- [ ] Expose exact topology element references for faces, edges, and vertices in a form downstream apps can map from picks to BRep entities.
+- [ ] Expose exact primitive measurement APIs for distance, angle, radius, center, edge length, face area, face normal evaluation, and thickness.
+- [ ] Preserve the runtime-first contract while adding measurement capabilities, without promoting viewer/UI semantics into the root product boundary.
 
 ### Out of Scope
 
 - Evolving this repo into a full viewer framework as the primary goal — the main value is the OCCT Wasm runtime.
 - Making Tauri or desktop packaging a prerequisite for root npm publishing — root runtime must stay independently releasable.
 - Treating Babylon/demo layers as first-order release gates for the root runtime.
-- Broad format expansion beyond OCCT-backed STEP, IGES, and BREP in this milestone — current focus is stabilizing the existing runtime contract.
+- Broad format expansion beyond OCCT-backed STEP, IGES, and BREP in this milestone — current focus is exact measurement foundations on top of the existing runtime contract.
+- App-level measurement UX, selection state machines, overlays, and feature semantics such as hole/chamfer recognition — these belong in downstream apps after the wasm/core foundation exists.
+
+## Current Milestone: v1.1 Exact BRep Measurement Foundation
+
+**Goal:** Extend the root Wasm/runtime surface just enough to support exact BRep measurement in downstream web apps without turning `occt-js` into a viewer framework.
+
+**Target features:**
+- Exact model lifecycle handles for retained imported shapes
+- Exact topology references for face, edge, and vertex measurement targets
+- Primitive measurement APIs for exact geometric values and attach points
 
 ## Context
 
 - Brownfield repository with existing shipped surfaces and accumulated design docs from March 2026.
 - Root package version is `0.1.7`; the root runtime and root tests are the primary maintained contract.
 - `imos-app` is the important downstream consumer signal: it vendors `@tx-code/occt-js` and consumes the Wasm/runtime surface directly, while Babylon viewer code is internalized on the `imos-app` side.
+- `SceneGraph.net` remains the clearest local reference for what "complete measurement" looks like above the kernel layer: persistent shape storage, exact topology resolution, and app-side measurement semantics.
 - Current initialization is intentionally synthesized from repository docs and concrete package/test surfaces instead of a separate `/gsd-map-codebase` run.
 - Team intent is to use GSD as the primary planning/execution flow going forward, with superpowers used as supporting process skills.
 
@@ -56,6 +69,7 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 | Keep existing `AGENTS.md` as the authoritative repo instruction file | The repo already consolidated agent guidance there; generic regeneration would risk overwriting local rules | ✓ Good |
 | Use `npm run test:release:root` as the canonical root release gate | One command is easier to document, test, and reuse across README, AGENTS, skills, and future planning | ✓ Good |
 | Keep demo, Babylon, and Tauri checks conditional secondary-surface verification | Root release flow must stay aligned with the Wasm carrier boundary and avoid secondary-surface gate creep | ✓ Good |
+| Keep exact measurement semantics in downstream apps and limit this milestone to wasm/core primitives | The main value is exposing a reliable geometric kernel contract; selection UX, overlays, and feature interpretation belong above the runtime | ✓ Good |
 
 ## Evolution
 
@@ -75,4 +89,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-14 after Phase 04 governance alignment*
+*Last updated: 2026-04-14 starting v1.1 Exact BRep Measurement Foundation*

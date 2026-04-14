@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: OCCT Wasm Runtime Hardening
-status: completed
-stopped_at: v1.0 milestone completed and archived
-last_updated: "2026-04-14T13:42:39.424Z"
-last_activity: 2026-04-14 -- v1.0 milestone archived
+milestone: v1.1
+milestone_name: Exact BRep Measurement Foundation
+status: planning
+stopped_at: Defining milestone v1.1 requirements
+last_updated: "2026-04-14T16:05:00Z"
+last_activity: 2026-04-14 -- Milestone v1.1 started
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 12
-  completed_plans: 12
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-14)
 
 **Core value:** Downstream applications can reliably consume the OCCT Wasm runtime and its root API contract without build drift or packaging surprises.
-**Current focus:** v1.0 is archived. The next step is defining the BRep measurement foundation milestone on top of the shipped runtime-first baseline.
+**Current focus:** Defining milestone v1.1, `Exact BRep Measurement Foundation`, around exact-model lifecycle handles, exact topology refs, and primitive BRep measurement APIs.
 
 ## Current Position
 
-Phase: 04 of 4 (release-governance-flow) — COMPLETE
-Plan: 3 of 3 complete
-Status: v1.0 milestone complete
-Last activity: 2026-04-14 -- v1.0 milestone archived
+Phase: Not started (defining requirements)
+Plan: -
+Status: Defining requirements
+Last activity: 2026-04-14 -- Milestone v1.1 started
 
-Progress: [██████████] 100%
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
@@ -72,15 +72,15 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-None yet.
+- Translate the agreed measurement boundary into milestone requirements and roadmap phases.
 
 ### Blockers/Concerns
 
 - No active blockers remain.
-- Next step is starting the measurement milestone.
+- Next step is research, requirements definition, and roadmap creation for v1.1.
 
 ## Session Continuity
 
 Last session: 2026-04-14T11:31:10.141Z
-Stopped at: v1.0 milestone completed and archived
-Resume file: .planning/milestones/v1.0-MILESTONE-AUDIT.md
+Stopped at: Defining milestone v1.1 requirements
+Resume file: .planning/PROJECT.md
