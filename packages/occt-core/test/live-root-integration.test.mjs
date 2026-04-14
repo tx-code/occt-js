@@ -24,3 +24,22 @@ test("createOcctCore imports STEP through the built root carrier", async () => {
   assert.ok(model.geometries.length > 0);
   assert.ok(model.stats.partCount > 0);
 });
+
+test("createOcctCore opens and disposes an exact STEP handle through the built root carrier", async () => {
+  const factory = loadOcctFactory();
+  const wasmBinary = new Uint8Array(await readFile(new URL("../../../dist/occt-js.wasm", import.meta.url)));
+  const stepBytes = new Uint8Array(await readFile(new URL("../../../test/simple_part.step", import.meta.url)));
+
+  const core = createOcctCore({
+    factory,
+    wasmBinary,
+  });
+
+  const exact = await core.openExactStep(stepBytes, {
+    fileName: "simple_part.step",
+  });
+
+  assert.equal(exact.sourceFormat, "step");
+  assert.equal(typeof exact.exactModelId, "number");
+  assert.deepEqual(await core.releaseExactModel(exact.exactModelId), { ok: true });
+});

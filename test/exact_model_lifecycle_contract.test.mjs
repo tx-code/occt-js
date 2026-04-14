@@ -40,24 +40,52 @@ test("exact open APIs return mesh payload plus exactModelId", async () => {
   assertCanonicalExactPayload(brepResult, "brep", "BREP exact open");
 });
 
-test("exact lifecycle lane does not change stateless ReadStepFile output", async () => {
+test("retainExactModel keeps a live handle valid until the final release", async () => {
+  const module = await createModule();
+  const stepBytes = await loadFixture("simple_part.step");
+  const result = module.OpenExactStepModel(stepBytes, {});
+
+  assert.equal(module.RetainExactModel(result.exactModelId)?.ok, true);
+  assert.deepEqual(module.ReleaseExactModel(result.exactModelId), { ok: true });
+  assert.deepEqual(module.ReleaseExactModel(result.exactModelId), { ok: true });
+});
+
+test("released and unknown handles fail with explicit lifecycle codes", async () => {
+  const module = await createModule();
+  const stepBytes = await loadFixture("simple_part.step");
+  const result = module.OpenExactStepModel(stepBytes, {});
+
+  assert.deepEqual(module.ReleaseExactModel(result.exactModelId), { ok: true });
+  assert.deepEqual(module.RetainExactModel(result.exactModelId), {
+    ok: false,
+    code: "released-handle",
+    message: "Exact model handle has already been released.",
+  });
+  assert.deepEqual(module.ReleaseExactModel(result.exactModelId), {
+    ok: false,
+    code: "released-handle",
+    message: "Exact model handle has already been released.",
+  });
+  assert.deepEqual(module.RetainExactModel(999999), {
+    ok: false,
+    code: "invalid-handle",
+    message: "Exact model handle is unknown.",
+  });
+  assert.deepEqual(module.ReleaseExactModel(999999), {
+    ok: false,
+    code: "invalid-handle",
+    message: "Exact model handle is unknown.",
+  });
+});
+
+test("stateless ReadFile remains exact-handle-free after exact lane changes", async () => {
   const module = await createModule();
   const stepBytes = await loadFixture("simple_part.step");
 
-  const stateless = module.ReadStepFile(stepBytes, {});
+  const stateless = module.ReadFile("step", stepBytes, {});
 
   assert.equal(stateless?.success, true);
   assert.equal("exactModelId" in stateless, false);
   assert.ok(Array.isArray(stateless?.rootNodes));
   assert.ok(Array.isArray(stateless?.geometries));
-});
-
-test("releaseExactModel succeeds for a fresh exact handle", async () => {
-  const module = await createModule();
-  const stepBytes = await loadFixture("simple_part.step");
-
-  const result = module.OpenExactStepModel(stepBytes, {});
-  const released = module.ReleaseExactModel(result.exactModelId);
-
-  assert.deepEqual(released, { ok: true });
 });
