@@ -4,6 +4,17 @@
   "description": "OCCT CAD import via WebAssembly — read STEP/IGES/BREP files in the browser",
   "main": "dist/occt-js.js",
   "types": "dist/occt-js.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/occt-js.d.ts",
+      "require": "./dist/occt-js.js",
+      "default": "./dist/occt-js.js"
+    },
+    "./dist/occt-js.js": "./dist/occt-js.js",
+    "./dist/occt-js.wasm": "./dist/occt-js.wasm",
+    "./dist/occt-js.d.ts": "./dist/occt-js.d.ts",
+    "./package.json": "./package.json"
+  },
   "files": [
     "dist/occt-js.js",
     "dist/occt-js.wasm",

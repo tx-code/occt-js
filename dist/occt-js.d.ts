@@ -146,7 +146,7 @@ export interface OcctJSModule {
 }
 
 declare function OcctJS(options?: {
-    locateFile?: (filename: string) => string;
+    locateFile?: (filename: string, scriptDirectory?: string) => string;
     wasmBinary?: ArrayBuffer | Uint8Array;
 }): Promise<OcctJSModule>;
 
