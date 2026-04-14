@@ -79,6 +79,22 @@ export interface OcctJSResult {
     stats?: OcctJSStats;
 }
 
+export interface OcctJSExactOpenResult extends OcctJSResult {
+    exactModelId?: number;
+}
+
+export interface OcctJSLifecycleSuccess {
+    ok: true;
+}
+
+export interface OcctJSLifecycleFailure {
+    ok: false;
+    code: string;
+    message: string;
+}
+
+export type OcctJSLifecycleResult = OcctJSLifecycleSuccess | OcctJSLifecycleFailure;
+
 export interface OcctJSReadParams {
     rootMode?: "one-shape" | "multiple-shapes";
     linearUnit?: "millimeter" | "centimeter" | "meter" | "inch" | "foot";
@@ -142,6 +158,12 @@ export interface OcctJSModule {
     ReadStepFile(content: Uint8Array, params?: OcctJSReadParams): OcctJSResult;
     ReadIgesFile(content: Uint8Array, params?: OcctJSReadParams): OcctJSResult;
     ReadBrepFile(content: Uint8Array, params?: OcctJSReadParams): OcctJSResult;
+    OpenExactModel(format: string, content: Uint8Array, params?: OcctJSReadParams): OcctJSExactOpenResult;
+    OpenExactStepModel(content: Uint8Array, params?: OcctJSReadParams): OcctJSExactOpenResult;
+    OpenExactIgesModel(content: Uint8Array, params?: OcctJSReadParams): OcctJSExactOpenResult;
+    OpenExactBrepModel(content: Uint8Array, params?: OcctJSReadParams): OcctJSExactOpenResult;
+    RetainExactModel(exactModelId: number): OcctJSLifecycleResult;
+    ReleaseExactModel(exactModelId: number): OcctJSLifecycleResult;
     AnalyzeOptimalOrientation(format: OcctFormat, content: Uint8Array, params?: OcctJSOrientationParams): OcctJSOrientationResult;
 }
 

@@ -1,6 +1,12 @@
 import { getReadMethodName, normalizeOcctFormat, listSupportedFormats } from "./formats.js";
 import { normalizeOcctResult } from "./model-normalizer.js";
 
+const EXACT_OPEN_METHOD = {
+  step: "OpenExactStepModel",
+  iges: "OpenExactIgesModel",
+  brep: "OpenExactBrepModel",
+};
+
 function toUint8Array(content) {
   if (content instanceof Uint8Array) {
     return content;
@@ -104,16 +110,19 @@ export class OcctCoreClient {
     return listSupportedFormats().filter((format) => typeof module[getReadMethodName(format)] === "function");
   }
 
-  async importModel(content, options = {}) {
-    const module = await this._ensureModule();
-    const bytes = toUint8Array(content);
-
+  _resolveRequestedFormat(options, operationName) {
     const guessedFormat = formatFromFileName(options.fileName);
     const requestedFormat = options.format ?? guessedFormat;
     if (requestedFormat == null) {
-      throw new Error("importModel requires an explicit format or a fileName with a supported extension.");
+      throw new Error(`${operationName} requires an explicit format or a fileName with a supported extension.`);
     }
-    const normalizedFormat = normalizeOcctFormat(requestedFormat);
+    return normalizeOcctFormat(requestedFormat);
+  }
+
+  async importModel(content, options = {}) {
+    const module = await this._ensureModule();
+    const bytes = toUint8Array(content);
+    const normalizedFormat = this._resolveRequestedFormat(options, "importModel");
     const methodName = getReadMethodName(normalizedFormat);
 
     let rawResult;
@@ -133,6 +142,56 @@ export class OcctCoreClient {
       sourceFormat: normalizedFormat,
       sourceFileName: options.fileName,
     });
+  }
+
+  async openExactModel(content, options = {}) {
+    const module = await this._ensureModule();
+    const bytes = toUint8Array(content);
+    const normalizedFormat = this._resolveRequestedFormat(options, "openExactModel");
+    const methodName = EXACT_OPEN_METHOD[normalizedFormat];
+
+    let rawResult;
+    if (typeof module[methodName] === "function") {
+      rawResult = module[methodName](bytes, options.importParams ?? {});
+    } else if (typeof module.OpenExactModel === "function") {
+      rawResult = module.OpenExactModel(normalizedFormat, bytes, options.importParams ?? {});
+    } else {
+      throw new Error(`Loaded OCCT module does not expose ${methodName}() or OpenExactModel().`);
+    }
+
+    if (!rawResult?.success) {
+      throw new Error(rawResult?.error ?? `${methodName}()/OpenExactModel() failed.`);
+    }
+
+    return rawResult;
+  }
+
+  async openExactStep(content, options = {}) {
+    return this.openExactModel(content, { ...options, format: "step" });
+  }
+
+  async openExactIges(content, options = {}) {
+    return this.openExactModel(content, { ...options, format: "iges" });
+  }
+
+  async openExactBrep(content, options = {}) {
+    return this.openExactModel(content, { ...options, format: "brep" });
+  }
+
+  async retainExactModel(exactModelId) {
+    const module = await this._ensureModule();
+    if (typeof module.RetainExactModel !== "function") {
+      throw new Error("Loaded OCCT module does not expose RetainExactModel().");
+    }
+    return module.RetainExactModel(exactModelId);
+  }
+
+  async releaseExactModel(exactModelId) {
+    const module = await this._ensureModule();
+    if (typeof module.ReleaseExactModel !== "function") {
+      throw new Error("Loaded OCCT module does not expose ReleaseExactModel().");
+    }
+    return module.ReleaseExactModel(exactModelId);
   }
 
   async readStep(content, options = {}) {

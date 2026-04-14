@@ -370,6 +370,125 @@ describe("createOcctCore", () => {
     const supported = await core.getSupportedFormats();
     assert.deepEqual(supported, ["step", "iges", "brep"]);
   });
+
+  it("opens exact models through the exact lifecycle wrapper methods", async () => {
+    const calls = [];
+    const exactResult = {
+      success: true,
+      sourceFormat: "step",
+      exactModelId: 17,
+      rootNodes: [],
+      geometries: [],
+      materials: [],
+      warnings: [],
+      stats: EMPTY_STATS,
+    };
+    const core = createOcctCore({
+      factory: async () => ({
+        OpenExactStepModel: (bytes, params) => {
+          calls.push(["OpenExactStepModel", Array.from(bytes), params]);
+          return exactResult;
+        },
+      }),
+    });
+
+    const result = await core.openExactModel(new Uint8Array([7, 8, 9]), {
+      format: "stp",
+      importParams: { readColors: false },
+    });
+
+    assert.equal(result, exactResult);
+    assert.deepEqual(calls, [["OpenExactStepModel", [7, 8, 9], { readColors: false }]]);
+  });
+
+  it("falls back to generic OpenExactModel(format, ...) when a format-specific method is missing", async () => {
+    const calls = [];
+    const exactResult = {
+      success: true,
+      sourceFormat: "iges",
+      exactModelId: 42,
+      rootNodes: [],
+      geometries: [],
+      materials: [],
+      warnings: [],
+      stats: EMPTY_STATS,
+    };
+    const core = createOcctCore({
+      factory: async () => ({
+        OpenExactModel: (format, bytes, params) => {
+          calls.push([format, Array.from(bytes), params]);
+          return exactResult;
+        },
+      }),
+    });
+
+    const result = await core.openExactModel(new Uint8Array([1, 3, 5]), {
+      format: "iges",
+      importParams: { rootMode: "multiple-shapes" },
+    });
+
+    assert.equal(result, exactResult);
+    assert.deepEqual(calls, [["iges", [1, 3, 5], { rootMode: "multiple-shapes" }]]);
+  });
+
+  it("passes through lifecycle DTOs from retainExactModel and releaseExactModel", async () => {
+    const core = createOcctCore({
+      factory: async () => ({
+        RetainExactModel: (exactModelId) => ({ ok: false, code: "released-handle", message: `retain ${exactModelId}` }),
+        ReleaseExactModel: (exactModelId) => ({ ok: false, code: "invalid-handle", message: `release ${exactModelId}` }),
+      }),
+    });
+
+    assert.deepEqual(await core.retainExactModel(12), {
+      ok: false,
+      code: "released-handle",
+      message: "retain 12",
+    });
+    assert.deepEqual(await core.releaseExactModel(21), {
+      ok: false,
+      code: "invalid-handle",
+      message: "release 21",
+    });
+  });
+
+  it("pins the format for openExactStep/openExactIges/openExactBrep", async () => {
+    const calls = [];
+    const exactResult = {
+      success: true,
+      sourceFormat: "step",
+      exactModelId: 9,
+      rootNodes: [],
+      geometries: [],
+      materials: [],
+      warnings: [],
+      stats: EMPTY_STATS,
+    };
+    const core = createOcctCore({
+      factory: async () => ({
+        OpenExactStepModel: (bytes) => {
+          calls.push(["step", Array.from(bytes)]);
+          return { ...exactResult, sourceFormat: "step" };
+        },
+        OpenExactIgesModel: (bytes) => {
+          calls.push(["iges", Array.from(bytes)]);
+          return { ...exactResult, sourceFormat: "iges" };
+        },
+        OpenExactBrepModel: (bytes) => {
+          calls.push(["brep", Array.from(bytes)]);
+          return { ...exactResult, sourceFormat: "brep" };
+        },
+      }),
+    });
+
+    assert.equal((await core.openExactStep(new Uint8Array([1]))).sourceFormat, "step");
+    assert.equal((await core.openExactIges(new Uint8Array([2]))).sourceFormat, "iges");
+    assert.equal((await core.openExactBrep(new Uint8Array([3]))).sourceFormat, "brep");
+    assert.deepEqual(calls, [
+      ["step", [1]],
+      ["iges", [2]],
+      ["brep", [3]],
+    ]);
+  });
 });
 
 describe("resolveAutoOrientedModel", () => {
