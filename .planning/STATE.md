@@ -1,11 +1,11 @@
 ---
 gsd_state_version: 1.0
 milestone: v1.0
-milestone_name: milestone
-status: complete
-stopped_at: Phase 04 complete; ready to audit and archive milestone
-last_updated: "2026-04-14T15:35:00Z"
-last_activity: 2026-04-14 -- Phase 4 complete
+milestone_name: OCCT Wasm Runtime Hardening
+status: completed
+stopped_at: v1.0 milestone completed and archived
+last_updated: "2026-04-14T13:42:39.424Z"
+last_activity: 2026-04-14 -- v1.0 milestone archived
 progress:
   total_phases: 4
   completed_phases: 4
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-14)
 
 **Core value:** Downstream applications can reliably consume the OCCT Wasm runtime and its root API contract without build drift or packaging surprises.
-**Current focus:** Phase 04 is complete; the governance baseline is `npm run test:release:root`, with `test/release_governance_contract.test.mjs` and the live `occt-core` carrier smoke test guarding release drift before milestone archival.
+**Current focus:** v1.0 is archived. The next step is defining the BRep measurement foundation milestone on top of the shipped runtime-first baseline.
 
 ## Current Position
 
 Phase: 04 of 4 (release-governance-flow) — COMPLETE
 Plan: 3 of 3 complete
-Status: Phase 04 complete
-Last activity: 2026-04-14 -- Phase 4 complete
+Status: v1.0 milestone complete
+Last activity: 2026-04-14 -- v1.0 milestone archived
 
 Progress: [██████████] 100%
 
@@ -76,11 +76,11 @@ None yet.
 
 ### Blockers/Concerns
 
-- No active execution blockers remain.
-- Next step is auditing and archiving milestone v1.0 before starting the measurement milestone.
+- No active blockers remain.
+- Next step is starting the measurement milestone.
 
 ## Session Continuity
 
 Last session: 2026-04-14T11:31:10.141Z
-Stopped at: Phase 04 complete; ready to audit and archive milestone
-Resume file: .planning/v1.0-MILESTONE-AUDIT.md
+Stopped at: v1.0 milestone completed and archived
+Resume file: .planning/milestones/v1.0-MILESTONE-AUDIT.md
