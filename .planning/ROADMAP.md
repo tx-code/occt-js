@@ -27,12 +27,12 @@ This roadmap treats the root Wasm package as the strategic product surface and e
   1. Maintainers can follow one documented clean-Windows build path centered on `build/wasm/emsdk` and `npm run build:wasm:win`.
   2. Missing submodule or toolchain prerequisites fail with actionable messaging and retained diagnostics.
   3. `dist/occt-js.js` and `dist/occt-js.wasm` remain the only canonical runtime artifacts consumed by root tests, local web development, and desktop packaging.
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 01-01: Audit and tighten Windows setup/build scripts against the documented contract
-- [ ] 01-02: Verify `dist/` preflight behavior and retained failure diagnostics
-- [ ] 01-03: Reconcile root build docs with actual build/test entry points
+- [ ] 01-01-PLAN.md — Resolve the Windows script/CMake artifact-origin contract and retained-log behavior
+- [ ] 01-02-PLAN.md — Expand fast preflight coverage for prerequisites, missing `dist/` artifacts, and current `dist/` consumers
+- [ ] 01-03-PLAN.md — Reconcile README, AGENTS, and root npm commands around the finalized Windows baseline
 
 ### Phase 2: Root Runtime Contract
 **Goal**: Harden the root Wasm import contract for supported CAD formats, root-shape modes, unit metadata, and orientation analysis.
