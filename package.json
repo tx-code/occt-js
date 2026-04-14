@@ -26,7 +26,7 @@
     "build:wasm:win": "tools\\build_wasm_win_dist.bat",
     "test:release:root": "npm run build:wasm:win && node --test test/wasm_build_contract.test.mjs test/package_tarball_contract.test.mjs test/release_governance_contract.test.mjs && npm --prefix packages/occt-core test && npm test",
     "test:wasm:preflight": "node --test test/wasm_build_prereqs.test.mjs test/load_occt_factory.test.mjs test/dist_contract_consumers.test.mjs",
-    "test": "npm run test:wasm:preflight && node --test test/exact_model_lifecycle_contract.test.mjs && node test/test_multi_format_exports.mjs && node test/test_iges_degenerated_edges.mjs && node test/test_step_iges_root_mode.mjs && node test/test_brep_root_mode.mjs && node test/test_optimal_orientation_api.mjs && node test/test_optimal_orientation_reference.mjs && node test/test_mvp_acceptance.mjs"
+    "test": "npm run test:wasm:preflight && node --test test/exact_model_lifecycle_contract.test.mjs test/exact_ref_mapping_contract.test.mjs && node test/test_multi_format_exports.mjs && node test/test_iges_degenerated_edges.mjs && node test/test_step_iges_root_mode.mjs && node test/test_brep_root_mode.mjs && node test/test_optimal_orientation_api.mjs && node test/test_optimal_orientation_reference.mjs && node test/test_mvp_acceptance.mjs"
   },
   "repository": {
     "type": "git",
