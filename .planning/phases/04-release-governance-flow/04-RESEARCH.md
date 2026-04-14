@@ -248,17 +248,17 @@ All material claims in this research were verified from the current codebase, cu
 |---|-------|---------|---------------|
 | — | None. [VERIFIED: codebase file][VERIFIED: shell command] | — | — |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should Phase 4 add a new root script such as `test:release:root`, or only document a manual command matrix?**
-   - What we know: the current script surface omits `test/wasm_build_contract.test.mjs`, `test/package_tarball_contract.test.mjs`, and `npm --prefix packages/occt-core test`, even though all three pass. [VERIFIED: package.json][VERIFIED: shell command]
-   - What's unclear: whether maintainers want zero new script names in `package.json`. [VERIFIED: package.json]
-   - Recommendation: prefer one new root script so README, AGENTS, the release skill, and future planners can all point to the same command string. [VERIFIED: package.json][VERIFIED: README.md][VERIFIED: AGENTS.md][VERIFIED: .codex/skills/releasing-occt-js/SKILL.md]
+   - Decision: add the new root script `test:release:root` and make it the canonical root release verification command. [RESOLVED]
+   - Why: the current script surface omits `test/wasm_build_contract.test.mjs`, `test/package_tarball_contract.test.mjs`, and `npm --prefix packages/occt-core test`, so a prose-only matrix would preserve multiple sources of truth. [VERIFIED: package.json][VERIFIED: shell command]
+   - Planning impact: README, AGENTS, the release skill, and governance tests should all point to this exact command string. [VERIFIED: README.md][VERIFIED: AGENTS.md][VERIFIED: .codex/skills/releasing-occt-js/SKILL.md]
 
 2. **Should the production demo CDN bump in `demo/src/hooks/useOcct.js` remain part of every root release?**
-   - What we know: the demo uses a pinned unpkg version string in production, and the release skill currently treats updating that string as mandatory release scope. [VERIFIED: demo/src/hooks/useOcct.js][VERIFIED: .codex/skills/releasing-occt-js/SKILL.md]
-   - What's unclear: whether every root package release is also expected to ship a synchronized demo production update. [VERIFIED: .codex/skills/releasing-occt-js/SKILL.md]
-   - Recommendation: make this an explicit Phase 4 decision and, if kept, treat it as conditional secondary-surface work with its own verification rather than part of the unconditional root gate. [VERIFIED: AGENTS.md][VERIFIED: .planning/REQUIREMENTS.md]
+   - Decision: no. Treat the production demo CDN bump as conditional secondary-surface work, not part of the unconditional root release gate. [RESOLVED]
+   - Why: repo requirements and `AGENTS.md` already define demo/browser/Tauri surfaces as optional secondaries that must not become mandatory root release gates. [VERIFIED: AGENTS.md][VERIFIED: .planning/REQUIREMENTS.md]
+   - Planning impact: the release skill may mention the demo CDN bump only in a conditional section triggered by touched demo or Babylon files. [VERIFIED: demo/src/hooks/useOcct.js][VERIFIED: .codex/skills/releasing-occt-js/SKILL.md]
 
 ## Environment Availability
 
