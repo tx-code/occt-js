@@ -4,6 +4,8 @@ pushd %~dp0\..
 
 if not exist build mkdir build
 set LOG_FILE=%CD%\build\wasm-build.log
+set DIST_JS=dist\occt-js.js
+set DIST_WASM=dist\occt-js.wasm
 
 echo Checking tracked type definitions...
 node tools\check_wasm_prereqs.mjs dist-types || goto :error
@@ -12,19 +14,12 @@ call tools\build_wasm_win_release.bat || goto :error
 
 if not exist dist mkdir dist
 
-if exist build\wasm\occt-js.js (
-    copy /Y build\wasm\occt-js.js dist\occt-js.js >nul || goto :error
-)
-if exist build\wasm\occt-js.wasm (
-    copy /Y build\wasm\occt-js.wasm dist\occt-js.wasm >nul || goto :error
-)
-
-if not exist dist\occt-js.js (
-    echo Missing dist\occt-js.js after build.
+if not exist "%DIST_JS%" (
+    echo Missing %DIST_JS% after build.
     goto :error
 )
-if not exist dist\occt-js.wasm (
-    echo Missing dist\occt-js.wasm after build.
+if not exist "%DIST_WASM%" (
+    echo Missing %DIST_WASM% after build.
     goto :error
 )
 

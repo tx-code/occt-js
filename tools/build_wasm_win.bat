@@ -14,6 +14,8 @@ if "%BUILD_JOBS%"=="" (
 
 if not exist build mkdir build
 set LOG_FILE=%CD%\build\wasm-build.log
+set DIST_JS=dist\occt-js.js
+set DIST_WASM=dist\occt-js.wasm
 
 > "%LOG_FILE%" echo === occt-js Windows Wasm build ===
 >> "%LOG_FILE%" echo Build type: %BUILD_TYPE%
@@ -35,6 +37,9 @@ echo Building with emmake... (log: %LOG_FILE%)
 >> "%LOG_FILE%" echo.
 >> "%LOG_FILE%" echo === Building with emmake ===
 call emmake mingw32-make -C build\wasm -j%BUILD_JOBS% >> "%LOG_FILE%" 2>&1 || goto :error_build
+
+if not exist "%DIST_JS%" goto :error_artifacts
+if not exist "%DIST_WASM%" goto :error_artifacts
 
 echo Build Succeeded.
 echo Build log: %LOG_FILE%
@@ -62,6 +67,14 @@ exit /b 1
 
 :error_build
 echo Build failed.
+echo Build log: %LOG_FILE%
+echo Retry with: set BUILD_JOBS=1 ^&^& tools\build_wasm_win.bat %BUILD_TYPE%
+popd
+exit /b 1
+
+:error_artifacts
+echo Build finished without the canonical runtime artifacts.
+echo Expected: %DIST_JS% and %DIST_WASM%
 echo Build log: %LOG_FILE%
 echo Retry with: set BUILD_JOBS=1 ^&^& tools\build_wasm_win.bat %BUILD_TYPE%
 popd
