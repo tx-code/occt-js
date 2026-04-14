@@ -29,8 +29,21 @@ test("loadOcctFactory fails when dist/occt-js.wasm is missing", () => {
   writeFileSync(factoryPath, "module.exports = { loaded: true };");
 
   assert.throws(() => loadOcctFactory(factoryPath, wasmPath), (error) => {
-    assert.match(error.message, /dist\/occt-js\.wasm/);
+    assert.match(error.message, /dist[\\/]occt-js\.wasm/);
     assert.match(error.message, /npm run build:wasm:win/);
     return true;
   });
+});
+
+test("loadOcctFactory can preflight temp dist artifacts without a completed repo build", () => {
+  const repoRoot = mkdtempSync(path.join(tmpdir(), "occt-js-dist-"));
+  const distDir = path.join(repoRoot, "dist");
+  const factoryPath = path.join(distDir, "occt-js.js");
+  const wasmPath = path.join(distDir, "occt-js.wasm");
+
+  mkdirSync(distDir, { recursive: true });
+  writeFileSync(factoryPath, "module.exports = { loaded: true };");
+  writeFileSync(wasmPath, "");
+
+  assert.deepEqual(loadOcctFactory(factoryPath, wasmPath), { loaded: true });
 });
