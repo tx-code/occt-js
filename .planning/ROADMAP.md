@@ -61,12 +61,12 @@ Plans:
   1. Downstream consumers can package and locate `@tx-code/occt-js` and `occt-js.wasm` reliably in vendored or tarballed workflows.
   2. `occt-core` remains the canonical engine-agnostic import/normalization layer on top of the root Wasm package.
   3. Root package changes do not force adoption of repo-local Babylon/demo layers.
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 03-01: Audit `occt-js` packaged entrypoints and wasm-locate behavior
-- [ ] 03-02: Audit `occt-core` public API and normalization guarantees
-- [ ] 03-03: Reconcile packaging/docs with vendored downstream usage
+- [ ] 03-01-PLAN.md — Audit `occt-js` packaged entrypoints and wasm-locate behavior
+- [ ] 03-02-PLAN.md — Audit `occt-core` public API and normalization guarantees
+- [ ] 03-03-PLAN.md — Reconcile packaging/docs with vendored downstream usage
 ### Phase 4: Release & Governance Flow
 **Goal**: Converge repo docs, verification expectations, and planning traceability around the root Wasm carrier rather than secondary viewer/demo surfaces.
 **Depends on**: Phase 3
@@ -93,5 +93,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Wasm Build & Dist Baseline | 3/3 | Completed | 2026-04-14 |
 | 2. Root Runtime Contract | 3/3 | Completed | 2026-04-14 |
-| 3. Downstream Consumption Contract | 0/3 | Not started | - |
+| 3. Downstream Consumption Contract | 0/3 | Planned | - |
 | 4. Release & Governance Flow | 0/3 | Not started | - |
