@@ -82,7 +82,7 @@ git submodule update --init --recursive occt
 Windows:
 
 ```bash
-tools\setup_emscripten_win.bat
+tools/setup_emscripten_win.bat
 npm run build:wasm:win
 ```
 
@@ -99,6 +99,13 @@ bash tools/build_wasm.sh
 ```
 
 ### Root Tests
+
+Maintainers have two root verification entrypoints:
+
+- `npm run test:wasm:preflight`
+  - fast prerequisite and `dist/` consumer checks
+- `npm test`
+  - full root runtime verification after `npm run build:wasm:win`
 
 Root tests require the `dist/` Wasm artifacts to exist first:
 

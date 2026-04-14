@@ -33,10 +33,12 @@ cd occt-js
 git submodule update --init --recursive occt
 
 # Windows: install Emscripten into build/wasm/emsdk
-tools\setup_emscripten_win.bat
+tools/setup_emscripten_win.bat
 
 # Linux/macOS: install Emscripten manually or use emsdk
 ```
+
+For clean Windows worktrees, run `tools/setup_emscripten_win.bat` before `npm run build:wasm:win`.
 
 ## Build
 
@@ -62,12 +64,26 @@ git restore --source=HEAD -- dist/occt-js.d.ts
 
 The Windows build entrypoint fails early with a clear error if either prerequisite is missing:
 - `occt/src/Standard` from the `occt` git submodule
-- `build/wasm/emsdk/emsdk_env.bat` from `tools\setup_emscripten_win.bat`
+- `build/wasm/emsdk/emsdk_env.bat` from `tools/setup_emscripten_win.bat`
 
 Windows build failures retain a log file at `build/wasm-build.log`. If a parallel build fails intermittently, retry with lower parallelism:
 
 ```bash
 set BUILD_JOBS=1 && tools\build_wasm_win.bat Release
+```
+
+## Test
+
+Run the fast preflight command when you want prerequisite and runtime-contract validation without relying on the full runtime suite:
+
+```bash
+npm run test:wasm:preflight
+```
+
+Run the full root verification gate after `npm run build:wasm:win` has produced `dist/occt-js.js` and `dist/occt-js.wasm`:
+
+```bash
+npm test
 ```
 
 ## Repository Layout (2026-03-30)
