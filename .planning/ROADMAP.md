@@ -44,12 +44,12 @@ Plans:
   1. Root JS APIs import STEP, IGES, and BREP through both direct and generic entry points and expose the canonical payload shape.
   2. Root-mode semantics are explicit and verified for supported formats, including realistic multi-root fixtures.
   3. Orientation analysis returns a transform and meaningful diagnostics for supported single-part inputs.
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 02-01: Audit and tighten import/result-shape coverage for root APIs
-- [ ] 02-02: Validate root-mode and source-unit behavior against existing fixtures
-- [ ] 02-03: Validate optimal-orientation diagnostics and reference fixtures
+- [ ] 02-01-PLAN.md — Tighten direct-vs-generic import payload parity for STEP, IGES, and BREP
+- [ ] 02-02-PLAN.md — Make root-mode and unit-metadata semantics explicit for XDE and BREP imports
+- [ ] 02-03-PLAN.md — Stabilize optimal-orientation diagnostics and golden-reference coverage
 
 ### Phase 3: Downstream Consumption Contract
 **Goal**: Tighten the package and vendor-consumption contract so downstream applications can keep using `@tx-code/occt-js` and `@tx-code/occt-core` without depending on repo-local viewer layers.
