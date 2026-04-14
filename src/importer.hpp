@@ -4,6 +4,7 @@
 #include <vector>
 #include <array>
 #include <cstdint>
+#include <TopoDS_Shape.hxx>
 
 // ---------------------------------------------------------------------------
 //  Core data structures for the import pipeline
@@ -75,6 +76,17 @@ struct OcctSceneData {
     // Unit info read from STEP header
     std::string                sourceUnit;          // e.g. "MM", "M", "INCH"
     double                     unitScaleToMeters = 0.0; // 0 = unknown
+};
+
+struct OcctExactImportData {
+    OcctSceneData scene;
+    TopoDS_Shape exactShape;
+};
+
+struct OcctLifecycleResult {
+    bool ok = false;
+    std::string code;
+    std::string message;
 };
 
 struct ImportParams {

@@ -10,6 +10,7 @@
 #include "importer-step.hpp"
 #include "importer-iges.hpp"
 #include "importer-brep.hpp"
+#include "exact-model-store.hpp"
 #include "orientation.hpp"
 
 using namespace emscripten;
@@ -353,6 +354,19 @@ val OrientationResultToVal(const OrientationResult& result)
     return obj;
 }
 
+val LifecycleResultToVal(const OcctLifecycleResult& result)
+{
+    val obj = val::object();
+    obj.set("ok", result.ok);
+    if (!result.code.empty()) {
+        obj.set("code", result.code);
+    }
+    if (!result.message.empty()) {
+        obj.set("message", result.message);
+    }
+    return obj;
+}
+
 val BuildResult(const OcctSceneData& scene, const std::string& sourceFormat)
 {
     val result = val::object();
@@ -473,6 +487,57 @@ val ReadByFormat(const std::string& format, const val& content, const val& jsPar
     return BuildResult(scene, normalizedFormat);
 }
 
+val OpenExactByFormat(const std::string& format, const val& content, const val& jsParams)
+{
+    std::vector<uint8_t> buffer = ExtractBytes(content);
+    ImportParams params = ParseImportParams(jsParams);
+
+    std::string normalizedFormat = format;
+    std::transform(normalizedFormat.begin(), normalizedFormat.end(), normalizedFormat.begin(), [](unsigned char c) {
+        return static_cast<char>(std::tolower(c));
+    });
+
+    OcctExactImportData imported;
+    if (normalizedFormat == "step") {
+        imported = ImportExactStepFromMemory(buffer.data(), buffer.size(), "input.stp", params);
+    } else if (normalizedFormat == "iges") {
+        imported = ImportExactIgesFromMemory(buffer.data(), buffer.size(), "input.igs", params);
+    } else if (normalizedFormat == "brep") {
+        imported = ImportExactBrepFromMemory(buffer.data(), buffer.size(), "input.brep", params);
+    } else {
+        imported.scene.success = false;
+        imported.scene.error = "Unsupported format: " + format;
+        return BuildResult(imported.scene, normalizedFormat);
+    }
+
+    if (!imported.scene.success) {
+        return BuildResult(imported.scene, normalizedFormat);
+    }
+
+    if (imported.exactShape.IsNull()) {
+        imported.scene.success = false;
+        imported.scene.error = "Exact model import produced a null shape.";
+        return BuildResult(imported.scene, normalizedFormat);
+    }
+
+    const int exactModelId = ExactModelStore::Instance().Register(
+        imported.exactShape,
+        normalizedFormat,
+        imported.scene.sourceUnit,
+        imported.scene.unitScaleToMeters
+    );
+
+    if (exactModelId <= 0) {
+        imported.scene.success = false;
+        imported.scene.error = "Failed to register retained exact model state.";
+        return BuildResult(imported.scene, normalizedFormat);
+    }
+
+    val result = BuildResult(imported.scene, normalizedFormat);
+    result.set("exactModelId", exactModelId);
+    return result;
+}
+
 } // anonymous namespace
 
 val ReadStepFile(const val& content, const val& jsParams)
@@ -495,6 +560,36 @@ val ReadFile(const std::string& format, const val& content, const val& jsParams)
     return ReadByFormat(format, content, jsParams);
 }
 
+val OpenExactStepModel(const val& content, const val& jsParams)
+{
+    return OpenExactByFormat("step", content, jsParams);
+}
+
+val OpenExactIgesModel(const val& content, const val& jsParams)
+{
+    return OpenExactByFormat("iges", content, jsParams);
+}
+
+val OpenExactBrepModel(const val& content, const val& jsParams)
+{
+    return OpenExactByFormat("brep", content, jsParams);
+}
+
+val OpenExactModel(const std::string& format, const val& content, const val& jsParams)
+{
+    return OpenExactByFormat(format, content, jsParams);
+}
+
+val RetainExactModel(int exactModelId)
+{
+    return LifecycleResultToVal(ExactModelStore::Instance().Retain(exactModelId));
+}
+
+val ReleaseExactModel(int exactModelId)
+{
+    return LifecycleResultToVal(ExactModelStore::Instance().Release(exactModelId));
+}
+
 val AnalyzeOptimalOrientation(const std::string& format, const val& content, const val& jsParams)
 {
     std::vector<uint8_t> buffer = ExtractBytes(content);
@@ -510,5 +605,11 @@ EMSCRIPTEN_BINDINGS(occtjs)
     function("ReadStepFile", &ReadStepFile);
     function("ReadIgesFile", &ReadIgesFile);
     function("ReadBrepFile", &ReadBrepFile);
+    function("OpenExactModel", &OpenExactModel);
+    function("OpenExactStepModel", &OpenExactStepModel);
+    function("OpenExactIgesModel", &OpenExactIgesModel);
+    function("OpenExactBrepModel", &OpenExactBrepModel);
+    function("RetainExactModel", &RetainExactModel);
+    function("ReleaseExactModel", &ReleaseExactModel);
     function("AnalyzeOptimalOrientation", &AnalyzeOptimalOrientation);
 }

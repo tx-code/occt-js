@@ -17,3 +17,10 @@ OcctSceneData ImportBrepFromMemory(
     const std::string&  fileName,
     const ImportParams& params
 );
+
+OcctExactImportData ImportExactBrepFromMemory(
+    const uint8_t*      data,
+    size_t              size,
+    const std::string&  fileName,
+    const ImportParams& params
+);

@@ -124,13 +124,14 @@ void AppendRootNode(const TopoDS_Shape& shape,
 
 } // namespace
 
-OcctSceneData ImportBrepFromMemory(
+OcctExactImportData ImportExactBrepFromMemory(
     const uint8_t* data,
     size_t size,
     const std::string& fileName,
     const ImportParams& params)
 {
-    OcctSceneData scene;
+    OcctExactImportData imported;
+    OcctSceneData& scene = imported.scene;
 
     try {
         Standard_ArrayStreamBuffer streamBuf(
@@ -144,7 +145,7 @@ OcctSceneData ImportBrepFromMemory(
 
         if (shape.IsNull()) {
             scene.error = "BREP reader failed to parse the file.";
-            return scene;
+            return imported;
         }
 
         TopoDS_Shape meshingShape = shape;
@@ -169,9 +170,10 @@ OcctSceneData ImportBrepFromMemory(
 
         if (scene.rootNodeIndices.empty()) {
             scene.error = "No meshable shapes found in BREP file.";
-            return scene;
+            return imported;
         }
 
+        imported.exactShape = meshingShape;
         scene.success = true;
     }
     catch (const Standard_Failure& ex) {
@@ -186,5 +188,14 @@ OcctSceneData ImportBrepFromMemory(
         scene.error = "Unknown exception during BREP import.";
     }
 
-    return scene;
+    return imported;
+}
+
+OcctSceneData ImportBrepFromMemory(
+    const uint8_t* data,
+    size_t size,
+    const std::string& fileName,
+    const ImportParams& params)
+{
+    return ImportExactBrepFromMemory(data, size, fileName, params).scene;
 }

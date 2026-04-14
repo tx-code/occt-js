@@ -30,6 +30,7 @@
 #include <TopExp_Explorer.hxx>
 #include <TopTools_IndexedMapOfShape.hxx>
 #include <TopExp.hxx>
+#include <BRep_Builder.hxx>
 #include <Standard_ArrayStreamBuffer.hxx>
 #include <TDF_Tool.hxx>
 #include <Standard_Failure.hxx>
@@ -420,16 +421,38 @@ bool ReadAndTransferXde(const uint8_t* data,
     return false;
 }
 
+TopoDS_Shape BuildExactRootShape(const TDF_LabelSequence& freeShapes,
+                                 const Handle(XCAFDoc_ShapeTool)& shapeTool)
+{
+    if (freeShapes.Length() == 1) {
+        return shapeTool->GetShape(freeShapes.Value(1));
+    }
+
+    BRep_Builder builder;
+    TopoDS_Compound compound;
+    builder.MakeCompound(compound);
+
+    for (Standard_Integer i = 1; i <= freeShapes.Length(); ++i) {
+        TopoDS_Shape shape = shapeTool->GetShape(freeShapes.Value(i));
+        if (!shape.IsNull()) {
+            builder.Add(compound, shape);
+        }
+    }
+
+    return compound;
+}
+
 } // namespace
 
-OcctSceneData ImportXdeFromMemory(
+OcctExactImportData ImportExactXdeFromMemory(
     const uint8_t* data,
     size_t size,
     const std::string& fileName,
     const ImportParams& params,
     const std::string& format)
 {
-    OcctSceneData scene;
+    OcctExactImportData imported;
+    OcctSceneData& scene = imported.scene;
 
     try {
         Handle(XCAFApp_Application) app = XCAFApp_Application::GetApplication();
@@ -438,7 +461,7 @@ OcctSceneData ImportXdeFromMemory(
 
         if (doc.IsNull()) {
             scene.error = "Failed to create XDE document.";
-            return scene;
+            return imported;
         }
 
         // Match occt-import-js: set caller-selected unit before transfer.
@@ -448,7 +471,7 @@ OcctSceneData ImportXdeFromMemory(
         if (!ReadAndTransferXde(data, size, fileName, params, format, doc, readError)) {
             scene.error = readError;
             app->Close(doc);
-            return scene;
+            return imported;
         }
 
         {
@@ -480,7 +503,7 @@ OcctSceneData ImportXdeFromMemory(
         if (freeShapes.Length() == 0) {
             scene.error = "No shapes found in source file.";
             app->Close(doc);
-            return scene;
+            return imported;
         }
 
         TDF_Label mainLabel = shapeTool->Label();
@@ -495,6 +518,12 @@ OcctSceneData ImportXdeFromMemory(
         }
 
         AppendRootNodes(freeShapes, shapeTool, colorTool, params, scene);
+        imported.exactShape = BuildExactRootShape(freeShapes, shapeTool);
+        if (imported.exactShape.IsNull()) {
+            scene.error = "Failed to build the retained exact root shape.";
+            app->Close(doc);
+            return imported;
+        }
 
         scene.success = true;
         app->Close(doc);
@@ -511,5 +540,15 @@ OcctSceneData ImportXdeFromMemory(
         scene.error = "Unknown exception during XDE import.";
     }
 
-    return scene;
+    return imported;
+}
+
+OcctSceneData ImportXdeFromMemory(
+    const uint8_t* data,
+    size_t size,
+    const std::string& fileName,
+    const ImportParams& params,
+    const std::string& format)
+{
+    return ImportExactXdeFromMemory(data, size, fileName, params, format).scene;
 }
