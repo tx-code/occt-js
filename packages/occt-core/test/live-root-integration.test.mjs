@@ -293,3 +293,56 @@ test("occt-core pairwise wrappers honor occurrence transforms for repeated geome
 
   assert.deepEqual(await core.releaseExactModel(exactModel.exactModelId), { ok: true });
 });
+
+test("occt-core exact thickness wrappers honor repeated parallel occurrences", async () => {
+  const factory = loadOcctFactory();
+  const wasmBinary = new Uint8Array(await readFile(new URL("../../../dist/occt-js.wasm", import.meta.url)));
+  const assemblyBytes = new Uint8Array(await readFile(new URL("../../../test/assembly.step", import.meta.url)));
+
+  const core = createOcctCore({
+    factory,
+    wasmBinary,
+  });
+
+  const rawExact = await core.openExactStep(assemblyBytes, {
+    fileName: "assembly.step",
+  });
+  const exactModel = normalizeExactOpenResult(rawExact, {
+    sourceFileName: "assembly.step",
+  });
+  const repeated = findRepeatedGeometryOccurrencePair(exactModel);
+
+  assert.ok(repeated, "assembly.step should expose repeated geometry under at least two distinct nodeIds");
+
+  const geometry = exactModel.geometries.find((entry) => entry.geometryId === repeated.geometryId);
+  assert.ok(geometry?.faces?.length, "the repeated geometry should expose at least one face");
+
+  const faceId = geometry.faces[0].id;
+  const first = resolveExactElementRef(exactModel, {
+    nodeId: repeated.left.nodeId,
+    geometryId: repeated.geometryId,
+    kind: "face",
+    elementId: faceId,
+  });
+  const second = resolveExactElementRef(exactModel, {
+    nodeId: repeated.right.nodeId,
+    geometryId: repeated.geometryId,
+    kind: "face",
+    elementId: faceId,
+  });
+
+  assert.equal(first.ok, true);
+  assert.equal(second.ok, true);
+
+  const thickness = await core.measureExactThickness(first, second);
+
+  assert.equal(thickness?.ok, true);
+  assert.equal(typeof thickness?.value, "number");
+  assert.ok(thickness.value > 0);
+  assert.ok(Array.isArray(thickness?.pointA) && thickness.pointA.length === 3);
+  assert.ok(Array.isArray(thickness?.pointB) && thickness.pointB.length === 3);
+  assert.deepEqual(thickness?.refA, first);
+  assert.deepEqual(thickness?.refB, second);
+
+  assert.deepEqual(await core.releaseExactModel(exactModel.exactModelId), { ok: true });
+});

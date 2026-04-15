@@ -57,6 +57,20 @@ function measureExactAngle(module, refA, refB, transformA = IDENTITY_MATRIX, tra
   );
 }
 
+function measureExactThickness(module, refA, refB, transformA = IDENTITY_MATRIX, transformB = IDENTITY_MATRIX) {
+  return module.MeasureExactThickness(
+    refA.exactModelId,
+    refA.exactShapeHandle,
+    refA.kind,
+    refA.elementId,
+    refB.exactShapeHandle,
+    refB.kind,
+    refB.elementId,
+    transformA,
+    transformB,
+  );
+}
+
 function getFaceTrianglePoints(geometry, face) {
   const triangleIndices = Array.from(geometry.indices.slice(face.firstIndex, face.firstIndex + 3));
   return triangleIndices.map((vertexIndex) => {
@@ -152,6 +166,23 @@ function findEdgePair(geometry, predicate) {
   return null;
 }
 
+function findSeparatedParallelFacePair(module, result, geometry) {
+  const faceNormals = new Map(geometry.faces.map((face) => [face.id, getExactFaceNormal(module, result, geometry, face)]));
+  return findFacePair(geometry, (left, right) => {
+    const leftNormal = faceNormals.get(left.id);
+    const rightNormal = faceNormals.get(right.id);
+    if (Math.abs(Math.abs(dot(leftNormal, rightNormal)) - 1) >= 1e-6) {
+      return false;
+    }
+    const distance = measureExactDistance(
+      module,
+      getExactRef(result, 0, "face", left.id),
+      getExactRef(result, 0, "face", right.id),
+    );
+    return distance?.ok === true && distance.value > 0;
+  });
+}
+
 test("exact distance queries return attach points and working plane from retained exact refs", async () => {
   const module = await createModule();
   const stepBytes = await loadFixture("simple_part.step");
@@ -159,14 +190,7 @@ test("exact distance queries return attach points and working plane from retaine
 
   assert.equal(result?.success, true);
   const geometry = result.geometries[0];
-  const faceNormals = new Map(geometry.faces.map((face) => [face.id, getExactFaceNormal(module, result, geometry, face)]));
-
-  const facePair = findFacePair(geometry, (left, right) => {
-    const leftNormal = faceNormals.get(left.id);
-    const rightNormal = faceNormals.get(right.id);
-    const centroidOffset = subtractVectors(getFaceCentroid(geometry, left), getFaceCentroid(geometry, right));
-    return Math.abs(Math.abs(dot(leftNormal, rightNormal)) - 1) < 1e-6 && Math.hypot(...centroidOffset) > 1e-6;
-  });
+  const facePair = findSeparatedParallelFacePair(module, result, geometry);
 
   assert.ok(facePair, "simple_part.step should expose a pair of separated parallel planar faces");
 
@@ -216,6 +240,32 @@ test("exact angle queries return origin directions and working plane for linear 
   assert.ok(Array.isArray(angle?.pointB) && angle.pointB.length === 3);
   assert.ok(Array.isArray(angle?.workingPlaneOrigin) && angle.workingPlaneOrigin.length === 3);
   assert.ok(Array.isArray(angle?.workingPlaneNormal) && angle.workingPlaneNormal.length === 3);
+});
+
+test("exact thickness queries use plane distance for parallel planar face pairs", async () => {
+  const module = await createModule();
+  const stepBytes = await loadFixture("simple_part.step");
+  const result = module.OpenExactStepModel(stepBytes, {});
+
+  assert.equal(result?.success, true);
+  const geometry = result.geometries[0];
+  const facePair = findSeparatedParallelFacePair(module, result, geometry);
+
+  assert.ok(facePair, "simple_part.step should expose a pair of separated parallel planar faces");
+
+  const thickness = measureExactThickness(
+    module,
+    getExactRef(result, 0, "face", facePair[0].id),
+    getExactRef(result, 0, "face", facePair[1].id),
+  );
+
+  assert.equal(thickness?.ok, true);
+  assert.equal(typeof thickness?.value, "number");
+  assert.ok(thickness.value > 0);
+  assert.ok(Array.isArray(thickness?.pointA) && thickness.pointA.length === 3);
+  assert.ok(Array.isArray(thickness?.pointB) && thickness.pointB.length === 3);
+  assert.ok(Array.isArray(thickness?.workingPlaneOrigin) && thickness.workingPlaneOrigin.length === 3);
+  assert.ok(Array.isArray(thickness?.workingPlaneNormal) && thickness.workingPlaneNormal.length === 3);
 });
 
 test("exact angle failures stay explicit for parallel or unsupported geometry", async () => {
@@ -269,6 +319,115 @@ test("exact angle failures stay explicit for parallel or unsupported geometry", 
       ok: false,
       code: "unsupported-geometry",
       message: "Exact angle only supports line/line or plane/plane pairs.",
+    },
+  );
+});
+
+test("exact thickness failures stay explicit for nonparallel or unsupported geometry", async () => {
+  const module = await createModule();
+  const stepBytes = await loadFixture("simple_part.step");
+  const result = module.OpenExactStepModel(stepBytes, {});
+
+  assert.equal(result?.success, true);
+  const geometry = result.geometries[0];
+  const nonParallelFaces = findFacePair(geometry, (left, right) => {
+    const leftNormal = getExactFaceNormal(module, result, geometry, left);
+    const rightNormal = getExactFaceNormal(module, result, geometry, right);
+    return Math.abs(dot(leftNormal, rightNormal)) < 1e-6;
+  });
+  const lineEdge = geometry.edges[0];
+
+  assert.ok(nonParallelFaces, "simple_part.step should expose a pair of perpendicular planar faces");
+  assert.ok(lineEdge, "simple_part.step should expose at least one edge");
+
+  assert.deepEqual(
+    measureExactThickness(
+      module,
+      getExactRef(result, 0, "face", nonParallelFaces[0].id),
+      getExactRef(result, 0, "face", nonParallelFaces[1].id),
+    ),
+    {
+      ok: false,
+      code: "unsupported-geometry",
+      message: "Exact thickness only supports parallel planar face pairs.",
+    },
+  );
+
+  assert.deepEqual(
+    measureExactThickness(
+      module,
+      getExactRef(result, 0, "face", nonParallelFaces[0].id),
+      getExactRef(result, 0, "edge", lineEdge.id),
+    ),
+    {
+      ok: false,
+      code: "unsupported-geometry",
+      message: "Exact thickness only supports parallel planar face pairs.",
+    },
+  );
+});
+
+test("exact pairwise failures preserve stable codes and messages", async () => {
+  const module = await createModule();
+  const stepBytes = await loadFixture("simple_part.step");
+  const result = module.OpenExactStepModel(stepBytes, {});
+
+  assert.equal(result?.success, true);
+  const geometry = result.geometries[0];
+  const parallelEdges = findEdgePair(geometry, (left, right) => {
+    const leftDirection = getApproxEdgeDirection(left);
+    const rightDirection = getApproxEdgeDirection(right);
+    if (Math.abs(Math.abs(dot(leftDirection, rightDirection)) - 1) >= 1e-6) {
+      return false;
+    }
+    const distance = measureExactDistance(
+      module,
+      getExactRef(result, 0, "edge", left.id),
+      getExactRef(result, 0, "edge", right.id),
+    );
+    return distance?.ok === true && distance.value > 0;
+  });
+
+  assert.ok(parallelEdges, "simple_part.step should expose a pair of separated parallel line edges");
+
+  assert.deepEqual(
+    measureExactDistance(
+      module,
+      getExactRef(result, 0, "face", 9999),
+      getExactRef(result, 0, "face", geometry.faces[0].id),
+    ),
+    {
+      ok: false,
+      code: "invalid-id",
+      message: "Requested face id is out of range for this exact geometry.",
+    },
+  );
+
+  assert.deepEqual(
+    measureExactAngle(
+      module,
+      getExactRef(result, 0, "edge", parallelEdges[0].id),
+      getExactRef(result, 0, "edge", parallelEdges[1].id),
+    ),
+    {
+      ok: false,
+      code: "parallel-geometry",
+      message: "Exact angle is not defined for parallel planar faces or collinear linear edges.",
+    },
+  );
+
+  assert.deepEqual(module.ReleaseExactModel(result.exactModelId), { ok: true });
+
+  assert.deepEqual(
+    measureExactDistance(
+      module,
+      getExactRef(result, 0, "face", geometry.faces[0].id),
+      getExactRef(result, 0, "face", geometry.faces[1].id),
+    ),
+    {
+      ok: false,
+      code: "released-handle",
+      message: "Exact model handle has already been released.",
     },
   );
 });

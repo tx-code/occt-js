@@ -634,6 +634,93 @@ describe("createOcctCore", () => {
     });
   });
 
+  it("preserves exact thickness success and failure payloads through occurrence-scoped refs", async () => {
+    const calls = [];
+    const refA = {
+      exactModelId: 17,
+      exactShapeHandle: 33,
+      nodeId: "node-a",
+      geometryId: "geo_0",
+      kind: "face",
+      elementId: 5,
+      transform: [
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        10, 20, 30, 1,
+      ],
+    };
+    const refB = {
+      exactModelId: 17,
+      exactShapeHandle: 33,
+      nodeId: "node-b",
+      geometryId: "geo_0",
+      kind: "face",
+      elementId: 6,
+      transform: [
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        10, 20, 130, 1,
+      ],
+    };
+    const core = createOcctCore({
+      factory: async () => ({
+        MeasureExactThickness: (...args) => {
+          calls.push(args);
+          return {
+            ok: true,
+            value: 100,
+            pointA: [10, 20, 30],
+            pointB: [10, 20, 130],
+            workingPlaneOrigin: [10, 20, 80],
+            workingPlaneNormal: [0, 0, 1],
+          };
+        },
+      }),
+    });
+
+    const result = await core.measureExactThickness(refA, refB);
+
+    assert.deepEqual(calls, [[
+      17,
+      33,
+      "face",
+      5,
+      33,
+      "face",
+      6,
+      refA.transform,
+      refB.transform,
+    ]]);
+    assert.deepEqual(result, {
+      ok: true,
+      value: 100,
+      pointA: [10, 20, 30],
+      pointB: [10, 20, 130],
+      workingPlaneOrigin: [10, 20, 80],
+      workingPlaneNormal: [0, 0, 1],
+      refA,
+      refB,
+    });
+
+    const failingCore = createOcctCore({
+      factory: async () => ({
+        MeasureExactThickness: () => ({
+          ok: false,
+          code: "unsupported-geometry",
+          message: "Exact thickness only supports parallel planar face pairs.",
+        }),
+      }),
+    });
+
+    assert.deepEqual(await failingCore.measureExactThickness(refA, refB), {
+      ok: false,
+      code: "unsupported-geometry",
+      message: "Exact thickness only supports parallel planar face pairs.",
+    });
+  });
+
   it("transforms exact radius primitives into occurrence space", async () => {
     const ref = {
       exactModelId: 17,
