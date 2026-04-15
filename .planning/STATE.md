@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.1
-milestone_name: Exact BRep Measurement Foundation
-status: complete
-stopped_at: Milestone v1.1 archived; next step is /gsd-new-milestone
-last_updated: "2026-04-15T11:05:00.000Z"
+milestone: v1.2
+milestone_name: Import Appearance Contract
+status: active
+stopped_at: Milestone v1.2 defined; next step is /gsd-plan-phase 9
+last_updated: "2026-04-15T12:05:00.000Z"
 last_activity: 2026-04-15
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 9
-  completed_plans: 9
-  percent: 100
+  total_phases: 3
+  completed_phases: 0
+  total_plans: 6
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -21,35 +21,43 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-15)
 
 Core value: Downstream applications can reliably consume the OCCT Wasm runtime and its root API contract without build drift or packaging surprises.
-Current focus: Planning the next milestone
+Current focus: Phase 09 planning for v1.2 Import Appearance Contract
 
 ## Current Position
 
-Milestone: v1.1 Exact BRep Measurement Foundation — SHIPPED
-Archived phases: 05-08
-Status: Milestone complete
+Phase: 09 (root-import-appearance-mode) — PLANNED
+Plan: 0 of 2 complete
+Status: Phase 09 ready for planning
 Last activity: 2026-04-15
 
-Progress: [██████████] 100%
+Progress: [----------] 0%
 
 ## Milestone Snapshot
 
-- The root Wasm carrier now exposes retained exact-model lifecycle APIs with explicit open, retain, and release semantics.
-- `occt-core` now resolves occurrence-scoped exact face, edge, and vertex refs from the exported topology ids already used by downstream apps.
-- The runtime now ships exact primitive geometry queries and pairwise distance, angle, and thickness measurements with structured DTOs and release-gate coverage.
-- Root docs and governance now treat the exact-measurement foundation as part of the runtime-first package contract while keeping app UX and feature semantics out of scope.
+- `v1.2 Import Appearance Contract` is active and starts at phases 09-11.
+- The root runtime must move beyond `readColors?: boolean` to an explicit appearance contract that downstream apps can drive from user settings.
+- `occt-core` currently owns the only documented default CAD color fallback, so v1.2 needs to lift that behavior into a shared runtime/package contract.
+- App code still owns settings persistence and viewer behavior; the milestone boundary stays at import-time color semantics.
+
+## Accumulated Context
+
+- The root Wasm carrier remains the primary product surface and release boundary.
+- `v1.1` shipped exact lifecycle, exact refs, and exact primitive/pairwise measurement foundations without expanding into viewer UX.
+- `DEFAULT_CAD_BASE_COLOR = [0.9, 0.91, 0.93, 1]` currently exists only inside `packages/occt-core/src/model-normalizer.js`.
+- Existing downstream consumers may still pass `readColors`, so precedence and compatibility need to be explicit in v1.2.
 
 ## Pending Todos
 
-- Small adapter follow-up: add an explicit import option that maps to `readColors: false` and uses the default CAD color instead of source colors.
+- Define the exact precedence between legacy `readColors` and the new appearance options.
+- Decide whether the built-in default CAD color should remain aligned with the current `occt-core` fallback or be redefined once in the root contract.
 
 ## Blockers/Concerns
 
-- No active blockers remain.
-- Next step is `/gsd-new-milestone`.
+- No active blockers.
+- Next step is `/gsd-plan-phase 9`.
 
 ## Session Continuity
 
 Last session: 2026-04-15
-Stopped at: Milestone v1.1 archived; next step is `/gsd-new-milestone`
-Resume file: .planning/PROJECT.md
+Stopped at: Milestone v1.2 defined; next step is `/gsd-plan-phase 9`
+Resume file: .planning/ROADMAP.md
