@@ -190,6 +190,7 @@ bool IsMeshNode(const TDF_Label& label, const Handle(XCAFDoc_ShapeTool)& shapeTo
 void ExtractShapeMeshes(const TopoDS_Shape& shape,
                         const Handle(XCAFDoc_ShapeTool)& shapeTool,
                         const Handle(XCAFDoc_ColorTool)& colorTool,
+                        const ImportParams& params,
                         OcctSceneData& scene,
                         OcctNodeData& node,
                         std::map<uintptr_t, int>& shapeHashToMeshIndex,
@@ -212,7 +213,7 @@ void ExtractShapeMeshes(const TopoDS_Shape& shape,
 
         OcctColor shapeColor;
         GetShapeColor(subShape, shapeTool, colorTool, shapeColor);
-        meshData.color = shapeColor;
+        meshData.color = params.ResolveImportedColor(shapeColor);
 
         TopTools_IndexedMapOfShape localFaceMap;
         TopExp::MapShapes(subShape, TopAbs_FACE, localFaceMap);
@@ -220,10 +221,17 @@ void ExtractShapeMeshes(const TopoDS_Shape& shape,
             if (fi - 1 < static_cast<int>(meshData.faces.size())) {
                 OcctColor faceColor;
                 if (GetShapeColor(localFaceMap(fi), shapeTool, colorTool, faceColor)) {
-                    meshData.faces[fi - 1].color = faceColor;
+                    meshData.faces[fi - 1].color = params.ResolveImportedColor(faceColor);
                 } else {
-                    meshData.faces[fi - 1].color = shapeColor;
+                    meshData.faces[fi - 1].color = params.ResolveImportedColor(shapeColor);
                 }
+            }
+        }
+
+        if (params.ShouldUseDefaultColor()) {
+            meshData.color = params.defaultColor;
+            for (auto& face : meshData.faces) {
+                face.color = params.defaultColor;
             }
         }
 
@@ -291,6 +299,7 @@ void TraverseLabel(const TDF_Label& label,
                 shape,
                 shapeTool,
                 colorTool,
+                params,
                 scene,
                 scene.nodes[nodeIndex],
                 shapeCache,
@@ -383,7 +392,7 @@ bool ReadAndTransferXde(const uint8_t* data,
 
     if (format == "step") {
         STEPCAFControl_Reader cafReader;
-        cafReader.SetColorMode(params.readColors);
+        cafReader.SetColorMode(params.ShouldReadSourceColors());
         cafReader.SetNameMode(params.readNames);
 
         STEPControl_Reader& reader = cafReader.ChangeReader();
@@ -404,7 +413,7 @@ bool ReadAndTransferXde(const uint8_t* data,
 
     if (format == "iges") {
         IGESCAFControl_Reader cafReader;
-        cafReader.SetColorMode(params.readColors);
+        cafReader.SetColorMode(params.ShouldReadSourceColors());
         cafReader.SetNameMode(params.readNames);
 
         // Match occt-import-js behavior: import IGES via temporary file.

@@ -198,11 +198,50 @@ struct ImportParams {
         AbsoluteValue
     };
 
+    enum class AppearanceMode {
+        LegacyReadColors,
+        SourceColors,
+        DefaultColor
+    };
+
     RootMode rootMode = RootMode::OneShape;
     LinearUnit linearUnit = LinearUnit::Millimeter;
     LinearDeflectionType linearDeflectionType = LinearDeflectionType::BoundingBoxRatio;
+    AppearanceMode appearanceMode = AppearanceMode::LegacyReadColors;
     double linearDeflection = 0.001;
     double angularDeflection = 0.5;
     bool readNames = true;
     bool readColors = true;
+    OcctColor defaultColor = OcctColor(0.9, 0.91, 0.93);
+
+    bool HasExplicitAppearanceMode() const
+    {
+        return appearanceMode != AppearanceMode::LegacyReadColors;
+    }
+
+    bool ShouldReadSourceColors() const
+    {
+        if (appearanceMode == AppearanceMode::SourceColors) {
+            return true;
+        }
+        if (appearanceMode == AppearanceMode::DefaultColor) {
+            return false;
+        }
+        return readColors;
+    }
+
+    bool ShouldUseDefaultColor() const
+    {
+        return appearanceMode == AppearanceMode::DefaultColor;
+    }
+
+    OcctColor ResolveImportedColor(const OcctColor& importedColor) const
+    {
+        return ShouldUseDefaultColor() ? defaultColor : importedColor;
+    }
+
+    OcctColor ResolveFallbackColor() const
+    {
+        return ShouldUseDefaultColor() ? defaultColor : OcctColor();
+    }
 };

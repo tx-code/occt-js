@@ -25,6 +25,7 @@ std::array<float, 16> IdentityMatrix()
 
 void ExtractShapeMeshes(
     const TopoDS_Shape& shape,
+    const ImportParams& params,
     OcctSceneData& scene,
     OcctNodeData& node,
     std::vector<TopoDS_Shape>* exactGeometryShapes = nullptr)
@@ -44,6 +45,12 @@ void ExtractShapeMeshes(
             return;
         }
         meshData.name = node.name;
+        meshData.color = params.ResolveFallbackColor();
+        if (params.ShouldUseDefaultColor()) {
+            for (auto& face : meshData.faces) {
+                face.color = params.defaultColor;
+            }
+        }
 
         int meshIdx = static_cast<int>(scene.meshes.size());
         scene.meshes.push_back(std::move(meshData));
@@ -117,6 +124,7 @@ std::vector<TopoDS_Shape> CollectRootShapes(const TopoDS_Shape& shape, const Imp
 void AppendRootNode(const TopoDS_Shape& shape,
                     const std::string& nodeId,
                     const std::string& nodeName,
+                    const ImportParams& params,
                     OcctSceneData& scene,
                     std::vector<TopoDS_Shape>* exactGeometryShapes = nullptr)
 {
@@ -127,7 +135,7 @@ void AppendRootNode(const TopoDS_Shape& shape,
     root.isAssembly = false;
     root.transform = IdentityMatrix();
 
-    ExtractShapeMeshes(shape, scene, root, exactGeometryShapes);
+    ExtractShapeMeshes(shape, params, scene, root, exactGeometryShapes);
 }
 
 } // namespace
@@ -173,6 +181,7 @@ OcctExactImportData ImportExactBrepFromMemory(
                 rootShapes[i],
                 std::to_string(rootIndex),
                 nodeName,
+                params,
                 scene,
                 &imported.exactGeometryShapes);
 

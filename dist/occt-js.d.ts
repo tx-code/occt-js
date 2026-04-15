@@ -1,6 +1,7 @@
 export type OcctFormat = "step" | "iges" | "brep";
 export type OcctJSExactElementKind = "face" | "edge" | "vertex";
 export type OcctJSExactGeometryFamily = "line" | "circle" | "plane" | "cylinder" | "sphere" | "cone" | "torus" | "other";
+export type OcctJSImportColorMode = "source" | "default";
 
 export interface OcctJSColor {
     r: number;
@@ -227,7 +228,11 @@ export interface OcctJSReadParams {
     linearDeflection?: number;
     angularDeflection?: number;
     readNames?: boolean;
+    // Legacy toggle. This remains deterministic when colorMode is omitted.
     readColors?: boolean;
+    // Explicit appearance contract. When provided, this overrides readColors.
+    // "default" uses the built-in CAD base color [0.9, 0.91, 0.93].
+    colorMode?: OcctJSImportColorMode;
 }
 
 export interface OcctJSOrientationPresetAxis {

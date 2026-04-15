@@ -235,6 +235,14 @@ ImportParams ParseImportParams(const val& jsParams)
         if (jsParams.hasOwnProperty("readColors")) {
             params.readColors = jsParams["readColors"].as<bool>();
         }
+        if (jsParams.hasOwnProperty("colorMode")) {
+            std::string colorMode = jsParams["colorMode"].as<std::string>();
+            if (colorMode == "source") {
+                params.appearanceMode = ImportParams::AppearanceMode::SourceColors;
+            } else if (colorMode == "default") {
+                params.appearanceMode = ImportParams::AppearanceMode::DefaultColor;
+            }
+        }
     }
     return params;
 }
