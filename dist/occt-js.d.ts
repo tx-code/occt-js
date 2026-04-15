@@ -161,6 +161,38 @@ export interface OcctJSExactFaceNormalSuccess {
 
 export type OcctJSExactFaceNormalResult = OcctJSExactFaceNormalSuccess | OcctJSExactQueryFailure;
 
+export type OcctJSMatrix4 = [
+    number, number, number, number,
+    number, number, number, number,
+    number, number, number, number,
+    number, number, number, number
+];
+
+export interface OcctJSExactDistanceSuccess {
+    ok: true;
+    value: number;
+    pointA: [number, number, number];
+    pointB: [number, number, number];
+    workingPlaneOrigin: [number, number, number];
+    workingPlaneNormal: [number, number, number];
+}
+
+export type OcctJSExactDistanceResult = OcctJSExactDistanceSuccess | OcctJSExactQueryFailure;
+
+export interface OcctJSExactAngleSuccess {
+    ok: true;
+    value: number;
+    origin: [number, number, number];
+    directionA: [number, number, number];
+    directionB: [number, number, number];
+    pointA: [number, number, number];
+    pointB: [number, number, number];
+    workingPlaneOrigin: [number, number, number];
+    workingPlaneNormal: [number, number, number];
+}
+
+export type OcctJSExactAngleResult = OcctJSExactAngleSuccess | OcctJSExactQueryFailure;
+
 export interface OcctJSReadParams {
     rootMode?: "one-shape" | "multiple-shapes";
     linearUnit?: "millimeter" | "centimeter" | "meter" | "inch" | "foot";
@@ -236,6 +268,8 @@ export interface OcctJSModule {
     MeasureExactEdgeLength(exactModelId: number, exactShapeHandle: number, kind: OcctJSExactElementKind, elementId: number): OcctJSExactEdgeLengthResult;
     MeasureExactFaceArea(exactModelId: number, exactShapeHandle: number, kind: OcctJSExactElementKind, elementId: number): OcctJSExactFaceAreaResult;
     EvaluateExactFaceNormal(exactModelId: number, exactShapeHandle: number, kind: OcctJSExactElementKind, elementId: number, localQueryPoint: [number, number, number]): OcctJSExactFaceNormalResult;
+    MeasureExactDistance(exactModelId: number, exactShapeHandleA: number, kindA: OcctJSExactElementKind, elementIdA: number, exactShapeHandleB: number, kindB: OcctJSExactElementKind, elementIdB: number, transformA: OcctJSMatrix4, transformB: OcctJSMatrix4): OcctJSExactDistanceResult;
+    MeasureExactAngle(exactModelId: number, exactShapeHandleA: number, kindA: OcctJSExactElementKind, elementIdA: number, exactShapeHandleB: number, kindB: OcctJSExactElementKind, elementIdB: number, transformA: OcctJSMatrix4, transformB: OcctJSMatrix4): OcctJSExactAngleResult;
     AnalyzeOptimalOrientation(format: OcctFormat, content: Uint8Array, params?: OcctJSOrientationParams): OcctJSOrientationResult;
 }
 

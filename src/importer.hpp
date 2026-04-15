@@ -143,6 +143,31 @@ struct OcctExactFaceNormalResult {
     std::array<double, 3> localNormal = { 0.0, 0.0, 0.0 };
 };
 
+struct OcctExactDistanceResult {
+    bool ok = false;
+    std::string code;
+    std::string message;
+    double value = 0.0;
+    std::array<double, 3> pointA = { 0.0, 0.0, 0.0 };
+    std::array<double, 3> pointB = { 0.0, 0.0, 0.0 };
+    std::array<double, 3> workingPlaneOrigin = { 0.0, 0.0, 0.0 };
+    std::array<double, 3> workingPlaneNormal = { 0.0, 0.0, 0.0 };
+};
+
+struct OcctExactAngleResult {
+    bool ok = false;
+    std::string code;
+    std::string message;
+    double value = 0.0;
+    std::array<double, 3> origin = { 0.0, 0.0, 0.0 };
+    std::array<double, 3> directionA = { 0.0, 0.0, 0.0 };
+    std::array<double, 3> directionB = { 0.0, 0.0, 0.0 };
+    std::array<double, 3> pointA = { 0.0, 0.0, 0.0 };
+    std::array<double, 3> pointB = { 0.0, 0.0, 0.0 };
+    std::array<double, 3> workingPlaneOrigin = { 0.0, 0.0, 0.0 };
+    std::array<double, 3> workingPlaneNormal = { 0.0, 0.0, 0.0 };
+};
+
 struct ImportParams {
     enum class LinearUnit {
         Millimeter,

@@ -2,6 +2,8 @@
 
 #include "importer.hpp"
 
+#include <gp_Trsf.hxx>
+
 #include <string>
 
 OcctExactGeometryTypeResult GetExactGeometryType(
@@ -40,3 +42,25 @@ OcctExactFaceNormalResult EvaluateExactFaceNormal(
     const std::string& kind,
     int elementId,
     const std::array<double, 3>& localQueryPoint);
+
+OcctExactDistanceResult MeasureExactDistance(
+    int exactModelId,
+    int exactShapeHandleA,
+    const std::string& kindA,
+    int elementIdA,
+    int exactShapeHandleB,
+    const std::string& kindB,
+    int elementIdB,
+    const gp_Trsf& transformA,
+    const gp_Trsf& transformB);
+
+OcctExactAngleResult MeasureExactAngle(
+    int exactModelId,
+    int exactShapeHandleA,
+    const std::string& kindA,
+    int elementIdA,
+    int exactShapeHandleB,
+    const std::string& kindB,
+    int elementIdB,
+    const gp_Trsf& transformA,
+    const gp_Trsf& transformB);

@@ -2,6 +2,7 @@
 
 #include "exact-model-store.hpp"
 
+#include <BRepExtrema_DistShapeShape.hxx>
 #include <BRepClass_FaceClassifier.hxx>
 #include <BRepAdaptor_Curve.hxx>
 #include <BRepLProp_SLProps.hxx>
@@ -21,14 +22,18 @@
 #include <TopoDS.hxx>
 #include <TopoDS_Edge.hxx>
 #include <TopoDS_Face.hxx>
+#include <TopoDS_Vertex.hxx>
 #include <TopLoc_Location.hxx>
 #include <gp_Circ.hxx>
 #include <gp_Cone.hxx>
 #include <gp_Cylinder.hxx>
 #include <gp_Dir.hxx>
+#include <gp_Lin.hxx>
 #include <gp_Pnt.hxx>
+#include <gp_Pln.hxx>
 #include <gp_Sphere.hxx>
 #include <gp_Torus.hxx>
+#include <gp_Vec.hxx>
 #include <GeomAbs_CurveType.hxx>
 #include <GeomAbs_SurfaceType.hxx>
 
@@ -64,6 +69,15 @@ std::array<double, 3> ToArray(const gp_Pnt& point)
 std::array<double, 3> ToArray(const gp_Dir& direction)
 {
     return { direction.X(), direction.Y(), direction.Z() };
+}
+
+gp_Pnt Midpoint(const gp_Pnt& left, const gp_Pnt& right)
+{
+    return gp_Pnt(
+        0.5 * (left.X() + right.X()),
+        0.5 * (left.Y() + right.Y()),
+        0.5 * (left.Z() + right.Z())
+    );
 }
 
 gp_Pnt ToPoint(const std::array<double, 3>& point)
@@ -158,6 +172,130 @@ OcctLifecycleResult ResolveEdge(
     OcctLifecycleResult ok;
     ok.ok = true;
     return ok;
+}
+
+OcctLifecycleResult ResolveVertex(
+    int exactModelId,
+    int exactShapeHandle,
+    int elementId,
+    TopoDS_Vertex& vertex)
+{
+    ExactModelEntry entry;
+    TopoDS_Shape geometryShape;
+    OcctLifecycleResult lifecycle = LookupGeometryShape(exactModelId, exactShapeHandle, entry, geometryShape);
+    if (!lifecycle.ok) {
+        return lifecycle;
+    }
+
+    TopTools_IndexedMapOfShape vertices;
+    TopExp::MapShapes(geometryShape, TopAbs_VERTEX, vertices);
+    if (elementId <= 0 || elementId > vertices.Extent()) {
+        return MakeFailure<OcctLifecycleResult>("invalid-id", "Requested vertex id is out of range for this exact geometry.");
+    }
+
+    vertex = TopoDS::Vertex(vertices(elementId));
+    if (vertex.IsNull()) {
+        return MakeFailure<OcctLifecycleResult>("invalid-id", "Requested vertex id did not resolve to a retained exact vertex.");
+    }
+
+    OcctLifecycleResult ok;
+    ok.ok = true;
+    return ok;
+}
+
+OcctLifecycleResult ResolveElementShape(
+    int exactModelId,
+    int exactShapeHandle,
+    const std::string& kind,
+    int elementId,
+    TopoDS_Shape& shape)
+{
+    const std::string normalizedKind = NormalizeKind(kind);
+    if (normalizedKind == "face") {
+        TopoDS_Face face;
+        OcctLifecycleResult lifecycle = ResolveFace(exactModelId, exactShapeHandle, elementId, face);
+        if (!lifecycle.ok) {
+            return lifecycle;
+        }
+        shape = face;
+        OcctLifecycleResult ok;
+        ok.ok = true;
+        return ok;
+    }
+
+    if (normalizedKind == "edge") {
+        TopoDS_Edge edge;
+        OcctLifecycleResult lifecycle = ResolveEdge(exactModelId, exactShapeHandle, elementId, edge);
+        if (!lifecycle.ok) {
+            return lifecycle;
+        }
+        shape = edge;
+        OcctLifecycleResult ok;
+        ok.ok = true;
+        return ok;
+    }
+
+    if (normalizedKind == "vertex") {
+        TopoDS_Vertex vertex;
+        OcctLifecycleResult lifecycle = ResolveVertex(exactModelId, exactShapeHandle, elementId, vertex);
+        if (!lifecycle.ok) {
+            return lifecycle;
+        }
+        shape = vertex;
+        OcctLifecycleResult ok;
+        ok.ok = true;
+        return ok;
+    }
+
+    return MakeFailure<OcctLifecycleResult>("unsupported-geometry", "Exact pairwise queries only support face, edge, or vertex refs.");
+}
+
+TopoDS_Shape ApplyOccurrenceTransform(const TopoDS_Shape& shape, const gp_Trsf& transform)
+{
+    if (shape.IsNull()) {
+        return shape;
+    }
+    return shape.Moved(TopLoc_Location(transform));
+}
+
+OcctLifecycleResult MeasureMinimumDistance(
+    const TopoDS_Shape& shapeA,
+    const TopoDS_Shape& shapeB,
+    double& value,
+    gp_Pnt& pointA,
+    gp_Pnt& pointB)
+{
+    BRepExtrema_DistShapeShape distance(shapeA, shapeB, Precision::Confusion());
+    if (!distance.IsDone()) {
+        return MakeFailure<OcctLifecycleResult>("internal-error", "OCCT exact distance query did not complete.");
+    }
+    if (distance.NbSolution() <= 0) {
+        return MakeFailure<OcctLifecycleResult>("internal-error", "OCCT exact distance query returned no solutions.");
+    }
+
+    value = distance.Value();
+    pointA = distance.PointOnShape1(1);
+    pointB = distance.PointOnShape2(1);
+
+    OcctLifecycleResult ok;
+    ok.ok = true;
+    return ok;
+}
+
+bool TryMakeDirection(const gp_Pnt& from, const gp_Pnt& to, gp_Dir& direction)
+{
+    gp_Vec delta(from, to);
+    if (delta.Magnitude() <= Precision::Confusion()) {
+        return false;
+    }
+    direction = gp_Dir(delta);
+    return true;
+}
+
+double CanonicalAngle(const double radians)
+{
+    constexpr double halfPi = 1.5707963267948966;
+    return radians > halfPi ? 3.14159265358979323846 - radians : radians;
 }
 
 std::string FamilyFromSurfaceType(const GeomAbs_SurfaceType type)
@@ -579,6 +717,215 @@ OcctExactFaceNormalResult EvaluateExactFaceNormal(
         return MakeFailure<OcctExactFaceNormalResult>(
             "internal-error",
             failure.GetMessageString() != nullptr ? failure.GetMessageString() : "OCCT exact face normal query failed."
+        );
+    }
+}
+
+OcctExactDistanceResult MeasureExactDistance(
+    int exactModelId,
+    int exactShapeHandleA,
+    const std::string& kindA,
+    int elementIdA,
+    int exactShapeHandleB,
+    const std::string& kindB,
+    int elementIdB,
+    const gp_Trsf& transformA,
+    const gp_Trsf& transformB)
+{
+    try {
+        TopoDS_Shape shapeA;
+        OcctLifecycleResult lifecycle = ResolveElementShape(exactModelId, exactShapeHandleA, kindA, elementIdA, shapeA);
+        if (!lifecycle.ok) {
+            return ConvertFailure<OcctExactDistanceResult>(lifecycle);
+        }
+
+        TopoDS_Shape shapeB;
+        lifecycle = ResolveElementShape(exactModelId, exactShapeHandleB, kindB, elementIdB, shapeB);
+        if (!lifecycle.ok) {
+            return ConvertFailure<OcctExactDistanceResult>(lifecycle);
+        }
+
+        shapeA = ApplyOccurrenceTransform(shapeA, transformA);
+        shapeB = ApplyOccurrenceTransform(shapeB, transformB);
+
+        double value = 0.0;
+        gp_Pnt pointA;
+        gp_Pnt pointB;
+        lifecycle = MeasureMinimumDistance(shapeA, shapeB, value, pointA, pointB);
+        if (!lifecycle.ok) {
+            return ConvertFailure<OcctExactDistanceResult>(lifecycle);
+        }
+        if (value <= Precision::Confusion()) {
+            return MakeFailure<OcctExactDistanceResult>(
+                "coincident-geometry",
+                "Exact distance requires geometry with a stable separation direction."
+            );
+        }
+
+        gp_Dir workingPlaneNormal;
+        if (!TryMakeDirection(pointA, pointB, workingPlaneNormal)) {
+            return MakeFailure<OcctExactDistanceResult>(
+                "coincident-geometry",
+                "Exact distance requires geometry with a stable separation direction."
+            );
+        }
+
+        OcctExactDistanceResult result;
+        result.ok = true;
+        result.value = value;
+        result.pointA = ToArray(pointA);
+        result.pointB = ToArray(pointB);
+        result.workingPlaneOrigin = ToArray(Midpoint(pointA, pointB));
+        result.workingPlaneNormal = ToArray(workingPlaneNormal);
+        return result;
+    } catch (const Standard_Failure& failure) {
+        return MakeFailure<OcctExactDistanceResult>(
+            "internal-error",
+            failure.GetMessageString() != nullptr ? failure.GetMessageString() : "OCCT exact distance query failed."
+        );
+    }
+}
+
+OcctExactAngleResult MeasureExactAngle(
+    int exactModelId,
+    int exactShapeHandleA,
+    const std::string& kindA,
+    int elementIdA,
+    int exactShapeHandleB,
+    const std::string& kindB,
+    int elementIdB,
+    const gp_Trsf& transformA,
+    const gp_Trsf& transformB)
+{
+    try {
+        const std::string normalizedKindA = NormalizeKind(kindA);
+        const std::string normalizedKindB = NormalizeKind(kindB);
+        if (normalizedKindA == "edge" && normalizedKindB == "edge") {
+            TopoDS_Edge edgeA;
+            OcctLifecycleResult lifecycle = ResolveEdge(exactModelId, exactShapeHandleA, elementIdA, edgeA);
+            if (!lifecycle.ok) {
+                return ConvertFailure<OcctExactAngleResult>(lifecycle);
+            }
+
+            TopoDS_Edge edgeB;
+            lifecycle = ResolveEdge(exactModelId, exactShapeHandleB, elementIdB, edgeB);
+            if (!lifecycle.ok) {
+                return ConvertFailure<OcctExactAngleResult>(lifecycle);
+            }
+
+            edgeA = TopoDS::Edge(ApplyOccurrenceTransform(edgeA, transformA));
+            edgeB = TopoDS::Edge(ApplyOccurrenceTransform(edgeB, transformB));
+
+            BRepAdaptor_Curve curveA(edgeA);
+            BRepAdaptor_Curve curveB(edgeB);
+            if (curveA.GetType() != GeomAbs_Line || curveB.GetType() != GeomAbs_Line) {
+                return MakeFailure<OcctExactAngleResult>(
+                    "unsupported-geometry",
+                    "Exact angle only supports line/line or plane/plane pairs."
+                );
+            }
+
+            const gp_Lin lineA = curveA.Line();
+            const gp_Lin lineB = curveB.Line();
+            if (lineA.Position().Direction().IsParallel(lineB.Position().Direction(), Precision::Angular())) {
+                return MakeFailure<OcctExactAngleResult>(
+                    lineA.Distance(lineB) <= Precision::Confusion() ? "coincident-geometry" : "parallel-geometry",
+                    lineA.Distance(lineB) <= Precision::Confusion()
+                        ? "Exact angle is not defined for coincident planar faces or overlapping linear edges."
+                        : "Exact angle is not defined for parallel planar faces or collinear linear edges."
+                );
+            }
+
+            double distanceValue = 0.0;
+            gp_Pnt pointA;
+            gp_Pnt pointB;
+            lifecycle = MeasureMinimumDistance(edgeA, edgeB, distanceValue, pointA, pointB);
+            if (!lifecycle.ok) {
+                return ConvertFailure<OcctExactAngleResult>(lifecycle);
+            }
+
+            gp_Dir workingPlaneNormal(gp_Vec(lineA.Direction().XYZ().Crossed(lineB.Direction().XYZ())));
+
+            OcctExactAngleResult result;
+            result.ok = true;
+            result.value = CanonicalAngle(lineA.Angle(lineB));
+            result.origin = ToArray(Midpoint(pointA, pointB));
+            result.directionA = ToArray(lineA.Direction());
+            result.directionB = ToArray(lineB.Direction());
+            result.pointA = ToArray(pointA);
+            result.pointB = ToArray(pointB);
+            result.workingPlaneOrigin = ToArray(Midpoint(pointA, pointB));
+            result.workingPlaneNormal = ToArray(workingPlaneNormal);
+            return result;
+        }
+
+        if (normalizedKindA == "face" && normalizedKindB == "face") {
+            TopoDS_Face faceA;
+            OcctLifecycleResult lifecycle = ResolveFace(exactModelId, exactShapeHandleA, elementIdA, faceA);
+            if (!lifecycle.ok) {
+                return ConvertFailure<OcctExactAngleResult>(lifecycle);
+            }
+
+            TopoDS_Face faceB;
+            lifecycle = ResolveFace(exactModelId, exactShapeHandleB, elementIdB, faceB);
+            if (!lifecycle.ok) {
+                return ConvertFailure<OcctExactAngleResult>(lifecycle);
+            }
+
+            faceA = TopoDS::Face(ApplyOccurrenceTransform(faceA, transformA));
+            faceB = TopoDS::Face(ApplyOccurrenceTransform(faceB, transformB));
+
+            BRepAdaptor_Surface surfaceA(faceA, false);
+            BRepAdaptor_Surface surfaceB(faceB, false);
+            if (surfaceA.GetType() != GeomAbs_Plane || surfaceB.GetType() != GeomAbs_Plane) {
+                return MakeFailure<OcctExactAngleResult>(
+                    "unsupported-geometry",
+                    "Exact angle only supports line/line or plane/plane pairs."
+                );
+            }
+
+            const gp_Pln planeA = surfaceA.Plane();
+            const gp_Pln planeB = surfaceB.Plane();
+            if (planeA.Axis().Direction().IsParallel(planeB.Axis().Direction(), Precision::Angular())) {
+                return MakeFailure<OcctExactAngleResult>(
+                    planeA.Distance(planeB) <= Precision::Confusion() ? "coincident-geometry" : "parallel-geometry",
+                    planeA.Distance(planeB) <= Precision::Confusion()
+                        ? "Exact angle is not defined for coincident planar faces or overlapping linear edges."
+                        : "Exact angle is not defined for parallel planar faces or collinear linear edges."
+                );
+            }
+
+            double distanceValue = 0.0;
+            gp_Pnt pointA;
+            gp_Pnt pointB;
+            lifecycle = MeasureMinimumDistance(faceA, faceB, distanceValue, pointA, pointB);
+            if (!lifecycle.ok) {
+                return ConvertFailure<OcctExactAngleResult>(lifecycle);
+            }
+
+            gp_Dir workingPlaneNormal(gp_Vec(planeA.Axis().Direction().XYZ().Crossed(planeB.Axis().Direction().XYZ())));
+
+            OcctExactAngleResult result;
+            result.ok = true;
+            result.value = CanonicalAngle(planeA.Axis().Direction().Angle(planeB.Axis().Direction()));
+            result.origin = ToArray(Midpoint(pointA, pointB));
+            result.directionA = ToArray(planeA.Axis().Direction());
+            result.directionB = ToArray(planeB.Axis().Direction());
+            result.pointA = ToArray(pointA);
+            result.pointB = ToArray(pointB);
+            result.workingPlaneOrigin = ToArray(Midpoint(pointA, pointB));
+            result.workingPlaneNormal = ToArray(workingPlaneNormal);
+            return result;
+        }
+
+        return MakeFailure<OcctExactAngleResult>(
+            "unsupported-geometry",
+            "Exact angle only supports line/line or plane/plane pairs."
+        );
+    } catch (const Standard_Failure& failure) {
+        return MakeFailure<OcctExactAngleResult>(
+            "internal-error",
+            failure.GetMessageString() != nullptr ? failure.GetMessageString() : "OCCT exact angle query failed."
         );
     }
 }

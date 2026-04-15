@@ -130,6 +130,15 @@ function validateExactRef(ref, operationName) {
   };
 }
 
+function validatePairwiseExactRefs(refA, refB, operationName) {
+  const exactRefA = validateExactRef(refA, operationName);
+  const exactRefB = validateExactRef(refB, operationName);
+  if (exactRefA.exactModelId !== exactRefB.exactModelId) {
+    throw new Error(`${operationName} requires refs from the same exactModelId in v1.1.`);
+  }
+  return [exactRefA, exactRefB];
+}
+
 async function resolveFactory(options) {
   if (typeof options.factory === "function") {
     return options.factory;
@@ -295,6 +304,52 @@ export class OcctCoreClient {
     );
     return result?.ok === true
       ? { ...result, ref: exactRef }
+      : result;
+  }
+
+  async measureExactDistance(refA, refB) {
+    const module = await this._ensureModule();
+    const [exactRefA, exactRefB] = validatePairwiseExactRefs(refA, refB, "measureExactDistance");
+    if (typeof module.MeasureExactDistance !== "function") {
+      throw new Error("Loaded OCCT module does not expose MeasureExactDistance().");
+    }
+
+    const result = module.MeasureExactDistance(
+      exactRefA.exactModelId,
+      exactRefA.exactShapeHandle,
+      exactRefA.kind,
+      exactRefA.elementId,
+      exactRefB.exactShapeHandle,
+      exactRefB.kind,
+      exactRefB.elementId,
+      exactRefA.transform,
+      exactRefB.transform,
+    );
+    return result?.ok === true
+      ? { ...result, refA: exactRefA, refB: exactRefB }
+      : result;
+  }
+
+  async measureExactAngle(refA, refB) {
+    const module = await this._ensureModule();
+    const [exactRefA, exactRefB] = validatePairwiseExactRefs(refA, refB, "measureExactAngle");
+    if (typeof module.MeasureExactAngle !== "function") {
+      throw new Error("Loaded OCCT module does not expose MeasureExactAngle().");
+    }
+
+    const result = module.MeasureExactAngle(
+      exactRefA.exactModelId,
+      exactRefA.exactShapeHandle,
+      exactRefA.kind,
+      exactRefA.elementId,
+      exactRefB.exactShapeHandle,
+      exactRefB.kind,
+      exactRefB.elementId,
+      exactRefA.transform,
+      exactRefB.transform,
+    );
+    return result?.ok === true
+      ? { ...result, refA: exactRefA, refB: exactRefB }
       : result;
   }
 
