@@ -34,6 +34,13 @@ test("authoritative root release command surface includes exact pairwise measure
   assert.match(testCommand, /test\/exact_pairwise_measurement_contract\.test\.mjs/);
 });
 
+test("authoritative root test surface includes import appearance contract coverage", () => {
+  const packageJson = readRepoJson("package.json");
+  const testCommand = packageJson.scripts?.test ?? "";
+
+  assert.match(testCommand, /test\/import_appearance_contract\.test\.mjs/);
+});
+
 test("authoritative root release command surface excludes unconditional secondary-surface gates", () => {
   const packageJson = readRepoJson("package.json");
   const releaseCommand = packageJson.scripts?.["test:release:root"] ?? "";
@@ -104,23 +111,23 @@ test("planning state stays aligned to the root Wasm carrier", () => {
   assert.match(project, /## Evolution/);
 });
 
-test("planning state marks v1.2 active and ready for phase 9 planning", () => {
+test("planning state marks v1.2 active and ready for phase 10 planning", () => {
   const roadmap = readRepoText(".planning/ROADMAP.md");
   const state = readRepoText(".planning/STATE.md");
 
   assert.match(roadmap, /🚧 \*\*v1\.2 Import Appearance Contract\*\* - Phases 9-11 \(active\)/);
-  assert.match(roadmap, /- \[ \] \*\*Phase 9: Root Import Appearance Mode\*\*/);
-  assert.match(roadmap, /- \[ \] 09-01-PLAN\.md/);
-  assert.match(roadmap, /- \[ \] 09-02-PLAN\.md/);
-  assert.match(roadmap, /\| 9\. Root Import Appearance Mode \| 0\/2 \| Planned \| — \|/);
+  assert.match(roadmap, /- \[x\] \*\*Phase 9: Root Import Appearance Mode\*\*/);
+  assert.match(roadmap, /- \[x\] 09-01-PLAN\.md/);
+  assert.match(roadmap, /- \[x\] 09-02-PLAN\.md/);
+  assert.match(roadmap, /\| 9\. Root Import Appearance Mode \| 2\/2 \| Complete \| 2026-04-15 \|/);
 
   assert.match(state, /status:\s*active/i);
   assert.match(state, /milestone:\s*v1\.2/i);
   assert.match(state, /milestone_name:\s*Import Appearance Contract/i);
-  assert.match(state, /completed_phases:\s*0/);
-  assert.match(state, /completed_plans:\s*0/);
-  assert.match(state, /percent:\s*0/);
-  assert.match(state, /Current focus:\s*Phase 09 planning for v1\.2 Import Appearance Contract/i);
-  assert.match(state, /Next step is `\/gsd-plan-phase 9`/i);
-  assert.match(state, /Progress:\s*\[----------\]\s*0%/);
+  assert.match(state, /completed_phases:\s*1/);
+  assert.match(state, /completed_plans:\s*2/);
+  assert.match(state, /percent:\s*33/);
+  assert.match(state, /Current focus:\s*Phase 10 planning for v1\.2 Import Appearance Contract/i);
+  assert.match(state, /Next step is `\/gsd-plan-phase 10`/i);
+  assert.match(state, /Progress:\s*\[###-------\]\s*33%/);
 });

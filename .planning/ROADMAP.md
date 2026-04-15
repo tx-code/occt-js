@@ -16,7 +16,7 @@ This roadmap keeps `occt-js` centered on the runtime-first Wasm carrier. `v1.2` 
 - Integer phases (9, 10, 11): Planned milestone work
 - Decimal phases (9.1, 9.2): Urgent insertions (marked with INSERTED)
 
-- [ ] **Phase 9: Root Import Appearance Mode** - Add explicit appearance mode parsing and a documented built-in default CAD color to root import APIs.
+- [x] **Phase 9: Root Import Appearance Mode** - Add explicit appearance mode parsing and a documented built-in default CAD color to root import APIs.
 - [ ] **Phase 10: Custom Default Color & Adapter Parity** - Support caller-provided default colors and unify read/openExact/`occt-core` semantics.
 - [ ] **Phase 11: Appearance Governance & Downstream Contract** - Finalize docs, typings, package guidance, and release governance for the import appearance contract.
 
@@ -35,8 +35,8 @@ This roadmap keeps `occt-js` centered on the runtime-first Wasm carrier. `v1.2` 
 **Plans**: 2 plans
 
 Plans:
-- [ ] 09-01-PLAN.md — Add explicit appearance-mode parsing and built-in default CAD color to root import params
-- [ ] 09-02-PLAN.md — Lock `readColors` compatibility and read/openExact appearance parity across supported formats
+- [x] 09-01-PLAN.md — Add explicit appearance-mode parsing and built-in default CAD color to root import params
+- [x] 09-02-PLAN.md — Lock `readColors` compatibility and read/openExact appearance parity across supported formats
 
 ### Phase 10: Custom Default Color & Adapter Parity
 **Goal**: Let callers pass a custom default color and make `@tx-code/occt-core` normalize and forward the full appearance contract without viewer-side repaint assumptions.
@@ -77,6 +77,6 @@ Phases execute in numeric order: 9 → 10 → 11
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 9. Root Import Appearance Mode | 0/2 | Planned | — |
+| 9. Root Import Appearance Mode | 2/2 | Complete | 2026-04-15 |
 | 10. Custom Default Color & Adapter Parity | 0/2 | Planned | — |
 | 11. Appearance Governance & Downstream Contract | 0/2 | Planned | — |
