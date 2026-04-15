@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Exact BRep Measurement Foundation
 status: ready_to_execute
-stopped_at: Completed Phase 08 plan 01; next step is Phase 08 plan 02 execution
-last_updated: "2026-04-15T12:30:00Z"
-last_activity: 2026-04-15 -- Phase 08 plan 01 complete
+stopped_at: Completed Phase 08 plan 02; next step is Phase 08 plan 03 execution
+last_updated: "2026-04-15T08:36:52Z"
+last_activity: 2026-04-15 -- Phase 08 plan 02 complete
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 9
-  completed_plans: 7
-  percent: 78
+  completed_plans: 8
+  percent: 89
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-14)
 
 **Core value:** Downstream applications can reliably consume the OCCT Wasm runtime and its root API contract without build drift or packaging surprises.
-**Current focus:** Phase 08 is in flight; exact pairwise distance and angle are complete and thickness hardening is next.
+**Current focus:** Phase 08 is in flight; exact thickness is complete and docs/release hardening is next.
 
 ## Current Position
 
 Phase: 08 (pairwise-measurement-contract-hardening) — IN PROGRESS
-Plan: 1 of 3 complete
+Plan: 2 of 3 complete
 Status: Ready to continue execution
-Last activity: 2026-04-15 -- Phase 08 plan 01 complete
+Last activity: 2026-04-15 -- Phase 08 plan 02 complete
 
-Progress: [████████░░] 78%
+Progress: [█████████░] 89%
 
 ## Performance Metrics
 
@@ -75,6 +75,7 @@ Recent decisions affecting current work:
 - Phase 05+: Exact measurement remains a wasm/core foundation; app-side session UX, overlays, and semantic feature recognition stay downstream
 - Phase 07: Exact single-entity primitives stay definition-scoped in wasm, while `occt-core` owns occurrence transform adaptation
 - Phase 08: Pairwise root queries stay same-model in v1.1 and accept two occurrence transforms so attach geometry remains exact across repeated instances
+- Phase 08: Exact thickness uses plane-distance semantics for parallel planar face pairs and keeps nonparallel cases on explicit unsupported failures
 
 ### Pending Todos
 
@@ -88,5 +89,5 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-04-14T11:31:10.141Z
-Stopped at: Completed Phase 08 plan 01; next step is Phase 08 plan 02 execution
-Resume file: .planning/phases/08-pairwise-measurement-contract-hardening/08-02-PLAN.md
+Stopped at: Completed Phase 08 plan 02; next step is Phase 08 plan 03 execution
+Resume file: .planning/phases/08-pairwise-measurement-contract-hardening/08-03-PLAN.md

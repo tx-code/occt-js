@@ -167,7 +167,7 @@ Plans:
 
 Plans:
 - [x] 08-01-PLAN.md — Add exact distance and angle primitives with overlay-ready attach geometry
-- [ ] 08-02-PLAN.md — Add exact thickness plus structured measurement success and failure DTO hardening
+- [x] 08-02-PLAN.md — Add exact thickness plus structured measurement success and failure DTO hardening
 - [ ] 08-03-PLAN.md — Finalize `occt-core` adapters, typings, docs, and root release verification
 
 ## Progress
@@ -184,4 +184,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 5. Exact Model Lifecycle Contract | 2/2 | Complete | 2026-04-14 |
 | 6. Occurrence-Scoped Exact Ref Mapping | 2/2 | Complete | 2026-04-15 |
 | 7. Primitive Exact Geometry Queries | 2/2 | Complete | 2026-04-15 |
-| 8. Pairwise Measurement Contract Hardening | 1/3 | In progress | - |
+| 8. Pairwise Measurement Contract Hardening | 2/3 | In progress | - |
