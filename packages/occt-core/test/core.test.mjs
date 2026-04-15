@@ -451,6 +451,84 @@ describe("createOcctCore", () => {
     });
   });
 
+  it("wraps exact geometry classification through occurrence-scoped refs", async () => {
+    const calls = [];
+    const ref = {
+      exactModelId: 17,
+      exactShapeHandle: 33,
+      nodeId: "node-a",
+      geometryId: "geo_0",
+      kind: "face",
+      elementId: 7,
+      transform: [
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        10, 20, 30, 1,
+      ],
+    };
+    const core = createOcctCore({
+      factory: async () => ({
+        GetExactGeometryType: (...args) => {
+          calls.push(args);
+          return { ok: true, family: "plane" };
+        },
+      }),
+    });
+
+    const result = await core.getExactGeometryType(ref);
+
+    assert.deepEqual(calls, [[17, 33, "face", 7]]);
+    assert.deepEqual(result, {
+      ok: true,
+      family: "plane",
+      ref,
+    });
+  });
+
+  it("transforms exact radius primitives into occurrence space", async () => {
+    const ref = {
+      exactModelId: 17,
+      exactShapeHandle: 33,
+      nodeId: "node-a",
+      geometryId: "geo_0",
+      kind: "edge",
+      elementId: 5,
+      transform: [
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        10, 20, 30, 1,
+      ],
+    };
+    const core = createOcctCore({
+      factory: async () => ({
+        MeasureExactRadius: () => ({
+          ok: true,
+          family: "circle",
+          radius: 5,
+          diameter: 10,
+          localCenter: [1, 2, 3],
+          localAnchorPoint: [1, 2, 8],
+          localAxisDirection: [0, 0, 1],
+        }),
+      }),
+    });
+
+    const result = await core.measureExactRadius(ref);
+
+    assert.deepEqual(result, {
+      ok: true,
+      family: "circle",
+      radius: 5,
+      diameter: 10,
+      center: [11, 22, 33],
+      anchorPoint: [11, 22, 38],
+      axisDirection: [0, 0, 1],
+      ref,
+    });
+  });
+
   it("pins the format for openExactStep/openExactIges/openExactBrep", async () => {
     const calls = [];
     const exactResult = {
