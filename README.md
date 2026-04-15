@@ -71,6 +71,71 @@ const core = createOcctCore({
 });
 ```
 
+## Exact Pairwise Measurement Foundation
+
+For exact BRep measurement, the root Wasm carrier exposes retained-model and pairwise entrypoints directly:
+
+```js
+const exact = occt.OpenExactStepModel(buffer, {
+  rootMode: "multiple-shapes",
+});
+
+const exactModelId = exact.exactModelId;
+const exactShapeHandle = exact.exactGeometryBindings[0].exactShapeHandle;
+const identity = [
+  1, 0, 0, 0,
+  0, 1, 0, 0,
+  0, 0, 1, 0,
+  0, 0, 0, 1,
+];
+
+const distance = occt.MeasureExactDistance(
+  exactModelId, exactShapeHandle, "face", 1,
+  exactShapeHandle, "face", 2,
+  identity, identity,
+);
+
+const angle = occt.MeasureExactAngle(
+  exactModelId, exactShapeHandle, "edge", 5,
+  exactShapeHandle, "edge", 6,
+  identity, identity,
+);
+
+const thickness = occt.MeasureExactThickness(
+  exactModelId, exactShapeHandle, "face", 1,
+  exactShapeHandle, "face", 2,
+  identity, identity,
+);
+```
+
+Most downstream apps should prefer the package-first adapter surface in `@tx-code/occt-core`, which keeps occurrence transforms and exact refs in JS-friendly DTOs:
+
+```js
+const rawExact = await core.openExactStep(buffer, {
+  fileName: "part.step",
+});
+
+const refA = {
+  exactModelId: rawExact.exactModelId,
+  exactShapeHandle: rawExact.exactGeometryBindings[0].exactShapeHandle,
+  kind: "face",
+  elementId: 1,
+  transform: [
+    1, 0, 0, 0,
+    0, 1, 0, 0,
+    0, 0, 1, 0,
+    0, 0, 0, 1,
+  ],
+};
+const refB = { ...refA, elementId: 2 };
+
+const distance = await core.measureExactDistance(refA, refB);
+const angle = await core.measureExactAngle(refA, refB);
+const thickness = await core.measureExactThickness(refA, refB);
+```
+
+Overlay rendering, selection UX, and semantic feature recognition remain downstream concerns. `occt-js` and `@tx-code/occt-core` stop at the exact Wasm/kernel and package-adapter boundary.
+
 ## Prerequisites
 
 | Tool | Version |
@@ -152,6 +217,7 @@ npm run test:release:root
 ```
 
 This gate is runtime-first. It covers the Windows Wasm build, root governance contracts, `@tx-code/occt-core`, and the full root runtime suite.
+That authoritative surface includes `test/exact_pairwise_measurement_contract.test.mjs`, so exact pairwise measurement stays mandatory in root release verification.
 
 Demo, Babylon, and Tauri surfaces are conditional secondary-surface verification only. Run their checks when your release changes `demo/`, `demo/tests/`, `demo/src-tauri/`, or the Babylon package surfaces.
 
