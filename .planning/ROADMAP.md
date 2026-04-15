@@ -8,7 +8,7 @@
 
 ## Overview
 
-This roadmap keeps `occt-js` centered on the runtime-first Wasm carrier. `v1.2` hardens import appearance into an explicit package contract so downstream apps can choose source colors or a default CAD color through import options instead of patching colors later in viewer code. With Phase 10 complete, the remaining milestone work is governance: docs, typings, and release/package checks must now lock the shipped runtime and adapter semantics in place.
+This roadmap keeps `occt-js` centered on the runtime-first Wasm carrier. `v1.2` hardened import appearance into an explicit package contract so downstream apps can choose source colors or a default CAD color through import options instead of patching colors later in viewer code. With Phase 11 complete, docs, typings, package guidance, and the authoritative root release gate now lock the shipped runtime and adapter semantics in place. The milestone is ready for closeout.
 
 ## Phases
 
@@ -18,7 +18,7 @@ This roadmap keeps `occt-js` centered on the runtime-first Wasm carrier. `v1.2` 
 
 - [x] **Phase 9: Root Import Appearance Mode** - Add explicit appearance mode parsing and a documented built-in default CAD color to root import APIs.
 - [x] **Phase 10: Custom Default Color & Adapter Parity** - Support caller-provided default colors and unify read/openExact/`occt-core` semantics.
-- [ ] **Phase 11: Appearance Governance & Downstream Contract** - Finalize docs, typings, package guidance, and release governance for the import appearance contract.
+- [x] **Phase 11: Appearance Governance & Downstream Contract** - Finalize docs, typings, package guidance, and release governance for the import appearance contract.
 
 ## Phase Details
 
@@ -67,8 +67,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 11-01-PLAN.md — Finalize docs and typings for the import appearance contract
-- [ ] 11-02-PLAN.md — Extend release governance and downstream packaging verification for appearance options
+- [x] 11-01-PLAN.md — Finalize docs and typings for the import appearance contract
+- [x] 11-02-PLAN.md — Extend release governance and downstream packaging verification for appearance options
 
 ## Progress
 
@@ -79,4 +79,4 @@ Phases execute in numeric order: 9 → 10 → 11
 |-------|----------------|--------|-----------|
 | 9. Root Import Appearance Mode | 2/2 | Complete | 2026-04-15 |
 | 10. Custom Default Color & Adapter Parity | 2/2 | Complete | 2026-04-15 |
-| 11. Appearance Governance & Downstream Contract | 0/2 | Planned | — |
+| 11. Appearance Governance & Downstream Contract | 2/2 | Complete | 2026-04-15 |

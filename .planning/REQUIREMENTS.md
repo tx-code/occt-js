@@ -16,7 +16,7 @@
 ### Adapter & Governance
 
 - [x] **ADAPT-03**: `@tx-code/occt-core` can accept and normalize the import appearance options, forwarding them to the root Wasm carrier without hiding the runtime contract.
-- [ ] **ADAPT-04**: Root typings, package docs, and release verification define the import appearance contract and keep app-side settings persistence or viewer overrides out of scope.
+- [x] **ADAPT-04**: Root typings, package docs, and release verification define the import appearance contract and keep app-side settings persistence or viewer overrides out of scope.
 
 ## Future Requirements
 
@@ -49,7 +49,7 @@
 | APPR-03 | Phase 10 | Completed |
 | APPR-04 | Phase 10 | Completed |
 | ADAPT-03 | Phase 10 | Completed |
-| ADAPT-04 | Phase 11 | Pending |
+| ADAPT-04 | Phase 11 | Completed |
 
 **Coverage:**
 - v1.2 requirements: 7 total
@@ -58,4 +58,4 @@
 
 ---
 *Requirements defined: 2026-04-15*
-*Last updated: 2026-04-15 after Phase 10 completion*
+*Last updated: 2026-04-15 after Phase 11 completion*

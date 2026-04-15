@@ -122,7 +122,7 @@ test("planning artifacts keep requirement traceability current", () => {
   assert.match(requirements, /\| APPR-03 \| Phase 10 \| Completed \|/);
   assert.match(requirements, /\| APPR-04 \| Phase 10 \| Completed \|/);
   assert.match(requirements, /\| ADAPT-03 \| Phase 10 \| Completed \|/);
-  assert.match(requirements, /\| ADAPT-04 \| Phase 11 \| Pending \|/);
+  assert.match(requirements, /\| ADAPT-04 \| Phase 11 \| Completed \|/);
 });
 
 test("milestone archives capture the shipped v1.1 planning corpus", () => {
@@ -150,27 +150,32 @@ test("planning state stays aligned to the root Wasm carrier", () => {
   assert.match(project, /## Evolution/);
 });
 
-test("planning state marks v1.2 active and ready for phase 11 execution", () => {
+test("planning state marks v1.2 phase-complete and ready for milestone closeout", () => {
   const roadmap = readRepoText(".planning/ROADMAP.md");
   const state = readRepoText(".planning/STATE.md");
 
   assert.match(roadmap, /🚧 \*\*v1\.2 Import Appearance Contract\*\* - Phases 9-11 \(active\)/);
   assert.match(roadmap, /- \[x\] \*\*Phase 9: Root Import Appearance Mode\*\*/);
   assert.match(roadmap, /- \[x\] \*\*Phase 10: Custom Default Color & Adapter Parity\*\*/);
+  assert.match(roadmap, /- \[x\] \*\*Phase 11: Appearance Governance & Downstream Contract\*\*/);
   assert.match(roadmap, /- \[x\] 09-01-PLAN\.md/);
   assert.match(roadmap, /- \[x\] 09-02-PLAN\.md/);
   assert.match(roadmap, /- \[x\] 10-01-PLAN\.md/);
   assert.match(roadmap, /- \[x\] 10-02-PLAN\.md/);
+  assert.match(roadmap, /- \[x\] 11-01-PLAN\.md/);
+  assert.match(roadmap, /- \[x\] 11-02-PLAN\.md/);
   assert.match(roadmap, /\| 9\. Root Import Appearance Mode \| 2\/2 \| Complete \| 2026-04-15 \|/);
   assert.match(roadmap, /\| 10\. Custom Default Color & Adapter Parity \| 2\/2 \| Complete \| 2026-04-15 \|/);
+  assert.match(roadmap, /\| 11\. Appearance Governance & Downstream Contract \| 2\/2 \| Complete \| 2026-04-15 \|/);
 
   assert.match(state, /status:\s*active/i);
   assert.match(state, /milestone:\s*v1\.2/i);
   assert.match(state, /milestone_name:\s*Import Appearance Contract/i);
-  assert.match(state, /completed_phases:\s*2/);
-  assert.match(state, /completed_plans:\s*4/);
-  assert.match(state, /percent:\s*67/);
-  assert.match(state, /Current focus:\s*Phase 11 ready for execution for v1\.2 Import Appearance Contract/i);
-  assert.match(state, /Next step is `\/gsd-execute-phase 11`/i);
-  assert.match(state, /Progress:\s*\[#######---\]\s*67%/);
+  assert.match(state, /completed_phases:\s*3/);
+  assert.match(state, /completed_plans:\s*6/);
+  assert.match(state, /percent:\s*100/);
+  assert.match(state, /Current focus:\s*v1\.2 ready for milestone closeout after Phase 11 completion/i);
+  assert.match(state, /Status:\s*Milestone ready for closeout/i);
+  assert.match(state, /Next step is `\/gsd-complete-milestone`/i);
+  assert.match(state, /Progress:\s*\[##########\]\s*100%/);
 });

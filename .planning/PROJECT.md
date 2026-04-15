@@ -24,7 +24,7 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 
 - [x] Import APIs expose an explicit appearance strategy for preserving source colors or forcing a default CAD color.
 - [x] The default CAD color contract is stable across root Wasm imports and `@tx-code/occt-core`, with optional caller override for app-side user settings.
-- [ ] Docs, typings, and release verification lock the import appearance contract without turning viewer repaint logic into a root-runtime concern.
+- [x] Docs, typings, and release verification lock the import appearance contract without turning viewer repaint logic into a root-runtime concern.
 
 ### Out of Scope
 
@@ -36,9 +36,9 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 
 ## Current State
 
-`v1.1 Exact BRep Measurement Foundation` shipped on 2026-04-15. `v1.2` has since closed the runtime and adapter half of the import appearance contract: the root runtime now exposes `colorMode` plus `defaultColor`, and `occt-core` forwards and normalizes that contract without inventing fallback materials unless default appearance is explicit.
+`v1.1 Exact BRep Measurement Foundation` shipped on 2026-04-15. `v1.2` has now fully closed the import appearance contract: the root runtime exposes `colorMode` plus `defaultColor`, `occt-core` forwards and normalizes that contract without inventing fallback materials unless default appearance is explicit, and the root/package docs plus release governance now lock the shipped semantics in place.
 
-`v1.2 Import Appearance Contract` is now in its governance closeout step. The remaining work is to document and release-lock the appearance contract without turning viewer-side repaint logic into part of the root-runtime scope.
+`v1.2 Import Appearance Contract` has finished all planned phases and is ready for `/gsd-complete-milestone`.
 
 ## Current Milestone: v1.2 Import Appearance Contract
 
@@ -111,4 +111,4 @@ This document evolves at phase transitions and milestone boundaries.
 </details>
 
 ---
-*Last updated: 2026-04-15 after Phase 10 completion*
+*Last updated: 2026-04-15 after Phase 11 completion*
