@@ -7,7 +7,7 @@
 
 ### Import Appearance Expansion
 
-- [ ] **APPR-06**: Downstream JS code can control import-time alpha or opacity fallback as part of the appearance contract instead of hardcoding opacity in downstream viewers.
+- [x] **APPR-06**: Downstream JS code can control import-time alpha or opacity fallback as part of the appearance contract instead of hardcoding opacity in downstream viewers.
 - [ ] **APPR-07**: Downstream JS code can select named import appearance presets that map fallback color and opacity policy without requiring a viewer-side recolor pass.
 - [ ] **APPR-08**: Stateless `Read*` APIs and exact-open `OpenExact*` APIs honor the same expanded appearance semantics for supported formats.
 
@@ -41,7 +41,7 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| APPR-06 | Phase 12 | Pending |
+| APPR-06 | Phase 12 | Completed |
 | APPR-07 | Phase 13 | Pending |
 | APPR-08 | Phase 13 | Pending |
 | ADAPT-05 | Phase 13 | Pending |
@@ -54,4 +54,4 @@
 
 ---
 *Requirements defined: 2026-04-15*
-*Last updated: 2026-04-15 after starting v1.3 Appearance Expansion*
+*Last updated: 2026-04-15 after completing Phase 12 Root Alpha & Opacity Fallback*
