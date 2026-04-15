@@ -16,23 +16,55 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 - ✓ Import results preserve tree-shaped `rootNodes`, geometry/material payloads, names/colors, and source-unit metadata where the source format provides it.
 - ✓ Root API supports explicit root-shape selection and manufacturing-oriented orientation analysis for supported CAD formats.
 - ✓ Reusable package layers and demo surfaces exist around the runtime, but they are downstream of the root Wasm contract.
-- ✓ Root release verification is now anchored on `npm run test:release:root` plus `test/release_governance_contract.test.mjs`.
-- ✓ Demo, Babylon, and Tauri checks remain conditional secondary-surface verification rather than unconditional root release gates.
+- ✓ Root release verification is anchored on `npm run test:release:root` plus `test/release_governance_contract.test.mjs`.
+- ✓ Exact BRep measurement foundations now ship through the root Wasm carrier and `@tx-code/occt-core`, including retained exact-model handles, occurrence-scoped refs, primitive exact queries, and pairwise distance/angle/thickness.
+- ✓ App-side measurement UX, overlays, and semantic feature recognition remain explicitly outside the root runtime boundary.
 
 ### Active
 
-- [ ] Expose stable exact-model lifecycle APIs so downstream apps can retain and release imported BRep/STEP/IGES shapes for later measurement work.
-- [ ] Expose exact topology element references for faces, edges, and vertices in a form downstream apps can map from picks to BRep entities.
-- [ ] Expose exact primitive measurement APIs for distance, angle, radius, center, edge length, face area, face normal evaluation, and thickness.
-- [ ] Preserve the runtime-first contract while adding measurement capabilities, without promoting viewer/UI semantics into the root product boundary.
+- (None yet — define the next milestone with `/gsd-new-milestone`.)
 
 ### Out of Scope
 
 - Evolving this repo into a full viewer framework as the primary goal — the main value is the OCCT Wasm runtime.
 - Making Tauri or desktop packaging a prerequisite for root npm publishing — root runtime must stay independently releasable.
 - Treating Babylon/demo layers as first-order release gates for the root runtime.
-- Broad format expansion beyond OCCT-backed STEP, IGES, and BREP in this milestone — current focus is exact measurement foundations on top of the existing runtime contract.
-- App-level measurement UX, selection state machines, overlays, and feature semantics such as hole/chamfer recognition — these belong in downstream apps after the wasm/core foundation exists.
+- App-level measurement session UX, overlays, candidate ranking, or feature semantics such as hole/chamfer recognition — these remain downstream concerns until a later milestone explicitly changes scope.
+
+## Current State
+
+`v1.1 Exact BRep Measurement Foundation` shipped on 2026-04-15. The root runtime now exposes a complete exact-measurement foundation for downstream web applications: retained exact-model lifecycle APIs, occurrence-scoped exact refs, exact primitive geometry queries, and pairwise distance/angle/thickness measurements, all without changing the runtime-first product boundary.
+
+The repository is now back in an archive state with no active milestone plan. The next change to `.planning/REQUIREMENTS.md` and `.planning/ROADMAP.md` should come from `/gsd-new-milestone`, not from extending the shipped v1.1 scope in place.
+
+## Next Milestone Goals
+
+- Decide the next runtime-level slice on top of the shipped measurement foundation instead of expanding app/UI semantics into the root package by default.
+- Carry forward small runtime-adapter follow-ups, including an explicit import option that ignores source colors and uses the default CAD color.
+- Keep release governance centered on `npm run test:release:root` and preserve the root Wasm carrier as the authoritative contract surface.
+
+## Context
+
+- Brownfield repository with an established Wasm build flow, root package contract, demo app, Tauri shell, and package-layer adapters.
+- Root package version is still `0.1.7`; the root runtime and root tests remain the primary maintained contract.
+- `imos-app` remains the key downstream consumer signal: it vendors `@tx-code/occt-js` and consumes the Wasm/runtime surface directly, while viewer semantics live on the app side.
+- `SceneGraph.net` remains the best local reference for measurement behavior above the kernel layer, but `occt-js` intentionally stopped at exact-kernel foundations in v1.1.
+- GSD is now the primary repository workflow, with superpowers skills used to tighten execution discipline and verification.
+
+## Key Decisions
+
+| Decision | Rationale | Outcome |
+|----------|-----------|---------|
+| Use GSD as the primary repository workflow | The repo still needs disciplined planning, but the primary object being managed is the Wasm runtime contract rather than the whole viewer stack | ✓ Good |
+| Initialize planning from current docs instead of running a separate codebase map first | The repository already had strong local docs and the user explicitly asked to bootstrap from them first | ✓ Good |
+| Treat the root Wasm package as the strategic product surface | Downstream consumers primarily need the OCCT Wasm carrier; viewer/demo layers are secondary and should not dominate planning | ✓ Good |
+| Keep existing `AGENTS.md` as the authoritative repo instruction file | The repo already consolidated agent guidance there; generic regeneration would risk overwriting local rules | ✓ Good |
+| Use `npm run test:release:root` as the canonical root release gate | One command is easier to document, test, and reuse across README, AGENTS, skills, and future planning | ✓ Good |
+| Keep demo, Babylon, and Tauri checks conditional secondary-surface verification | Root release flow must stay aligned with the Wasm carrier boundary and avoid secondary-surface gate creep | ✓ Good |
+| Keep exact measurement semantics in downstream apps and limit v1.1 to wasm/core primitives | The main value is exposing a reliable geometric kernel contract; selection UX, overlays, and feature interpretation belong above the runtime | ✓ Good |
+
+<details>
+<summary>Archived v1.1 milestone framing</summary>
 
 ## Current Milestone: v1.1 Exact BRep Measurement Foundation
 
@@ -43,50 +75,7 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 - Exact topology references for face, edge, and vertex measurement targets
 - Primitive measurement APIs for exact geometric values and attach points
 
-## Context
-
-- Brownfield repository with existing shipped surfaces and accumulated design docs from March 2026.
-- Root package version is `0.1.7`; the root runtime and root tests are the primary maintained contract.
-- `imos-app` is the important downstream consumer signal: it vendors `@tx-code/occt-js` and consumes the Wasm/runtime surface directly, while Babylon viewer code is internalized on the `imos-app` side.
-- `SceneGraph.net` remains the clearest local reference for what "complete measurement" looks like above the kernel layer: persistent shape storage, exact topology resolution, and app-side measurement semantics.
-- Current initialization is intentionally synthesized from repository docs and concrete package/test surfaces instead of a separate `/gsd-map-codebase` run.
-- Team intent is to use GSD as the primary planning/execution flow going forward, with superpowers used as supporting process skills.
-
-## Constraints
-
-- **Release boundary**: `dist/occt-js.js`, `dist/occt-js.wasm`, and `dist/occt-js.d.ts` remain the root runtime contract — root release must stay independent of demo and Tauri.
-- **Windows build path**: Clean Windows rebuilds are expected to use `build/wasm/emsdk`, not a repo-root `emsdk/`.
-- **Downstream compatibility**: Changes to C++ bindings, importers, packaging, or `dist/` loading behavior must preserve downstream runtime consumption patterns such as vendored/tarballed use in `imos-app`.
-- **Non-core surfaces**: Demo, desktop, and Babylon viewer layers may exist, but they must not redefine the root package scope or release criteria.
-
-## Key Decisions
-
-| Decision | Rationale | Outcome |
-|----------|-----------|---------|
-| Use GSD as the primary repository workflow | The repo still needs disciplined planning, but the primary object being managed is the Wasm runtime contract rather than the whole viewer stack | ✓ Good |
-| Initialize planning from current docs instead of running a separate codebase map first | The repository already has strong local docs and the user explicitly asked to bootstrap from them first | ✓ Good |
-| Treat the root Wasm package as the strategic product surface | Downstream consumers primarily need the OCCT Wasm carrier; viewer/demo layers are secondary and should not dominate planning | ✓ Good |
-| Keep existing `AGENTS.md` as the authoritative repo instruction file | The repo already consolidated agent guidance there; generic regeneration would risk overwriting local rules | ✓ Good |
-| Use `npm run test:release:root` as the canonical root release gate | One command is easier to document, test, and reuse across README, AGENTS, skills, and future planning | ✓ Good |
-| Keep demo, Babylon, and Tauri checks conditional secondary-surface verification | Root release flow must stay aligned with the Wasm carrier boundary and avoid secondary-surface gate creep | ✓ Good |
-| Keep exact measurement semantics in downstream apps and limit this milestone to wasm/core primitives | The main value is exposing a reliable geometric kernel contract; selection UX, overlays, and feature interpretation belong above the runtime | ✓ Good |
-
-## Evolution
-
-This document evolves at phase transitions and milestone boundaries.
-
-**After each phase transition** (via `/gsd-transition`):
-1. Requirements invalidated? → Move to Out of Scope with reason
-2. Requirements validated? → Move to Validated with phase reference
-3. New requirements emerged? → Add to Active
-4. Decisions to log? → Add to Key Decisions
-5. "What This Is" still accurate? → Update if drifted
-
-**After each milestone** (via `/gsd-complete-milestone`):
-1. Full review of all sections
-2. Core Value check — still the right priority?
-3. Audit Out of Scope — reasons still valid?
-4. Update Context with current state
+</details>
 
 ---
-*Last updated: 2026-04-14 starting v1.1 Exact BRep Measurement Foundation*
+*Last updated: 2026-04-15 after v1.1 milestone closeout*

@@ -1,5 +1,23 @@
 # Milestones
 
+## v1.1 Exact BRep Measurement Foundation (Shipped: 2026-04-15)
+
+**Phases completed:** 4 phases, 9 plans, 18 tasks
+
+**Key accomplishments:**
+
+- The root wasm carrier now exposes a retained exact-model lifecycle lane with explicit open, retain, and release APIs alongside the unchanged stateless import surface.
+- The exact-model lifecycle contract is now fully typed, exposed through `occt-core`, and verified through both root and live downstream test paths.
+- The root exact-open lane now exposes one exact geometry binding per exported geometry definition, giving later phases a stable definition-level exact handle without leaking occurrence state into Wasm.
+- `occt-core` can now normalize exact-open results and resolve occurrence-scoped exact refs from the existing scene ids, with explicit failure DTOs for invalid handles, ids, and node/geometry mismatches.
+- The runtime now exposes exact geometry classification plus radius and center primitives on retained exact refs, and `occt-core` can adapt those local-space results back into occurrence space.
+- The exact-measurement foundation now covers exact edge length, face area, and face-normal-at-point, with `occt-core` adapting world-space query points and normals for repeated geometry occurrences.
+- The runtime now exposes exact pairwise distance and angle on retained refs, and `occt-core` can forward occurrence transforms so repeated geometry measures correctly in instance space.
+- The exact pairwise surface now includes planar thickness with plane-distance semantics, and the public pairwise typings are explicit enough for downstream measurement handling without guessing at failure shapes.
+- The exact pairwise measurement foundation is now a first-class package contract: it is documented at the root/package layer, required by the release gate, and fully reflected in milestone traceability.
+
+---
+
 ## v1.0 OCCT Wasm Runtime Hardening (Shipped: 2026-04-14)
 
 **Phases completed:** 4 phases, 12 plans, 21 tasks

@@ -71,20 +71,25 @@ test("release skill stays a thin AGENTS shim and keeps secondary surfaces condit
 
 test("planning artifacts keep requirement traceability current", () => {
   const requirements = readRepoText(".planning/REQUIREMENTS.md");
+  const archivedRequirements = readRepoText(".planning/milestones/v1.1-REQUIREMENTS.md");
 
-  assert.match(requirements, /\| REF-03 \| Phase 7 \| Completed \|/);
-  assert.match(requirements, /\| MEAS-03 \| Phase 7 \| Completed \|/);
-  assert.match(requirements, /\| MEAS-04 \| Phase 8 \| Completed \|/);
-  assert.match(requirements, /\| MEAS-05 \| Phase 8 \| Completed \|/);
-  assert.match(requirements, /\| ADAPT-01 \| Phase 8 \| Completed \|/);
-  assert.match(requirements, /\| ADAPT-02 \| Phase 8 \| Completed \|/);
+  assert.match(requirements, /No active milestone requirements/i);
+  assert.match(requirements, /v1\.1-REQUIREMENTS\.md/);
+  assert.match(requirements, /\/gsd-new-milestone/);
+  assert.match(archivedRequirements, /\| MEAS-05 \| Phase 8 \| Completed \|/);
+  assert.match(archivedRequirements, /\| ADAPT-01 \| Phase 8 \| Completed \|/);
+  assert.match(archivedRequirements, /\| ADAPT-02 \| Phase 8 \| Completed \|/);
 });
 
-test("planning traceability marks Phase 7 requirements complete before Phase 8 execution", () => {
-  const requirements = readRepoText(".planning/REQUIREMENTS.md");
+test("milestone archives capture the shipped v1.1 planning corpus", () => {
+  const milestones = readRepoText(".planning/MILESTONES.md");
+  const archivedRoadmap = readRepoText(".planning/milestones/v1.1-ROADMAP.md");
+  const archivedRequirements = readRepoText(".planning/milestones/v1.1-REQUIREMENTS.md");
 
-  assert.match(requirements, /\| REF-03 \| Phase 7 \| Completed \|/);
-  assert.match(requirements, /\| MEAS-03 \| Phase 7 \| Completed \|/);
+  assert.match(milestones, /## v1\.1 Exact BRep Measurement Foundation/);
+  assert.match(archivedRoadmap, /# Roadmap: occt-js/);
+  assert.match(archivedRoadmap, /### Phase 8: Pairwise Measurement Contract Hardening/);
+  assert.match(archivedRequirements, /# Requirements Archive: v1\.1 Exact BRep Measurement Foundation/);
 });
 
 test("planning state stays aligned to the root Wasm carrier", () => {
@@ -95,25 +100,27 @@ test("planning state stays aligned to the root Wasm carrier", () => {
 
   assert.match(project, new RegExp(coreValue.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   assert.match(state, new RegExp(coreValue.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
-  assert.match(roadmap, /test\/release_governance_contract\.test\.mjs/);
-  assert.match(roadmap, /npm run test:release:root/);
+  assert.match(roadmap, /milestones\/v1\.1-ROADMAP\.md/);
+  assert.match(project, /## Current State/);
+  assert.match(project, /## Next Milestone Goals/);
 });
 
-test("planning state marks phase 8 pairwise work complete", () => {
+test("planning state marks v1.1 complete and ready for the next milestone", () => {
   const roadmap = readRepoText(".planning/ROADMAP.md");
   const state = readRepoText(".planning/STATE.md");
+  const retrospective = readRepoText(".planning/RETROSPECTIVE.md");
 
-  assert.match(roadmap, /- \[x\] \*\*Phase 8: Pairwise Measurement Contract Hardening\*\*/);
-  assert.match(roadmap, /- \[x\] 08-01-PLAN\.md/);
-  assert.match(roadmap, /- \[x\] 08-02-PLAN\.md/);
-  assert.match(roadmap, /- \[x\] 08-03-PLAN\.md/);
-  assert.match(roadmap, /\| 8\. Pairwise Measurement Contract Hardening \| 3\/3 \| Complete \| 2026-04-15 \|/);
+  assert.match(roadmap, /\[v1\.1 Exact BRep Measurement Foundation\]\(\.\/milestones\/v1\.1-ROADMAP\.md\)/);
+  assert.match(roadmap, /No active milestone is currently planned/i);
 
   assert.match(state, /status:\s*complete/i);
+  assert.match(state, /milestone:\s*v1\.1/i);
+  assert.match(state, /milestone_name:\s*Exact BRep Measurement Foundation/i);
   assert.match(state, /completed_phases:\s*4/);
   assert.match(state, /completed_plans:\s*9/);
   assert.match(state, /percent:\s*100/);
-  assert.match(state, /Phase:\s*08 .*COMPLETE/i);
-  assert.match(state, /Status:\s*Phase 08 complete/i);
+  assert.match(state, /Current focus:\s*Planning the next milestone/i);
+  assert.match(state, /Next step is `\/gsd-new-milestone`/i);
   assert.match(state, /Progress:\s*\[██████████\]\s*100%/);
+  assert.match(retrospective, /## Milestone: v1\.1 — Exact BRep Measurement Foundation/);
 });
