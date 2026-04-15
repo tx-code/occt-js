@@ -1,5 +1,20 @@
 # Milestones
 
+## v1.2 Import Appearance Contract (Shipped: 2026-04-15)
+
+**Phases completed:** 3 phases, 6 plans, 12 tasks
+
+**Key accomplishments:**
+
+- The root wasm carrier now understands an explicit import appearance mode and can collapse imported output onto one built-in CAD color across STEP, IGES, and BREP.
+- Legacy `readColors` compatibility and exact-open appearance parity are now explicit, typed, and part of the default root runtime test chain.
+- The root Wasm carrier now accepts caller-provided `defaultColor` overrides and applies them consistently across stateless reads and exact-open imports.
+- `@tx-code/occt-core` now forwards a canonical appearance contract and no longer hides colorless runtime output behind unconditional fallback materials.
+- The shipped import appearance contract is now documented and typed where downstream consumers actually consume it: the root package, the `occt-core` adapter, and the public `.d.ts` surface.
+- The import appearance contract is now locked into the packaged root tarball and the authoritative runtime-first release gate, and Phase 11 is fully reflected in milestone traceability.
+
+---
+
 ## v1.1 Exact BRep Measurement Foundation (Shipped: 2026-04-15)
 
 **Phases completed:** 4 phases, 9 plans, 18 tasks
