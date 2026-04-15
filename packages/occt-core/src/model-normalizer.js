@@ -7,6 +7,7 @@ const IDENTITY_MATRIX = [
   0, 0, 0, 1,
 ];
 const DEFAULT_CAD_BASE_COLOR = [0.9, 0.91, 0.93, 1];
+const GHOSTED_PRESET_OPACITY = 0.35;
 
 function hasOwn(object, key) {
   return Object.prototype.hasOwnProperty.call(object, key);
@@ -46,14 +47,17 @@ function normalizeColor(input) {
       alphaProvided = true;
     }
   } else if (typeof input === "object") {
-    if (!Number.isFinite(input.r) || !Number.isFinite(input.g) || !Number.isFinite(input.b)) {
+    if (!Number.isFinite(Number(input.r)) || !Number.isFinite(Number(input.g)) || !Number.isFinite(Number(input.b))) {
       return null;
     }
-    r = input.r;
-    g = input.g;
-    b = input.b;
-    if (Number.isFinite(input.a)) {
-      a = input.a;
+    r = Number(input.r);
+    g = Number(input.g);
+    b = Number(input.b);
+    if (Number.isFinite(Number(input.opacity))) {
+      a = Number(input.opacity);
+      alphaProvided = true;
+    } else if (Number.isFinite(Number(input.a))) {
+      a = Number(input.a);
       alphaProvided = true;
     }
   } else {
@@ -264,17 +268,50 @@ function collectMaterialColors(raw, geometries) {
   return colors;
 }
 
+function resolveEffectiveAppearance(importParams) {
+  if (!importParams || typeof importParams !== "object") {
+    return { colorMode: undefined, defaultColor: undefined, defaultOpacity: undefined };
+  }
+
+  const appearancePreset = typeof importParams.appearancePreset === "string"
+    ? importParams.appearancePreset.trim().toLowerCase()
+    : undefined;
+  const presetDefaults = appearancePreset === "cad-ghosted"
+    ? { colorMode: "default", defaultOpacity: GHOSTED_PRESET_OPACITY }
+    : appearancePreset === "cad-solid"
+      ? { colorMode: "default" }
+      : {};
+
+  const colorMode = typeof importParams.colorMode === "string"
+    ? importParams.colorMode
+    : presetDefaults.colorMode;
+  const defaultColor = hasOwn(importParams, "defaultColor")
+    ? importParams.defaultColor
+    : undefined;
+  const defaultOpacity = hasOwn(importParams, "defaultOpacity")
+    ? importParams.defaultOpacity
+    : presetDefaults.defaultOpacity;
+
+  return { colorMode, defaultColor, defaultOpacity };
+}
+
 function resolveFallbackMaterialColor(importParams) {
-  const hasAppearanceContext = importParams
-    && typeof importParams === "object"
-    && (hasOwn(importParams, "colorMode") || hasOwn(importParams, "readColors") || hasOwn(importParams, "defaultColor"));
+  const effectiveAppearance = resolveEffectiveAppearance(importParams);
+  const hasAppearanceContext = effectiveAppearance.colorMode !== undefined
+    || (importParams
+      && typeof importParams === "object"
+      && (hasOwn(importParams, "readColors") || hasOwn(importParams, "appearancePreset")));
 
   if (!hasAppearanceContext) {
     return DEFAULT_CAD_BASE_COLOR.slice();
   }
 
-  if (importParams.colorMode === "default") {
-    return normalizeColor(importParams.defaultColor) ?? DEFAULT_CAD_BASE_COLOR.slice();
+  if (effectiveAppearance.colorMode === "default") {
+    const fallback = normalizeColor(effectiveAppearance.defaultColor) ?? DEFAULT_CAD_BASE_COLOR.slice();
+    if (Number.isFinite(Number(effectiveAppearance.defaultOpacity))) {
+      fallback[3] = Math.min(1, Math.max(0, Number(effectiveAppearance.defaultOpacity)));
+    }
+    return fallback;
   }
 
   return null;

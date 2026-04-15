@@ -17,6 +17,8 @@ const EMPTY_STATS = {
   reusedInstanceCount: 0,
 };
 const CUSTOM_DEFAULT_COLOR = { r: 0.2, g: 0.4, b: 0.6 };
+const CUSTOM_DEFAULT_OPACITY = 0.35;
+const GHOSTED_PRESET_OPACITY = 0.35;
 
 function hasOwn(object, key) {
   return Object.prototype.hasOwnProperty.call(object, key);
@@ -226,6 +228,54 @@ describe("normalizeOcctResult", () => {
     assert.deepEqual(face.color, [0, 1, 0, 1]);
     assert.deepEqual(result.geometries[0].color, [1, 128 / 255, 0, 1]);
     assert.equal(Array.isArray(result.geometries[0].edges[0]), false);
+  });
+
+  it("preserves object-form opacity fields when normalizing raw appearance payloads", () => {
+    const result = normalizeOcctResult({
+      success: true,
+      sourceFormat: "step",
+      rootNodes: [{
+        id: "n1",
+        name: "partA",
+        isAssembly: false,
+        transform: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
+        meshes: [0],
+        children: [],
+      }],
+      geometries: [{
+        name: "meshA",
+        color: { r: 0.1, g: 0.2, b: 0.3, opacity: 0.4 },
+        positions: new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0]),
+        normals: new Float32Array([0, 0, 1, 0, 0, 1, 0, 0, 1]),
+        indices: new Uint32Array([0, 1, 2]),
+        faces: [{
+          id: 1,
+          name: "",
+          firstIndex: 0,
+          indexCount: 3,
+          edgeIndices: [],
+          color: { r: 0.6, g: 0.7, b: 0.8, opacity: 0.9 },
+        }],
+        edges: [{
+          id: 1,
+          name: "",
+          points: new Float32Array([0, 0, 0, 1, 0, 0]),
+          ownerFaceIds: [1],
+          isFreeEdge: false,
+          color: { r: 0.2, g: 0.3, b: 0.4, opacity: 0.5 },
+        }],
+        vertices: [],
+        triangleToFaceMap: new Int32Array([1]),
+      }],
+      materials: [{ r: 0.9, g: 0.8, b: 0.7, opacity: 0.6 }],
+      warnings: [],
+      stats: { ...EMPTY_STATS, rootCount: 1, nodeCount: 1, partCount: 1, geometryCount: 1, materialCount: 1, triangleCount: 1 },
+    });
+
+    assert.deepEqual(result.materials[0].baseColor, [0.9, 0.8, 0.7, 0.6]);
+    assert.deepEqual(result.geometries[0].color, [0.1, 0.2, 0.3, 0.4]);
+    assert.deepEqual(result.geometries[0].faces[0].color, [0.6, 0.7, 0.8, 0.9]);
+    assert.deepEqual(result.geometries[0].edges[0].color, [0.2, 0.3, 0.4, 0.5]);
   });
 });
 
@@ -451,11 +501,62 @@ describe("createOcctCore", () => {
       ["read", {
         colorMode: "default",
         defaultColor: { r: 0.2, g: 0.4, b: 0.6 },
+        defaultOpacity: 1,
         linearDeflection: 0.2,
       }],
       ["exact", {
         colorMode: "default",
         defaultColor: { r: 0.2, g: 0.4, b: 0.6 },
+        defaultOpacity: 0.8,
+      }],
+    ]);
+  });
+
+  it("forwards appearancePreset/defaultOpacity and promotes defaultColor.opacity when explicit defaultOpacity is absent", async () => {
+    const calls = [];
+    const core = createOcctCore({
+      factory: async () => ({
+        ReadStepFile: (_bytes, params) => {
+          calls.push(["read", params]);
+          return {
+            success: true,
+            sourceFormat: "step",
+            rootNodes: [],
+            geometries: [],
+            materials: [],
+            warnings: [],
+            stats: EMPTY_STATS,
+          };
+        },
+      }),
+    });
+
+    await core.importModel(new Uint8Array([1, 2, 3]), {
+      format: "step",
+      importParams: {
+        appearancePreset: "cad-ghosted",
+        defaultColor: { r: 0.2, g: 0.4, b: 0.6, opacity: 0.8 },
+      },
+    });
+    await core.importModel(new Uint8Array([4, 5, 6]), {
+      format: "step",
+      importParams: {
+        appearancePreset: "cad-ghosted",
+        defaultColor: { r: 0.2, g: 0.4, b: 0.6, opacity: 0.8 },
+        defaultOpacity: CUSTOM_DEFAULT_OPACITY,
+      },
+    });
+
+    assert.deepEqual(calls, [
+      ["read", {
+        appearancePreset: "cad-ghosted",
+        defaultColor: { r: 0.2, g: 0.4, b: 0.6 },
+        defaultOpacity: 0.8,
+      }],
+      ["read", {
+        appearancePreset: "cad-ghosted",
+        defaultColor: { r: 0.2, g: 0.4, b: 0.6 },
+        defaultOpacity: CUSTOM_DEFAULT_OPACITY,
       }],
     ]);
   });
@@ -483,6 +584,22 @@ describe("createOcctCore", () => {
     assert.deepEqual(result.materials, [{
       id: "mat_0",
       baseColor: [0.2, 0.4, 0.6, 1],
+    }]);
+    assert.equal(result.geometries[0].materialId, "mat_0");
+    assert.equal(result.stats.materialCount, 1);
+  });
+
+  it("synthesizes preset-derived default appearance when the raw payload is colorless", () => {
+    const result = normalizeOcctResult(createColorlessRawResult(), {
+      sourceFormat: "step",
+      importParams: {
+        appearancePreset: "cad-ghosted",
+      },
+    });
+
+    assert.deepEqual(result.materials, [{
+      id: "mat_0",
+      baseColor: [0.9, 0.91, 0.93, GHOSTED_PRESET_OPACITY],
     }]);
     assert.equal(result.geometries[0].materialId, "mat_0");
     assert.equal(result.stats.materialCount, 1);

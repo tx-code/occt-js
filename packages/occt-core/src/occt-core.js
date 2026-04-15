@@ -6,6 +6,7 @@ const EXACT_OPEN_METHOD = {
   iges: "OpenExactIgesModel",
   brep: "OpenExactBrepModel",
 };
+const APPEARANCE_PRESETS = new Set(["cad-solid", "cad-ghosted"]);
 const IDENTITY_MATRIX = [
   1, 0, 0, 0,
   0, 1, 0, 0,
@@ -58,6 +59,8 @@ function normalizeDefaultColor(defaultColor) {
   let r;
   let g;
   let b;
+  let opacity;
+  let opacityProvided = false;
 
   if (Array.isArray(defaultColor) || ArrayBuffer.isView(defaultColor)) {
     const values = Array.from(defaultColor);
@@ -65,23 +68,62 @@ function normalizeDefaultColor(defaultColor) {
       return null;
     }
     [r, g, b] = values;
+    if (values.length > 3) {
+      opacity = values[3];
+      opacityProvided = Number.isFinite(Number(opacity));
+    }
   } else if (typeof defaultColor === "object") {
-    if (!Number.isFinite(defaultColor.r) || !Number.isFinite(defaultColor.g) || !Number.isFinite(defaultColor.b)) {
+    if (!Number.isFinite(Number(defaultColor.r)) || !Number.isFinite(Number(defaultColor.g)) || !Number.isFinite(Number(defaultColor.b))) {
       return null;
     }
-    ({ r, g, b } = defaultColor);
+    r = Number(defaultColor.r);
+    g = Number(defaultColor.g);
+    b = Number(defaultColor.b);
+    if (Number.isFinite(Number(defaultColor.opacity))) {
+      opacity = Number(defaultColor.opacity);
+      opacityProvided = true;
+    } else if (Number.isFinite(Number(defaultColor.a))) {
+      opacity = Number(defaultColor.a);
+      opacityProvided = true;
+    }
   } else {
     return null;
   }
 
   const scale = Math.max(Math.abs(r), Math.abs(g), Math.abs(b)) > 1 ? 255 : 1;
   const normalize = (value) => Math.min(1, Math.max(0, value / scale));
+  const normalizeOpacity = (value) => {
+    const opacityScale = Math.abs(value) > 1 ? 255 : 1;
+    return Math.min(1, Math.max(0, value / opacityScale));
+  };
 
-  return {
+  const color = {
     r: normalize(r),
     g: normalize(g),
     b: normalize(b),
   };
+
+  return {
+    color,
+    opacity: opacityProvided ? normalizeOpacity(opacity) : undefined,
+  };
+}
+
+function normalizeAppearancePreset(appearancePreset) {
+  if (typeof appearancePreset !== "string") {
+    return undefined;
+  }
+  const normalized = appearancePreset.trim().toLowerCase();
+  return APPEARANCE_PRESETS.has(normalized) ? normalized : undefined;
+}
+
+function normalizeDefaultOpacity(defaultOpacity) {
+  const value = Number(defaultOpacity);
+  if (!Number.isFinite(value)) {
+    return undefined;
+  }
+  const scale = Math.abs(value) > 1 ? 255 : 1;
+  return Math.min(1, Math.max(0, value / scale));
 }
 
 function normalizeImportParams(importParams) {
@@ -90,10 +132,27 @@ function normalizeImportParams(importParams) {
   }
 
   const normalized = { ...importParams };
+  const appearancePreset = normalizeAppearancePreset(importParams.appearancePreset);
+  if (appearancePreset) {
+    normalized.appearancePreset = appearancePreset;
+  } else {
+    delete normalized.appearancePreset;
+  }
+
+  const normalizedDefaultOpacity = normalizeDefaultOpacity(importParams.defaultOpacity);
+  if (normalizedDefaultOpacity !== undefined) {
+    normalized.defaultOpacity = normalizedDefaultOpacity;
+  } else {
+    delete normalized.defaultOpacity;
+  }
+
   if (Object.prototype.hasOwnProperty.call(importParams, "defaultColor")) {
-    const defaultColor = normalizeDefaultColor(importParams.defaultColor);
-    if (defaultColor) {
-      normalized.defaultColor = defaultColor;
+    const normalizedDefaultColor = normalizeDefaultColor(importParams.defaultColor);
+    if (normalizedDefaultColor) {
+      normalized.defaultColor = normalizedDefaultColor.color;
+      if (normalized.defaultOpacity === undefined && normalizedDefaultColor.opacity !== undefined) {
+        normalized.defaultOpacity = normalizedDefaultColor.opacity;
+      }
     } else {
       delete normalized.defaultColor;
     }
