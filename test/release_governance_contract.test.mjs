@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -115,14 +115,18 @@ test("release skill stays a thin AGENTS shim and keeps secondary surfaces condit
   assert.equal(skill.includes("@tx-code/occt-babylon-loader"), false);
 });
 
-test("planning artifacts keep requirement traceability current", () => {
-  const requirements = readRepoText(".planning/REQUIREMENTS.md");
+test("planning artifacts archive v1.2 requirement traceability after milestone closeout", () => {
+  const milestones = readRepoText(".planning/MILESTONES.md");
+  const archivedRequirements = readRepoText(".planning/milestones/v1.2-REQUIREMENTS.md");
 
-  assert.match(requirements, /\| APPR-01 \| Phase 9 \| Completed \|/);
-  assert.match(requirements, /\| APPR-03 \| Phase 10 \| Completed \|/);
-  assert.match(requirements, /\| APPR-04 \| Phase 10 \| Completed \|/);
-  assert.match(requirements, /\| ADAPT-03 \| Phase 10 \| Completed \|/);
-  assert.match(requirements, /\| ADAPT-04 \| Phase 11 \| Completed \|/);
+  assert.equal(existsSync(resolve(repoRoot, ".planning/REQUIREMENTS.md")), false);
+  assert.match(milestones, /## v1\.2 Import Appearance Contract/);
+  assert.match(archivedRequirements, /# Requirements Archive: v1\.2 Import Appearance Contract/);
+  assert.match(archivedRequirements, /\| APPR-01 \| Phase 9 \| Completed \|/);
+  assert.match(archivedRequirements, /\| APPR-03 \| Phase 10 \| Completed \|/);
+  assert.match(archivedRequirements, /\| APPR-04 \| Phase 10 \| Completed \|/);
+  assert.match(archivedRequirements, /\| ADAPT-03 \| Phase 10 \| Completed \|/);
+  assert.match(archivedRequirements, /\| ADAPT-04 \| Phase 11 \| Completed \|/);
 });
 
 test("milestone archives capture the shipped v1.1 planning corpus", () => {
@@ -146,36 +150,30 @@ test("planning state stays aligned to the root Wasm carrier", () => {
   assert.match(state, new RegExp(coreValue.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   assert.match(roadmap, /Import Appearance Contract/);
   assert.match(project, /## Current State/);
-  assert.match(project, /## Current Milestone: v1\.2 Import Appearance Contract/);
-  assert.match(project, /## Evolution/);
+  assert.match(project, /## Next Milestone Goals/);
+  assert.match(project, /Archived v1\.2 milestone framing/);
 });
 
-test("planning state marks v1.2 phase-complete and ready for milestone closeout", () => {
+test("planning state marks v1.2 shipped and ready for the next milestone", () => {
   const roadmap = readRepoText(".planning/ROADMAP.md");
   const state = readRepoText(".planning/STATE.md");
 
-  assert.match(roadmap, /🚧 \*\*v1\.2 Import Appearance Contract\*\* - Phases 9-11 \(active\)/);
-  assert.match(roadmap, /- \[x\] \*\*Phase 9: Root Import Appearance Mode\*\*/);
-  assert.match(roadmap, /- \[x\] \*\*Phase 10: Custom Default Color & Adapter Parity\*\*/);
-  assert.match(roadmap, /- \[x\] \*\*Phase 11: Appearance Governance & Downstream Contract\*\*/);
-  assert.match(roadmap, /- \[x\] 09-01-PLAN\.md/);
-  assert.match(roadmap, /- \[x\] 09-02-PLAN\.md/);
-  assert.match(roadmap, /- \[x\] 10-01-PLAN\.md/);
-  assert.match(roadmap, /- \[x\] 10-02-PLAN\.md/);
-  assert.match(roadmap, /- \[x\] 11-01-PLAN\.md/);
-  assert.match(roadmap, /- \[x\] 11-02-PLAN\.md/);
-  assert.match(roadmap, /\| 9\. Root Import Appearance Mode \| 2\/2 \| Complete \| 2026-04-15 \|/);
-  assert.match(roadmap, /\| 10\. Custom Default Color & Adapter Parity \| 2\/2 \| Complete \| 2026-04-15 \|/);
-  assert.match(roadmap, /\| 11\. Appearance Governance & Downstream Contract \| 2\/2 \| Complete \| 2026-04-15 \|/);
+  assert.match(roadmap, /✅ \[v1\.2 Import Appearance Contract\]\(\.\/milestones\/v1\.2-ROADMAP\.md\) — Phases 9-11, shipped 2026-04-15/);
+  assert.match(roadmap, /No active milestone is currently planned/i);
+  assert.match(roadmap, /\/gsd-new-milestone/);
+  assert.equal(existsSync(resolve(repoRoot, ".planning/milestones/v1.2-phases/09-root-import-appearance-mode")), true);
+  assert.equal(existsSync(resolve(repoRoot, ".planning/milestones/v1.2-phases/10-custom-default-color-adapter-parity")), true);
+  assert.equal(existsSync(resolve(repoRoot, ".planning/milestones/v1.2-phases/11-appearance-governance-downstream-contract")), true);
 
-  assert.match(state, /status:\s*active/i);
+  assert.match(state, /status:\s*complete/i);
   assert.match(state, /milestone:\s*v1\.2/i);
   assert.match(state, /milestone_name:\s*Import Appearance Contract/i);
   assert.match(state, /completed_phases:\s*3/);
   assert.match(state, /completed_plans:\s*6/);
   assert.match(state, /percent:\s*100/);
-  assert.match(state, /Current focus:\s*v1\.2 ready for milestone closeout after Phase 11 completion/i);
-  assert.match(state, /Status:\s*Milestone ready for closeout/i);
-  assert.match(state, /Next step is `\/gsd-complete-milestone`/i);
-  assert.match(state, /Progress:\s*\[##########\]\s*100%/);
+  assert.match(state, /Current focus:\s*Planning the next milestone/i);
+  assert.match(state, /Milestone:\s*v1\.2 Import Appearance Contract — SHIPPED/i);
+  assert.match(state, /Status:\s*Milestone complete/i);
+  assert.match(state, /Next step is `\/gsd-new-milestone`/i);
+  assert.match(state, /Progress:\s*\[██████████\]\s*100%/);
 });
