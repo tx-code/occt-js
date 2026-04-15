@@ -71,6 +71,27 @@ const core = createOcctCore({
 });
 ```
 
+## Import Appearance Contract
+
+Import-time appearance is part of the packaged runtime contract. Downstream apps can either preserve source colors or request one default CAD color during import:
+
+```js
+const result = occt.ReadFile("step", buffer, {
+  colorMode: "default",
+  defaultColor: { r: 0.2, g: 0.4, b: 0.6 },
+});
+```
+
+Contract rules:
+
+- `colorMode: "source"` preserves imported source colors.
+- `colorMode: "default"` ignores source colors and uses one default CAD color for the imported result.
+- If `defaultColor` is omitted in default mode, the built-in fallback is `[0.9, 0.91, 0.93]`.
+- `readColors` is a legacy toggle and is only authoritative when `colorMode` is omitted.
+
+Apps own settings persistence. `occt-js` only consumes the selected import-time appearance options and returns the resulting colors/materials.
+Viewer overrides remain downstream concerns; post-import repaint, theme switching, and display policy are outside the root Wasm carrier scope.
+
 ## Exact Pairwise Measurement Foundation
 
 For exact BRep measurement, the root Wasm carrier exposes retained-model and pairwise entrypoints directly:
@@ -266,7 +287,8 @@ const result = occt.ReadFile("step", buffer, {
     linearDeflection: 0.1,
     angularDeflection: 0.5,
     readNames: true,
-    readColors: true
+    colorMode: "default",
+    defaultColor: { r: 0.2, g: 0.4, b: 0.6 }
 });
 
 // Also available:

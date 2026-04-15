@@ -63,6 +63,35 @@ test("release docs keep the root Wasm carrier authoritative", () => {
   assert.match(agents, /conditional secondary-surface verification/i);
 });
 
+test("release docs describe the import appearance contract and downstream settings boundary", () => {
+  const readme = readRepoText("README.md");
+  const occtCoreReadme = readRepoText("packages/occt-core/README.md");
+  const agents = readRepoText("AGENTS.md");
+
+  assert.match(readme, /colorMode/);
+  assert.match(readme, /defaultColor/);
+  assert.match(readme, /0\.9,\s*0\.91,\s*0\.93/);
+  assert.match(occtCoreReadme, /colorMode/);
+  assert.match(occtCoreReadme, /defaultColor/);
+  assert.match(occtCoreReadme, /settings persistence/i);
+  assert.match(occtCoreReadme, /viewer overrides/i);
+  assert.match(agents, /appearance options/i);
+  assert.match(agents, /settings persistence/i);
+  assert.match(agents, /viewer overrides/i);
+});
+
+test("published typings document the finalized import appearance option shape", () => {
+  const typesSource = readRepoText("dist/occt-js.d.ts");
+
+  assert.match(typesSource, /export type OcctJSImportColorMode = "source" \| "default";/);
+  assert.match(typesSource, /readColors\?: boolean;/);
+  assert.match(typesSource, /colorMode\?: OcctJSImportColorMode;/);
+  assert.match(typesSource, /defaultColor\?: OcctJSColor;/);
+  assert.match(typesSource, /built-in CAD base color \[0\.9, 0\.91, 0\.93\]/);
+  assert.match(typesSource, /legacy-only when colorMode is omitted/i);
+  assert.match(typesSource, /only applies when colorMode is set to "default"/i);
+});
+
 test("release skill stays a thin AGENTS shim and keeps secondary surfaces conditional", () => {
   const skill = readRepoText(".codex/skills/releasing-occt-js/SKILL.md");
 

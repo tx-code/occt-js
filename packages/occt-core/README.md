@@ -35,7 +35,8 @@ const model = await core.importModel(stepBytes, {
     linearDeflection: 0.001,
     angularDeflection: 0.5,
     readNames: true,
-    readColors: true,
+    colorMode: "default",
+    defaultColor: [51, 102, 153],
   },
 });
 ```
@@ -46,6 +47,31 @@ Notes:
 - Pass `format` explicitly when you already know it, or pass `fileName` and let `occt-core` infer the format from the extension.
 - Use `wasmBinary` when you already have the bytes in memory, or `wasmBinaryLoader` when the adapter should fetch them lazily.
 - Root release verification is driven by `npm run test:release:root` from the repository root; demo, Babylon, and Tauri checks remain conditional secondary-surface verification.
+
+## Import Appearance Contract
+
+`@tx-code/occt-core` forwards the root runtime appearance contract in package-first form:
+
+```js
+const model = await core.importModel(stepBytes, {
+  fileName: "part.step",
+  importParams: {
+    colorMode: "default",
+    defaultColor: [51, 102, 153],
+  },
+});
+```
+
+Contract rules:
+
+- `colorMode: "source"` preserves imported source colors.
+- `colorMode: "default"` requests one default CAD color for the imported result.
+- If `defaultColor` is omitted in default mode, the built-in fallback is `[0.9, 0.91, 0.93]`.
+- `readColors` is still accepted as a legacy toggle, but only when `colorMode` is omitted.
+- `@tx-code/occt-core` normalizes tuple/object `defaultColor` input before forwarding the canonical root contract.
+
+Apps own settings persistence, and `@tx-code/occt-core` only consumes the chosen import-time appearance options.
+Viewer overrides remain downstream concerns; the adapter does not own repaint, theme switching, or post-import display policy.
 
 ## Exact Pairwise Measurement
 

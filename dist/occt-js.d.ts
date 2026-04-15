@@ -228,7 +228,7 @@ export interface OcctJSReadParams {
     linearDeflection?: number;
     angularDeflection?: number;
     readNames?: boolean;
-    // Legacy toggle. This remains deterministic when colorMode is omitted.
+    // Legacy toggle. This is legacy-only when colorMode is omitted.
     readColors?: boolean;
     // Explicit appearance contract. When provided, this overrides readColors.
     // "default" uses the built-in CAD base color [0.9, 0.91, 0.93].
