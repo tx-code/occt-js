@@ -7,6 +7,9 @@ const factory = loadOcctFactory();
 const BUILT_IN_DEFAULT_CAD_COLOR = { r: 0.9, g: 0.91, b: 0.93 };
 const CUSTOM_DEFAULT_CAD_COLOR = { r: 0.2, g: 0.4, b: 0.6 };
 const CUSTOM_DEFAULT_OPACITY = 0.35;
+const GHOSTED_PRESET_OPACITY = 0.35;
+const APPEARANCE_PRESET_SOLID = "cad-solid";
+const APPEARANCE_PRESET_GHOSTED = "cad-ghosted";
 
 async function loadFixture(name) {
   return new Uint8Array(await readFile(new URL(`./${name}`, import.meta.url)));
@@ -590,4 +593,116 @@ test("defaultOpacity compatibility keeps source and legacy lanes deterministic",
 
   assert.deepEqual(module.ReleaseExactModel(explicitSourceExact.exactModelId), { ok: true });
   assert.deepEqual(module.ReleaseExactModel(legacyExact.exactModelId), { ok: true });
+});
+
+test("appearancePreset cad-solid matches explicit default appearance", async () => {
+  const module = await createModule();
+  const fixtures = [
+    ["step", "ANC101_colored.stp", "OpenExactStepModel"],
+    ["iges", "bearing.igs", "OpenExactIgesModel"],
+    ["brep", "ANC101_isolated_components.brep", "OpenExactBrepModel"],
+  ];
+
+  for (const [format, fixture, directMethod] of fixtures) {
+    const bytes = await loadFixture(fixture);
+    const presetParams = { appearancePreset: APPEARANCE_PRESET_SOLID };
+    const explicitParams = { colorMode: "default" };
+
+    const presetRead = module.ReadFile(format, bytes, presetParams);
+    const explicitRead = module.ReadFile(format, bytes, explicitParams);
+    const presetDirectExact = module[directMethod](bytes, presetParams);
+    const presetGenericExact = module.OpenExactModel(format, bytes, presetParams);
+
+    assert.deepEqual(
+      appearanceSignature(presetRead),
+      appearanceSignature(explicitRead),
+      `${format}: cad-solid should match explicit default appearance`,
+    );
+    assert.deepEqual(
+      appearanceSignature(presetDirectExact),
+      appearanceSignature(explicitRead),
+      `${format}: direct exact cad-solid should match explicit default appearance`,
+    );
+    assert.deepEqual(
+      appearanceSignature(presetGenericExact),
+      appearanceSignature(explicitRead),
+      `${format}: generic exact cad-solid should match explicit default appearance`,
+    );
+
+    assert.deepEqual(module.ReleaseExactModel(presetDirectExact.exactModelId), { ok: true });
+    assert.deepEqual(module.ReleaseExactModel(presetGenericExact.exactModelId), { ok: true });
+  }
+});
+
+test("appearancePreset cad-ghosted applies the built-in ghost opacity across read and exact lanes", async () => {
+  const module = await createModule();
+  const fixtures = [
+    ["step", "ANC101_colored.stp", "OpenExactStepModel"],
+    ["iges", "bearing.igs", "OpenExactIgesModel"],
+    ["brep", "ANC101_isolated_components.brep", "OpenExactBrepModel"],
+  ];
+
+  for (const [format, fixture, directMethod] of fixtures) {
+    const bytes = await loadFixture(fixture);
+    const params = { appearancePreset: APPEARANCE_PRESET_GHOSTED };
+
+    const readResult = module.ReadFile(format, bytes, params);
+    const directExact = module[directMethod](bytes, params);
+    const genericExact = module.OpenExactModel(format, bytes, params);
+
+    assertUsesBuiltInDefaultCadColor(readResult, `ReadFile(${format}, cad-ghosted)`);
+    assertUsesDefaultOpacity(readResult, GHOSTED_PRESET_OPACITY, `ReadFile(${format}, cad-ghosted)`);
+    assert.deepEqual(
+      appearanceSignature(directExact),
+      appearanceSignature(readResult),
+      `${format}: direct exact cad-ghosted should match the read-lane payload`,
+    );
+    assert.deepEqual(
+      appearanceSignature(genericExact),
+      appearanceSignature(readResult),
+      `${format}: generic exact cad-ghosted should match the read-lane payload`,
+    );
+
+    assert.deepEqual(module.ReleaseExactModel(directExact.exactModelId), { ok: true });
+    assert.deepEqual(module.ReleaseExactModel(genericExact.exactModelId), { ok: true });
+  }
+});
+
+test("explicit appearance params override preset-derived defaults", async () => {
+  const module = await createModule();
+  const bytes = await loadFixture("ANC101_colored.stp");
+
+  const explicitDefaultOverrides = module.ReadFile("step", bytes, {
+    appearancePreset: APPEARANCE_PRESET_GHOSTED,
+    defaultColor: CUSTOM_DEFAULT_CAD_COLOR,
+    defaultOpacity: CUSTOM_DEFAULT_OPACITY,
+  });
+  const explicitSourceOverride = module.ReadFile("step", bytes, {
+    appearancePreset: APPEARANCE_PRESET_GHOSTED,
+    colorMode: "source",
+    defaultColor: CUSTOM_DEFAULT_CAD_COLOR,
+    defaultOpacity: CUSTOM_DEFAULT_OPACITY,
+  });
+
+  assertUsesCustomDefaultColor(
+    explicitDefaultOverrides,
+    CUSTOM_DEFAULT_CAD_COLOR,
+    "ReadFile(step, preset with explicit default overrides)",
+  );
+  assertUsesDefaultOpacity(
+    explicitDefaultOverrides,
+    CUSTOM_DEFAULT_OPACITY,
+    "ReadFile(step, preset with explicit default overrides)",
+  );
+
+  assert.equal(explicitSourceOverride?.success, true);
+  assert.ok(
+    collectAppearanceColors(explicitSourceOverride).length >= 2,
+    "explicit source mode should override a ghosted preset and preserve imported colors",
+  );
+  assert.deepEqual(
+    collectAppearanceOpacities(explicitSourceOverride),
+    [],
+    "explicit source mode should suppress preset-derived opacity",
+  );
 });

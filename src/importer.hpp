@@ -182,6 +182,8 @@ struct OcctExactThicknessResult {
 };
 
 struct ImportParams {
+    static constexpr double kCadGhostedOpacity = 0.35;
+
     enum class LinearUnit {
         Millimeter,
         Centimeter,

@@ -282,6 +282,18 @@ ImportParams ParseImportParams(const val& jsParams)
         if (jsParams.hasOwnProperty("readColors")) {
             params.readColors = jsParams["readColors"].as<bool>();
         }
+        if (jsParams.hasOwnProperty("appearancePreset")) {
+            std::string appearancePreset = jsParams["appearancePreset"].as<std::string>();
+            if (appearancePreset == "cad-solid") {
+                params.appearanceMode = ImportParams::AppearanceMode::DefaultColor;
+                params.hasDefaultOpacity = false;
+                params.defaultOpacity = 1.0;
+            } else if (appearancePreset == "cad-ghosted") {
+                params.appearanceMode = ImportParams::AppearanceMode::DefaultColor;
+                params.defaultOpacity = ImportParams::kCadGhostedOpacity;
+                params.hasDefaultOpacity = true;
+            }
+        }
         if (jsParams.hasOwnProperty("colorMode")) {
             std::string colorMode = jsParams["colorMode"].as<std::string>();
             if (colorMode == "source") {
