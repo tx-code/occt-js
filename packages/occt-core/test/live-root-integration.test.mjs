@@ -82,6 +82,31 @@ function multiplyMatrices(left, right) {
   return output;
 }
 
+function transformPoint(transform, point) {
+  const [x, y, z] = point;
+  return [
+    transform[0] * x + transform[4] * y + transform[8] * z + transform[12],
+    transform[1] * x + transform[5] * y + transform[9] * z + transform[13],
+    transform[2] * x + transform[6] * y + transform[10] * z + transform[14],
+  ];
+}
+
+function getFaceTriangleCentroid(geometry, face) {
+  const triangleIndices = geometry.indices.slice(face.firstIndex, face.firstIndex + 3);
+  const points = triangleIndices.map((vertexIndex) => {
+    const base = vertexIndex * 3;
+    return [
+      geometry.positions[base],
+      geometry.positions[base + 1],
+      geometry.positions[base + 2],
+    ];
+  });
+
+  return points[0].map((_, axis) => (
+    (points[0][axis] + points[1][axis] + points[2][axis]) / 3
+  ));
+}
+
 test("createOcctCore resolves repeated geometry occurrences into distinct exact refs", async () => {
   const factory = loadOcctFactory();
   const wasmBinary = new Uint8Array(await readFile(new URL("../../../dist/occt-js.wasm", import.meta.url)));
@@ -129,5 +154,71 @@ test("createOcctCore resolves repeated geometry occurrences into distinct exact 
   assert.equal(second.ok, true);
   assert.equal(first.exactShapeHandle, second.exactShapeHandle);
   assert.notEqual(first.nodeId, second.nodeId);
+  assert.deepEqual(await core.releaseExactModel(exactModel.exactModelId), { ok: true });
+});
+
+test("occt-core face normal wrappers invert occurrence transforms for repeated geometry", async () => {
+  const factory = loadOcctFactory();
+  const wasmBinary = new Uint8Array(await readFile(new URL("../../../dist/occt-js.wasm", import.meta.url)));
+  const assemblyBytes = new Uint8Array(await readFile(new URL("../../../test/assembly.step", import.meta.url)));
+
+  const core = createOcctCore({
+    factory,
+    wasmBinary,
+  });
+
+  const rawExact = await core.openExactStep(assemblyBytes, {
+    fileName: "assembly.step",
+  });
+  const exactModel = normalizeExactOpenResult(rawExact, {
+    sourceFileName: "assembly.step",
+  });
+  const occurrences = collectGeometryOccurrences(exactModel.rootNodes);
+  const repeated = occurrences.find((candidate, index) => (
+    occurrences.findIndex((other) => other.geometryId === candidate.geometryId && other.nodeId !== candidate.nodeId) > index
+  ));
+
+  assert.ok(repeated, "assembly.step should expose at least one repeated geometry occurrence");
+
+  const matching = occurrences.filter((entry) => entry.geometryId === repeated.geometryId);
+  assert.ok(matching.length >= 2, "the repeated geometry should appear under at least two nodes");
+
+  const geometry = exactModel.geometries.find((entry) => entry.geometryId === repeated.geometryId);
+  assert.ok(geometry?.faces?.length, "the repeated geometry should expose at least one face");
+
+  const faceId = geometry.faces[0].id;
+  const first = resolveExactElementRef(exactModel, {
+    nodeId: matching[0].nodeId,
+    geometryId: repeated.geometryId,
+    kind: "face",
+    elementId: faceId,
+  });
+  const second = resolveExactElementRef(exactModel, {
+    nodeId: matching[1].nodeId,
+    geometryId: repeated.geometryId,
+    kind: "face",
+    elementId: faceId,
+  });
+
+  assert.equal(first.ok, true);
+  assert.equal(second.ok, true);
+
+  const localPoint = getFaceTriangleCentroid(geometry, geometry.faces[0]);
+  const firstWorldPoint = transformPoint(first.transform, localPoint);
+  const secondWorldPoint = transformPoint(second.transform, localPoint);
+
+  const firstNormal = await core.evaluateExactFaceNormal(first, firstWorldPoint);
+  const secondNormal = await core.evaluateExactFaceNormal(second, secondWorldPoint);
+
+  assert.equal(firstNormal?.ok, true);
+  assert.equal(secondNormal?.ok, true);
+  assert.ok(Array.isArray(firstNormal?.point) && firstNormal.point.length === 3);
+  assert.ok(Array.isArray(secondNormal?.point) && secondNormal.point.length === 3);
+  assert.ok(Array.isArray(firstNormal?.normal) && firstNormal.normal.length === 3);
+  assert.ok(Array.isArray(secondNormal?.normal) && secondNormal.normal.length === 3);
+  assert.ok(Math.abs(Math.hypot(...firstNormal.normal) - 1) < 1e-9);
+  assert.ok(Math.abs(Math.hypot(...secondNormal.normal) - 1) < 1e-9);
+  assert.notDeepEqual(firstNormal.point, secondNormal.point);
+
   assert.deepEqual(await core.releaseExactModel(exactModel.exactModelId), { ok: true });
 });

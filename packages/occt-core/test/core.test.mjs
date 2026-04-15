@@ -529,6 +529,119 @@ describe("createOcctCore", () => {
     });
   });
 
+  it("transforms exact edge length primitives into occurrence space", async () => {
+    const ref = {
+      exactModelId: 17,
+      exactShapeHandle: 33,
+      nodeId: "node-a",
+      geometryId: "geo_0",
+      kind: "edge",
+      elementId: 5,
+      transform: [
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        10, 20, 30, 1,
+      ],
+    };
+    const core = createOcctCore({
+      factory: async () => ({
+        MeasureExactEdgeLength: () => ({
+          ok: true,
+          value: 25,
+          localStartPoint: [1, 2, 3],
+          localEndPoint: [6, 7, 8],
+        }),
+      }),
+    });
+
+    const result = await core.measureExactEdgeLength(ref);
+
+    assert.deepEqual(result, {
+      ok: true,
+      value: 25,
+      startPoint: [11, 22, 33],
+      endPoint: [16, 27, 38],
+      ref,
+    });
+  });
+
+  it("transforms exact face area primitives into occurrence space", async () => {
+    const ref = {
+      exactModelId: 17,
+      exactShapeHandle: 33,
+      nodeId: "node-a",
+      geometryId: "geo_0",
+      kind: "face",
+      elementId: 9,
+      transform: [
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        10, 20, 30, 1,
+      ],
+    };
+    const core = createOcctCore({
+      factory: async () => ({
+        MeasureExactFaceArea: () => ({
+          ok: true,
+          value: 64,
+          localCentroid: [1, 2, 3],
+        }),
+      }),
+    });
+
+    const result = await core.measureExactFaceArea(ref);
+
+    assert.deepEqual(result, {
+      ok: true,
+      value: 64,
+      centroid: [11, 22, 33],
+      ref,
+    });
+  });
+
+  it("inverts occurrence transforms for exact face normal evaluation", async () => {
+    const calls = [];
+    const ref = {
+      exactModelId: 17,
+      exactShapeHandle: 33,
+      nodeId: "node-a",
+      geometryId: "geo_0",
+      kind: "face",
+      elementId: 9,
+      transform: [
+        0, 0, -1, 0,
+        0, 1, 0, 0,
+        1, 0, 0, 0,
+        175, 67.5, 70, 1,
+      ],
+    };
+    const queryPoint = [175, 80, 65];
+    const core = createOcctCore({
+      factory: async () => ({
+        EvaluateExactFaceNormal: (...args) => {
+          calls.push(args);
+          return {
+            ok: true,
+            localPoint: [5, 12.5, 0],
+            localNormal: [0, 0, 1],
+          };
+        },
+      }),
+    });
+
+    const result = await core.evaluateExactFaceNormal(ref, queryPoint);
+
+    assert.deepEqual(calls, [[17, 33, "face", 9, [5, 12.5, 0]]]);
+    assert.deepEqual(result, {
+      ok: true,
+      point: queryPoint,
+      normal: [1, 0, 0],
+      ref,
+    });
+  });
+
   it("pins the format for openExactStep/openExactIges/openExactBrep", async () => {
     const calls = [];
     const exactResult = {
