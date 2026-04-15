@@ -48,7 +48,7 @@ void ExtractShapeMeshes(
         meshData.color = params.ResolveFallbackColor();
         if (params.ShouldUseDefaultColor()) {
             for (auto& face : meshData.faces) {
-                face.color = params.defaultColor;
+                face.color = params.ResolveDefaultColor();
             }
         }
 

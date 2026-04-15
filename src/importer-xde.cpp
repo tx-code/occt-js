@@ -229,9 +229,9 @@ void ExtractShapeMeshes(const TopoDS_Shape& shape,
         }
 
         if (params.ShouldUseDefaultColor()) {
-            meshData.color = params.defaultColor;
+            meshData.color = params.ResolveDefaultColor();
             for (auto& face : meshData.faces) {
-                face.color = params.defaultColor;
+                face.color = params.ResolveDefaultColor();
             }
         }
 

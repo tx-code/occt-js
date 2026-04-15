@@ -28,6 +28,9 @@ val ColorToVal(const OcctColor& c)
     obj.set("r", c.r);
     obj.set("g", c.g);
     obj.set("b", c.b);
+    if (c.hasOpacity) {
+        obj.set("opacity", c.opacity);
+    }
     return obj;
 }
 
@@ -164,11 +167,14 @@ val NodeToTreeVal(const OcctSceneData& scene, int nodeIdx)
 }
 
 struct MaterialKey {
-    int ri, gi, bi;
+    int ri, gi, bi, oi;
+    bool hasOpacity;
     bool operator<(const MaterialKey& o) const {
         if (ri != o.ri) return ri < o.ri;
         if (gi != o.gi) return gi < o.gi;
-        return bi < o.bi;
+        if (bi != o.bi) return bi < o.bi;
+        if (hasOpacity != o.hasOpacity) return hasOpacity < o.hasOpacity;
+        return oi < o.oi;
     }
 };
 
@@ -177,7 +183,9 @@ MaterialKey ColorToKey(const OcctColor& c)
     return {
         static_cast<int>(c.r * 255.0 + 0.5),
         static_cast<int>(c.g * 255.0 + 0.5),
-        static_cast<int>(c.b * 255.0 + 0.5)
+        static_cast<int>(c.b * 255.0 + 0.5),
+        static_cast<int>(c.opacity * 255.0 + 0.5),
+        c.hasOpacity
     };
 }
 
@@ -191,6 +199,14 @@ std::vector<uint8_t> ExtractBytes(const val& content)
 }
 
 double ClampColorComponent(double value, double fallback)
+{
+    if (!std::isfinite(value)) {
+        return fallback;
+    }
+    return std::clamp(value, 0.0, 1.0);
+}
+
+double ClampOpacity(double value, double fallback)
 {
     if (!std::isfinite(value)) {
         return fallback;
@@ -279,6 +295,11 @@ ImportParams ParseImportParams(const val& jsParams)
             if (TryParseDefaultColor(jsParams["defaultColor"], defaultColor)) {
                 params.defaultColor = defaultColor;
             }
+        }
+        if (jsParams.hasOwnProperty("defaultOpacity")
+            && jsParams["defaultOpacity"].typeOf().as<std::string>() == "number") {
+            params.defaultOpacity = ClampOpacity(jsParams["defaultOpacity"].as<double>(), params.defaultOpacity);
+            params.hasDefaultOpacity = true;
         }
     }
     return params;
@@ -675,6 +696,9 @@ val BuildResult(const OcctSceneData& scene, const std::string& sourceFormat)
         matObj.set("r", c.r);
         matObj.set("g", c.g);
         matObj.set("b", c.b);
+        if (c.hasOpacity) {
+            matObj.set("opacity", c.opacity);
+        }
         materials.call<void>("push", matObj);
         return idx;
     };

@@ -7,6 +7,7 @@ export interface OcctJSColor {
     r: number;
     g: number;
     b: number;
+    opacity?: number;
 }
 
 export interface OcctJSFace {
@@ -48,6 +49,7 @@ export interface OcctJSMaterial {
     r: number;
     g: number;
     b: number;
+    opacity?: number;
 }
 
 export interface OcctJSNode {
@@ -236,6 +238,9 @@ export interface OcctJSReadParams {
     // Optional RGB override for default appearance mode.
     // This only applies when colorMode is set to "default".
     defaultColor?: OcctJSColor;
+    // Optional opacity override for default appearance mode.
+    // This only applies when colorMode is set to "default".
+    defaultOpacity?: number;
 }
 
 export interface OcctJSOrientationPresetAxis {

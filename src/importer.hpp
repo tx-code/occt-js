@@ -14,7 +14,9 @@ struct OcctColor {
     double r = 0.0;
     double g = 0.0;
     double b = 0.0;
+    double opacity = 1.0;
     bool isValid = false;
+    bool hasOpacity = false;
 
     OcctColor() = default;
     OcctColor(double r_, double g_, double b_)
@@ -213,6 +215,8 @@ struct ImportParams {
     bool readNames = true;
     bool readColors = true;
     OcctColor defaultColor = OcctColor(0.9, 0.91, 0.93);
+    double defaultOpacity = 1.0;
+    bool hasDefaultOpacity = false;
 
     bool HasExplicitAppearanceMode() const
     {
@@ -235,13 +239,23 @@ struct ImportParams {
         return appearanceMode == AppearanceMode::DefaultColor;
     }
 
+    OcctColor ResolveDefaultColor() const
+    {
+        OcctColor resolved = defaultColor;
+        if (resolved.isValid && hasDefaultOpacity) {
+            resolved.opacity = defaultOpacity;
+            resolved.hasOpacity = true;
+        }
+        return resolved;
+    }
+
     OcctColor ResolveImportedColor(const OcctColor& importedColor) const
     {
-        return ShouldUseDefaultColor() ? defaultColor : importedColor;
+        return ShouldUseDefaultColor() ? ResolveDefaultColor() : importedColor;
     }
 
     OcctColor ResolveFallbackColor() const
     {
-        return ShouldUseDefaultColor() ? defaultColor : OcctColor();
+        return ShouldUseDefaultColor() ? ResolveDefaultColor() : OcctColor();
     }
 };

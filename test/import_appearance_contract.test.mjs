@@ -6,6 +6,7 @@ import { loadOcctFactory } from "./load_occt_factory.mjs";
 const factory = loadOcctFactory();
 const BUILT_IN_DEFAULT_CAD_COLOR = { r: 0.9, g: 0.91, b: 0.93 };
 const CUSTOM_DEFAULT_CAD_COLOR = { r: 0.2, g: 0.4, b: 0.6 };
+const CUSTOM_DEFAULT_OPACITY = 0.35;
 
 async function loadFixture(name) {
   return new Uint8Array(await readFile(new URL(`./${name}`, import.meta.url)));
@@ -26,6 +27,17 @@ function roundColor(color) {
 function colorToKey(color) {
   const rounded = roundColor(color);
   return JSON.stringify([rounded.r, rounded.g, rounded.b]);
+}
+
+function roundOpacity(opacity) {
+  return Number.isFinite(opacity)
+    ? Number(opacity.toFixed(6))
+    : null;
+}
+
+function appearanceToKey(color) {
+  const rounded = roundColor(color);
+  return JSON.stringify([rounded.r, rounded.g, rounded.b, roundOpacity(color.opacity)]);
 }
 
 function collectAppearanceColors(result) {
@@ -54,13 +66,66 @@ function collectAppearanceColors(result) {
   return [...colors].sort();
 }
 
+function collectAppearanceEntries(result) {
+  const entries = new Set();
+
+  for (const material of result.materials ?? []) {
+    entries.add(appearanceToKey(material));
+  }
+
+  for (const geometry of result.geometries ?? []) {
+    if (geometry.color) {
+      entries.add(appearanceToKey(geometry.color));
+    }
+    for (const face of geometry.faces ?? []) {
+      if (face.color) {
+        entries.add(appearanceToKey(face.color));
+      }
+    }
+    for (const edge of geometry.edges ?? []) {
+      if (edge.color) {
+        entries.add(appearanceToKey(edge.color));
+      }
+    }
+  }
+
+  return [...entries].sort();
+}
+
+function collectAppearanceOpacities(result) {
+  const opacities = new Set();
+
+  const collect = (color) => {
+    const opacity = roundOpacity(color?.opacity);
+    if (opacity !== null) {
+      opacities.add(opacity);
+    }
+  };
+
+  for (const material of result.materials ?? []) {
+    collect(material);
+  }
+
+  for (const geometry of result.geometries ?? []) {
+    collect(geometry.color);
+    for (const face of geometry.faces ?? []) {
+      collect(face.color);
+    }
+    for (const edge of geometry.edges ?? []) {
+      collect(edge.color);
+    }
+  }
+
+  return [...opacities].sort((a, b) => a - b);
+}
+
 function appearanceSignature(result) {
   return {
     materialCount: result.materials?.length ?? 0,
-    appearanceColors: collectAppearanceColors(result),
+    appearances: collectAppearanceEntries(result),
     geometryColorPresence: (result.geometries ?? []).map((geometry) => ({
-      color: geometry.color ? colorToKey(geometry.color) : null,
-      faceColors: (geometry.faces ?? []).map((face) => face.color ? colorToKey(face.color) : null),
+      color: geometry.color ? appearanceToKey(geometry.color) : null,
+      faceColors: (geometry.faces ?? []).map((face) => face.color ? appearanceToKey(face.color) : null),
     })),
   };
 }
@@ -83,6 +148,15 @@ function assertUsesCustomDefaultColor(result, color, label) {
     `${label}: appearance colors should collapse to the caller-provided default color`,
   );
   assert.equal(result.materials?.length, 1, `${label}: materials should collapse to one default-color material`);
+}
+
+function assertUsesDefaultOpacity(result, opacity, label) {
+  assert.equal(result?.success, true, `${label}: import should succeed`);
+  assert.deepEqual(
+    collectAppearanceOpacities(result),
+    [roundOpacity(opacity)],
+    `${label}: appearance opacities should collapse to the caller-provided default opacity`,
+  );
 }
 
 function assertLegacyColorless(result, label) {
@@ -323,4 +397,197 @@ test("custom defaultColor parity holds across colored and colorless fixtures", a
 
     assertUsesCustomDefaultColor(result, CUSTOM_DEFAULT_CAD_COLOR, `ReadFile(${format}, ${fixture}, custom defaultColor)`);
   }
+});
+
+test("defaultOpacity sets the default-appearance material opacity for stateless imports", async () => {
+  const module = await createModule();
+  const bytes = await loadFixture("ANC101_colored.stp");
+
+  const result = module.ReadFile("step", bytes, {
+    colorMode: "default",
+    defaultOpacity: CUSTOM_DEFAULT_OPACITY,
+  });
+
+  assertUsesBuiltInDefaultCadColor(result, "ReadFile(step, defaultOpacity)");
+  assertUsesDefaultOpacity(result, CUSTOM_DEFAULT_OPACITY, "ReadFile(step, defaultOpacity)");
+});
+
+test("defaultOpacity composes with built-in and custom default colors", async () => {
+  const module = await createModule();
+  const fixtures = [
+    ["step", "ANC101_colored.stp", undefined, BUILT_IN_DEFAULT_CAD_COLOR],
+    ["iges", "bearing.igs", CUSTOM_DEFAULT_CAD_COLOR, CUSTOM_DEFAULT_CAD_COLOR],
+    ["brep", "ANC101_isolated_components.brep", CUSTOM_DEFAULT_CAD_COLOR, CUSTOM_DEFAULT_CAD_COLOR],
+  ];
+
+  for (const [format, fixture, defaultColor, expectedColor] of fixtures) {
+    const bytes = await loadFixture(fixture);
+    const result = module.ReadFile(format, bytes, {
+      colorMode: "default",
+      defaultColor,
+      defaultOpacity: CUSTOM_DEFAULT_OPACITY,
+    });
+
+    assertUsesCustomDefaultColor(
+      result,
+      expectedColor,
+      `ReadFile(${format}, ${fixture}, defaultOpacity composition)`,
+    );
+    assertUsesDefaultOpacity(
+      result,
+      CUSTOM_DEFAULT_OPACITY,
+      `ReadFile(${format}, ${fixture}, defaultOpacity composition)`,
+    );
+  }
+});
+
+test("defaultOpacity is ignored unless colorMode default is selected", async () => {
+  const module = await createModule();
+  const bytes = await loadFixture("ANC101_colored.stp");
+
+  const explicitSource = module.ReadFile("step", bytes, {
+    colorMode: "source",
+    defaultOpacity: CUSTOM_DEFAULT_OPACITY,
+  });
+  const legacyColorless = module.ReadFile("step", bytes, {
+    readColors: false,
+    defaultOpacity: CUSTOM_DEFAULT_OPACITY,
+  });
+
+  assert.equal(explicitSource?.success, true);
+  assert.ok(
+    collectAppearanceColors(explicitSource).length >= 2,
+    "explicit source mode should ignore defaultOpacity and preserve imported colors",
+  );
+  assert.deepEqual(
+    collectAppearanceOpacities(explicitSource),
+    [],
+    "explicit source mode should not surface defaultOpacity on raw appearance payloads",
+  );
+  assertLegacyColorless(
+    legacyColorless,
+    "ReadFile(step, readColors=false, defaultOpacity without colorMode)",
+  );
+  assert.deepEqual(
+    collectAppearanceOpacities(legacyColorless),
+    [],
+    "legacy no-colorMode imports should ignore defaultOpacity",
+  );
+});
+
+test("OpenExact uses the same defaultOpacity appearance payload as ReadFile", async () => {
+  const module = await createModule();
+  const bytes = await loadFixture("ANC101_colored.stp");
+  const params = {
+    colorMode: "default",
+    defaultOpacity: CUSTOM_DEFAULT_OPACITY,
+  };
+
+  const readResult = module.ReadFile("step", bytes, params);
+  const directExact = module.OpenExactStepModel(bytes, params);
+  const genericExact = module.OpenExactModel("step", bytes, params);
+
+  assertUsesBuiltInDefaultCadColor(readResult, "ReadFile(step, defaultOpacity exact parity)");
+  assertUsesDefaultOpacity(readResult, CUSTOM_DEFAULT_OPACITY, "ReadFile(step, defaultOpacity exact parity)");
+  assertExactAppearanceContract(directExact, "OpenExactStepModel(defaultOpacity)");
+  assertExactAppearanceContract(genericExact, "OpenExactModel(step, defaultOpacity)");
+  assert.deepEqual(
+    appearanceSignature(directExact),
+    appearanceSignature(readResult),
+    "direct exact open should match the read-lane defaultOpacity payload",
+  );
+  assert.deepEqual(
+    appearanceSignature(genericExact),
+    appearanceSignature(readResult),
+    "generic exact open should match the read-lane defaultOpacity payload",
+  );
+
+  assert.deepEqual(module.ReleaseExactModel(directExact.exactModelId), { ok: true });
+  assert.deepEqual(module.ReleaseExactModel(genericExact.exactModelId), { ok: true });
+});
+
+test("defaultOpacity parity holds across colored and colorless fixtures", async () => {
+  const module = await createModule();
+  const fixtures = [
+    ["step", "ANC101_colored.stp", "OpenExactStepModel"],
+    ["iges", "bearing.igs", "OpenExactIgesModel"],
+    ["brep", "ANC101_isolated_components.brep", "OpenExactBrepModel"],
+  ];
+
+  for (const [format, fixture, directMethod] of fixtures) {
+    const bytes = await loadFixture(fixture);
+    const params = {
+      colorMode: "default",
+      defaultColor: CUSTOM_DEFAULT_CAD_COLOR,
+      defaultOpacity: CUSTOM_DEFAULT_OPACITY,
+    };
+
+    const readResult = module.ReadFile(format, bytes, params);
+    const directExact = module[directMethod](bytes, params);
+    const genericExact = module.OpenExactModel(format, bytes, params);
+
+    assertUsesCustomDefaultColor(readResult, CUSTOM_DEFAULT_CAD_COLOR, `ReadFile(${format}, ${fixture}, defaultOpacity parity)`);
+    assertUsesDefaultOpacity(readResult, CUSTOM_DEFAULT_OPACITY, `ReadFile(${format}, ${fixture}, defaultOpacity parity)`);
+    assert.deepEqual(
+      appearanceSignature(directExact),
+      appearanceSignature(readResult),
+      `${format}: direct exact open should match the read-lane defaultOpacity payload`,
+    );
+    assert.deepEqual(
+      appearanceSignature(genericExact),
+      appearanceSignature(readResult),
+      `${format}: generic exact open should match the read-lane defaultOpacity payload`,
+    );
+
+    assert.deepEqual(module.ReleaseExactModel(directExact.exactModelId), { ok: true });
+    assert.deepEqual(module.ReleaseExactModel(genericExact.exactModelId), { ok: true });
+  }
+});
+
+test("defaultOpacity compatibility keeps source and legacy lanes deterministic", async () => {
+  const module = await createModule();
+  const bytes = await loadFixture("ANC101_colored.stp");
+
+  const explicitSourceRead = module.ReadFile("step", bytes, {
+    colorMode: "source",
+    defaultOpacity: CUSTOM_DEFAULT_OPACITY,
+  });
+  const explicitSourceExact = module.OpenExactStepModel(bytes, {
+    colorMode: "source",
+    defaultOpacity: CUSTOM_DEFAULT_OPACITY,
+  });
+  const legacyRead = module.ReadFile("step", bytes, {
+    readColors: false,
+    defaultOpacity: CUSTOM_DEFAULT_OPACITY,
+  });
+  const legacyExact = module.OpenExactStepModel(bytes, {
+    readColors: false,
+    defaultOpacity: CUSTOM_DEFAULT_OPACITY,
+  });
+
+  assert.equal(explicitSourceRead?.success, true);
+  assert.ok(
+    collectAppearanceColors(explicitSourceRead).length >= 2,
+    "source read lane should still preserve imported colors",
+  );
+  assert.deepEqual(collectAppearanceOpacities(explicitSourceRead), []);
+  assertExactAppearanceContract(explicitSourceExact, "OpenExactStepModel(source defaultOpacity)");
+  assert.deepEqual(
+    collectAppearanceOpacities(explicitSourceExact),
+    [],
+    "source exact lane should ignore defaultOpacity",
+  );
+  assert.ok(
+    collectAppearanceColors(explicitSourceExact).length >= 2,
+    "source exact lane should still preserve imported colors",
+  );
+
+  assertLegacyColorless(legacyRead, "ReadFile(step, legacy defaultOpacity compatibility)");
+  assert.deepEqual(collectAppearanceOpacities(legacyRead), []);
+  assertExactAppearanceContract(legacyExact, "OpenExactStepModel(legacy defaultOpacity compatibility)");
+  assert.deepEqual(collectAppearanceColors(legacyExact), []);
+  assert.deepEqual(collectAppearanceOpacities(legacyExact), []);
+
+  assert.deepEqual(module.ReleaseExactModel(explicitSourceExact.exactModelId), { ok: true });
+  assert.deepEqual(module.ReleaseExactModel(legacyExact.exactModelId), { ok: true });
 });
