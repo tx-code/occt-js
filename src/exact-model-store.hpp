@@ -27,6 +27,7 @@ public:
 
     OcctLifecycleResult Retain(int exactModelId);
     OcctLifecycleResult Release(int exactModelId);
+    OcctLifecycleResult GetEntry(int exactModelId, ExactModelEntry& entry);
 
 private:
     ExactModelStore() = default;

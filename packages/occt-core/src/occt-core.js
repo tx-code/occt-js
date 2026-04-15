@@ -6,6 +6,12 @@ const EXACT_OPEN_METHOD = {
   iges: "OpenExactIgesModel",
   brep: "OpenExactBrepModel",
 };
+const IDENTITY_MATRIX = [
+  1, 0, 0, 0,
+  0, 1, 0, 0,
+  0, 0, 1, 0,
+  0, 0, 0, 1,
+];
 
 function toUint8Array(content) {
   if (content instanceof Uint8Array) {
@@ -42,6 +48,57 @@ function normalizeWasmBinary(binary) {
     return new Uint8Array(binary.buffer, binary.byteOffset, binary.byteLength);
   }
   throw new Error("Unsupported wasmBinary value. Expected ArrayBuffer or ArrayBufferView.");
+}
+
+function normalizeTransform(transform) {
+  return Array.isArray(transform) && transform.length === 16
+    ? transform.slice()
+    : IDENTITY_MATRIX.slice();
+}
+
+function transformPoint(transform, point) {
+  const [x, y, z] = point;
+  return [
+    transform[0] * x + transform[4] * y + transform[8] * z + transform[12],
+    transform[1] * x + transform[5] * y + transform[9] * z + transform[13],
+    transform[2] * x + transform[6] * y + transform[10] * z + transform[14],
+  ];
+}
+
+function transformDirection(transform, direction) {
+  const [x, y, z] = direction;
+  const output = [
+    transform[0] * x + transform[4] * y + transform[8] * z,
+    transform[1] * x + transform[5] * y + transform[9] * z,
+    transform[2] * x + transform[6] * y + transform[10] * z,
+  ];
+  const length = Math.hypot(output[0], output[1], output[2]);
+  if (length <= 0) {
+    return [0, 0, 0];
+  }
+  return output.map((value) => value / length);
+}
+
+function validateExactRef(ref, operationName) {
+  if (!ref || typeof ref !== "object") {
+    throw new Error(`${operationName} requires an occurrence-scoped exact ref object.`);
+  }
+  if (!Number.isInteger(ref.exactModelId) || ref.exactModelId <= 0) {
+    throw new Error(`${operationName} requires ref.exactModelId.`);
+  }
+  if (!Number.isInteger(ref.exactShapeHandle) || ref.exactShapeHandle <= 0) {
+    throw new Error(`${operationName} requires ref.exactShapeHandle.`);
+  }
+  if (typeof ref.kind !== "string" || ref.kind.length === 0) {
+    throw new Error(`${operationName} requires ref.kind.`);
+  }
+  if (!Number.isInteger(ref.elementId) || ref.elementId <= 0) {
+    throw new Error(`${operationName} requires ref.elementId.`);
+  }
+  return {
+    ...ref,
+    transform: normalizeTransform(ref.transform),
+  };
 }
 
 async function resolveFactory(options) {
@@ -192,6 +249,79 @@ export class OcctCoreClient {
       throw new Error("Loaded OCCT module does not expose ReleaseExactModel().");
     }
     return module.ReleaseExactModel(exactModelId);
+  }
+
+  async getExactGeometryType(ref) {
+    const module = await this._ensureModule();
+    const exactRef = validateExactRef(ref, "getExactGeometryType");
+    if (typeof module.GetExactGeometryType !== "function") {
+      throw new Error("Loaded OCCT module does not expose GetExactGeometryType().");
+    }
+
+    const result = module.GetExactGeometryType(
+      exactRef.exactModelId,
+      exactRef.exactShapeHandle,
+      exactRef.kind,
+      exactRef.elementId,
+    );
+    return result?.ok === true
+      ? { ...result, ref: exactRef }
+      : result;
+  }
+
+  async measureExactRadius(ref) {
+    const module = await this._ensureModule();
+    const exactRef = validateExactRef(ref, "measureExactRadius");
+    if (typeof module.MeasureExactRadius !== "function") {
+      throw new Error("Loaded OCCT module does not expose MeasureExactRadius().");
+    }
+
+    const result = module.MeasureExactRadius(
+      exactRef.exactModelId,
+      exactRef.exactShapeHandle,
+      exactRef.kind,
+      exactRef.elementId,
+    );
+    if (result?.ok !== true) {
+      return result;
+    }
+
+    return {
+      ok: true,
+      family: result.family,
+      radius: result.radius,
+      diameter: result.diameter,
+      center: transformPoint(exactRef.transform, result.localCenter),
+      anchorPoint: transformPoint(exactRef.transform, result.localAnchorPoint),
+      axisDirection: transformDirection(exactRef.transform, result.localAxisDirection),
+      ref: exactRef,
+    };
+  }
+
+  async measureExactCenter(ref) {
+    const module = await this._ensureModule();
+    const exactRef = validateExactRef(ref, "measureExactCenter");
+    if (typeof module.MeasureExactCenter !== "function") {
+      throw new Error("Loaded OCCT module does not expose MeasureExactCenter().");
+    }
+
+    const result = module.MeasureExactCenter(
+      exactRef.exactModelId,
+      exactRef.exactShapeHandle,
+      exactRef.kind,
+      exactRef.elementId,
+    );
+    if (result?.ok !== true) {
+      return result;
+    }
+
+    return {
+      ok: true,
+      family: result.family,
+      center: transformPoint(exactRef.transform, result.localCenter),
+      axisDirection: transformDirection(exactRef.transform, result.localAxisDirection),
+      ref: exactRef,
+    };
   }
 
   async readStep(content, options = {}) {

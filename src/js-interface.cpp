@@ -11,6 +11,7 @@
 #include "importer-iges.hpp"
 #include "importer-brep.hpp"
 #include "exact-model-store.hpp"
+#include "exact-query.hpp"
 #include "orientation.hpp"
 
 using namespace emscripten;
@@ -367,6 +368,63 @@ val LifecycleResultToVal(const OcctLifecycleResult& result)
     return obj;
 }
 
+template <typename TResult>
+val ExactFailureToVal(const TResult& result)
+{
+    val obj = val::object();
+    obj.set("ok", result.ok);
+    if (!result.code.empty()) {
+        obj.set("code", result.code);
+    }
+    if (!result.message.empty()) {
+        obj.set("message", result.message);
+    }
+    return obj;
+}
+
+val ExactGeometryTypeResultToVal(const OcctExactGeometryTypeResult& result)
+{
+    if (!result.ok) {
+        return ExactFailureToVal(result);
+    }
+
+    val obj = val::object();
+    obj.set("ok", true);
+    obj.set("family", result.family);
+    return obj;
+}
+
+val ExactRadiusResultToVal(const OcctExactRadiusResult& result)
+{
+    if (!result.ok) {
+        return ExactFailureToVal(result);
+    }
+
+    val obj = val::object();
+    obj.set("ok", true);
+    obj.set("family", result.family);
+    obj.set("radius", result.radius);
+    obj.set("diameter", result.diameter);
+    obj.set("localCenter", Vector3ToVal(result.localCenter));
+    obj.set("localAnchorPoint", Vector3ToVal(result.localAnchorPoint));
+    obj.set("localAxisDirection", Vector3ToVal(result.localAxisDirection));
+    return obj;
+}
+
+val ExactCenterResultToVal(const OcctExactCenterResult& result)
+{
+    if (!result.ok) {
+        return ExactFailureToVal(result);
+    }
+
+    val obj = val::object();
+    obj.set("ok", true);
+    obj.set("family", result.family);
+    obj.set("localCenter", Vector3ToVal(result.localCenter));
+    obj.set("localAxisDirection", Vector3ToVal(result.localAxisDirection));
+    return obj;
+}
+
 val ExactGeometryBindingsToVal(size_t geometryCount)
 {
     val bindings = val::array();
@@ -603,6 +661,27 @@ val ReleaseExactModel(int exactModelId)
     return LifecycleResultToVal(ExactModelStore::Instance().Release(exactModelId));
 }
 
+val GetExactGeometryTypeBinding(int exactModelId, int exactShapeHandle, const std::string& kind, int elementId)
+{
+    return ExactGeometryTypeResultToVal(
+        GetExactGeometryType(exactModelId, exactShapeHandle, kind, elementId)
+    );
+}
+
+val MeasureExactRadiusBinding(int exactModelId, int exactShapeHandle, const std::string& kind, int elementId)
+{
+    return ExactRadiusResultToVal(
+        MeasureExactRadius(exactModelId, exactShapeHandle, kind, elementId)
+    );
+}
+
+val MeasureExactCenterBinding(int exactModelId, int exactShapeHandle, const std::string& kind, int elementId)
+{
+    return ExactCenterResultToVal(
+        MeasureExactCenter(exactModelId, exactShapeHandle, kind, elementId)
+    );
+}
+
 val AnalyzeOptimalOrientation(const std::string& format, const val& content, const val& jsParams)
 {
     std::vector<uint8_t> buffer = ExtractBytes(content);
@@ -624,5 +703,8 @@ EMSCRIPTEN_BINDINGS(occtjs)
     function("OpenExactBrepModel", &OpenExactBrepModel);
     function("RetainExactModel", &RetainExactModel);
     function("ReleaseExactModel", &ReleaseExactModel);
+    function("GetExactGeometryType", &GetExactGeometryTypeBinding);
+    function("MeasureExactRadius", &MeasureExactRadiusBinding);
+    function("MeasureExactCenter", &MeasureExactCenterBinding);
     function("AnalyzeOptimalOrientation", &AnalyzeOptimalOrientation);
 }

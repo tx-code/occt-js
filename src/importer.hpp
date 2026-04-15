@@ -90,6 +90,34 @@ struct OcctLifecycleResult {
     std::string message;
 };
 
+struct OcctExactGeometryTypeResult {
+    bool ok = false;
+    std::string code;
+    std::string message;
+    std::string family;
+};
+
+struct OcctExactRadiusResult {
+    bool ok = false;
+    std::string code;
+    std::string message;
+    std::string family;
+    double radius = 0.0;
+    double diameter = 0.0;
+    std::array<double, 3> localCenter = { 0.0, 0.0, 0.0 };
+    std::array<double, 3> localAnchorPoint = { 0.0, 0.0, 0.0 };
+    std::array<double, 3> localAxisDirection = { 0.0, 0.0, 0.0 };
+};
+
+struct OcctExactCenterResult {
+    bool ok = false;
+    std::string code;
+    std::string message;
+    std::string family;
+    std::array<double, 3> localCenter = { 0.0, 0.0, 0.0 };
+    std::array<double, 3> localAxisDirection = { 0.0, 0.0, 0.0 };
+};
+
 struct ImportParams {
     enum class LinearUnit {
         Millimeter,

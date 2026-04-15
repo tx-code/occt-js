@@ -109,3 +109,21 @@ OcctLifecycleResult ExactModelStore::Release(int exactModelId)
 
     return MakeOk();
 }
+
+OcctLifecycleResult ExactModelStore::GetEntry(int exactModelId, ExactModelEntry& entry)
+{
+    auto& state = State();
+    std::lock_guard<std::mutex> lock(state.mutex);
+
+    auto liveIt = state.liveEntries.find(exactModelId);
+    if (liveIt != state.liveEntries.end()) {
+        entry = liveIt->second;
+        return MakeOk();
+    }
+
+    if (state.releasedEntries.count(exactModelId) > 0) {
+        return MakeFailure("released-handle", "Exact model handle has already been released.");
+    }
+
+    return MakeFailure("invalid-handle", "Exact model handle is unknown.");
+}

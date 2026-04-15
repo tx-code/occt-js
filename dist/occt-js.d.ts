@@ -1,4 +1,6 @@
 export type OcctFormat = "step" | "iges" | "brep";
+export type OcctJSExactElementKind = "face" | "edge" | "vertex";
+export type OcctJSExactGeometryFamily = "line" | "circle" | "plane" | "cylinder" | "sphere" | "cone" | "torus" | "other";
 
 export interface OcctJSColor {
     r: number;
@@ -100,6 +102,40 @@ export interface OcctJSLifecycleFailure {
 
 export type OcctJSLifecycleResult = OcctJSLifecycleSuccess | OcctJSLifecycleFailure;
 
+export interface OcctJSExactQueryFailure {
+    ok: false;
+    code: string;
+    message: string;
+}
+
+export interface OcctJSExactGeometryTypeSuccess {
+    ok: true;
+    family: OcctJSExactGeometryFamily;
+}
+
+export type OcctJSExactGeometryTypeResult = OcctJSExactGeometryTypeSuccess | OcctJSExactQueryFailure;
+
+export interface OcctJSExactRadiusSuccess {
+    ok: true;
+    family: "circle" | "cylinder" | "sphere";
+    radius: number;
+    diameter: number;
+    localCenter: [number, number, number];
+    localAnchorPoint: [number, number, number];
+    localAxisDirection: [number, number, number];
+}
+
+export type OcctJSExactRadiusResult = OcctJSExactRadiusSuccess | OcctJSExactQueryFailure;
+
+export interface OcctJSExactCenterSuccess {
+    ok: true;
+    family: "circle" | "cylinder" | "sphere" | "cone" | "torus";
+    localCenter: [number, number, number];
+    localAxisDirection: [number, number, number];
+}
+
+export type OcctJSExactCenterResult = OcctJSExactCenterSuccess | OcctJSExactQueryFailure;
+
 export interface OcctJSReadParams {
     rootMode?: "one-shape" | "multiple-shapes";
     linearUnit?: "millimeter" | "centimeter" | "meter" | "inch" | "foot";
@@ -169,6 +205,9 @@ export interface OcctJSModule {
     OpenExactBrepModel(content: Uint8Array, params?: OcctJSReadParams): OcctJSExactOpenResult;
     RetainExactModel(exactModelId: number): OcctJSLifecycleResult;
     ReleaseExactModel(exactModelId: number): OcctJSLifecycleResult;
+    GetExactGeometryType(exactModelId: number, exactShapeHandle: number, kind: OcctJSExactElementKind, elementId: number): OcctJSExactGeometryTypeResult;
+    MeasureExactRadius(exactModelId: number, exactShapeHandle: number, kind: OcctJSExactElementKind, elementId: number): OcctJSExactRadiusResult;
+    MeasureExactCenter(exactModelId: number, exactShapeHandle: number, kind: OcctJSExactElementKind, elementId: number): OcctJSExactCenterResult;
     AnalyzeOptimalOrientation(format: OcctFormat, content: Uint8Array, params?: OcctJSOrientationParams): OcctJSOrientationResult;
 }
 
