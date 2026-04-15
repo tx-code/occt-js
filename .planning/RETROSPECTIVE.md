@@ -1,5 +1,32 @@
 # Retrospective
 
+## Milestone: v1.3 — Appearance Expansion
+
+**Shipped:** 2026-04-15
+
+### What shipped
+
+- The root Wasm carrier now exposes explicit `defaultOpacity` import controls across read and exact-open APIs.
+- Named `cad-solid` and `cad-ghosted` appearance presets now ship as part of the root import contract.
+- `@tx-code/occt-core` now forwards preset/defaultOpacity input, promotes caller-friendly alpha when appropriate, and preserves root raw opacity.
+- Root docs, packaged typings, tarball checks, and `npm run test:release:root` now lock the expanded appearance contract as a first-class package surface.
+
+### What worked
+
+- Splitting the milestone into runtime, adapter, and governance phases kept the surface area understandable and prevented viewer concerns from leaking into the root package.
+- Contract-first tests let docs, typings, tarball checks, and runtime behavior converge without reopening unrelated CAD import logic.
+- The runtime-first release gate stayed stable even while the public import appearance surface expanded materially.
+
+### What to revisit
+
+- `gsd-tools audit-open` still crashes with `ReferenceError: output is not defined` in this environment, so milestone-close preflight still requires manual fallback.
+- `gsd-tools milestone complete` still leaves manual cleanup work for `ROADMAP.md`, `PROJECT.md`, `STATE.md`, and release-governance assertions.
+
+### Carry-forward ideas
+
+- Only add richer import-time appearance policy if it remains package-first, such as separate face/edge defaults or metadata-driven preset mapping.
+- Keep app-side settings persistence, viewer overrides, and post-import display policy explicitly downstream unless a future milestone intentionally changes that boundary.
+
 ## Milestone: v1.2 — Import Appearance Contract
 
 **Shipped:** 2026-04-15

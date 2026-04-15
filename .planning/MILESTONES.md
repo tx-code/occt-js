@@ -1,5 +1,20 @@
 # Milestones
 
+## v1.3 Appearance Expansion (Shipped: 2026-04-15)
+
+**Phases completed:** 3 phases, 6 plans, 12 tasks
+
+**Key accomplishments:**
+
+- The root Wasm carrier now accepts explicit default-opacity fallback and can expose that policy directly on raw colors and materials without downstream repaint work.
+- `defaultOpacity` now stays explicit and deterministic across read/exact lanes, colorless fixtures, and legacy/source compatibility paths.
+- The root Wasm carrier now supports named appearance presets while preserving the shipped primitive contract and exact-open parity.
+- `@tx-code/occt-core` now preserves the expanded preset/opacity contract instead of dropping root appearance information during normalization.
+- The expanded appearance contract is now documented and governed as a root/package import surface instead of an implicit runtime detail.
+- The packaged root contract now explicitly locks the final preset and opacity guidance, and the authoritative root release gate is green against that completed surface.
+
+---
+
 ## v1.2 Import Appearance Contract (Shipped: 2026-04-15)
 
 **Phases completed:** 3 phases, 6 plans, 12 tasks
