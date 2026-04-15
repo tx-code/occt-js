@@ -159,7 +159,7 @@ test("planning state stays aligned to the root Wasm carrier", () => {
   assert.match(project, /## Evolution/);
 });
 
-test("planning state marks v1.3 active and ready for phase 12 planning", () => {
+test("planning state marks v1.3 active and ready for phase 12 execution", () => {
   const roadmap = readRepoText(".planning/ROADMAP.md");
   const state = readRepoText(".planning/STATE.md");
 
@@ -168,12 +168,16 @@ test("planning state marks v1.3 active and ready for phase 12 planning", () => {
   assert.match(roadmap, /- \[ \] \*\*Phase 12: Root Alpha & Opacity Fallback\*\*/);
   assert.match(roadmap, /- \[ \] \*\*Phase 13: Appearance Preset & Adapter Parity\*\*/);
   assert.match(roadmap, /- \[ \] \*\*Phase 14: Appearance Expansion Governance\*\*/);
-  assert.match(roadmap, /- \[ \] 12-01-PLAN\.md/);
-  assert.match(roadmap, /- \[ \] 12-02-PLAN\.md/);
+  assert.match(roadmap, /- \[x\] 12-01-PLAN\.md/);
+  assert.match(roadmap, /- \[x\] 12-02-PLAN\.md/);
   assert.match(roadmap, /\| 12\. Root Alpha & Opacity Fallback \| 0\/2 \| Planned \| — \|/);
   assert.equal(existsSync(resolve(repoRoot, ".planning/milestones/v1.2-phases/09-root-import-appearance-mode")), true);
   assert.equal(existsSync(resolve(repoRoot, ".planning/milestones/v1.2-phases/10-custom-default-color-adapter-parity")), true);
   assert.equal(existsSync(resolve(repoRoot, ".planning/milestones/v1.2-phases/11-appearance-governance-downstream-contract")), true);
+  assert.equal(existsSync(resolve(repoRoot, ".planning/phases/12-root-alpha-opacity-fallback/12-RESEARCH.md")), true);
+  assert.equal(existsSync(resolve(repoRoot, ".planning/phases/12-root-alpha-opacity-fallback/12-VALIDATION.md")), true);
+  assert.equal(existsSync(resolve(repoRoot, ".planning/phases/12-root-alpha-opacity-fallback/12-01-PLAN.md")), true);
+  assert.equal(existsSync(resolve(repoRoot, ".planning/phases/12-root-alpha-opacity-fallback/12-02-PLAN.md")), true);
 
   assert.match(state, /status:\s*active/i);
   assert.match(state, /milestone:\s*v1\.3/i);
@@ -181,9 +185,9 @@ test("planning state marks v1.3 active and ready for phase 12 planning", () => {
   assert.match(state, /completed_phases:\s*0/);
   assert.match(state, /completed_plans:\s*0/);
   assert.match(state, /percent:\s*0/);
-  assert.match(state, /Current focus:\s*Phase 12 planning for v1\.3 Appearance Expansion/i);
+  assert.match(state, /Current focus:\s*Phase 12 execution for v1\.3 Appearance Expansion/i);
   assert.match(state, /Phase:\s*12 \(root-alpha-opacity-fallback\) — PLANNED/i);
-  assert.match(state, /Status:\s*Phase 12 ready for planning/i);
-  assert.match(state, /Next step is `\/gsd-plan-phase 12`/i);
+  assert.match(state, /Status:\s*Phase 12 ready for execution/i);
+  assert.match(state, /Next step is `\/gsd-execute-phase 12`/i);
   assert.match(state, /Progress:\s*\[----------\]\s*0%/);
 });

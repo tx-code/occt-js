@@ -36,8 +36,8 @@ This roadmap keeps `occt-js` centered on the runtime-first Wasm carrier. `v1.3` 
 **Plans**: 2 plans
 
 Plans:
-- [ ] 12-01-PLAN.md — Add explicit opacity-fallback parsing and root import semantics
-- [ ] 12-02-PLAN.md — Lock opacity fallback parity and compatibility across read/exact lanes
+- [x] 12-01-PLAN.md — Add explicit opacity-fallback parsing and root import semantics
+- [x] 12-02-PLAN.md — Lock opacity fallback parity and compatibility across read/exact lanes
 
 ### Phase 13: Appearance Preset & Adapter Parity
 **Goal**: Let callers choose named import appearance presets and make `@tx-code/occt-core` normalize and forward the expanded contract without viewer-side repaint assumptions.
