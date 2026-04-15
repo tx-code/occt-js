@@ -6,6 +6,7 @@
 #include <vector>
 #include <algorithm>
 #include <cctype>
+#include <cmath>
 
 #include "importer-step.hpp"
 #include "importer-iges.hpp"
@@ -189,6 +190,36 @@ std::vector<uint8_t> ExtractBytes(const val& content)
     return buffer;
 }
 
+double ClampColorComponent(double value, double fallback)
+{
+    if (!std::isfinite(value)) {
+        return fallback;
+    }
+    return std::clamp(value, 0.0, 1.0);
+}
+
+bool TryParseDefaultColor(const val& jsValue, OcctColor& color)
+{
+    if (jsValue.typeOf().as<std::string>() != "object" || jsValue.isNull()) {
+        return false;
+    }
+    if (!jsValue.hasOwnProperty("r") || !jsValue.hasOwnProperty("g") || !jsValue.hasOwnProperty("b")) {
+        return false;
+    }
+    if (jsValue["r"].typeOf().as<std::string>() != "number"
+        || jsValue["g"].typeOf().as<std::string>() != "number"
+        || jsValue["b"].typeOf().as<std::string>() != "number") {
+        return false;
+    }
+
+    color = OcctColor(
+        ClampColorComponent(jsValue["r"].as<double>(), color.r),
+        ClampColorComponent(jsValue["g"].as<double>(), color.g),
+        ClampColorComponent(jsValue["b"].as<double>(), color.b)
+    );
+    return true;
+}
+
 ImportParams ParseImportParams(const val& jsParams)
 {
     ImportParams params;
@@ -241,6 +272,12 @@ ImportParams ParseImportParams(const val& jsParams)
                 params.appearanceMode = ImportParams::AppearanceMode::SourceColors;
             } else if (colorMode == "default") {
                 params.appearanceMode = ImportParams::AppearanceMode::DefaultColor;
+            }
+        }
+        if (jsParams.hasOwnProperty("defaultColor")) {
+            OcctColor defaultColor = params.defaultColor;
+            if (TryParseDefaultColor(jsParams["defaultColor"], defaultColor)) {
+                params.defaultColor = defaultColor;
             }
         }
     }

@@ -233,6 +233,9 @@ export interface OcctJSReadParams {
     // Explicit appearance contract. When provided, this overrides readColors.
     // "default" uses the built-in CAD base color [0.9, 0.91, 0.93].
     colorMode?: OcctJSImportColorMode;
+    // Optional RGB override for default appearance mode.
+    // This only applies when colorMode is set to "default".
+    defaultColor?: OcctJSColor;
 }
 
 export interface OcctJSOrientationPresetAxis {

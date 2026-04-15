@@ -5,6 +5,7 @@ import { loadOcctFactory } from "./load_occt_factory.mjs";
 
 const factory = loadOcctFactory();
 const BUILT_IN_DEFAULT_CAD_COLOR = { r: 0.9, g: 0.91, b: 0.93 };
+const CUSTOM_DEFAULT_CAD_COLOR = { r: 0.2, g: 0.4, b: 0.6 };
 
 async function loadFixture(name) {
   return new Uint8Array(await readFile(new URL(`./${name}`, import.meta.url)));
@@ -70,6 +71,16 @@ function assertUsesBuiltInDefaultCadColor(result, label) {
     collectAppearanceColors(result),
     [colorToKey(BUILT_IN_DEFAULT_CAD_COLOR)],
     `${label}: appearance colors should collapse to the built-in CAD color`,
+  );
+  assert.equal(result.materials?.length, 1, `${label}: materials should collapse to one default-color material`);
+}
+
+function assertUsesCustomDefaultColor(result, color, label) {
+  assert.equal(result?.success, true, `${label}: import should succeed`);
+  assert.deepEqual(
+    collectAppearanceColors(result),
+    [colorToKey(color)],
+    `${label}: appearance colors should collapse to the caller-provided default color`,
   );
   assert.equal(result.materials?.length, 1, `${label}: materials should collapse to one default-color material`);
 }
@@ -222,5 +233,94 @@ test("OpenExact appearance mode keeps exact bindings while matching root colors"
 
     assert.deepEqual(module.ReleaseExactModel(directExact.exactModelId), { ok: true });
     assert.deepEqual(module.ReleaseExactModel(genericExact.exactModelId), { ok: true });
+  }
+});
+
+test("defaultColor overrides the built-in CAD color for stateless imports", async () => {
+  const module = await createModule();
+  const bytes = await loadFixture("ANC101_colored.stp");
+
+  const result = module.ReadFile("step", bytes, {
+    colorMode: "default",
+    defaultColor: CUSTOM_DEFAULT_CAD_COLOR,
+  });
+
+  assertUsesCustomDefaultColor(result, CUSTOM_DEFAULT_CAD_COLOR, "ReadFile(step, custom defaultColor)");
+});
+
+test("defaultColor is ignored unless colorMode default is selected", async () => {
+  const module = await createModule();
+  const bytes = await loadFixture("ANC101_colored.stp");
+
+  const explicitSource = module.ReadFile("step", bytes, {
+    colorMode: "source",
+    defaultColor: CUSTOM_DEFAULT_CAD_COLOR,
+  });
+  const legacyColorless = module.ReadFile("step", bytes, {
+    readColors: false,
+    defaultColor: CUSTOM_DEFAULT_CAD_COLOR,
+  });
+
+  assert.equal(explicitSource?.success, true);
+  assert.ok(
+    collectAppearanceColors(explicitSource).length >= 2,
+    "explicit source mode should ignore defaultColor and preserve imported colors",
+  );
+  assert.notDeepEqual(
+    collectAppearanceColors(explicitSource),
+    [colorToKey(CUSTOM_DEFAULT_CAD_COLOR)],
+  );
+  assertLegacyColorless(
+    legacyColorless,
+    "ReadFile(step, readColors=false, defaultColor without colorMode)",
+  );
+});
+
+test("OpenExact uses the same custom defaultColor appearance payload as ReadFile", async () => {
+  const module = await createModule();
+  const bytes = await loadFixture("ANC101_colored.stp");
+  const params = {
+    colorMode: "default",
+    defaultColor: CUSTOM_DEFAULT_CAD_COLOR,
+  };
+
+  const readResult = module.ReadFile("step", bytes, params);
+  const directExact = module.OpenExactStepModel(bytes, params);
+  const genericExact = module.OpenExactModel("step", bytes, params);
+
+  assertUsesCustomDefaultColor(readResult, CUSTOM_DEFAULT_CAD_COLOR, "ReadFile(step, custom defaultColor)");
+  assertExactAppearanceContract(directExact, "OpenExactStepModel(custom defaultColor)");
+  assertExactAppearanceContract(genericExact, "OpenExactModel(step, custom defaultColor)");
+  assert.deepEqual(
+    appearanceSignature(directExact),
+    appearanceSignature(readResult),
+    "direct exact open should match the read-lane custom defaultColor payload",
+  );
+  assert.deepEqual(
+    appearanceSignature(genericExact),
+    appearanceSignature(readResult),
+    "generic exact open should match the read-lane custom defaultColor payload",
+  );
+
+  assert.deepEqual(module.ReleaseExactModel(directExact.exactModelId), { ok: true });
+  assert.deepEqual(module.ReleaseExactModel(genericExact.exactModelId), { ok: true });
+});
+
+test("custom defaultColor parity holds across colored and colorless fixtures", async () => {
+  const module = await createModule();
+  const fixtures = [
+    ["step", "ANC101_colored.stp"],
+    ["iges", "bearing.igs"],
+    ["brep", "ANC101_isolated_components.brep"],
+  ];
+
+  for (const [format, fixture] of fixtures) {
+    const bytes = await loadFixture(fixture);
+    const result = module.ReadFile(format, bytes, {
+      colorMode: "default",
+      defaultColor: CUSTOM_DEFAULT_CAD_COLOR,
+    });
+
+    assertUsesCustomDefaultColor(result, CUSTOM_DEFAULT_CAD_COLOR, `ReadFile(${format}, ${fixture}, custom defaultColor)`);
   }
 });
