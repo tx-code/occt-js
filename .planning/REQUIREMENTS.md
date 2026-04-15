@@ -14,13 +14,13 @@
 
 - [x] **REF-01**: Downstream JS code can address exact face, edge, and vertex elements through a stable reference shape that includes exact-model identity and enough occurrence context for repeated measurement calls.
 - [x] **REF-02**: Downstream JS code can resolve exact face, edge, and vertex references from the ids already exported in the current mesh/topology payload through an explicit imported-topology-id mapping layer instead of introducing a second viewer-specific id system.
-- [ ] **REF-03**: Downstream JS code can classify exact topology references into primitive geometry families such as line, circle, plane, cylinder, cone, or sphere so app-side measurement semantics can compose on top.
+- [x] **REF-03**: Downstream JS code can classify exact topology references into primitive geometry families such as line, circle, plane, cylinder, cone, or sphere so app-side measurement semantics can compose on top.
 
 ### Primitive Exact Measurements
 
 - [ ] **MEAS-01**: Downstream JS code can measure exact distance between supported topology-reference pairs and receive both the numeric result and attach points needed for app-side annotation.
 - [ ] **MEAS-02**: Downstream JS code can measure exact angle between supported topology-reference pairs and receive the angle plus origin and direction vectors needed for app-side annotation.
-- [ ] **MEAS-03**: Downstream JS code can measure single-entity primitives including radius, center, edge length, face area, and evaluated face normal using exact topology references.
+- [x] **MEAS-03**: Downstream JS code can measure single-entity primitives including radius, center, edge length, face area, and evaluated face normal using exact topology references.
 - [ ] **MEAS-04**: Downstream JS code can measure exact thickness for supported parallel-wall scenarios and receive both the numeric result and attach points needed for app-side annotation.
 - [ ] **MEAS-05**: Downstream JS code receives structured exact-measurement success and failure DTOs with overlay-ready anchors and explicit invalid-handle, invalid-id, and unsupported-geometry errors.
 
@@ -58,10 +58,10 @@
 | LIFE-02 | Phase 5 | Completed |
 | REF-01 | Phase 6 | Completed |
 | REF-02 | Phase 6 | Completed |
-| REF-03 | Phase 7 | Planned |
+| REF-03 | Phase 7 | Completed |
 | MEAS-01 | Phase 8 | Planned |
 | MEAS-02 | Phase 8 | Planned |
-| MEAS-03 | Phase 7 | Planned |
+| MEAS-03 | Phase 7 | Completed |
 | MEAS-04 | Phase 8 | Planned |
 | MEAS-05 | Phase 8 | Planned |
 | ADAPT-01 | Phase 8 | Planned |
@@ -74,4 +74,4 @@
 
 ---
 *Requirements defined: 2026-04-14*
-*Last updated: 2026-04-15 after Phase 06 completion*
+*Last updated: 2026-04-15 after Phase 07 completion*
