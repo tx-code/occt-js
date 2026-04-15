@@ -18,8 +18,8 @@
 
 ### Primitive Exact Measurements
 
-- [ ] **MEAS-01**: Downstream JS code can measure exact distance between supported topology-reference pairs and receive both the numeric result and attach points needed for app-side annotation.
-- [ ] **MEAS-02**: Downstream JS code can measure exact angle between supported topology-reference pairs and receive the angle plus origin and direction vectors needed for app-side annotation.
+- [x] **MEAS-01**: Downstream JS code can measure exact distance between supported topology-reference pairs and receive both the numeric result and attach points needed for app-side annotation.
+- [x] **MEAS-02**: Downstream JS code can measure exact angle between supported topology-reference pairs and receive the angle plus origin and direction vectors needed for app-side annotation.
 - [x] **MEAS-03**: Downstream JS code can measure single-entity primitives including radius, center, edge length, face area, and evaluated face normal using exact topology references.
 - [ ] **MEAS-04**: Downstream JS code can measure exact thickness for supported parallel-wall scenarios and receive both the numeric result and attach points needed for app-side annotation.
 - [ ] **MEAS-05**: Downstream JS code receives structured exact-measurement success and failure DTOs with overlay-ready anchors and explicit invalid-handle, invalid-id, and unsupported-geometry errors.
@@ -59,8 +59,8 @@
 | REF-01 | Phase 6 | Completed |
 | REF-02 | Phase 6 | Completed |
 | REF-03 | Phase 7 | Completed |
-| MEAS-01 | Phase 8 | Planned |
-| MEAS-02 | Phase 8 | Planned |
+| MEAS-01 | Phase 8 | Completed |
+| MEAS-02 | Phase 8 | Completed |
 | MEAS-03 | Phase 7 | Completed |
 | MEAS-04 | Phase 8 | Planned |
 | MEAS-05 | Phase 8 | Planned |
@@ -74,4 +74,4 @@
 
 ---
 *Requirements defined: 2026-04-14*
-*Last updated: 2026-04-15 after Phase 07 completion*
+*Last updated: 2026-04-15 after Phase 08-01 completion*
