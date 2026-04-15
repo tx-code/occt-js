@@ -25,27 +25,32 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 
 ### Active
 
-- (None yet — define the next milestone with `/gsd-new-milestone`.)
+- [ ] Downstream JS code can control import-time alpha or opacity fallback as part of the appearance contract instead of hardcoding opacity in downstream viewers.
+- [ ] Downstream JS code can select named import appearance presets that map fallback color and opacity policy without requiring a viewer-side recolor pass.
+- [ ] Expanded appearance options stay aligned across root Wasm, `occt-core`, typings, docs, and release verification.
 
 ### Out of Scope
 
 - Evolving this repo into a full viewer framework as the primary goal — the main value is the OCCT Wasm runtime.
 - Making Tauri or desktop packaging a prerequisite for root npm publishing — root runtime must stay independently releasable.
 - Treating Babylon/demo layers as first-order release gates for the root runtime.
-- Viewer-side repaint, theme switching, or display overrides after import — shipped appearance work stays at import-time contract boundaries, not post-import presentation logic.
+- Viewer-side repaint, theme switching, or display overrides after import — `v1.3` stays at import-time appearance contract boundaries, not post-import presentation logic.
 - Persistent user-setting storage inside the runtime — downstream apps own settings persistence and pass the chosen appearance options into import calls.
 
 ## Current State
 
 `v1.2 Import Appearance Contract` shipped on 2026-04-15. The root runtime now exposes explicit import appearance controls through `colorMode` and `defaultColor`, `occt-core` forwards and normalizes that contract without inventing fallback materials unless default appearance is explicit, and the root/package docs plus release governance now lock the shipped semantics in place.
 
-The repository is now back in an archive state with no active milestone plan. The next change to `.planning/REQUIREMENTS.md` and `.planning/ROADMAP.md` should come from `/gsd-new-milestone`, not from extending the shipped v1.2 scope in place.
+`v1.3 Appearance Expansion` is now the active milestone. The immediate goal is to extend the import appearance contract beyond solid fallback color into opacity and preset policy while keeping app-side settings persistence and viewer overrides outside the root package boundary.
 
-## Next Milestone Goals
+## Current Milestone: v1.3 Appearance Expansion
 
-- Decide the next runtime-level slice on top of the shipped import appearance contract instead of broadening app/UI semantics into the root package by default.
-- Revisit appearance follow-ups only if they stay runtime-first, such as additional import-time fallback controls or richer package-level appearance presets.
-- Keep release governance centered on `npm run test:release:root` and preserve the root Wasm carrier as the authoritative contract surface.
+**Goal:** Expand import-time appearance from a single fallback color into a richer package-level contract for opacity and named presets.
+
+**Target features:**
+- Explicit opacity or alpha fallback controls across root read and exact-open APIs
+- Named appearance presets that map fallback color and opacity policy at import time
+- Unified semantics across root Wasm, `occt-core`, typings, docs, and release verification
 
 ## Context
 
@@ -53,14 +58,14 @@ The repository is now back in an archive state with no active milestone plan. Th
 - Root package version is still `0.1.7`; the root runtime and root tests remain the primary maintained contract.
 - `imos-app` remains the key downstream consumer signal: it vendors `@tx-code/occt-js` and consumes the Wasm/runtime surface directly, while viewer semantics live on the app side.
 - `SceneGraph.net` remains the best local reference for measurement behavior above the kernel layer, but `occt-js` intentionally stopped at exact-kernel foundations in v1.1.
-- The shipped root import contract now exposes `colorMode?: "source" | "default"` and `defaultColor?: { r, g, b }` on the Wasm boundary.
-- `packages/occt-core/src/model-normalizer.js` only synthesizes fallback materials when callers explicitly request default appearance, preserving colorless runtime output otherwise.
+- The current root import contract now exposes `colorMode?: "source" | "default"` and `defaultColor?: { r, g, b }`, but it still has no explicit opacity fallback or named preset contract at the Wasm boundary.
+- `packages/occt-core/src/model-normalizer.js` already reflects explicit default-appearance intent; `v1.3` should extend that same runtime-first contract instead of reintroducing viewer-side fallback policy.
 - GSD is now the primary repository workflow, with superpowers skills used to tighten execution discipline and verification.
 
 ## Constraints
 
 - **Release boundary**: `dist/occt-js.js`, `dist/occt-js.wasm`, and `dist/occt-js.d.ts` remain the root runtime contract — release verification stays centered on `npm run test:release:root`.
-- **Backward compatibility**: Existing callers that still use `readColors` need deterministic compatibility or explicit precedence when new appearance options land.
+- **Backward compatibility**: Existing callers that still use the v1.2 appearance contract need deterministic compatibility or explicit precedence when new opacity/preset options land.
 - **Product boundary**: App code owns persisted user settings; the runtime only consumes import appearance options and returns the resulting colors/materials.
 - **Downstream compatibility**: Changes to import params, typings, or normalized materials must preserve packaged and vendored consumption paths such as `imos-app`.
 
@@ -76,6 +81,24 @@ The repository is now back in an archive state with no active milestone plan. Th
 | Keep demo, Babylon, and Tauri checks conditional secondary-surface verification | Root release flow must stay aligned with the Wasm carrier boundary and avoid secondary-surface gate creep | ✓ Good |
 | Keep exact measurement semantics in downstream apps and limit v1.1 to wasm/core primitives | The main value is exposing a reliable geometric kernel contract; selection UX, overlays, and feature interpretation belong above the runtime | ✓ Good |
 | Treat import appearance as a runtime contract instead of a viewer repaint convention | Downstream apps need deterministic imported material output that can be driven by settings and reused across package consumers | ✓ Good |
+| Expand appearance only through import-time package contract changes, not viewer post-processing | This milestone should extend runtime/core semantics without absorbing preset UIs, settings storage, or repaint flows | — Pending |
+
+## Evolution
+
+This document evolves at phase transitions and milestone boundaries.
+
+**After each phase transition** (via `/gsd-transition`):
+1. Requirements invalidated? → Move to Out of Scope with reason
+2. Requirements validated? → Move to Validated with phase reference
+3. New requirements emerged? → Add to Active
+4. Decisions to log? → Add to Key Decisions
+5. "What This Is" still accurate? → Update if drifted
+
+**After each milestone** (via `/gsd-complete-milestone`):
+1. Full review of all sections
+2. Core Value check — still the right priority?
+3. Audit Out of Scope — reasons still valid?
+4. Update Context with current state
 
 <details>
 <summary>Archived v1.2 milestone framing</summary>
@@ -92,4 +115,4 @@ The repository is now back in an archive state with no active milestone plan. Th
 </details>
 
 ---
-*Last updated: 2026-04-15 after v1.2 milestone closeout*
+*Last updated: 2026-04-15 after starting v1.3 Appearance Expansion*
