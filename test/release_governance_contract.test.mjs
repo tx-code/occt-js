@@ -41,6 +41,16 @@ test("authoritative root test surface includes import appearance contract covera
   assert.match(testCommand, /test\/import_appearance_contract\.test\.mjs/);
 });
 
+test("release governance keeps packaged appearance contract coverage on the authoritative root gate", () => {
+  const packageJson = readRepoJson("package.json");
+  const releaseCommand = packageJson.scripts?.["test:release:root"] ?? "";
+  const tarballContract = readRepoText("test/package_tarball_contract.test.mjs");
+
+  assert.match(releaseCommand, /test\/package_tarball_contract\.test\.mjs/);
+  assert.match(tarballContract, /packed root package ships appearance typings needed by downstream consumers/);
+  assert.match(tarballContract, /package contract keeps import appearance package-first and independent of viewer surfaces/);
+});
+
 test("authoritative root release command surface excludes unconditional secondary-surface gates", () => {
   const packageJson = readRepoJson("package.json");
   const releaseCommand = packageJson.scripts?.["test:release:root"] ?? "";
