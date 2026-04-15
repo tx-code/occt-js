@@ -81,13 +81,21 @@ test("packed root package ships appearance typings needed by downstream consumer
   assert.equal(packedPaths.has("README.md"), true);
   assert.equal(packedPaths.has("dist/occt-js.d.ts"), true);
   assert.match(readme, /## Import Appearance Contract/);
+  assert.match(readme, /appearancePreset/);
   assert.match(readme, /colorMode/);
   assert.match(readme, /defaultColor/);
+  assert.match(readme, /defaultOpacity/);
+  assert.match(readme, /cad-solid/);
+  assert.match(readme, /cad-ghosted/);
   assert.match(typesSource, /export type OcctJSImportColorMode = "source" \| "default";/);
+  assert.match(typesSource, /export type OcctJSImportAppearancePreset = "cad-solid" \| "cad-ghosted";/);
+  assert.match(typesSource, /appearancePreset\?: OcctJSImportAppearancePreset;/);
   assert.match(typesSource, /colorMode\?: OcctJSImportColorMode;/);
   assert.match(typesSource, /defaultColor\?: OcctJSColor;/);
+  assert.match(typesSource, /defaultOpacity\?: number;/);
   assert.match(typesSource, /legacy-only when colorMode is omitted/i);
   assert.match(typesSource, /built-in CAD base color \[0\.9, 0\.91, 0\.93\]/);
+  assert.match(typesSource, /built-in ghost opacity 0\.35/i);
 });
 
 test("package contract keeps import appearance package-first and independent of viewer surfaces", () => {

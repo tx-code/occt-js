@@ -14,7 +14,7 @@
 ### Adapter & Governance
 
 - [x] **ADAPT-05**: `@tx-code/occt-core` can accept and normalize the expanded appearance options, forwarding them to the root Wasm carrier without hiding the runtime contract.
-- [ ] **ADAPT-06**: Root typings, package docs, tarball checks, and release verification define the expanded appearance contract while keeping app-side preset persistence or display overrides out of scope.
+- [x] **ADAPT-06**: Root typings, package docs, tarball checks, and release verification define the expanded appearance contract while keeping app-side preset persistence or display overrides out of scope.
 
 ## Future Requirements
 
@@ -45,7 +45,7 @@
 | APPR-07 | Phase 13 | Completed |
 | APPR-08 | Phase 13 | Completed |
 | ADAPT-05 | Phase 13 | Completed |
-| ADAPT-06 | Phase 14 | Pending |
+| ADAPT-06 | Phase 14 | Completed |
 
 **Coverage:**
 - v1.3 requirements: 5 total
@@ -54,4 +54,4 @@
 
 ---
 *Requirements defined: 2026-04-15*
-*Last updated: 2026-04-15 after completing Phase 13 Appearance Preset & Adapter Parity*
+*Last updated: 2026-04-15 after completing Phase 14 Appearance Expansion Governance*

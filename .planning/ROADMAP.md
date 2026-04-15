@@ -19,7 +19,7 @@ This roadmap keeps `occt-js` centered on the runtime-first Wasm carrier. `v1.3` 
 
 - [x] **Phase 12: Root Alpha & Opacity Fallback** - Add explicit opacity-fallback controls to the root import APIs while keeping legacy appearance behavior deterministic.
 - [x] **Phase 13: Appearance Preset & Adapter Parity** - Add named appearance presets and align read/openExact/`occt-core` semantics around the expanded contract.
-- [ ] **Phase 14: Appearance Expansion Governance** - Finalize docs, typings, tarball guidance, and release governance for the expanded appearance contract.
+- [x] **Phase 14: Appearance Expansion Governance** - Finalize docs, typings, tarball guidance, and release governance for the expanded appearance contract.
 
 ## Phase Details
 
@@ -80,4 +80,4 @@ Phases execute in numeric order: 12 → 13 → 14
 |-------|----------------|--------|-----------|
 | 12. Root Alpha & Opacity Fallback | 2/2 | Complete | 2026-04-15 |
 | 13. Appearance Preset & Adapter Parity | 2/2 | Complete | 2026-04-15 |
-| 14. Appearance Expansion Governance | 0/2 | Planned | — |
+| 14. Appearance Expansion Governance | 2/2 | Complete | 2026-04-15 |
