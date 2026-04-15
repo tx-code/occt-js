@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Appearance Expansion
 status: active
-stopped_at: Phase 13 planning complete; next step is /gsd-execute-phase 13
-last_updated: "2026-04-15T22:18:45.9966746+08:00"
+stopped_at: Phase 13 complete; next step is /gsd-plan-phase 14
+last_updated: "2026-04-15T22:46:53.3256021+08:00"
 last_activity: 2026-04-15
 progress:
   total_phases: 3
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 6
-  completed_plans: 2
-  percent: 33
+  completed_plans: 4
+  percent: 67
 ---
 
 # Project State
@@ -21,43 +21,43 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-15)
 
 Core value: Downstream applications can reliably consume the OCCT Wasm runtime and its root API contract without build drift or packaging surprises.
-Current focus: Phase 13 execution for v1.3 Appearance Expansion
+Current focus: Phase 14 planning for v1.3 Appearance Expansion
 
 ## Current Position
 
-Phase: 13 (appearance-preset-adapter-parity) — PLANNED
+Phase: 14 (appearance-expansion-governance) — PLANNED
 Plan: 0 of 2 complete
-Status: Phase 13 ready for execution
+Status: Phase 14 ready for planning
 Last activity: 2026-04-15
 
-Progress: [###-------] 33%
+Progress: [#######---] 67%
 
 ## Milestone Snapshot
 
-- `v1.3 Appearance Expansion` is active and Phase 12 is complete.
-- The root runtime now exposes explicit `defaultOpacity` fallback alongside the shipped `colorMode` / `defaultColor` contract.
-- Named appearance presets still need to stay runtime-first and reusable by downstream consumers instead of becoming viewer-specific repaint logic.
+- `v1.3 Appearance Expansion` is active and Phases 12-13 are complete.
+- The root runtime now exposes `appearancePreset` alongside `colorMode`, `defaultColor`, and `defaultOpacity`.
+- `@tx-code/occt-core` now forwards preset/defaultOpacity input and preserves root raw opacity during normalization.
 - App code still owns settings persistence and viewer behavior; the milestone boundary stays at import-time appearance semantics.
 
 ## Accumulated Context
 
 - The root Wasm carrier remains the primary product surface and release boundary.
 - `v1.2` shipped explicit `colorMode` and `defaultColor` semantics plus governance coverage for the import appearance contract.
-- The current Wasm boundary now exposes explicit default-opacity fallback on the root carrier and preserves v1.2 source/legacy compatibility.
-- Existing downstream consumers may already depend on the shipped appearance contract, so preset semantics and adapter parity still need explicit precedence in Phase 13.
+- The current Wasm boundary now ships preset, default-color, and default-opacity behavior with read/openExact and adapter parity.
+- Existing downstream consumers may already depend on the shipped appearance contract, so Phase 14 now needs to lock docs, typings commentary, and package-governance wording to that final shape.
 
 ## Pending Todos
 
-- Define the exact precedence between the shipped v1.2 appearance options and the new opacity/preset extensions.
-- Decide whether named presets should stay enum-like in the root contract or map through a richer preset descriptor later.
+- Decide how much of the shipped preset/opacity contract should be called out explicitly in README and package docs during Phase 14.
+- Decide whether any forward-looking richer preset descriptor belongs in future requirements rather than the current milestone.
 
 ## Blockers/Concerns
 
 - No active blockers.
-- Next step is `/gsd-execute-phase 13`.
+- Next step is `/gsd-plan-phase 14`.
 
 ## Session Continuity
 
 Last session: 2026-04-15
-Stopped at: Phase 13 planning complete; next step is `/gsd-execute-phase 13`
+Stopped at: Phase 13 complete; next step is `/gsd-plan-phase 14`
 Resume file: .planning/ROADMAP.md
