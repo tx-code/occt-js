@@ -163,7 +163,7 @@ test("planning state stays aligned to the root Wasm carrier", () => {
   assert.match(project, /## Evolution/);
 });
 
-test("planning state marks v1.3 active with phases 12-13 complete and phase 14 ready for planning", () => {
+test("planning state marks v1.3 active with phases 12-13 complete and phase 14 ready for execution", () => {
   const roadmap = readRepoText(".planning/ROADMAP.md");
   const state = readRepoText(".planning/STATE.md");
 
@@ -176,6 +176,8 @@ test("planning state marks v1.3 active with phases 12-13 complete and phase 14 r
   assert.match(roadmap, /- \[x\] 12-02-PLAN\.md/);
   assert.match(roadmap, /- \[x\] 13-01-PLAN\.md/);
   assert.match(roadmap, /- \[x\] 13-02-PLAN\.md/);
+  assert.match(roadmap, /- \[x\] 14-01-PLAN\.md/);
+  assert.match(roadmap, /- \[x\] 14-02-PLAN\.md/);
   assert.match(roadmap, /\| 12\. Root Alpha & Opacity Fallback \| 2\/2 \| Complete \| 2026-04-15 \|/);
   assert.match(roadmap, /\| 13\. Appearance Preset & Adapter Parity \| 2\/2 \| Complete \| 2026-04-15 \|/);
   assert.equal(existsSync(resolve(repoRoot, ".planning/milestones/v1.2-phases/09-root-import-appearance-mode")), true);
@@ -193,6 +195,10 @@ test("planning state marks v1.3 active with phases 12-13 complete and phase 14 r
   assert.equal(existsSync(resolve(repoRoot, ".planning/phases/13-appearance-preset-adapter-parity/13-02-PLAN.md")), true);
   assert.equal(existsSync(resolve(repoRoot, ".planning/phases/13-appearance-preset-adapter-parity/13-01-SUMMARY.md")), true);
   assert.equal(existsSync(resolve(repoRoot, ".planning/phases/13-appearance-preset-adapter-parity/13-02-SUMMARY.md")), true);
+  assert.equal(existsSync(resolve(repoRoot, ".planning/phases/14-appearance-expansion-governance/14-RESEARCH.md")), true);
+  assert.equal(existsSync(resolve(repoRoot, ".planning/phases/14-appearance-expansion-governance/14-VALIDATION.md")), true);
+  assert.equal(existsSync(resolve(repoRoot, ".planning/phases/14-appearance-expansion-governance/14-01-PLAN.md")), true);
+  assert.equal(existsSync(resolve(repoRoot, ".planning/phases/14-appearance-expansion-governance/14-02-PLAN.md")), true);
 
   assert.match(state, /status:\s*active/i);
   assert.match(state, /milestone:\s*v1\.3/i);
@@ -200,9 +206,9 @@ test("planning state marks v1.3 active with phases 12-13 complete and phase 14 r
   assert.match(state, /completed_phases:\s*2/);
   assert.match(state, /completed_plans:\s*4/);
   assert.match(state, /percent:\s*67/);
-  assert.match(state, /Current focus:\s*Phase 14 planning for v1\.3 Appearance Expansion/i);
+  assert.match(state, /Current focus:\s*Phase 14 execution for v1\.3 Appearance Expansion/i);
   assert.match(state, /Phase:\s*14 \(appearance-expansion-governance\) — PLANNED/i);
-  assert.match(state, /Status:\s*Phase 14 ready for planning/i);
-  assert.match(state, /Next step is `\/gsd-plan-phase 14`/i);
+  assert.match(state, /Status:\s*Phase 14 ready for execution/i);
+  assert.match(state, /Next step is `\/gsd-execute-phase 14`/i);
   assert.match(state, /Progress:\s*\[#######---\]\s*67%/);
 });

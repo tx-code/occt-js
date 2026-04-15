@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Appearance Expansion
 status: active
-stopped_at: Phase 13 complete; next step is /gsd-plan-phase 14
+stopped_at: Phase 14 planning complete; next step is /gsd-execute-phase 14
 last_updated: "2026-04-15T22:46:53.3256021+08:00"
 last_activity: 2026-04-15
 progress:
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-15)
 
 Core value: Downstream applications can reliably consume the OCCT Wasm runtime and its root API contract without build drift or packaging surprises.
-Current focus: Phase 14 planning for v1.3 Appearance Expansion
+Current focus: Phase 14 execution for v1.3 Appearance Expansion
 
 ## Current Position
 
 Phase: 14 (appearance-expansion-governance) — PLANNED
 Plan: 0 of 2 complete
-Status: Phase 14 ready for planning
+Status: Phase 14 ready for execution
 Last activity: 2026-04-15
 
 Progress: [#######---] 67%
@@ -54,10 +54,10 @@ Progress: [#######---] 67%
 ## Blockers/Concerns
 
 - No active blockers.
-- Next step is `/gsd-plan-phase 14`.
+- Next step is `/gsd-execute-phase 14`.
 
 ## Session Continuity
 
 Last session: 2026-04-15
-Stopped at: Phase 13 complete; next step is `/gsd-plan-phase 14`
+Stopped at: Phase 14 planning complete; next step is `/gsd-execute-phase 14`
 Resume file: .planning/ROADMAP.md

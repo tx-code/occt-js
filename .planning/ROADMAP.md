@@ -68,8 +68,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 14-01-PLAN.md — Finalize docs and typings for expanded appearance options
-- [ ] 14-02-PLAN.md — Extend release governance and downstream packaging verification for expanded appearance options
+- [x] 14-01-PLAN.md — Finalize docs and typings for expanded appearance options
+- [x] 14-02-PLAN.md — Extend release governance and downstream packaging verification for expanded appearance options
 
 ## Progress
 
