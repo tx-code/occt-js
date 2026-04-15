@@ -3,7 +3,7 @@
 ## Milestones
 
 - ✅ **v1.0 OCCT Wasm Runtime Hardening** - Phases 1-4 (shipped 2026-04-14)
-- 🚧 **v1.1 Exact BRep Measurement Foundation** - Phases 5-8 (planned)
+- ✅ **v1.1 Exact BRep Measurement Foundation** - Phases 5-8 (completed 2026-04-15)
 
 ## Overview
 
@@ -28,7 +28,7 @@ This roadmap keeps `occt-js` centered on the runtime-first Wasm carrier. v1.0 sh
 - [x] **Phase 5: Exact Model Lifecycle Contract** - Add a stateful exact-model lane with explicit retain/release semantics beside the existing stateless imports.
 - [x] **Phase 6: Occurrence-Scoped Exact Ref Mapping** - Resolve exact face, edge, and vertex refs from current exported topology ids through an explicit mapping layer.
 - [x] **Phase 7: Primitive Exact Geometry Queries** - Expose geometry classification and single-entity exact measurements needed for app-side composition.
-- [ ] **Phase 8: Pairwise Measurement Contract Hardening** - Ship pairwise exact measurements, JS-friendly adapters, and runtime-first contract hardening.
+- [x] **Phase 8: Pairwise Measurement Contract Hardening** - Ship pairwise exact measurements, JS-friendly adapters, and runtime-first contract hardening.
 
 ## Phase Details
 
@@ -168,7 +168,7 @@ Plans:
 Plans:
 - [x] 08-01-PLAN.md — Add exact distance and angle primitives with overlay-ready attach geometry
 - [x] 08-02-PLAN.md — Add exact thickness plus structured measurement success and failure DTO hardening
-- [ ] 08-03-PLAN.md — Finalize `occt-core` adapters, typings, docs, and root release verification
+- [x] 08-03-PLAN.md — Finalize `occt-core` adapters, typings, docs, and root release verification
 
 ## Progress
 
@@ -184,4 +184,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 5. Exact Model Lifecycle Contract | 2/2 | Complete | 2026-04-14 |
 | 6. Occurrence-Scoped Exact Ref Mapping | 2/2 | Complete | 2026-04-15 |
 | 7. Primitive Exact Geometry Queries | 2/2 | Complete | 2026-04-15 |
-| 8. Pairwise Measurement Contract Hardening | 2/3 | In progress | - |
+| 8. Pairwise Measurement Contract Hardening | 3/3 | Complete | 2026-04-15 |

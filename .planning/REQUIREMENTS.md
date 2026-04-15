@@ -22,12 +22,12 @@
 - [x] **MEAS-02**: Downstream JS code can measure exact angle between supported topology-reference pairs and receive the angle plus origin and direction vectors needed for app-side annotation.
 - [x] **MEAS-03**: Downstream JS code can measure single-entity primitives including radius, center, edge length, face area, and evaluated face normal using exact topology references.
 - [x] **MEAS-04**: Downstream JS code can measure exact thickness for supported parallel-wall scenarios and receive both the numeric result and attach points needed for app-side annotation.
-- [ ] **MEAS-05**: Downstream JS code receives structured exact-measurement success and failure DTOs with overlay-ready anchors and explicit invalid-handle, invalid-id, and unsupported-geometry errors.
+- [x] **MEAS-05**: Downstream JS code receives structured exact-measurement success and failure DTOs with overlay-ready anchors and explicit invalid-handle, invalid-id, and unsupported-geometry errors.
 
 ### Downstream Adapter & Release Contract
 
-- [ ] **ADAPT-01**: `@tx-code/occt-core` can expose JS-friendly adapters and DTOs for exact-model handles, topology references, and primitive measurement results without hiding the root Wasm contract.
-- [ ] **ADAPT-02**: Root docs, package typings, and release verification cover the exact-measurement foundation while keeping app-level selection UX, overlays, and semantic feature recognition explicitly out of scope.
+- [x] **ADAPT-01**: `@tx-code/occt-core` can expose JS-friendly adapters and DTOs for exact-model handles, topology references, and primitive measurement results without hiding the root Wasm contract.
+- [x] **ADAPT-02**: Root docs, package typings, and release verification cover the exact-measurement foundation while keeping app-level selection UX, overlays, and semantic feature recognition explicitly out of scope.
 
 ## Future Requirements
 
@@ -63,9 +63,9 @@
 | MEAS-02 | Phase 8 | Completed |
 | MEAS-03 | Phase 7 | Completed |
 | MEAS-04 | Phase 8 | Completed |
-| MEAS-05 | Phase 8 | Planned |
-| ADAPT-01 | Phase 8 | Planned |
-| ADAPT-02 | Phase 8 | Planned |
+| MEAS-05 | Phase 8 | Completed |
+| ADAPT-01 | Phase 8 | Completed |
+| ADAPT-02 | Phase 8 | Completed |
 
 **Coverage:**
 - v1.1 requirements: 12 total
@@ -74,4 +74,4 @@
 
 ---
 *Requirements defined: 2026-04-14*
-*Last updated: 2026-04-15 after Phase 08-02 completion*
+*Last updated: 2026-04-15 after Phase 08-03 completion*
