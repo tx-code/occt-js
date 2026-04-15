@@ -8,7 +8,7 @@
 
 ## Overview
 
-This roadmap keeps `occt-js` centered on the runtime-first Wasm carrier. `v1.2` hardens import appearance into an explicit package contract so downstream apps can choose source colors or a default CAD color through import options instead of patching colors later in viewer code.
+This roadmap keeps `occt-js` centered on the runtime-first Wasm carrier. `v1.2` hardens import appearance into an explicit package contract so downstream apps can choose source colors or a default CAD color through import options instead of patching colors later in viewer code. With Phase 10 complete, the remaining milestone work is governance: docs, typings, and release/package checks must now lock the shipped runtime and adapter semantics in place.
 
 ## Phases
 
@@ -17,7 +17,7 @@ This roadmap keeps `occt-js` centered on the runtime-first Wasm carrier. `v1.2` 
 - Decimal phases (9.1, 9.2): Urgent insertions (marked with INSERTED)
 
 - [x] **Phase 9: Root Import Appearance Mode** - Add explicit appearance mode parsing and a documented built-in default CAD color to root import APIs.
-- [ ] **Phase 10: Custom Default Color & Adapter Parity** - Support caller-provided default colors and unify read/openExact/`occt-core` semantics.
+- [x] **Phase 10: Custom Default Color & Adapter Parity** - Support caller-provided default colors and unify read/openExact/`occt-core` semantics.
 - [ ] **Phase 11: Appearance Governance & Downstream Contract** - Finalize docs, typings, package guidance, and release governance for the import appearance contract.
 
 ## Phase Details
@@ -51,8 +51,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 10-01-PLAN.md — Add custom default color parsing and exact-open parity to the root import lanes
-- [ ] 10-02-PLAN.md — Normalize import appearance options and forwarding in `@tx-code/occt-core`
+- [x] 10-01-PLAN.md — Add custom default color parsing and exact-open parity to the root import lanes
+- [x] 10-02-PLAN.md — Normalize import appearance options and forwarding in `@tx-code/occt-core`
 
 ### Phase 11: Appearance Governance & Downstream Contract
 **Goal**: Lock the import appearance contract in docs, package typings, downstream packaging guidance, and the canonical root release gate.
@@ -78,5 +78,5 @@ Phases execute in numeric order: 9 → 10 → 11
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 9. Root Import Appearance Mode | 2/2 | Complete | 2026-04-15 |
-| 10. Custom Default Color & Adapter Parity | 0/2 | Planned | — |
+| 10. Custom Default Color & Adapter Parity | 2/2 | Complete | 2026-04-15 |
 | 11. Appearance Governance & Downstream Contract | 0/2 | Planned | — |

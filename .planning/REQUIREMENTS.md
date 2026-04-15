@@ -7,15 +7,15 @@
 
 ### Import Appearance
 
-- [ ] **APPR-01**: Downstream JS code can choose whether STEP, IGES, and BREP imports preserve source colors or use a default CAD color via an explicit import appearance mode.
-- [ ] **APPR-02**: When default appearance mode is selected without an explicit color override, the root runtime returns one documented built-in CAD color consistently across supported import entry points.
-- [ ] **APPR-03**: Downstream JS code can provide an explicit default RGB color override so app-level user settings flow through import results without a viewer-side recolor pass.
-- [ ] **APPR-04**: Stateless `Read*` APIs and exact-open `OpenExact*` APIs honor the same appearance-mode semantics for supported formats.
-- [ ] **APPR-05**: Existing callers that still pass `readColors` receive deterministic compatibility behavior and explicit precedence relative to the new appearance options.
+- [x] **APPR-01**: Downstream JS code can choose whether STEP, IGES, and BREP imports preserve source colors or use a default CAD color via an explicit import appearance mode.
+- [x] **APPR-02**: When default appearance mode is selected without an explicit color override, the root runtime returns one documented built-in CAD color consistently across supported import entry points.
+- [x] **APPR-03**: Downstream JS code can provide an explicit default RGB color override so app-level user settings flow through import results without a viewer-side recolor pass.
+- [x] **APPR-04**: Stateless `Read*` APIs and exact-open `OpenExact*` APIs honor the same appearance-mode semantics for supported formats.
+- [x] **APPR-05**: Existing callers that still pass `readColors` receive deterministic compatibility behavior and explicit precedence relative to the new appearance options.
 
 ### Adapter & Governance
 
-- [ ] **ADAPT-03**: `@tx-code/occt-core` can accept and normalize the import appearance options, forwarding them to the root Wasm carrier without hiding the runtime contract.
+- [x] **ADAPT-03**: `@tx-code/occt-core` can accept and normalize the import appearance options, forwarding them to the root Wasm carrier without hiding the runtime contract.
 - [ ] **ADAPT-04**: Root typings, package docs, and release verification define the import appearance contract and keep app-side settings persistence or viewer overrides out of scope.
 
 ## Future Requirements
@@ -43,12 +43,12 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| APPR-01 | Phase 9 | Pending |
-| APPR-02 | Phase 9 | Pending |
-| APPR-05 | Phase 9 | Pending |
-| APPR-03 | Phase 10 | Pending |
-| APPR-04 | Phase 10 | Pending |
-| ADAPT-03 | Phase 10 | Pending |
+| APPR-01 | Phase 9 | Completed |
+| APPR-02 | Phase 9 | Completed |
+| APPR-05 | Phase 9 | Completed |
+| APPR-03 | Phase 10 | Completed |
+| APPR-04 | Phase 10 | Completed |
+| ADAPT-03 | Phase 10 | Completed |
 | ADAPT-04 | Phase 11 | Pending |
 
 **Coverage:**
@@ -58,4 +58,4 @@
 
 ---
 *Requirements defined: 2026-04-15*
-*Last updated: 2026-04-15 after starting v1.2 Import Appearance Contract*
+*Last updated: 2026-04-15 after Phase 10 completion*

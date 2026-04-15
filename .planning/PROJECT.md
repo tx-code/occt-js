@@ -22,8 +22,8 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 
 ### Active
 
-- [ ] Import APIs expose an explicit appearance strategy for preserving source colors or forcing a default CAD color.
-- [ ] The default CAD color contract is stable across root Wasm imports and `@tx-code/occt-core`, with optional caller override for app-side user settings.
+- [x] Import APIs expose an explicit appearance strategy for preserving source colors or forcing a default CAD color.
+- [x] The default CAD color contract is stable across root Wasm imports and `@tx-code/occt-core`, with optional caller override for app-side user settings.
 - [ ] Docs, typings, and release verification lock the import appearance contract without turning viewer repaint logic into a root-runtime concern.
 
 ### Out of Scope
@@ -36,9 +36,9 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 
 ## Current State
 
-`v1.1 Exact BRep Measurement Foundation` shipped on 2026-04-15. The root runtime now exposes a complete exact-measurement foundation for downstream web applications, and the next incremental contract gap is import appearance: today the runtime only exposes `readColors`, while `occt-core` still falls back to a local default CAD material when no colors are present.
+`v1.1 Exact BRep Measurement Foundation` shipped on 2026-04-15. `v1.2` has since closed the runtime and adapter half of the import appearance contract: the root runtime now exposes `colorMode` plus `defaultColor`, and `occt-core` forwards and normalizes that contract without inventing fallback materials unless default appearance is explicit.
 
-`v1.2 Import Appearance Contract` is now the active milestone. The immediate goal is to replace boolean-only color behavior with an explicit import appearance contract that downstream apps can drive from user settings without doing viewer-side recolor passes.
+`v1.2 Import Appearance Contract` is now in its governance closeout step. The remaining work is to document and release-lock the appearance contract without turning viewer-side repaint logic into part of the root-runtime scope.
 
 ## Current Milestone: v1.2 Import Appearance Contract
 
@@ -55,8 +55,8 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 - Root package version is still `0.1.7`; the root runtime and root tests remain the primary maintained contract.
 - `imos-app` remains the key downstream consumer signal: it vendors `@tx-code/occt-js` and consumes the Wasm/runtime surface directly, while viewer semantics live on the app side.
 - `SceneGraph.net` remains the best local reference for measurement behavior above the kernel layer, but `occt-js` intentionally stopped at exact-kernel foundations in v1.1.
-- The current root import contract only exposes `readColors?: boolean`; there is no explicit appearance strategy or caller-provided default color at the Wasm boundary.
-- `packages/occt-core/src/model-normalizer.js` currently uses `DEFAULT_CAD_BASE_COLOR = [0.9, 0.91, 0.93, 1]` as a package-local fallback when imported results contain no material colors.
+- The current root import contract now exposes `colorMode?: "source" | "default"` and `defaultColor?: { r, g, b }` on the Wasm boundary.
+- `packages/occt-core/src/model-normalizer.js` now only synthesizes fallback materials when callers explicitly requested default appearance, preserving colorless runtime output otherwise.
 - GSD is now the primary repository workflow, with superpowers skills used to tighten execution discipline and verification.
 
 ## Constraints
@@ -77,7 +77,7 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 | Use `npm run test:release:root` as the canonical root release gate | One command is easier to document, test, and reuse across README, AGENTS, skills, and future planning | ✓ Good |
 | Keep demo, Babylon, and Tauri checks conditional secondary-surface verification | Root release flow must stay aligned with the Wasm carrier boundary and avoid secondary-surface gate creep | ✓ Good |
 | Keep exact measurement semantics in downstream apps and limit v1.1 to wasm/core primitives | The main value is exposing a reliable geometric kernel contract; selection UX, overlays, and feature interpretation belong above the runtime | ✓ Good |
-| Treat import appearance as a runtime contract instead of a viewer repaint convention | Downstream apps need deterministic imported material output that can be driven by settings and reused across package consumers | — Pending |
+| Treat import appearance as a runtime contract instead of a viewer repaint convention | Downstream apps need deterministic imported material output that can be driven by settings and reused across package consumers | ✓ Good |
 
 ## Evolution
 
@@ -111,4 +111,4 @@ This document evolves at phase transitions and milestone boundaries.
 </details>
 
 ---
-*Last updated: 2026-04-15 after starting v1.2 Import Appearance Contract*
+*Last updated: 2026-04-15 after Phase 10 completion*
