@@ -21,3 +21,22 @@ OcctExactCenterResult MeasureExactCenter(
     int exactShapeHandle,
     const std::string& kind,
     int elementId);
+
+OcctExactEdgeLengthResult MeasureExactEdgeLength(
+    int exactModelId,
+    int exactShapeHandle,
+    const std::string& kind,
+    int elementId);
+
+OcctExactFaceAreaResult MeasureExactFaceArea(
+    int exactModelId,
+    int exactShapeHandle,
+    const std::string& kind,
+    int elementId);
+
+OcctExactFaceNormalResult EvaluateExactFaceNormal(
+    int exactModelId,
+    int exactShapeHandle,
+    const std::string& kind,
+    int elementId,
+    const std::array<double, 3>& localQueryPoint);

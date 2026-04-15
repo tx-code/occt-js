@@ -2,18 +2,26 @@
 
 #include "exact-model-store.hpp"
 
+#include <BRepClass_FaceClassifier.hxx>
 #include <BRepAdaptor_Curve.hxx>
+#include <BRepLProp_SLProps.hxx>
 #include <BRepAdaptor_Surface.hxx>
-#include <BRepTools.hxx>
 #include <GProp_GProps.hxx>
 #include <BRepGProp.hxx>
+#include <BRepTools.hxx>
+#include <BRep_Tool.hxx>
+#include <GeomAPI_ProjectPointOnSurf.hxx>
+#include <Precision.hxx>
 #include <Standard_Failure.hxx>
+#include <TopAbs_State.hxx>
 #include <TopAbs_ShapeEnum.hxx>
+#include <TopAbs_Orientation.hxx>
 #include <TopExp.hxx>
 #include <TopTools_IndexedMapOfShape.hxx>
 #include <TopoDS.hxx>
 #include <TopoDS_Edge.hxx>
 #include <TopoDS_Face.hxx>
+#include <TopLoc_Location.hxx>
 #include <gp_Circ.hxx>
 #include <gp_Cone.hxx>
 #include <gp_Cylinder.hxx>
@@ -56,6 +64,11 @@ std::array<double, 3> ToArray(const gp_Pnt& point)
 std::array<double, 3> ToArray(const gp_Dir& direction)
 {
     return { direction.X(), direction.Y(), direction.Z() };
+}
+
+gp_Pnt ToPoint(const std::array<double, 3>& point)
+{
+    return gp_Pnt(point[0], point[1], point[2]);
 }
 
 template <typename TResult>
@@ -185,6 +198,57 @@ gp_Pnt SampleFacePoint(const TopoDS_Face& face, BRepAdaptor_Surface& surface)
     double vLast = 0.0;
     BRepTools::UVBounds(face, uFirst, uLast, vFirst, vLast);
     return surface.Value(0.5 * (uFirst + uLast), 0.5 * (vFirst + vLast));
+}
+
+template <typename TResult>
+TResult MakeUnsupportedKind(const std::string& message)
+{
+    return MakeFailure<TResult>("unsupported-geometry", message);
+}
+
+OcctLifecycleResult ResolveFaceProjection(
+    const TopoDS_Face& face,
+    const gp_Pnt& queryPoint,
+    gp_Pnt& projectedPoint,
+    double& u,
+    double& v)
+{
+    TopLoc_Location surfaceLocation;
+    Handle(Geom_Surface) surface = BRep_Tool::Surface(face, surfaceLocation);
+    if (surface.IsNull()) {
+        return MakeFailure<OcctLifecycleResult>("unsupported-geometry", "Exact face normal is not supported for faces without an evaluable surface.");
+    }
+
+    double uFirst = 0.0;
+    double uLast = 0.0;
+    double vFirst = 0.0;
+    double vLast = 0.0;
+    BRepTools::UVBounds(face, uFirst, uLast, vFirst, vLast);
+
+    GeomAPI_ProjectPointOnSurf projector(
+        queryPoint,
+        surface,
+        uFirst,
+        uLast,
+        vFirst,
+        vLast,
+        Precision::Confusion()
+    );
+    if (!projector.IsDone() || projector.NbPoints() <= 0) {
+        return MakeFailure<OcctLifecycleResult>("query-out-of-range", "Exact face normal query point does not project onto the trimmed face.");
+    }
+
+    projectedPoint = projector.NearestPoint();
+    projector.LowerDistanceParameters(u, v);
+
+    BRepClass_FaceClassifier classifier(face, projectedPoint, Precision::Confusion());
+    if (classifier.State() != TopAbs_IN && classifier.State() != TopAbs_ON) {
+        return MakeFailure<OcctLifecycleResult>("query-out-of-range", "Exact face normal query point does not project onto the trimmed face.");
+    }
+
+    OcctLifecycleResult ok;
+    ok.ok = true;
+    return ok;
 }
 
 } // namespace
@@ -393,6 +457,128 @@ OcctExactCenterResult MeasureExactCenter(
         return MakeFailure<OcctExactCenterResult>(
             "internal-error",
             failure.GetMessageString() != nullptr ? failure.GetMessageString() : "OCCT exact center query failed."
+        );
+    }
+}
+
+OcctExactEdgeLengthResult MeasureExactEdgeLength(
+    int exactModelId,
+    int exactShapeHandle,
+    const std::string& kind,
+    int elementId)
+{
+    try {
+        const std::string normalizedKind = NormalizeKind(kind);
+        if (normalizedKind != "edge") {
+            return MakeUnsupportedKind<OcctExactEdgeLengthResult>("Exact edge length is only supported for edge refs.");
+        }
+
+        TopoDS_Edge edge;
+        OcctLifecycleResult lifecycle = ResolveEdge(exactModelId, exactShapeHandle, elementId, edge);
+        if (!lifecycle.ok) {
+            return ConvertFailure<OcctExactEdgeLengthResult>(lifecycle);
+        }
+
+        GProp_GProps properties;
+        BRepGProp::LinearProperties(edge, properties, false, false);
+
+        BRepAdaptor_Curve curve(edge);
+        OcctExactEdgeLengthResult result;
+        result.ok = true;
+        result.value = properties.Mass();
+        result.localStartPoint = ToArray(curve.Value(curve.FirstParameter()));
+        result.localEndPoint = ToArray(curve.Value(curve.LastParameter()));
+        return result;
+    } catch (const Standard_Failure& failure) {
+        return MakeFailure<OcctExactEdgeLengthResult>(
+            "internal-error",
+            failure.GetMessageString() != nullptr ? failure.GetMessageString() : "OCCT exact edge length query failed."
+        );
+    }
+}
+
+OcctExactFaceAreaResult MeasureExactFaceArea(
+    int exactModelId,
+    int exactShapeHandle,
+    const std::string& kind,
+    int elementId)
+{
+    try {
+        const std::string normalizedKind = NormalizeKind(kind);
+        if (normalizedKind != "face") {
+            return MakeUnsupportedKind<OcctExactFaceAreaResult>("Exact face area is only supported for face refs.");
+        }
+
+        TopoDS_Face face;
+        OcctLifecycleResult lifecycle = ResolveFace(exactModelId, exactShapeHandle, elementId, face);
+        if (!lifecycle.ok) {
+            return ConvertFailure<OcctExactFaceAreaResult>(lifecycle);
+        }
+
+        GProp_GProps properties;
+        BRepGProp::SurfaceProperties(face, properties, false, false);
+
+        OcctExactFaceAreaResult result;
+        result.ok = true;
+        result.value = properties.Mass();
+        result.localCentroid = ToArray(properties.CentreOfMass());
+        return result;
+    } catch (const Standard_Failure& failure) {
+        return MakeFailure<OcctExactFaceAreaResult>(
+            "internal-error",
+            failure.GetMessageString() != nullptr ? failure.GetMessageString() : "OCCT exact face area query failed."
+        );
+    }
+}
+
+OcctExactFaceNormalResult EvaluateExactFaceNormal(
+    int exactModelId,
+    int exactShapeHandle,
+    const std::string& kind,
+    int elementId,
+    const std::array<double, 3>& localQueryPoint)
+{
+    try {
+        const std::string normalizedKind = NormalizeKind(kind);
+        if (normalizedKind != "face") {
+            return MakeUnsupportedKind<OcctExactFaceNormalResult>("Exact face normal is only supported for face refs.");
+        }
+
+        TopoDS_Face face;
+        OcctLifecycleResult lifecycle = ResolveFace(exactModelId, exactShapeHandle, elementId, face);
+        if (!lifecycle.ok) {
+            return ConvertFailure<OcctExactFaceNormalResult>(lifecycle);
+        }
+
+        const gp_Pnt queryPoint = ToPoint(localQueryPoint);
+        gp_Pnt projectedPoint;
+        double u = 0.0;
+        double v = 0.0;
+        lifecycle = ResolveFaceProjection(face, queryPoint, projectedPoint, u, v);
+        if (!lifecycle.ok) {
+            return ConvertFailure<OcctExactFaceNormalResult>(lifecycle);
+        }
+
+        BRepAdaptor_Surface surface(face, false);
+        BRepLProp_SLProps props(surface, u, v, 1, Precision::Confusion());
+        if (!props.IsNormalDefined()) {
+            return MakeFailure<OcctExactFaceNormalResult>("unsupported-geometry", "Exact face normal is not defined at the requested query point.");
+        }
+
+        gp_Dir normal = props.Normal();
+        if (face.Orientation() == TopAbs_REVERSED) {
+            normal.Reverse();
+        }
+
+        OcctExactFaceNormalResult result;
+        result.ok = true;
+        result.localPoint = ToArray(projectedPoint);
+        result.localNormal = ToArray(normal);
+        return result;
+    } catch (const Standard_Failure& failure) {
+        return MakeFailure<OcctExactFaceNormalResult>(
+            "internal-error",
+            failure.GetMessageString() != nullptr ? failure.GetMessageString() : "OCCT exact face normal query failed."
         );
     }
 }

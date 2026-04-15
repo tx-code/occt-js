@@ -79,6 +79,35 @@ function transformDirection(transform, direction) {
   return output.map((value) => value / length);
 }
 
+function inverseTransformPoint(transform, point) {
+  const [x, y, z] = point;
+  const translated = [
+    x - transform[12],
+    y - transform[13],
+    z - transform[14],
+  ];
+  return [
+    transform[0] * translated[0] + transform[1] * translated[1] + transform[2] * translated[2],
+    transform[4] * translated[0] + transform[5] * translated[1] + transform[6] * translated[2],
+    transform[8] * translated[0] + transform[9] * translated[1] + transform[10] * translated[2],
+  ];
+}
+
+function validatePoint3(point, operationName) {
+  const values = Array.isArray(point)
+    ? point
+    : ArrayBuffer.isView(point)
+      ? Array.from(point)
+      : null;
+  if (!values || values.length < 3) {
+    throw new Error(`${operationName} requires a 3D query point.`);
+  }
+  if (!Number.isFinite(values[0]) || !Number.isFinite(values[1]) || !Number.isFinite(values[2])) {
+    throw new Error(`${operationName} requires finite XYZ coordinates.`);
+  }
+  return [values[0], values[1], values[2]];
+}
+
 function validateExactRef(ref, operationName) {
   if (!ref || typeof ref !== "object") {
     throw new Error(`${operationName} requires an occurrence-scoped exact ref object.`);
@@ -320,6 +349,84 @@ export class OcctCoreClient {
       family: result.family,
       center: transformPoint(exactRef.transform, result.localCenter),
       axisDirection: transformDirection(exactRef.transform, result.localAxisDirection),
+      ref: exactRef,
+    };
+  }
+
+  async measureExactEdgeLength(ref) {
+    const module = await this._ensureModule();
+    const exactRef = validateExactRef(ref, "measureExactEdgeLength");
+    if (typeof module.MeasureExactEdgeLength !== "function") {
+      throw new Error("Loaded OCCT module does not expose MeasureExactEdgeLength().");
+    }
+
+    const result = module.MeasureExactEdgeLength(
+      exactRef.exactModelId,
+      exactRef.exactShapeHandle,
+      exactRef.kind,
+      exactRef.elementId,
+    );
+    if (result?.ok !== true) {
+      return result;
+    }
+
+    return {
+      ok: true,
+      value: result.value,
+      startPoint: transformPoint(exactRef.transform, result.localStartPoint),
+      endPoint: transformPoint(exactRef.transform, result.localEndPoint),
+      ref: exactRef,
+    };
+  }
+
+  async measureExactFaceArea(ref) {
+    const module = await this._ensureModule();
+    const exactRef = validateExactRef(ref, "measureExactFaceArea");
+    if (typeof module.MeasureExactFaceArea !== "function") {
+      throw new Error("Loaded OCCT module does not expose MeasureExactFaceArea().");
+    }
+
+    const result = module.MeasureExactFaceArea(
+      exactRef.exactModelId,
+      exactRef.exactShapeHandle,
+      exactRef.kind,
+      exactRef.elementId,
+    );
+    if (result?.ok !== true) {
+      return result;
+    }
+
+    return {
+      ok: true,
+      value: result.value,
+      centroid: transformPoint(exactRef.transform, result.localCentroid),
+      ref: exactRef,
+    };
+  }
+
+  async evaluateExactFaceNormal(ref, point) {
+    const module = await this._ensureModule();
+    const exactRef = validateExactRef(ref, "evaluateExactFaceNormal");
+    const queryPoint = validatePoint3(point, "evaluateExactFaceNormal");
+    if (typeof module.EvaluateExactFaceNormal !== "function") {
+      throw new Error("Loaded OCCT module does not expose EvaluateExactFaceNormal().");
+    }
+
+    const result = module.EvaluateExactFaceNormal(
+      exactRef.exactModelId,
+      exactRef.exactShapeHandle,
+      exactRef.kind,
+      exactRef.elementId,
+      inverseTransformPoint(exactRef.transform, queryPoint),
+    );
+    if (result?.ok !== true) {
+      return result;
+    }
+
+    return {
+      ok: true,
+      point: transformPoint(exactRef.transform, result.localPoint),
+      normal: transformDirection(exactRef.transform, result.localNormal),
       ref: exactRef,
     };
   }

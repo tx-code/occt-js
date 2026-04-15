@@ -254,6 +254,24 @@ std::array<double, 3> ParseVector3(const val& jsValue, const std::array<double, 
     return result;
 }
 
+bool TryParseVector3(const val& jsValue, std::array<double, 3>& result)
+{
+    if (jsValue.typeOf().as<std::string>() != "object" || jsValue.isNull()) {
+        return false;
+    }
+    if (!jsValue.hasOwnProperty("length")) {
+        return false;
+    }
+    if (jsValue["length"].as<unsigned>() < 3) {
+        return false;
+    }
+
+    result[0] = jsValue[0].as<double>();
+    result[1] = jsValue[1].as<double>();
+    result[2] = jsValue[2].as<double>();
+    return true;
+}
+
 OrientationParams ParseOrientationParams(const val& jsParams)
 {
     OrientationParams params;
@@ -422,6 +440,46 @@ val ExactCenterResultToVal(const OcctExactCenterResult& result)
     obj.set("family", result.family);
     obj.set("localCenter", Vector3ToVal(result.localCenter));
     obj.set("localAxisDirection", Vector3ToVal(result.localAxisDirection));
+    return obj;
+}
+
+val ExactEdgeLengthResultToVal(const OcctExactEdgeLengthResult& result)
+{
+    if (!result.ok) {
+        return ExactFailureToVal(result);
+    }
+
+    val obj = val::object();
+    obj.set("ok", true);
+    obj.set("value", result.value);
+    obj.set("localStartPoint", Vector3ToVal(result.localStartPoint));
+    obj.set("localEndPoint", Vector3ToVal(result.localEndPoint));
+    return obj;
+}
+
+val ExactFaceAreaResultToVal(const OcctExactFaceAreaResult& result)
+{
+    if (!result.ok) {
+        return ExactFailureToVal(result);
+    }
+
+    val obj = val::object();
+    obj.set("ok", true);
+    obj.set("value", result.value);
+    obj.set("localCentroid", Vector3ToVal(result.localCentroid));
+    return obj;
+}
+
+val ExactFaceNormalResultToVal(const OcctExactFaceNormalResult& result)
+{
+    if (!result.ok) {
+        return ExactFailureToVal(result);
+    }
+
+    val obj = val::object();
+    obj.set("ok", true);
+    obj.set("localPoint", Vector3ToVal(result.localPoint));
+    obj.set("localNormal", Vector3ToVal(result.localNormal));
     return obj;
 }
 
@@ -682,6 +740,41 @@ val MeasureExactCenterBinding(int exactModelId, int exactShapeHandle, const std:
     );
 }
 
+val MeasureExactEdgeLengthBinding(int exactModelId, int exactShapeHandle, const std::string& kind, int elementId)
+{
+    return ExactEdgeLengthResultToVal(
+        MeasureExactEdgeLength(exactModelId, exactShapeHandle, kind, elementId)
+    );
+}
+
+val MeasureExactFaceAreaBinding(int exactModelId, int exactShapeHandle, const std::string& kind, int elementId)
+{
+    return ExactFaceAreaResultToVal(
+        MeasureExactFaceArea(exactModelId, exactShapeHandle, kind, elementId)
+    );
+}
+
+val EvaluateExactFaceNormalBinding(
+    int exactModelId,
+    int exactShapeHandle,
+    const std::string& kind,
+    int elementId,
+    const val& jsPoint)
+{
+    std::array<double, 3> localQueryPoint = { 0.0, 0.0, 0.0 };
+    if (!TryParseVector3(jsPoint, localQueryPoint)) {
+        OcctExactFaceNormalResult result;
+        result.ok = false;
+        result.code = "query-out-of-range";
+        result.message = "Exact face normal requires a 3D query point.";
+        return ExactFaceNormalResultToVal(result);
+    }
+
+    return ExactFaceNormalResultToVal(
+        EvaluateExactFaceNormal(exactModelId, exactShapeHandle, kind, elementId, localQueryPoint)
+    );
+}
+
 val AnalyzeOptimalOrientation(const std::string& format, const val& content, const val& jsParams)
 {
     std::vector<uint8_t> buffer = ExtractBytes(content);
@@ -706,5 +799,8 @@ EMSCRIPTEN_BINDINGS(occtjs)
     function("GetExactGeometryType", &GetExactGeometryTypeBinding);
     function("MeasureExactRadius", &MeasureExactRadiusBinding);
     function("MeasureExactCenter", &MeasureExactCenterBinding);
+    function("MeasureExactEdgeLength", &MeasureExactEdgeLengthBinding);
+    function("MeasureExactFaceArea", &MeasureExactFaceAreaBinding);
+    function("EvaluateExactFaceNormal", &EvaluateExactFaceNormalBinding);
     function("AnalyzeOptimalOrientation", &AnalyzeOptimalOrientation);
 }

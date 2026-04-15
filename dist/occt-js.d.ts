@@ -136,6 +136,31 @@ export interface OcctJSExactCenterSuccess {
 
 export type OcctJSExactCenterResult = OcctJSExactCenterSuccess | OcctJSExactQueryFailure;
 
+export interface OcctJSExactEdgeLengthSuccess {
+    ok: true;
+    value: number;
+    localStartPoint: [number, number, number];
+    localEndPoint: [number, number, number];
+}
+
+export type OcctJSExactEdgeLengthResult = OcctJSExactEdgeLengthSuccess | OcctJSExactQueryFailure;
+
+export interface OcctJSExactFaceAreaSuccess {
+    ok: true;
+    value: number;
+    localCentroid: [number, number, number];
+}
+
+export type OcctJSExactFaceAreaResult = OcctJSExactFaceAreaSuccess | OcctJSExactQueryFailure;
+
+export interface OcctJSExactFaceNormalSuccess {
+    ok: true;
+    localPoint: [number, number, number];
+    localNormal: [number, number, number];
+}
+
+export type OcctJSExactFaceNormalResult = OcctJSExactFaceNormalSuccess | OcctJSExactQueryFailure;
+
 export interface OcctJSReadParams {
     rootMode?: "one-shape" | "multiple-shapes";
     linearUnit?: "millimeter" | "centimeter" | "meter" | "inch" | "foot";
@@ -208,6 +233,9 @@ export interface OcctJSModule {
     GetExactGeometryType(exactModelId: number, exactShapeHandle: number, kind: OcctJSExactElementKind, elementId: number): OcctJSExactGeometryTypeResult;
     MeasureExactRadius(exactModelId: number, exactShapeHandle: number, kind: OcctJSExactElementKind, elementId: number): OcctJSExactRadiusResult;
     MeasureExactCenter(exactModelId: number, exactShapeHandle: number, kind: OcctJSExactElementKind, elementId: number): OcctJSExactCenterResult;
+    MeasureExactEdgeLength(exactModelId: number, exactShapeHandle: number, kind: OcctJSExactElementKind, elementId: number): OcctJSExactEdgeLengthResult;
+    MeasureExactFaceArea(exactModelId: number, exactShapeHandle: number, kind: OcctJSExactElementKind, elementId: number): OcctJSExactFaceAreaResult;
+    EvaluateExactFaceNormal(exactModelId: number, exactShapeHandle: number, kind: OcctJSExactElementKind, elementId: number, localQueryPoint: [number, number, number]): OcctJSExactFaceNormalResult;
     AnalyzeOptimalOrientation(format: OcctFormat, content: Uint8Array, params?: OcctJSOrientationParams): OcctJSOrientationResult;
 }
 

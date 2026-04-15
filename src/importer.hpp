@@ -118,6 +118,31 @@ struct OcctExactCenterResult {
     std::array<double, 3> localAxisDirection = { 0.0, 0.0, 0.0 };
 };
 
+struct OcctExactEdgeLengthResult {
+    bool ok = false;
+    std::string code;
+    std::string message;
+    double value = 0.0;
+    std::array<double, 3> localStartPoint = { 0.0, 0.0, 0.0 };
+    std::array<double, 3> localEndPoint = { 0.0, 0.0, 0.0 };
+};
+
+struct OcctExactFaceAreaResult {
+    bool ok = false;
+    std::string code;
+    std::string message;
+    double value = 0.0;
+    std::array<double, 3> localCentroid = { 0.0, 0.0, 0.0 };
+};
+
+struct OcctExactFaceNormalResult {
+    bool ok = false;
+    std::string code;
+    std::string message;
+    std::array<double, 3> localPoint = { 0.0, 0.0, 0.0 };
+    std::array<double, 3> localNormal = { 0.0, 0.0, 0.0 };
+};
+
 struct ImportParams {
     enum class LinearUnit {
         Millimeter,
