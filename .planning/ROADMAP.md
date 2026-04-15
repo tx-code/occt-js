@@ -27,7 +27,7 @@ This roadmap keeps `occt-js` centered on the runtime-first Wasm carrier. v1.0 sh
 
 - [x] **Phase 5: Exact Model Lifecycle Contract** - Add a stateful exact-model lane with explicit retain/release semantics beside the existing stateless imports.
 - [x] **Phase 6: Occurrence-Scoped Exact Ref Mapping** - Resolve exact face, edge, and vertex refs from current exported topology ids through an explicit mapping layer.
-- [ ] **Phase 7: Primitive Exact Geometry Queries** - Expose geometry classification and single-entity exact measurements needed for app-side composition.
+- [x] **Phase 7: Primitive Exact Geometry Queries** - Expose geometry classification and single-entity exact measurements needed for app-side composition.
 - [ ] **Phase 8: Pairwise Measurement Contract Hardening** - Ship pairwise exact measurements, JS-friendly adapters, and runtime-first contract hardening.
 
 ## Phase Details
@@ -149,8 +149,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 07-01-PLAN.md — Add geometry classification plus exact radius and center primitives
-- [ ] 07-02-PLAN.md — Add exact edge length, face area, and face-normal evaluation contracts
+- [x] 07-01-PLAN.md — Add geometry classification plus exact radius and center primitives
+- [x] 07-02-PLAN.md — Add exact edge length, face area, and face-normal evaluation contracts
 
 ### Phase 8: Pairwise Measurement Contract Hardening
 **Goal**: Downstream JS can use wasm/core exact primitives end-to-end for pairwise measurements through typed adapters, structured DTOs, and runtime-first verification.
@@ -183,5 +183,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 4. Release & Governance Flow | 3/3 | Complete | 2026-04-14 |
 | 5. Exact Model Lifecycle Contract | 2/2 | Complete | 2026-04-14 |
 | 6. Occurrence-Scoped Exact Ref Mapping | 2/2 | Complete | 2026-04-15 |
-| 7. Primitive Exact Geometry Queries | 0/2 | Not started | - |
+| 7. Primitive Exact Geometry Queries | 2/2 | Complete | 2026-04-15 |
 | 8. Pairwise Measurement Contract Hardening | 0/3 | Not started | - |

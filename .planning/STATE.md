@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Exact BRep Measurement Foundation
-status: ready_to_execute
-stopped_at: Completed 07-01; next step is 07-02 execution
-last_updated: "2026-04-15T00:21:33.6422171Z"
-last_activity: 2026-04-15 -- Phase 07 plan 01 complete
+status: ready_to_plan
+stopped_at: Completed Phase 07; next step is Phase 08 planning
+last_updated: "2026-04-15T03:28:00Z"
+last_activity: 2026-04-15 -- Phase 07 complete
 progress:
   total_phases: 4
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 6
-  completed_plans: 5
-  percent: 83
+  completed_plans: 6
+  percent: 100
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-14)
 
 **Core value:** Downstream applications can reliably consume the OCCT Wasm runtime and its root API contract without build drift or packaging surprises.
-**Current focus:** Phase 07 plan 01 is complete; plan 02 exact length/area/normal is the next execution target.
+**Current focus:** Phase 07 is complete; Phase 08 pairwise measurement planning is the next target.
 
 ## Current Position
 
-Phase: 07 (primitive-exact-geometry-queries) — READY TO EXECUTE
-Plan: 1 of 2 complete
-Status: Plan 02 pending execution
-Last activity: 2026-04-15 -- Phase 07 plan 01 complete
+Phase: 08 (pairwise-measurement-contract-hardening) — READY TO PLAN
+Plan: 0 of 3 complete
+Status: Planning not started
+Last activity: 2026-04-15 -- Phase 07 complete
 
-Progress: [████████░░] 83%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -50,6 +50,7 @@ Progress: [████████░░] 83%
 | 4 | 3 | 0.0h | 0 min |
 | 5 | 2 | 0.0h | 0 min |
 | 6 | 2 | 0.0h | 0 min |
+| 7 | 2 | 0.0h | 0 min |
 
 **Recent Trend:**
 
@@ -72,6 +73,7 @@ Recent decisions affecting current work:
 - Phase 03: Downstream consumers must provide explicit Wasm resolution through adjacent packaging, `locateFile`, or `wasmBinary`
 - Phase 04: `npm run test:release:root` is the canonical release gate and now includes a live `createOcctCore(...)` smoke test against the built root carrier
 - Phase 05+: Exact measurement remains a wasm/core foundation; app-side session UX, overlays, and semantic feature recognition stay downstream
+- Phase 07: Exact single-entity primitives stay definition-scoped in wasm, while `occt-core` owns occurrence transform adaptation
 
 ### Pending Todos
 
@@ -80,10 +82,10 @@ Recent decisions affecting current work:
 ### Blockers/Concerns
 
 - No active blockers remain.
-- Next step is `/gsd-execute-phase 7 --wave 2`.
+- Next step is `/gsd-plan-phase 8`.
 
 ## Session Continuity
 
 Last session: 2026-04-14T11:31:10.141Z
-Stopped at: Completed 07-01; next step is 07-02 execution
-Resume file: .planning/phases/07-primitive-exact-geometry-queries/07-02-PLAN.md
+Stopped at: Completed Phase 07; next step is Phase 08 planning
+Resume file: .planning/ROADMAP.md
