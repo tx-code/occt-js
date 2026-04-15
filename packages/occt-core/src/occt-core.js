@@ -50,6 +50,58 @@ function normalizeWasmBinary(binary) {
   throw new Error("Unsupported wasmBinary value. Expected ArrayBuffer or ArrayBufferView.");
 }
 
+function normalizeDefaultColor(defaultColor) {
+  if (!defaultColor) {
+    return null;
+  }
+
+  let r;
+  let g;
+  let b;
+
+  if (Array.isArray(defaultColor) || ArrayBuffer.isView(defaultColor)) {
+    const values = Array.from(defaultColor);
+    if (values.length < 3) {
+      return null;
+    }
+    [r, g, b] = values;
+  } else if (typeof defaultColor === "object") {
+    if (!Number.isFinite(defaultColor.r) || !Number.isFinite(defaultColor.g) || !Number.isFinite(defaultColor.b)) {
+      return null;
+    }
+    ({ r, g, b } = defaultColor);
+  } else {
+    return null;
+  }
+
+  const scale = Math.max(Math.abs(r), Math.abs(g), Math.abs(b)) > 1 ? 255 : 1;
+  const normalize = (value) => Math.min(1, Math.max(0, value / scale));
+
+  return {
+    r: normalize(r),
+    g: normalize(g),
+    b: normalize(b),
+  };
+}
+
+function normalizeImportParams(importParams) {
+  if (!importParams || typeof importParams !== "object") {
+    return {};
+  }
+
+  const normalized = { ...importParams };
+  if (Object.prototype.hasOwnProperty.call(importParams, "defaultColor")) {
+    const defaultColor = normalizeDefaultColor(importParams.defaultColor);
+    if (defaultColor) {
+      normalized.defaultColor = defaultColor;
+    } else {
+      delete normalized.defaultColor;
+    }
+  }
+
+  return normalized;
+}
+
 function normalizeTransform(transform) {
   return Array.isArray(transform) && transform.length === 16
     ? transform.slice()
@@ -219,12 +271,13 @@ export class OcctCoreClient {
     const bytes = toUint8Array(content);
     const normalizedFormat = this._resolveRequestedFormat(options, "importModel");
     const methodName = getReadMethodName(normalizedFormat);
+    const importParams = normalizeImportParams(options.importParams);
 
     let rawResult;
     if (typeof module[methodName] === "function") {
-      rawResult = module[methodName](bytes, options.importParams ?? {});
+      rawResult = module[methodName](bytes, importParams);
     } else if (typeof module.ReadFile === "function") {
-      rawResult = module.ReadFile(normalizedFormat, bytes, options.importParams ?? {});
+      rawResult = module.ReadFile(normalizedFormat, bytes, importParams);
     } else {
       throw new Error(`Loaded OCCT module does not expose ${methodName}() or ReadFile().`);
     }
@@ -236,6 +289,7 @@ export class OcctCoreClient {
     return normalizeOcctResult(rawResult, {
       sourceFormat: normalizedFormat,
       sourceFileName: options.fileName,
+      importParams,
     });
   }
 
@@ -244,12 +298,13 @@ export class OcctCoreClient {
     const bytes = toUint8Array(content);
     const normalizedFormat = this._resolveRequestedFormat(options, "openExactModel");
     const methodName = EXACT_OPEN_METHOD[normalizedFormat];
+    const importParams = normalizeImportParams(options.importParams);
 
     let rawResult;
     if (typeof module[methodName] === "function") {
-      rawResult = module[methodName](bytes, options.importParams ?? {});
+      rawResult = module[methodName](bytes, importParams);
     } else if (typeof module.OpenExactModel === "function") {
-      rawResult = module.OpenExactModel(normalizedFormat, bytes, options.importParams ?? {});
+      rawResult = module.OpenExactModel(normalizedFormat, bytes, importParams);
     } else {
       throw new Error(`Loaded OCCT module does not expose ${methodName}() or OpenExactModel().`);
     }

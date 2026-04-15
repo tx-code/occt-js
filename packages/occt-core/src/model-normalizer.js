@@ -8,6 +8,10 @@ const IDENTITY_MATRIX = [
 ];
 const DEFAULT_CAD_BASE_COLOR = [0.9, 0.91, 0.93, 1];
 
+function hasOwn(object, key) {
+  return Object.prototype.hasOwnProperty.call(object, key);
+}
+
 function toArray(input) {
   if (!input) {
     return [];
@@ -260,7 +264,23 @@ function collectMaterialColors(raw, geometries) {
   return colors;
 }
 
-function normalizeMaterials(raw, geometries) {
+function resolveFallbackMaterialColor(importParams) {
+  const hasAppearanceContext = importParams
+    && typeof importParams === "object"
+    && (hasOwn(importParams, "colorMode") || hasOwn(importParams, "readColors") || hasOwn(importParams, "defaultColor"));
+
+  if (!hasAppearanceContext) {
+    return DEFAULT_CAD_BASE_COLOR.slice();
+  }
+
+  if (importParams.colorMode === "default") {
+    return normalizeColor(importParams.defaultColor) ?? DEFAULT_CAD_BASE_COLOR.slice();
+  }
+
+  return null;
+}
+
+function normalizeMaterials(raw, geometries, options = {}) {
   const unique = new Map();
   for (const color of collectMaterialColors(raw, geometries)) {
     const key = colorKey(color);
@@ -274,11 +294,13 @@ function normalizeMaterials(raw, geometries) {
   }
 
   if (unique.size === 0) {
-    const fallback = DEFAULT_CAD_BASE_COLOR.slice();
-    unique.set(colorKey(fallback), {
-      id: "mat_0",
-      baseColor: fallback,
-    });
+    const fallback = resolveFallbackMaterialColor(options.importParams);
+    if (fallback) {
+      unique.set(colorKey(fallback), {
+        id: "mat_0",
+        baseColor: fallback,
+      });
+    }
   }
 
   return {
@@ -403,7 +425,7 @@ export function normalizeOcctResult(rawResult, options = {}) {
       : [];
 
   const geometries = rawGeometries.map(normalizeGeometry);
-  const { materials, keyToMaterialId } = normalizeMaterials(rawResult, geometries);
+  const { materials, keyToMaterialId } = normalizeMaterials(rawResult, geometries, options);
   const fallbackMaterialId = materials[0]?.id;
 
   for (const geometry of geometries) {
@@ -439,6 +461,7 @@ export function normalizeOcctResult(rawResult, options = {}) {
     ...fallbackStats,
     ...(rawResult.stats && typeof rawResult.stats === "object" ? rawResult.stats : {}),
   };
+  stats.materialCount = materials.length;
 
   const result = {
     sourceFormat,

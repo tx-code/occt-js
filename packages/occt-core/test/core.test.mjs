@@ -16,9 +16,46 @@ const EMPTY_STATS = {
   triangleCount: 0,
   reusedInstanceCount: 0,
 };
+const CUSTOM_DEFAULT_COLOR = { r: 0.2, g: 0.4, b: 0.6 };
 
 function hasOwn(object, key) {
   return Object.prototype.hasOwnProperty.call(object, key);
+}
+
+function createColorlessRawResult() {
+  return {
+    success: true,
+    sourceFormat: "step",
+    rootNodes: [{
+      id: "node-0",
+      name: "part",
+      isAssembly: false,
+      transform: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
+      meshes: [0],
+      children: [],
+    }],
+    geometries: [{
+      name: "mesh-0",
+      color: null,
+      positions: new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0]),
+      normals: new Float32Array([0, 0, 1, 0, 0, 1, 0, 0, 1]),
+      indices: new Uint32Array([0, 1, 2]),
+      faces: [{
+        id: 1,
+        name: "",
+        firstIndex: 0,
+        indexCount: 3,
+        edgeIndices: [],
+        color: null,
+      }],
+      edges: [],
+      vertices: [],
+      triangleToFaceMap: new Int32Array([1]),
+    }],
+    materials: [],
+    warnings: [],
+    stats: { ...EMPTY_STATS, rootCount: 1, nodeCount: 1, partCount: 1, geometryCount: 1 },
+  };
 }
 
 describe("normalizeOcctFormat", () => {
@@ -358,6 +395,97 @@ describe("createOcctCore", () => {
     assert.deepEqual(captured.bytes, [1, 2, 3]);
     assert.deepEqual(captured.params, { linearDeflection: 0.2 });
     assert.equal(model.sourceFormat, "iges");
+  });
+
+  it("normalizes and forwards defaultColor appearance params before calling the root carrier", async () => {
+    const calls = [];
+    const exactResult = {
+      success: true,
+      sourceFormat: "step",
+      exactModelId: 17,
+      exactGeometryBindings: [],
+      rootNodes: [],
+      geometries: [],
+      materials: [],
+      warnings: [],
+      stats: EMPTY_STATS,
+    };
+    const core = createOcctCore({
+      factory: async () => ({
+        ReadStepFile: (_bytes, params) => {
+          calls.push(["read", params]);
+          return {
+            success: true,
+            sourceFormat: "step",
+            rootNodes: [],
+            geometries: [],
+            materials: [],
+            warnings: [],
+            stats: EMPTY_STATS,
+          };
+        },
+        OpenExactStepModel: (_bytes, params) => {
+          calls.push(["exact", params]);
+          return exactResult;
+        },
+      }),
+    });
+
+    await core.importModel(new Uint8Array([1, 2, 3]), {
+      format: "step",
+      importParams: {
+        colorMode: "default",
+        defaultColor: [51, 102, 153, 255],
+        linearDeflection: 0.2,
+      },
+    });
+    await core.openExactModel(new Uint8Array([4, 5, 6]), {
+      format: "step",
+      importParams: {
+        colorMode: "default",
+        defaultColor: { r: 0.2, g: 0.4, b: 0.6, a: 0.8 },
+      },
+    });
+
+    assert.deepEqual(calls, [
+      ["read", {
+        colorMode: "default",
+        defaultColor: { r: 0.2, g: 0.4, b: 0.6 },
+        linearDeflection: 0.2,
+      }],
+      ["exact", {
+        colorMode: "default",
+        defaultColor: { r: 0.2, g: 0.4, b: 0.6 },
+      }],
+    ]);
+  });
+
+  it("does not synthesize fallback default materials when explicit default appearance is not requested", () => {
+    const result = normalizeOcctResult(createColorlessRawResult(), {
+      sourceFormat: "step",
+      importParams: { readColors: false },
+    });
+
+    assert.deepEqual(result.materials, []);
+    assert.equal(result.geometries[0].materialId, undefined);
+    assert.equal(result.stats.materialCount, 0);
+  });
+
+  it("synthesizes the caller requested default color only for explicit default appearance", () => {
+    const result = normalizeOcctResult(createColorlessRawResult(), {
+      sourceFormat: "step",
+      importParams: {
+        colorMode: "default",
+        defaultColor: CUSTOM_DEFAULT_COLOR,
+      },
+    });
+
+    assert.deepEqual(result.materials, [{
+      id: "mat_0",
+      baseColor: [0.2, 0.4, 0.6, 1],
+    }]);
+    assert.equal(result.geometries[0].materialId, "mat_0");
+    assert.equal(result.stats.materialCount, 1);
   });
 
   it("reports all formats when wasm module exposes ReadFile", async () => {

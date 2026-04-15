@@ -8,6 +8,33 @@ import {
 } from "../src/index.js";
 import { loadOcctFactory } from "../../../test/load_occt_factory.mjs";
 
+test("createOcctCore imports custom defaultColor through the built root carrier", async () => {
+  const factory = loadOcctFactory();
+  const wasmBinary = new Uint8Array(await readFile(new URL("../../../dist/occt-js.wasm", import.meta.url)));
+  const stepBytes = new Uint8Array(await readFile(new URL("../../../test/ANC101_colored.stp", import.meta.url)));
+
+  const core = createOcctCore({
+    factory,
+    wasmBinary,
+  });
+
+  const model = await core.importModel(stepBytes, {
+    format: "step",
+    fileName: "ANC101_colored.stp",
+    importParams: {
+      colorMode: "default",
+      defaultColor: [51, 102, 153],
+    },
+  });
+
+  assert.deepEqual(model.materials, [{
+    id: "mat_0",
+    baseColor: [0.2, 0.4, 0.6, 1],
+  }]);
+  assert.ok(model.geometries.length > 0);
+  assert.ok(model.geometries.every((geometry) => geometry.materialId === "mat_0"));
+});
+
 test("createOcctCore imports STEP through the built root carrier", async () => {
   const factory = loadOcctFactory();
   const wasmBinary = new Uint8Array(await readFile(new URL("../../../dist/occt-js.wasm", import.meta.url)));
