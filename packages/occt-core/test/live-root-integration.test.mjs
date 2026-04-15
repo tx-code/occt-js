@@ -107,6 +107,24 @@ function getFaceTriangleCentroid(geometry, face) {
   ));
 }
 
+function findRepeatedGeometryOccurrencePair(exactModel) {
+  const occurrences = collectGeometryOccurrences(exactModel.rootNodes);
+  for (let leftIndex = 0; leftIndex < occurrences.length; leftIndex += 1) {
+    for (let rightIndex = leftIndex + 1; rightIndex < occurrences.length; rightIndex += 1) {
+      const left = occurrences[leftIndex];
+      const right = occurrences[rightIndex];
+      if (left.geometryId === right.geometryId && left.nodeId !== right.nodeId) {
+        return {
+          geometryId: left.geometryId,
+          left,
+          right,
+        };
+      }
+    }
+  }
+  return null;
+}
+
 test("createOcctCore resolves repeated geometry occurrences into distinct exact refs", async () => {
   const factory = loadOcctFactory();
   const wasmBinary = new Uint8Array(await readFile(new URL("../../../dist/occt-js.wasm", import.meta.url)));
@@ -219,6 +237,59 @@ test("occt-core face normal wrappers invert occurrence transforms for repeated g
   assert.ok(Math.abs(Math.hypot(...firstNormal.normal) - 1) < 1e-9);
   assert.ok(Math.abs(Math.hypot(...secondNormal.normal) - 1) < 1e-9);
   assert.notDeepEqual(firstNormal.point, secondNormal.point);
+
+  assert.deepEqual(await core.releaseExactModel(exactModel.exactModelId), { ok: true });
+});
+
+test("occt-core pairwise wrappers honor occurrence transforms for repeated geometry", async () => {
+  const factory = loadOcctFactory();
+  const wasmBinary = new Uint8Array(await readFile(new URL("../../../dist/occt-js.wasm", import.meta.url)));
+  const assemblyBytes = new Uint8Array(await readFile(new URL("../../../test/assembly.step", import.meta.url)));
+
+  const core = createOcctCore({
+    factory,
+    wasmBinary,
+  });
+
+  const rawExact = await core.openExactStep(assemblyBytes, {
+    fileName: "assembly.step",
+  });
+  const exactModel = normalizeExactOpenResult(rawExact, {
+    sourceFileName: "assembly.step",
+  });
+  const repeated = findRepeatedGeometryOccurrencePair(exactModel);
+
+  assert.ok(repeated, "assembly.step should expose repeated geometry under at least two distinct nodeIds");
+
+  const geometry = exactModel.geometries.find((entry) => entry.geometryId === repeated.geometryId);
+  assert.ok(geometry?.faces?.length, "the repeated geometry should expose at least one face");
+
+  const faceId = geometry.faces[0].id;
+  const first = resolveExactElementRef(exactModel, {
+    nodeId: repeated.left.nodeId,
+    geometryId: repeated.geometryId,
+    kind: "face",
+    elementId: faceId,
+  });
+  const second = resolveExactElementRef(exactModel, {
+    nodeId: repeated.right.nodeId,
+    geometryId: repeated.geometryId,
+    kind: "face",
+    elementId: faceId,
+  });
+
+  assert.equal(first.ok, true);
+  assert.equal(second.ok, true);
+
+  const distance = await core.measureExactDistance(first, second);
+
+  assert.equal(distance?.ok, true);
+  assert.equal(typeof distance?.value, "number");
+  assert.ok(distance.value > 0);
+  assert.ok(Array.isArray(distance?.pointA) && distance.pointA.length === 3);
+  assert.ok(Array.isArray(distance?.pointB) && distance.pointB.length === 3);
+  assert.deepEqual(distance?.refA, first);
+  assert.deepEqual(distance?.refB, second);
 
   assert.deepEqual(await core.releaseExactModel(exactModel.exactModelId), { ok: true });
 });

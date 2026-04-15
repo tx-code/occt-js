@@ -486,6 +486,154 @@ describe("createOcctCore", () => {
     });
   });
 
+  it("wraps measureExactDistance(refA, refB) through occurrence-scoped exact refs", async () => {
+    const calls = [];
+    const refA = {
+      exactModelId: 17,
+      exactShapeHandle: 33,
+      nodeId: "node-a",
+      geometryId: "geo_0",
+      kind: "face",
+      elementId: 7,
+      transform: [
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        10, 20, 30, 1,
+      ],
+    };
+    const refB = {
+      exactModelId: 17,
+      exactShapeHandle: 33,
+      nodeId: "node-b",
+      geometryId: "geo_0",
+      kind: "face",
+      elementId: 8,
+      transform: [
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        110, 20, 30, 1,
+      ],
+    };
+    const core = createOcctCore({
+      factory: async () => ({
+        MeasureExactDistance: (...args) => {
+          calls.push(args);
+          return {
+            ok: true,
+            value: 100,
+            pointA: [10, 20, 30],
+            pointB: [110, 20, 30],
+            workingPlaneOrigin: [60, 20, 30],
+            workingPlaneNormal: [1, 0, 0],
+          };
+        },
+      }),
+    });
+
+    const result = await core.measureExactDistance(refA, refB);
+
+    assert.deepEqual(calls, [[
+      17,
+      33,
+      "face",
+      7,
+      33,
+      "face",
+      8,
+      refA.transform,
+      refB.transform,
+    ]]);
+    assert.deepEqual(result, {
+      ok: true,
+      value: 100,
+      pointA: [10, 20, 30],
+      pointB: [110, 20, 30],
+      workingPlaneOrigin: [60, 20, 30],
+      workingPlaneNormal: [1, 0, 0],
+      refA,
+      refB,
+    });
+  });
+
+  it("wraps measureExactAngle(refA, refB) through occurrence-scoped exact refs", async () => {
+    const calls = [];
+    const refA = {
+      exactModelId: 17,
+      exactShapeHandle: 33,
+      nodeId: "node-a",
+      geometryId: "geo_0",
+      kind: "edge",
+      elementId: 5,
+      transform: [
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        10, 20, 30, 1,
+      ],
+    };
+    const refB = {
+      exactModelId: 17,
+      exactShapeHandle: 33,
+      nodeId: "node-a",
+      geometryId: "geo_0",
+      kind: "edge",
+      elementId: 6,
+      transform: [
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        10, 20, 30, 1,
+      ],
+    };
+    const core = createOcctCore({
+      factory: async () => ({
+        MeasureExactAngle: (...args) => {
+          calls.push(args);
+          return {
+            ok: true,
+            value: Math.PI / 2,
+            origin: [10, 20, 30],
+            directionA: [1, 0, 0],
+            directionB: [0, 1, 0],
+            pointA: [12, 20, 30],
+            pointB: [10, 24, 30],
+            workingPlaneOrigin: [10, 20, 30],
+            workingPlaneNormal: [0, 0, 1],
+          };
+        },
+      }),
+    });
+
+    const result = await core.measureExactAngle(refA, refB);
+
+    assert.deepEqual(calls, [[
+      17,
+      33,
+      "edge",
+      5,
+      33,
+      "edge",
+      6,
+      refA.transform,
+      refB.transform,
+    ]]);
+    assert.deepEqual(result, {
+      ok: true,
+      value: Math.PI / 2,
+      origin: [10, 20, 30],
+      directionA: [1, 0, 0],
+      directionB: [0, 1, 0],
+      pointA: [12, 20, 30],
+      pointB: [10, 24, 30],
+      workingPlaneOrigin: [10, 20, 30],
+      workingPlaneNormal: [0, 0, 1],
+      refA,
+      refB,
+    });
+  });
+
   it("transforms exact radius primitives into occurrence space", async () => {
     const ref = {
       exactModelId: 17,
