@@ -21,8 +21,17 @@ test("authoritative root release command surface stays runtime-first", () => {
 
   assert.equal(
     releaseCommand,
-    "npm run build:wasm:win && node --test test/wasm_build_contract.test.mjs test/package_tarball_contract.test.mjs test/release_governance_contract.test.mjs && npm --prefix packages/occt-core test && npm test",
+    "npm run build:wasm:win && node --test test/wasm_build_contract.test.mjs test/package_tarball_contract.test.mjs test/release_governance_contract.test.mjs test/exact_pairwise_measurement_contract.test.mjs && npm --prefix packages/occt-core test && npm test",
   );
+});
+
+test("authoritative root release command surface includes exact pairwise measurement coverage", () => {
+  const packageJson = readRepoJson("package.json");
+  const releaseCommand = packageJson.scripts?.["test:release:root"] ?? "";
+  const testCommand = packageJson.scripts?.test ?? "";
+
+  assert.match(releaseCommand, /test\/exact_pairwise_measurement_contract\.test\.mjs/);
+  assert.match(testCommand, /test\/exact_pairwise_measurement_contract\.test\.mjs/);
 });
 
 test("authoritative root release command surface excludes unconditional secondary-surface gates", () => {
@@ -63,9 +72,19 @@ test("release skill stays a thin AGENTS shim and keeps secondary surfaces condit
 test("planning artifacts keep requirement traceability current", () => {
   const requirements = readRepoText(".planning/REQUIREMENTS.md");
 
-  assert.match(requirements, /\| CORE-01 \| Phase 1 \| Completed \|/);
-  assert.match(requirements, /\| CONS-02 \| Phase 3 \| Completed \|/);
-  assert.match(requirements, /\| DIST-02 \| Phase 4 \| Completed \|/);
+  assert.match(requirements, /\| REF-03 \| Phase 7 \| Completed \|/);
+  assert.match(requirements, /\| MEAS-03 \| Phase 7 \| Completed \|/);
+  assert.match(requirements, /\| MEAS-04 \| Phase 8 \| Completed \|/);
+  assert.match(requirements, /\| MEAS-05 \| Phase 8 \| Completed \|/);
+  assert.match(requirements, /\| ADAPT-01 \| Phase 8 \| Completed \|/);
+  assert.match(requirements, /\| ADAPT-02 \| Phase 8 \| Completed \|/);
+});
+
+test("planning traceability marks Phase 7 requirements complete before Phase 8 execution", () => {
+  const requirements = readRepoText(".planning/REQUIREMENTS.md");
+
+  assert.match(requirements, /\| REF-03 \| Phase 7 \| Completed \|/);
+  assert.match(requirements, /\| MEAS-03 \| Phase 7 \| Completed \|/);
 });
 
 test("planning state stays aligned to the root Wasm carrier", () => {
@@ -80,21 +99,21 @@ test("planning state stays aligned to the root Wasm carrier", () => {
   assert.match(roadmap, /npm run test:release:root/);
 });
 
-test("planning state marks phase 4 governance work complete", () => {
+test("planning state marks phase 8 pairwise work complete", () => {
   const roadmap = readRepoText(".planning/ROADMAP.md");
   const state = readRepoText(".planning/STATE.md");
 
-  assert.match(roadmap, /- \[x\] \*\*Phase 4: Release & Governance Flow\*\*/);
-  assert.match(roadmap, /- \[x\] 04-01-PLAN\.md/);
-  assert.match(roadmap, /- \[x\] 04-02-PLAN\.md/);
-  assert.match(roadmap, /- \[x\] 04-03-PLAN\.md/);
-  assert.match(roadmap, /\| 4\. Release & Governance Flow \| 3\/3 \| Completed \| 2026-04-14 \|/);
+  assert.match(roadmap, /- \[x\] \*\*Phase 8: Pairwise Measurement Contract Hardening\*\*/);
+  assert.match(roadmap, /- \[x\] 08-01-PLAN\.md/);
+  assert.match(roadmap, /- \[x\] 08-02-PLAN\.md/);
+  assert.match(roadmap, /- \[x\] 08-03-PLAN\.md/);
+  assert.match(roadmap, /\| 8\. Pairwise Measurement Contract Hardening \| 3\/3 \| Complete \| 2026-04-15 \|/);
 
   assert.match(state, /status:\s*complete/i);
   assert.match(state, /completed_phases:\s*4/);
-  assert.match(state, /completed_plans:\s*12/);
+  assert.match(state, /completed_plans:\s*9/);
   assert.match(state, /percent:\s*100/);
-  assert.match(state, /Phase:\s*04 of 4 .*COMPLETE/i);
-  assert.match(state, /Status:\s*Phase 04 complete/i);
+  assert.match(state, /Phase:\s*08 .*COMPLETE/i);
+  assert.match(state, /Status:\s*Phase 08 complete/i);
   assert.match(state, /Progress:\s*\[██████████\]\s*100%/);
 });

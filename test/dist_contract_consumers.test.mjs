@@ -62,3 +62,20 @@ test("occt-core README documents the package-first adapter path without requirin
   assert.ok(readme.includes("@tx-code/occt-js"));
   assert.equal(readme.includes("@tx-code/occt-babylon-loader"), false);
 });
+
+test("package docs describe exact pairwise measurement entrypoints without viewer prerequisites", () => {
+  const rootReadme = readRepoText("README.md");
+  const coreReadme = readRepoText("packages/occt-core/README.md");
+
+  assert.ok(rootReadme.includes("MeasureExactDistance"));
+  assert.ok(rootReadme.includes("MeasureExactAngle"));
+  assert.ok(rootReadme.includes("MeasureExactThickness"));
+  assert.match(rootReadme, /semantic feature recognition remain downstream concerns/i);
+  assert.ok(coreReadme.includes("createOcctCore"));
+  assert.ok(coreReadme.includes("measureExactDistance"));
+  assert.ok(coreReadme.includes("measureExactAngle"));
+  assert.ok(coreReadme.includes("measureExactThickness"));
+  assert.match(coreReadme, /semantic feature recognition remain downstream concerns/i);
+  assert.match(rootReadme, /Optional secondary surfaces/i);
+  assert.equal(coreReadme.includes("@tx-code/occt-babylon-loader"), false);
+});
