@@ -111,7 +111,7 @@ test("planning state stays aligned to the root Wasm carrier", () => {
   assert.match(project, /## Evolution/);
 });
 
-test("planning state marks v1.2 active and ready for phase 10 planning", () => {
+test("planning state marks v1.2 active and ready for phase 10 execution", () => {
   const roadmap = readRepoText(".planning/ROADMAP.md");
   const state = readRepoText(".planning/STATE.md");
 
@@ -127,7 +127,7 @@ test("planning state marks v1.2 active and ready for phase 10 planning", () => {
   assert.match(state, /completed_phases:\s*1/);
   assert.match(state, /completed_plans:\s*2/);
   assert.match(state, /percent:\s*33/);
-  assert.match(state, /Current focus:\s*Phase 10 planning for v1\.2 Import Appearance Contract/i);
-  assert.match(state, /Next step is `\/gsd-plan-phase 10`/i);
+  assert.match(state, /Current focus:\s*Phase 10 ready for execution for v1\.2 Import Appearance Contract/i);
+  assert.match(state, /Next step is `\/gsd-execute-phase 10`/i);
   assert.match(state, /Progress:\s*\[###-------\]\s*33%/);
 });

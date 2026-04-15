@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Import Appearance Contract
 status: active
-stopped_at: Phase 09 completed; next step is /gsd-plan-phase 10
-last_updated: "2026-04-15T12:11:39.839Z"
+stopped_at: Phase 10 planned; next step is /gsd-execute-phase 10
+last_updated: "2026-04-15T12:29:00.000Z"
 last_activity: 2026-04-15
 progress:
   total_phases: 3
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-15)
 
 Core value: Downstream applications can reliably consume the OCCT Wasm runtime and its root API contract without build drift or packaging surprises.
-Current focus: Phase 10 planning for v1.2 Import Appearance Contract
+Current focus: Phase 10 ready for execution for v1.2 Import Appearance Contract
 
 ## Current Position
 
 Phase: 10 (custom-default-color-adapter-parity) — PLANNED
 Plan: 0 of 2 complete
-Status: Phase 10 ready for planning
+Status: Phase 10 ready for execution
 Last activity: 2026-04-15
 
 Progress: [###-------] 33%
@@ -36,7 +36,7 @@ Progress: [###-------] 33%
 
 - `v1.2 Import Appearance Contract` is active and starts at phases 09-11.
 - Phase 09 is complete and the root runtime now exposes `colorMode: "source" | "default"` with a built-in CAD base color `[0.9, 0.91, 0.93]`.
-- The next milestone step is Phase 10, which adds caller-provided `defaultColor` and adapter parity on top of the new root contract.
+- Phase 10 planning is complete and splits the remaining work into root `defaultColor` exposure first, then `occt-core` normalization parity.
 - App code still owns settings persistence and viewer behavior; the milestone boundary stays at import-time color semantics.
 
 ## Accumulated Context
@@ -45,19 +45,20 @@ Progress: [###-------] 33%
 - `v1.1` shipped exact lifecycle, exact refs, and exact primitive/pairwise measurement foundations without expanding into viewer UX.
 - Phase 09 moved the default CAD fallback into the root runtime while keeping legacy `readColors` deterministic when `colorMode` is omitted.
 - `npm test` and `npm run test:release:root` now both cover the new import appearance contract.
+- Phase 10 research identified the main remaining drift: `packages/occt-core/src/model-normalizer.js` still synthesizes a package-local fallback material for colorless payloads.
 
 ## Pending Todos
 
-- Define the `defaultColor` override shape and forwarding semantics for Phase 10.
-- Extend the same appearance contract through `@tx-code/occt-core` without reintroducing viewer-side repaint assumptions.
+- Execute `10-01` to expose and parse public `defaultColor` on the shared root import path.
+- Execute `10-02` to normalize/forward appearance params through `@tx-code/occt-core` and remove hidden fallback drift.
 
 ## Blockers/Concerns
 
 - No active blockers.
-- Next step is `/gsd-plan-phase 10`.
+- Next step is `/gsd-execute-phase 10`.
 
 ## Session Continuity
 
 Last session: 2026-04-15
-Stopped at: Phase 09 completed; next step is `/gsd-plan-phase 10`
+Stopped at: Phase 10 planned; next step is `/gsd-execute-phase 10`
 Resume file: .planning/ROADMAP.md
