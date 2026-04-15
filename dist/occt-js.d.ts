@@ -233,7 +233,9 @@ export interface OcctJSReadParams {
     readNames?: boolean;
     // Legacy toggle. This is legacy-only when colorMode is omitted.
     readColors?: boolean;
-    // Named default-appearance bundle. Presets resolve before explicit
+    // Named default-appearance bundle. "cad-solid" keeps the built-in CAD base
+    // color [0.9, 0.91, 0.93] opaque, while "cad-ghosted" applies the same base
+    // color with the built-in ghost opacity 0.35. Presets resolve before explicit
     // defaultColor/defaultOpacity overrides and are ignored by colorMode="source".
     appearancePreset?: OcctJSImportAppearancePreset;
     // Explicit appearance contract. When provided, this overrides readColors.
@@ -242,7 +244,8 @@ export interface OcctJSReadParams {
     // Optional RGB override for default appearance mode.
     // This only applies when colorMode is set to "default".
     defaultColor?: OcctJSColor;
-    // Optional opacity override for default appearance mode.
+    // Optional opacity override for default appearance mode. When omitted, any
+    // preset-derived opacity is preserved; otherwise the default appearance stays opaque.
     // This only applies when colorMode is set to "default".
     defaultOpacity?: number;
 }

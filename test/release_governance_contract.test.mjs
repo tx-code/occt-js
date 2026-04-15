@@ -78,14 +78,25 @@ test("release docs describe the import appearance contract and downstream settin
   const occtCoreReadme = readRepoText("packages/occt-core/README.md");
   const agents = readRepoText("AGENTS.md");
 
+  assert.match(readme, /appearancePreset/);
   assert.match(readme, /colorMode/);
   assert.match(readme, /defaultColor/);
+  assert.match(readme, /defaultOpacity/);
+  assert.match(readme, /cad-solid/);
+  assert.match(readme, /cad-ghosted/);
   assert.match(readme, /0\.9,\s*0\.91,\s*0\.93/);
+  assert.match(occtCoreReadme, /appearancePreset/);
   assert.match(occtCoreReadme, /colorMode/);
   assert.match(occtCoreReadme, /defaultColor/);
+  assert.match(occtCoreReadme, /defaultOpacity/);
+  assert.match(occtCoreReadme, /cad-solid/);
+  assert.match(occtCoreReadme, /cad-ghosted/);
+  assert.match(occtCoreReadme, /alpha/i);
   assert.match(occtCoreReadme, /settings persistence/i);
   assert.match(occtCoreReadme, /viewer overrides/i);
   assert.match(agents, /appearance options/i);
+  assert.match(agents, /appearancePreset/);
+  assert.match(agents, /defaultOpacity/);
   assert.match(agents, /settings persistence/i);
   assert.match(agents, /viewer overrides/i);
 });
@@ -102,6 +113,9 @@ test("published typings document the finalized import appearance option shape", 
   assert.match(typesSource, /defaultColor\?: OcctJSColor;/);
   assert.match(typesSource, /defaultOpacity\?: number;/);
   assert.match(typesSource, /built-in CAD base color \[0\.9, 0\.91, 0\.93\]/);
+  assert.match(typesSource, /cad-solid/);
+  assert.match(typesSource, /cad-ghosted/);
+  assert.match(typesSource, /Presets resolve before explicit/i);
   assert.match(typesSource, /legacy-only when colorMode is omitted/i);
   assert.match(typesSource, /only applies when colorMode is set to "default"/i);
 });

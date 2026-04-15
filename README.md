@@ -73,20 +73,26 @@ const core = createOcctCore({
 
 ## Import Appearance Contract
 
-Import-time appearance is part of the packaged runtime contract. Downstream apps can either preserve source colors or request one default CAD color during import:
+Import-time appearance is part of the packaged runtime contract. Downstream apps can either preserve source colors or request a normalized default CAD appearance during import:
 
 ```js
 const result = occt.ReadFile("step", buffer, {
+  appearancePreset: "cad-ghosted",
   colorMode: "default",
   defaultColor: { r: 0.2, g: 0.4, b: 0.6 },
+  defaultOpacity: 0.5,
 });
 ```
 
 Contract rules:
 
+- `appearancePreset: "cad-solid"` resolves to the built-in CAD base appearance: `[0.9, 0.91, 0.93]` with opaque materials.
+- `appearancePreset: "cad-ghosted"` resolves to the same built-in CAD base appearance with the built-in ghost opacity `0.35`.
+- Presets resolve before explicit `defaultColor` / `defaultOpacity` overrides and are ignored when `colorMode: "source"` is selected.
 - `colorMode: "source"` preserves imported source colors.
 - `colorMode: "default"` ignores source colors and uses one default CAD color for the imported result.
 - If `defaultColor` is omitted in default mode, the built-in fallback is `[0.9, 0.91, 0.93]`.
+- If `defaultOpacity` is omitted in default mode, imports keep the preset-derived opacity when present; otherwise the default appearance stays opaque.
 - `readColors` is a legacy toggle and is only authoritative when `colorMode` is omitted.
 
 Apps own settings persistence. `occt-js` only consumes the selected import-time appearance options and returns the resulting colors/materials.
@@ -287,8 +293,10 @@ const result = occt.ReadFile("step", buffer, {
     linearDeflection: 0.1,
     angularDeflection: 0.5,
     readNames: true,
+    appearancePreset: "cad-solid",
     colorMode: "default",
-    defaultColor: { r: 0.2, g: 0.4, b: 0.6 }
+    defaultColor: { r: 0.2, g: 0.4, b: 0.6 },
+    defaultOpacity: 0.8
 });
 
 // Also available:

@@ -194,7 +194,7 @@ Important details:
 ## Release Boundaries
 
 - the root package publishes the Wasm runtime
-- import appearance options such as `colorMode` and `defaultColor` are part of that root runtime contract
+- import appearance options such as `appearancePreset`, `colorMode`, `defaultColor`, and `defaultOpacity` are part of that root runtime contract
 - `demo/` is not the published npm package
 - desktop work must not become a prerequisite for npm release
 - demo, Babylon, and Tauri checks are conditional secondary-surface verification, not unconditional root release gates

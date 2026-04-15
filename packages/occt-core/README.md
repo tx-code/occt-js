@@ -30,6 +30,7 @@ const core = createOcctCore({
 const model = await core.importModel(stepBytes, {
   fileName: "part.step",
   importParams: {
+    appearancePreset: "cad-ghosted",
     rootMode: "one-shape",
     linearDeflectionType: "bounding_box_ratio",
     linearDeflection: 0.001,
@@ -37,6 +38,7 @@ const model = await core.importModel(stepBytes, {
     readNames: true,
     colorMode: "default",
     defaultColor: [51, 102, 153],
+    defaultOpacity: 0.5,
   },
 });
 ```
@@ -56,19 +58,26 @@ Notes:
 const model = await core.importModel(stepBytes, {
   fileName: "part.step",
   importParams: {
+    appearancePreset: "cad-ghosted",
     colorMode: "default",
     defaultColor: [51, 102, 153],
+    defaultOpacity: 0.5,
   },
 });
 ```
 
 Contract rules:
 
+- `appearancePreset: "cad-solid"` forwards the built-in CAD base appearance as an opaque default import style.
+- `appearancePreset: "cad-ghosted"` forwards the built-in ghost preset, which uses the built-in CAD base color plus ghost opacity `0.35` until explicit overrides are supplied.
 - `colorMode: "source"` preserves imported source colors.
 - `colorMode: "default"` requests one default CAD color for the imported result.
 - If `defaultColor` is omitted in default mode, the built-in fallback is `[0.9, 0.91, 0.93]`.
+- If `defaultOpacity` is omitted, preset-derived opacity is preserved when present; otherwise the default appearance stays opaque.
 - `readColors` is still accepted as a legacy toggle, but only when `colorMode` is omitted.
 - `@tx-code/occt-core` normalizes tuple/object `defaultColor` input before forwarding the canonical root contract.
+- If `defaultOpacity` is omitted but `defaultColor` carries alpha or opacity, `@tx-code/occt-core` promotes that alpha channel into the canonical root `defaultOpacity`.
+- Explicit `defaultOpacity` wins over any alpha promoted from `defaultColor`.
 
 Apps own settings persistence, and `@tx-code/occt-core` only consumes the chosen import-time appearance options.
 Viewer overrides remain downstream concerns; the adapter does not own repaint, theme switching, or post-import display policy.
