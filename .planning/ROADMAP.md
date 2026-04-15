@@ -52,8 +52,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 13-01-PLAN.md — Add named appearance preset parsing and root import parity
-- [ ] 13-02-PLAN.md — Normalize expanded appearance options and preset forwarding in `@tx-code/occt-core`
+- [x] 13-01-PLAN.md — Add named appearance preset parsing and root import parity
+- [x] 13-02-PLAN.md — Normalize expanded appearance options and preset forwarding in `@tx-code/occt-core`
 
 ### Phase 14: Appearance Expansion Governance
 **Goal**: Lock the expanded import appearance contract in docs, package typings, downstream packaging guidance, and the canonical root release gate.
