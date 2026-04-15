@@ -558,6 +558,22 @@ val ExactAngleResultToVal(const OcctExactAngleResult& result)
     return obj;
 }
 
+val ExactThicknessResultToVal(const OcctExactThicknessResult& result)
+{
+    if (!result.ok) {
+        return ExactFailureToVal(result);
+    }
+
+    val obj = val::object();
+    obj.set("ok", true);
+    obj.set("value", result.value);
+    obj.set("pointA", Vector3ToVal(result.pointA));
+    obj.set("pointB", Vector3ToVal(result.pointB));
+    obj.set("workingPlaneOrigin", Vector3ToVal(result.workingPlaneOrigin));
+    obj.set("workingPlaneNormal", Vector3ToVal(result.workingPlaneNormal));
+    return obj;
+}
+
 val ExactGeometryBindingsToVal(size_t geometryCount)
 {
     val bindings = val::array();
@@ -902,6 +918,32 @@ val MeasureExactAngleBinding(
     );
 }
 
+val MeasureExactThicknessBinding(
+    int exactModelId,
+    int exactShapeHandleA,
+    const std::string& kindA,
+    int elementIdA,
+    int exactShapeHandleB,
+    const std::string& kindB,
+    int elementIdB,
+    const val& jsTransformA,
+    const val& jsTransformB)
+{
+    return ExactThicknessResultToVal(
+        MeasureExactThickness(
+            exactModelId,
+            exactShapeHandleA,
+            kindA,
+            elementIdA,
+            exactShapeHandleB,
+            kindB,
+            elementIdB,
+            MatrixToTrsf(ParseMatrix4(jsTransformA)),
+            MatrixToTrsf(ParseMatrix4(jsTransformB))
+        )
+    );
+}
+
 val AnalyzeOptimalOrientation(const std::string& format, const val& content, const val& jsParams)
 {
     std::vector<uint8_t> buffer = ExtractBytes(content);
@@ -931,5 +973,6 @@ EMSCRIPTEN_BINDINGS(occtjs)
     function("EvaluateExactFaceNormal", &EvaluateExactFaceNormalBinding);
     function("MeasureExactDistance", &MeasureExactDistanceBinding);
     function("MeasureExactAngle", &MeasureExactAngleBinding);
+    function("MeasureExactThickness", &MeasureExactThicknessBinding);
     function("AnalyzeOptimalOrientation", &AnalyzeOptimalOrientation);
 }

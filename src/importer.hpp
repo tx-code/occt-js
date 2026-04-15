@@ -168,6 +168,17 @@ struct OcctExactAngleResult {
     std::array<double, 3> workingPlaneNormal = { 0.0, 0.0, 0.0 };
 };
 
+struct OcctExactThicknessResult {
+    bool ok = false;
+    std::string code;
+    std::string message;
+    double value = 0.0;
+    std::array<double, 3> pointA = { 0.0, 0.0, 0.0 };
+    std::array<double, 3> pointB = { 0.0, 0.0, 0.0 };
+    std::array<double, 3> workingPlaneOrigin = { 0.0, 0.0, 0.0 };
+    std::array<double, 3> workingPlaneNormal = { 0.0, 0.0, 0.0 };
+};
+
 struct ImportParams {
     enum class LinearUnit {
         Millimeter,

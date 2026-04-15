@@ -108,6 +108,22 @@ export interface OcctJSExactQueryFailure {
     message: string;
 }
 
+export type OcctJSExactPairwiseFailureCode =
+    | "invalid-handle"
+    | "released-handle"
+    | "invalid-id"
+    | "unsupported-geometry"
+    | "parallel-geometry"
+    | "coincident-geometry"
+    | "insufficient-precision"
+    | "internal-error";
+
+export interface OcctJSExactPairwiseFailure {
+    ok: false;
+    code: OcctJSExactPairwiseFailureCode;
+    message: string;
+}
+
 export interface OcctJSExactGeometryTypeSuccess {
     ok: true;
     family: OcctJSExactGeometryFamily;
@@ -177,7 +193,7 @@ export interface OcctJSExactDistanceSuccess {
     workingPlaneNormal: [number, number, number];
 }
 
-export type OcctJSExactDistanceResult = OcctJSExactDistanceSuccess | OcctJSExactQueryFailure;
+export type OcctJSExactDistanceResult = OcctJSExactDistanceSuccess | OcctJSExactPairwiseFailure;
 
 export interface OcctJSExactAngleSuccess {
     ok: true;
@@ -191,7 +207,18 @@ export interface OcctJSExactAngleSuccess {
     workingPlaneNormal: [number, number, number];
 }
 
-export type OcctJSExactAngleResult = OcctJSExactAngleSuccess | OcctJSExactQueryFailure;
+export type OcctJSExactAngleResult = OcctJSExactAngleSuccess | OcctJSExactPairwiseFailure;
+
+export interface OcctJSExactThicknessSuccess {
+    ok: true;
+    value: number;
+    pointA: [number, number, number];
+    pointB: [number, number, number];
+    workingPlaneOrigin: [number, number, number];
+    workingPlaneNormal: [number, number, number];
+}
+
+export type OcctJSExactThicknessResult = OcctJSExactThicknessSuccess | OcctJSExactPairwiseFailure;
 
 export interface OcctJSReadParams {
     rootMode?: "one-shape" | "multiple-shapes";
@@ -270,6 +297,7 @@ export interface OcctJSModule {
     EvaluateExactFaceNormal(exactModelId: number, exactShapeHandle: number, kind: OcctJSExactElementKind, elementId: number, localQueryPoint: [number, number, number]): OcctJSExactFaceNormalResult;
     MeasureExactDistance(exactModelId: number, exactShapeHandleA: number, kindA: OcctJSExactElementKind, elementIdA: number, exactShapeHandleB: number, kindB: OcctJSExactElementKind, elementIdB: number, transformA: OcctJSMatrix4, transformB: OcctJSMatrix4): OcctJSExactDistanceResult;
     MeasureExactAngle(exactModelId: number, exactShapeHandleA: number, kindA: OcctJSExactElementKind, elementIdA: number, exactShapeHandleB: number, kindB: OcctJSExactElementKind, elementIdB: number, transformA: OcctJSMatrix4, transformB: OcctJSMatrix4): OcctJSExactAngleResult;
+    MeasureExactThickness(exactModelId: number, exactShapeHandleA: number, kindA: OcctJSExactElementKind, elementIdA: number, exactShapeHandleB: number, kindB: OcctJSExactElementKind, elementIdB: number, transformA: OcctJSMatrix4, transformB: OcctJSMatrix4): OcctJSExactThicknessResult;
     AnalyzeOptimalOrientation(format: OcctFormat, content: Uint8Array, params?: OcctJSOrientationParams): OcctJSOrientationResult;
 }
 

@@ -353,6 +353,29 @@ export class OcctCoreClient {
       : result;
   }
 
+  async measureExactThickness(refA, refB) {
+    const module = await this._ensureModule();
+    const [exactRefA, exactRefB] = validatePairwiseExactRefs(refA, refB, "measureExactThickness");
+    if (typeof module.MeasureExactThickness !== "function") {
+      throw new Error("Loaded OCCT module does not expose MeasureExactThickness().");
+    }
+
+    const result = module.MeasureExactThickness(
+      exactRefA.exactModelId,
+      exactRefA.exactShapeHandle,
+      exactRefA.kind,
+      exactRefA.elementId,
+      exactRefB.exactShapeHandle,
+      exactRefB.kind,
+      exactRefB.elementId,
+      exactRefA.transform,
+      exactRefB.transform,
+    );
+    return result?.ok === true
+      ? { ...result, refA: exactRefA, refB: exactRefB }
+      : result;
+  }
+
   async measureExactRadius(ref) {
     const module = await this._ensureModule();
     const exactRef = validateExactRef(ref, "measureExactRadius");

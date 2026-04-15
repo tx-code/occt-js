@@ -344,6 +344,15 @@ TResult MakeUnsupportedKind(const std::string& message)
     return MakeFailure<TResult>("unsupported-geometry", message);
 }
 
+template <typename TResult>
+TResult MakePairwiseUnsupported()
+{
+    return MakeFailure<TResult>(
+        "unsupported-geometry",
+        "Exact thickness only supports parallel planar face pairs."
+    );
+}
+
 OcctLifecycleResult ResolveFaceProjection(
     const TopoDS_Face& face,
     const gp_Pnt& queryPoint,
@@ -926,6 +935,86 @@ OcctExactAngleResult MeasureExactAngle(
         return MakeFailure<OcctExactAngleResult>(
             "internal-error",
             failure.GetMessageString() != nullptr ? failure.GetMessageString() : "OCCT exact angle query failed."
+        );
+    }
+}
+
+OcctExactThicknessResult MeasureExactThickness(
+    int exactModelId,
+    int exactShapeHandleA,
+    const std::string& kindA,
+    int elementIdA,
+    int exactShapeHandleB,
+    const std::string& kindB,
+    int elementIdB,
+    const gp_Trsf& transformA,
+    const gp_Trsf& transformB)
+{
+    try {
+        const std::string normalizedKindA = NormalizeKind(kindA);
+        const std::string normalizedKindB = NormalizeKind(kindB);
+        if (normalizedKindA != "face" || normalizedKindB != "face") {
+            return MakePairwiseUnsupported<OcctExactThicknessResult>();
+        }
+
+        TopoDS_Face faceA;
+        OcctLifecycleResult lifecycle = ResolveFace(exactModelId, exactShapeHandleA, elementIdA, faceA);
+        if (!lifecycle.ok) {
+            return ConvertFailure<OcctExactThicknessResult>(lifecycle);
+        }
+
+        TopoDS_Face faceB;
+        lifecycle = ResolveFace(exactModelId, exactShapeHandleB, elementIdB, faceB);
+        if (!lifecycle.ok) {
+            return ConvertFailure<OcctExactThicknessResult>(lifecycle);
+        }
+
+        faceA = TopoDS::Face(ApplyOccurrenceTransform(faceA, transformA));
+        faceB = TopoDS::Face(ApplyOccurrenceTransform(faceB, transformB));
+
+        BRepAdaptor_Surface surfaceA(faceA, false);
+        BRepAdaptor_Surface surfaceB(faceB, false);
+        if (surfaceA.GetType() != GeomAbs_Plane || surfaceB.GetType() != GeomAbs_Plane) {
+            return MakePairwiseUnsupported<OcctExactThicknessResult>();
+        }
+
+        const gp_Pln planeA = surfaceA.Plane();
+        const gp_Pln planeB = surfaceB.Plane();
+        const gp_Dir normalA = planeA.Axis().Direction();
+        if (!normalA.IsParallel(planeB.Axis().Direction(), Precision::Angular())) {
+            return MakePairwiseUnsupported<OcctExactThicknessResult>();
+        }
+
+        const gp_Vec planeOffset(planeA.Location(), planeB.Location());
+        const double signedDistance = planeOffset.Dot(gp_Vec(normalA));
+        const double value = std::abs(signedDistance);
+        if (value <= Precision::Confusion()) {
+            return MakeFailure<OcctExactThicknessResult>(
+                "coincident-geometry",
+                "Exact thickness requires separated parallel planar face pairs."
+            );
+        }
+
+        gp_Dir workingPlaneNormal = normalA;
+        if (signedDistance < 0.0) {
+            workingPlaneNormal.Reverse();
+        }
+
+        const gp_Pnt pointA = SampleFacePoint(faceA, surfaceA);
+        const gp_Pnt pointB = pointA.Translated(gp_Vec(workingPlaneNormal) * value);
+
+        OcctExactThicknessResult result;
+        result.ok = true;
+        result.value = value;
+        result.pointA = ToArray(pointA);
+        result.pointB = ToArray(pointB);
+        result.workingPlaneOrigin = ToArray(Midpoint(pointA, pointB));
+        result.workingPlaneNormal = ToArray(workingPlaneNormal);
+        return result;
+    } catch (const Standard_Failure& failure) {
+        return MakeFailure<OcctExactThicknessResult>(
+            "internal-error",
+            failure.GetMessageString() != nullptr ? failure.GetMessageString() : "OCCT exact thickness query failed."
         );
     }
 }
