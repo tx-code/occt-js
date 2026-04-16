@@ -966,6 +966,154 @@ describe("createOcctCore", () => {
     });
   });
 
+  it("occt-core exposes package-first exact relation classification for pairwise refs", async () => {
+    const calls = [];
+    const refA = {
+      exactModelId: 17,
+      exactShapeHandle: 33,
+      nodeId: "node-a",
+      geometryId: "geo_0",
+      kind: "edge",
+      elementId: 5,
+      transform: [
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        10, 20, 30, 1,
+      ],
+    };
+    const refB = {
+      exactModelId: 17,
+      exactShapeHandle: 33,
+      nodeId: "node-b",
+      geometryId: "geo_0",
+      kind: "edge",
+      elementId: 6,
+      transform: [
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        110, 20, 30, 1,
+      ],
+    };
+    const core = createOcctCore({
+      factory: async () => ({
+        ClassifyExactRelation: (...args) => {
+          calls.push(args);
+          return {
+            ok: true,
+            kind: "parallel",
+            frame: {
+              origin: [60, 20, 30],
+              normal: [0, 0, 1],
+              xDir: [1, 0, 0],
+              yDir: [0, 1, 0],
+            },
+            anchors: [
+              { role: "attach", point: [10, 20, 30] },
+              { role: "attach", point: [110, 20, 30] },
+            ],
+            directionA: [1, 0, 0],
+            directionB: [1, 0, 0],
+          };
+        },
+      }),
+    });
+
+    const result = await core.classifyExactRelation(refA, refB);
+
+    assert.deepEqual(calls, [[
+      17,
+      33,
+      "edge",
+      5,
+      33,
+      "edge",
+      6,
+      refA.transform,
+      refB.transform,
+    ]]);
+    assert.deepEqual(result, {
+      ok: true,
+      kind: "parallel",
+      frame: {
+        origin: [60, 20, 30],
+        normal: [0, 0, 1],
+        xDir: [1, 0, 0],
+        yDir: [0, 1, 0],
+      },
+      anchors: [
+        { role: "attach", point: [10, 20, 30] },
+        { role: "attach", point: [110, 20, 30] },
+      ],
+      directionA: [1, 0, 0],
+      directionB: [1, 0, 0],
+      refA,
+      refB,
+    });
+  });
+
+  it("occt-core relation classification preserves none and explicit failure payloads", async () => {
+    const refA = {
+      exactModelId: 17,
+      exactShapeHandle: 33,
+      nodeId: "node-a",
+      geometryId: "geo_0",
+      kind: "edge",
+      elementId: 5,
+      transform: [
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        10, 20, 30, 1,
+      ],
+    };
+    const refB = {
+      exactModelId: 17,
+      exactShapeHandle: 33,
+      nodeId: "node-b",
+      geometryId: "geo_0",
+      kind: "edge",
+      elementId: 6,
+      transform: [
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        110, 20, 30, 1,
+      ],
+    };
+
+    const noneCore = createOcctCore({
+      factory: async () => ({
+        ClassifyExactRelation: () => ({
+          ok: true,
+          kind: "none",
+        }),
+      }),
+    });
+    const failureCore = createOcctCore({
+      factory: async () => ({
+        ClassifyExactRelation: () => ({
+          ok: false,
+          code: "unsupported-geometry",
+          message: "Exact relation classification only supports line/line, plane/plane, circle/circle, and circle/cylinder analytic pairs.",
+        }),
+      }),
+    });
+
+    assert.deepEqual(await noneCore.classifyExactRelation(refA, refB), {
+      ok: true,
+      kind: "none",
+      refA,
+      refB,
+    });
+    assert.deepEqual(await failureCore.classifyExactRelation(refA, refB), {
+      ok: false,
+      code: "unsupported-geometry",
+      message: "Exact relation classification only supports line/line, plane/plane, circle/circle, and circle/cylinder analytic pairs.",
+    });
+  });
+
   it("wraps suggestExactDistancePlacement(refA, refB) through occurrence-scoped exact refs", async () => {
     const calls = [];
     const refA = {

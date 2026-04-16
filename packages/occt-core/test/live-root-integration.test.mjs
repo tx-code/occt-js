@@ -403,6 +403,60 @@ test("occt-core pairwise wrappers honor occurrence transforms for repeated geome
   assert.deepEqual(await core.releaseExactModel(exactModel.exactModelId), { ok: true });
 });
 
+test("occt-core relation wrappers honor occurrence transforms for repeated geometry", async () => {
+  const factory = loadOcctFactory();
+  const wasmBinary = new Uint8Array(await readFile(new URL("../../../dist/occt-js.wasm", import.meta.url)));
+  const assemblyBytes = new Uint8Array(await readFile(new URL("../../../test/assembly.step", import.meta.url)));
+
+  const core = createOcctCore({
+    factory,
+    wasmBinary,
+  });
+
+  const rawExact = await core.openExactStep(assemblyBytes, {
+    fileName: "assembly.step",
+  });
+  const exactModel = normalizeExactOpenResult(rawExact, {
+    sourceFileName: "assembly.step",
+  });
+  const repeated = findRepeatedGeometryOccurrencePair(exactModel);
+
+  assert.ok(repeated, "assembly.step should expose repeated geometry under at least two distinct nodeIds");
+
+  const geometry = exactModel.geometries.find((entry) => entry.geometryId === repeated.geometryId);
+  assert.ok(geometry?.faces?.length, "the repeated geometry should expose at least one face");
+
+  const faceId = geometry.faces[0].id;
+  const first = resolveExactElementRef(exactModel, {
+    nodeId: repeated.left.nodeId,
+    geometryId: repeated.geometryId,
+    kind: "face",
+    elementId: faceId,
+  });
+  const second = resolveExactElementRef(exactModel, {
+    nodeId: repeated.right.nodeId,
+    geometryId: repeated.geometryId,
+    kind: "face",
+    elementId: faceId,
+  });
+
+  assert.equal(first.ok, true);
+  assert.equal(second.ok, true);
+
+  const relation = await core.classifyExactRelation(first, second);
+
+  assert.equal(relation?.ok, true);
+  assert.equal(relation?.kind, "parallel");
+  assert.ok(Array.isArray(relation?.anchors) && relation.anchors.length >= 2);
+  assert.ok(Array.isArray(relation?.frame?.origin) && relation.frame.origin.length === 3);
+  assert.ok(Array.isArray(relation?.directionA) && relation.directionA.length === 3);
+  assert.ok(Array.isArray(relation?.directionB) && relation.directionB.length === 3);
+  assert.deepEqual(relation?.refA, first);
+  assert.deepEqual(relation?.refB, second);
+
+  assert.deepEqual(await core.releaseExactModel(exactModel.exactModelId), { ok: true });
+});
+
 test("occt-core pairwise placement wrappers honor occurrence transforms for repeated geometry", async () => {
   const factory = loadOcctFactory();
   const wasmBinary = new Uint8Array(await readFile(new URL("../../../dist/occt-js.wasm", import.meta.url)));

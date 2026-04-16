@@ -512,6 +512,29 @@ export class OcctCoreClient {
       : result;
   }
 
+  async classifyExactRelation(refA, refB) {
+    const module = await this._ensureModule();
+    const [exactRefA, exactRefB] = validatePairwiseExactRefs(refA, refB, "classifyExactRelation");
+    if (typeof module.ClassifyExactRelation !== "function") {
+      throw new Error("Loaded OCCT module does not expose ClassifyExactRelation().");
+    }
+
+    const result = module.ClassifyExactRelation(
+      exactRefA.exactModelId,
+      exactRefA.exactShapeHandle,
+      exactRefA.kind,
+      exactRefA.elementId,
+      exactRefB.exactShapeHandle,
+      exactRefB.kind,
+      exactRefB.elementId,
+      exactRefA.transform,
+      exactRefB.transform,
+    );
+    return result?.ok === true
+      ? { ...result, refA: exactRefA, refB: exactRefB }
+      : result;
+  }
+
   async suggestExactDistancePlacement(refA, refB) {
     const module = await this._ensureModule();
     const [exactRefA, exactRefB] = validatePairwiseExactRefs(refA, refB, "suggestExactDistancePlacement");
