@@ -7,10 +7,10 @@
 
 ### Placement Contract
 
-- [ ] **PLCT-01**: Downstream JS code can request exact distance placement from two exact refs and receive stable occurrence-space anchors plus a full working-plane frame.
-- [ ] **PLCT-02**: Downstream JS code can request exact angle placement from exact refs and receive stable origin, attachment directions, anchors, and working-plane frame data.
-- [ ] **PLCT-03**: Downstream JS code can request exact radius and diameter placement from circular exact geometry and receive stable center, anchor, axis, and frame data.
-- [ ] **PLCT-04**: Downstream JS code can request exact thickness placement from compatible exact refs and receive stable occurrence-space anchors plus working-plane frame data.
+- [x] **PLCT-01**: Downstream JS code can request exact distance placement from two exact refs and receive stable occurrence-space anchors plus a full working-plane frame.
+- [x] **PLCT-02**: Downstream JS code can request exact angle placement from exact refs and receive stable origin, attachment directions, anchors, and working-plane frame data.
+- [x] **PLCT-03**: Downstream JS code can request exact radius and diameter placement from circular exact geometry and receive stable center, anchor, axis, and frame data.
+- [x] **PLCT-04**: Downstream JS code can request exact thickness placement from compatible exact refs and receive stable occurrence-space anchors plus working-plane frame data.
 
 ### Relation Contract
 
@@ -20,7 +20,7 @@
 
 ### Adapter & SDK
 
-- [ ] **ADAPT-07**: `@tx-code/occt-core` exposes package-first placement helpers that preserve occurrence transforms and normalize root placement DTOs without hiding the runtime contract.
+- [x] **ADAPT-07**: `@tx-code/occt-core` exposes package-first placement helpers that preserve occurrence transforms and normalize root placement DTOs without hiding the runtime contract.
 - [ ] **ADAPT-08**: `@tx-code/occt-core` exposes package-first relation classification that preserves occurrence transforms and normalizes supporting geometry DTOs without hiding the runtime contract.
 - [ ] **DOCS-01**: Package-first SDK docs show placement and relation workflows through `@tx-code/occt-core`, with root Wasm documented as the lower-level reference surface.
 - [ ] **GOV-01**: Root typings, tarball checks, and release verification lock the exact placement and relation SDK contract on the authoritative runtime-first release gate.
@@ -51,11 +51,11 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PLCT-01 | Phase 15 | Pending |
-| PLCT-02 | Phase 15 | Pending |
-| PLCT-03 | Phase 15 | Pending |
-| PLCT-04 | Phase 15 | Pending |
-| ADAPT-07 | Phase 15 | Pending |
+| PLCT-01 | Phase 15 | Completed |
+| PLCT-02 | Phase 15 | Completed |
+| PLCT-03 | Phase 15 | Completed |
+| PLCT-04 | Phase 15 | Completed |
+| ADAPT-07 | Phase 15 | Completed |
 | REL-01 | Phase 16 | Pending |
 | REL-02 | Phase 16 | Pending |
 | REL-03 | Phase 16 | Pending |
@@ -70,4 +70,4 @@
 
 ---
 *Requirements defined: 2026-04-16*
-*Last updated: 2026-04-16 after starting v1.4 Exact Measurement Placement & Relation SDK*
+*Last updated: 2026-04-16 after completing Phase 15 placement contract hardening*

@@ -18,7 +18,7 @@ This roadmap keeps `occt-js` centered on the runtime-first Wasm carrier. `v1.4` 
 - Integer phases (15, 16, 17): Planned milestone work
 - Decimal phases (15.1, 15.2): Urgent insertions (marked with INSERTED)
 
-- [ ] **Phase 15: Placement Contract Hardening** - Add exact placement helpers and package parity for distance, angle, radius, diameter, and thickness.
+- [x] **Phase 15: Placement Contract Hardening** - Add exact placement helpers and package parity for distance, angle, radius, diameter, and thickness.
 - [ ] **Phase 16: Exact Relation Classifier Contract** - Add exact relation classification for common geometric relations and package parity for supporting geometry DTOs.
 - [ ] **Phase 17: SDK Docs & Governance** - Finalize package-first SDK docs, typings, tarball guidance, and release governance for the placement/relation surface.
 
@@ -37,8 +37,8 @@ This roadmap keeps `occt-js` centered on the runtime-first Wasm carrier. `v1.4` 
 **Plans**: 2 plans
 
 Plans:
-- [ ] 15-01-PLAN.md — Add root placement helper DTOs and pairwise placement bindings
-- [ ] 15-02-PLAN.md — Add circular placement helpers and `occt-core` placement adapter parity
+- [x] 15-01-PLAN.md — Add root placement helper DTOs and pairwise placement bindings
+- [x] 15-02-PLAN.md — Add circular placement helpers and `occt-core` placement adapter parity
 
 ### Phase 16: Exact Relation Classifier Contract
 **Goal**: Add a unified exact relation classifier so downstream apps can consume stable relation semantics and supporting geometry without embedding `PrsDim`-style logic in app code.
@@ -79,6 +79,6 @@ Phases execute in numeric order: 15 → 16 → 17
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 15. Placement Contract Hardening | 0/2 | Planned | — |
+| 15. Placement Contract Hardening | 2/2 | Complete | 2026-04-16 |
 | 16. Exact Relation Classifier Contract | 0/2 | Planned | — |
 | 17. SDK Docs & Governance | 0/2 | Planned | — |
