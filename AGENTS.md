@@ -201,6 +201,14 @@ Important details:
 - documentation for agent behavior should live here, not be duplicated in tool-specific files
 - settings persistence and viewer overrides remain downstream concerns outside the root runtime scope
 
+## Versioning Semantics
+
+- GSD milestone versions such as `v1.4` are planning and delivery markers. They describe a shipped repository milestone, not the npm package semver by themselves.
+- npm package versions are controlled separately through `package.json` and any repo-local package manifests that are intentionally version-aligned.
+- Archiving a milestone or creating a git tag such as `v1.4` does not, by itself, mean `@tx-code/occt-js` has been version-bumped, published to npm, or vendored into downstream apps.
+- Downstream vendored snapshots such as `imos-app/third_party/npm/@tx-code/occt-js` can legitimately lag behind the current repository HEAD until an explicit vendor refresh is performed.
+- When preparing a real package release, make the semver bump explicit, run `npm run test:release:root`, and update downstream vendor snapshots only as a separate deliberate step.
+
 ## Workflow Norms
 
 - GSD is the default project workflow in this repository for milestone creation, requirements, roadmap updates, phase planning, phase execution, pause/resume, and milestone closeout.

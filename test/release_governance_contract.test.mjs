@@ -80,6 +80,16 @@ test("release docs keep the root Wasm carrier authoritative", () => {
   assert.match(agents, /conditional secondary-surface verification/i);
 });
 
+test("agent guidance distinguishes milestone tags from npm semver and downstream vendor refresh", () => {
+  const agents = readRepoText("AGENTS.md");
+
+  assert.match(agents, /GSD milestone versions such as `v1\.4` are planning and delivery markers/i);
+  assert.match(agents, /npm package versions are controlled separately through `package\.json`/i);
+  assert.match(agents, /does not, by itself, mean `@tx-code\/occt-js` has been version-bumped, published to npm, or vendored/i);
+  assert.match(agents, /downstream vendored snapshots/i);
+  assert.match(agents, /run `npm run test:release:root`/i);
+});
+
 test("release docs describe the import appearance contract and downstream settings boundary", () => {
   const readme = readRepoText("README.md");
   const occtCoreReadme = readRepoText("packages/occt-core/README.md");
