@@ -82,9 +82,9 @@ Contract rules:
 Apps own settings persistence, and `@tx-code/occt-core` only consumes the chosen import-time appearance options.
 Viewer overrides remain downstream concerns; the adapter does not own repaint, theme switching, or post-import display policy.
 
-## Exact Pairwise Measurement
+## Exact Measurement SDK
 
-`@tx-code/occt-core` keeps exact pairwise measurement package-first by wrapping the root Wasm carrier's retained exact-model APIs and occurrence transforms:
+`@tx-code/occt-core` keeps exact measurement package-first by wrapping the root Wasm carrier's retained exact-model APIs and occurrence transforms:
 
 ```js
 const rawExact = await core.openExactStep(stepBytes, {
@@ -106,10 +106,25 @@ const refA = {
 const refB = { ...refA, elementId: 2 };
 
 const distance = await core.measureExactDistance(refA, refB);
-const angle = await core.measureExactAngle(refA, refB);
-const thickness = await core.measureExactThickness(refA, refB);
+const placement = await core.suggestExactDistancePlacement(refA, refB);
+const relation = await core.classifyExactRelation(refA, refB);
 ```
 
-If you need the raw carrier directly, the underlying root Wasm entrypoints are `MeasureExactDistance`, `MeasureExactAngle`, and `MeasureExactThickness`. The adapter does not hide that contract; it only validates refs, preserves occurrence transforms, and returns package-friendly DTOs.
+Available package-first helpers:
 
-Overlay rendering, selection UX, and semantic feature recognition remain downstream concerns. `@tx-code/occt-core` stays at the adapter boundary and does not require Babylon, viewer widgets, or demo-local code.
+- `measureExactDistance(refA, refB)`, `measureExactAngle(refA, refB)`, and `measureExactThickness(refA, refB)`
+- `suggestExactDistancePlacement(refA, refB)`, `suggestExactAnglePlacement(refA, refB)`, and `suggestExactThicknessPlacement(refA, refB)`
+- `suggestExactRadiusPlacement(ref)` and `suggestExactDiameterPlacement(ref)`
+- `classifyExactRelation(refA, refB)`
+
+These helpers keep occurrence transforms explicit and return package-friendly DTOs:
+
+- pairwise measurements return numeric results plus supporting points or axes
+- placement helpers return stable anchors and working-plane frames
+- relation classification returns `parallel`, `perpendicular`, `concentric`, `tangent`, or `none`
+
+If you need the raw carrier directly, the underlying root Wasm entrypoints are `MeasureExactDistance`, `MeasureExactAngle`, `MeasureExactThickness`, `SuggestExactDistancePlacement`, `SuggestExactAnglePlacement`, `SuggestExactThicknessPlacement`, `SuggestExactRadiusPlacement`, `SuggestExactDiameterPlacement`, and `ClassifyExactRelation`.
+
+For a longer package-first walkthrough, see [`docs/sdk/measurement.md`](../../docs/sdk/measurement.md).
+
+Overlay rendering, selection UX, label layout, and semantic feature recognition remain downstream concerns. `@tx-code/occt-core` stays at the adapter boundary and does not require Babylon, viewer widgets, or demo-local code.

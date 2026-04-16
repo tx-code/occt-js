@@ -21,17 +21,21 @@ test("authoritative root release command surface stays runtime-first", () => {
 
   assert.equal(
     releaseCommand,
-    "npm run build:wasm:win && node --test test/wasm_build_contract.test.mjs test/package_tarball_contract.test.mjs test/release_governance_contract.test.mjs test/exact_pairwise_measurement_contract.test.mjs && npm --prefix packages/occt-core test && npm test",
+    "npm run build:wasm:win && node --test test/wasm_build_contract.test.mjs test/package_tarball_contract.test.mjs test/release_governance_contract.test.mjs test/exact_pairwise_measurement_contract.test.mjs test/exact_placement_contract.test.mjs test/exact_relation_contract.test.mjs && npm --prefix packages/occt-core test && npm test",
   );
 });
 
-test("authoritative root release command surface includes exact pairwise measurement coverage", () => {
+test("authoritative root release command surface includes exact measurement SDK coverage", () => {
   const packageJson = readRepoJson("package.json");
   const releaseCommand = packageJson.scripts?.["test:release:root"] ?? "";
   const testCommand = packageJson.scripts?.test ?? "";
 
   assert.match(releaseCommand, /test\/exact_pairwise_measurement_contract\.test\.mjs/);
+  assert.match(releaseCommand, /test\/exact_placement_contract\.test\.mjs/);
+  assert.match(releaseCommand, /test\/exact_relation_contract\.test\.mjs/);
   assert.match(testCommand, /test\/exact_pairwise_measurement_contract\.test\.mjs/);
+  assert.match(testCommand, /test\/exact_placement_contract\.test\.mjs/);
+  assert.match(testCommand, /test\/exact_relation_contract\.test\.mjs/);
 });
 
 test("authoritative root test surface includes import appearance contract coverage", () => {
@@ -104,6 +108,32 @@ test("release docs describe the import appearance contract and downstream settin
   assert.match(agents, /viewer overrides/i);
 });
 
+test("release docs describe the exact measurement SDK package-first and keep viewer concerns downstream", () => {
+  const readme = readRepoText("README.md");
+  const occtCoreReadme = readRepoText("packages/occt-core/README.md");
+  const sdkGuide = readRepoText("docs/sdk/measurement.md");
+
+  assert.match(readme, /## Exact Measurement SDK/);
+  assert.match(readme, /@tx-code\/occt-core/);
+  assert.match(readme, /SuggestExactDistancePlacement/);
+  assert.match(readme, /ClassifyExactRelation/);
+  assert.match(readme, /docs\/sdk\/measurement\.md/);
+  assert.match(readme, /Overlay rendering, selection UX, label layout, and semantic feature recognition remain downstream concerns/i);
+  assert.match(occtCoreReadme, /## Exact Measurement SDK/);
+  assert.match(occtCoreReadme, /suggestExactDistancePlacement/);
+  assert.match(occtCoreReadme, /suggestExactRadiusPlacement/);
+  assert.match(occtCoreReadme, /classifyExactRelation/);
+  assert.match(occtCoreReadme, /MeasureExactDistance/);
+  assert.match(occtCoreReadme, /Overlay rendering, selection UX, label layout, and semantic feature recognition remain downstream concerns/i);
+  assert.match(sdkGuide, /# Exact Measurement SDK/);
+  assert.match(sdkGuide, /Package-First Workflow/);
+  assert.match(sdkGuide, /suggestExactDistancePlacement/);
+  assert.match(sdkGuide, /suggestExactRadiusPlacement/);
+  assert.match(sdkGuide, /classifyExactRelation/);
+  assert.match(sdkGuide, /Lower-Level Root Reference/);
+  assert.match(sdkGuide, /overlay rendering/i);
+});
+
 test("published typings document the finalized import appearance option shape", () => {
   const typesSource = readRepoText("dist/occt-js.d.ts");
 
@@ -121,6 +151,23 @@ test("published typings document the finalized import appearance option shape", 
   assert.match(typesSource, /Presets resolve before explicit/i);
   assert.match(typesSource, /legacy-only when colorMode is omitted/i);
   assert.match(typesSource, /only applies when colorMode is set to "default"/i);
+});
+
+test("published typings document the finalized placement and relation SDK surface", () => {
+  const typesSource = readRepoText("dist/occt-js.d.ts");
+
+  assert.match(typesSource, /export type OcctJSExactPlacementKind = "distance" \| "angle" \| "radius" \| "diameter" \| "thickness";/);
+  assert.match(typesSource, /export type OcctJSExactRelationKind =/);
+  assert.match(typesSource, /parallel/);
+  assert.match(typesSource, /perpendicular/);
+  assert.match(typesSource, /concentric/);
+  assert.match(typesSource, /tangent/);
+  assert.match(typesSource, /none/);
+  assert.match(typesSource, /export interface OcctJSExactPlacementFrame/);
+  assert.match(typesSource, /export interface OcctJSExactPlacementAnchor/);
+  assert.match(typesSource, /SuggestExactDistancePlacement/);
+  assert.match(typesSource, /SuggestExactRadiusPlacement/);
+  assert.match(typesSource, /ClassifyExactRelation/);
 });
 
 test("release skill stays a thin AGENTS shim and keeps secondary surfaces conditional", () => {

@@ -98,9 +98,50 @@ Contract rules:
 Apps own settings persistence. `occt-js` only consumes the selected import-time appearance options and returns the resulting colors/materials.
 Viewer overrides remain downstream concerns; post-import repaint, theme switching, and display policy are outside the root Wasm carrier scope.
 
-## Exact Pairwise Measurement Foundation
+## Exact Measurement SDK
 
-For exact BRep measurement, the root Wasm carrier exposes retained-model and pairwise entrypoints directly:
+Most downstream JS consumers should start with the package-first adapter surface in `@tx-code/occt-core`. A fuller walkthrough lives in [docs/sdk/measurement.md](./docs/sdk/measurement.md); the root README stays the lower-level reference.
+
+### Package-first workflow with `@tx-code/occt-core`
+
+`@tx-code/occt-core` wraps retained exact-model handles, occurrence transforms, pairwise measurement, placement helpers, and relation classification in JS-friendly DTOs:
+
+```js
+const rawExact = await core.openExactStep(buffer, {
+  fileName: "part.step",
+});
+
+const refA = {
+  exactModelId: rawExact.exactModelId,
+  exactShapeHandle: rawExact.exactGeometryBindings[0].exactShapeHandle,
+  kind: "face",
+  elementId: 1,
+  transform: [
+    1, 0, 0, 0,
+    0, 1, 0, 0,
+    0, 0, 1, 0,
+    0, 0, 0, 1,
+  ],
+};
+const refB = { ...refA, elementId: 2 };
+
+const distance = await core.measureExactDistance(refA, refB);
+const placement = await core.suggestExactDistancePlacement(refA, refB);
+const relation = await core.classifyExactRelation(refA, refB);
+```
+
+The package-first exact measurement SDK includes:
+
+- `measureExactDistance(refA, refB)`, `measureExactAngle(refA, refB)`, and `measureExactThickness(refA, refB)`
+- `suggestExactDistancePlacement(refA, refB)`, `suggestExactAnglePlacement(refA, refB)`, and `suggestExactThicknessPlacement(refA, refB)`
+- `suggestExactRadiusPlacement(ref)` and `suggestExactDiameterPlacement(ref)`
+- `classifyExactRelation(refA, refB)`
+
+Placement helpers return stable anchors plus a working-plane frame; relation classification returns `parallel`, `perpendicular`, `concentric`, `tangent`, or `none` together with any supporting geometry DTOs.
+
+### Lower-level root Wasm reference
+
+The root Wasm carrier still exposes the lower-level retained-model entrypoints directly:
 
 ```js
 const exact = occt.OpenExactStepModel(buffer, {
@@ -133,35 +174,23 @@ const thickness = occt.MeasureExactThickness(
   exactShapeHandle, "face", 2,
   identity, identity,
 );
+
+const placement = occt.SuggestExactDistancePlacement(
+  exactModelId, exactShapeHandle, "face", 1,
+  exactShapeHandle, "face", 2,
+  identity, identity,
+);
+
+const relation = occt.ClassifyExactRelation(
+  exactModelId, exactShapeHandle, "face", 1,
+  exactShapeHandle, "face", 2,
+  identity, identity,
+);
 ```
 
-Most downstream apps should prefer the package-first adapter surface in `@tx-code/occt-core`, which keeps occurrence transforms and exact refs in JS-friendly DTOs:
+The lower-level root surface also includes `SuggestExactAnglePlacement`, `SuggestExactThicknessPlacement`, `SuggestExactRadiusPlacement`, `SuggestExactDiameterPlacement`, and `ClassifyExactRelation`.
 
-```js
-const rawExact = await core.openExactStep(buffer, {
-  fileName: "part.step",
-});
-
-const refA = {
-  exactModelId: rawExact.exactModelId,
-  exactShapeHandle: rawExact.exactGeometryBindings[0].exactShapeHandle,
-  kind: "face",
-  elementId: 1,
-  transform: [
-    1, 0, 0, 0,
-    0, 1, 0, 0,
-    0, 0, 1, 0,
-    0, 0, 0, 1,
-  ],
-};
-const refB = { ...refA, elementId: 2 };
-
-const distance = await core.measureExactDistance(refA, refB);
-const angle = await core.measureExactAngle(refA, refB);
-const thickness = await core.measureExactThickness(refA, refB);
-```
-
-Overlay rendering, selection UX, and semantic feature recognition remain downstream concerns. `occt-js` and `@tx-code/occt-core` stop at the exact Wasm/kernel and package-adapter boundary.
+Overlay rendering, selection UX, label layout, and semantic feature recognition remain downstream concerns. `occt-js` and `@tx-code/occt-core` stop at the exact Wasm/kernel and package-adapter boundary.
 
 ## Prerequisites
 
@@ -244,7 +273,7 @@ npm run test:release:root
 ```
 
 This gate is runtime-first. It covers the Windows Wasm build, root governance contracts, `@tx-code/occt-core`, and the full root runtime suite.
-That authoritative surface includes `test/exact_pairwise_measurement_contract.test.mjs`, so exact pairwise measurement stays mandatory in root release verification.
+That authoritative surface includes `test/exact_pairwise_measurement_contract.test.mjs`, `test/exact_placement_contract.test.mjs`, and `test/exact_relation_contract.test.mjs`, so the exact measurement SDK stays mandatory in root release verification.
 
 Demo, Babylon, and Tauri surfaces are conditional secondary-surface verification only. Run their checks when your release changes `demo/`, `demo/tests/`, `demo/src-tauri/`, or the Babylon package surfaces.
 

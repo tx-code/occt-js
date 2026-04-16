@@ -98,6 +98,26 @@ test("packed root package ships appearance typings needed by downstream consumer
   assert.match(typesSource, /built-in ghost opacity 0\.35/i);
 });
 
+test("packed root package ships measurement SDK docs and typings needed by downstream consumers", () => {
+  const manifest = getDryRunPackManifest();
+  const packedPaths = new Set(manifest.files.map((entry) => entry.path));
+  const typesSource = readRepoText("dist/occt-js.d.ts");
+  const readme = readRepoText("README.md");
+
+  assert.equal(packedPaths.has("README.md"), true);
+  assert.equal(packedPaths.has("dist/occt-js.d.ts"), true);
+  assert.match(readme, /## Exact Measurement SDK/);
+  assert.match(readme, /@tx-code\/occt-core/);
+  assert.match(readme, /SuggestExactDistancePlacement/);
+  assert.match(readme, /ClassifyExactRelation/);
+  assert.match(readme, /docs\/sdk\/measurement\.md/);
+  assert.match(typesSource, /export type OcctJSExactPlacementResult = OcctJSExactPlacementSuccess \| OcctJSExactPairwiseFailure;/);
+  assert.match(typesSource, /export type OcctJSExactRelationResult = OcctJSExactRelationSuccess \| OcctJSExactPairwiseFailure;/);
+  assert.match(typesSource, /SuggestExactDistancePlacement/);
+  assert.match(typesSource, /SuggestExactDiameterPlacement/);
+  assert.match(typesSource, /ClassifyExactRelation/);
+});
+
 test("package contract keeps import appearance package-first and independent of viewer surfaces", () => {
   const manifest = getDryRunPackManifest();
   const packageJson = readRepoJson("package.json");
@@ -107,6 +127,21 @@ test("package contract keeps import appearance package-first and independent of 
 
   assert.match(readme, /Apps own settings persistence/i);
   assert.match(readme, /Viewer overrides remain downstream concerns/i);
+  assert.equal(packedPaths.some((entry) => /demo|tauri|occt-babylon/i.test(entry)), false);
+  assert.equal(packageJson.files.some((entry) => /demo|tauri|occt-babylon/i.test(entry)), false);
+  assert.equal(exportPaths.some((entry) => /demo|tauri|occt-babylon/i.test(entry)), false);
+});
+
+test("package contract keeps measurement SDK package-first and independent of viewer surfaces", () => {
+  const manifest = getDryRunPackManifest();
+  const packageJson = readRepoJson("package.json");
+  const readme = readRepoText("README.md");
+  const packedPaths = manifest.files.map((entry) => entry.path);
+  const exportPaths = Object.keys(packageJson.exports ?? {});
+
+  assert.match(readme, /Most downstream JS consumers should start with the package-first adapter surface in `@tx-code\/occt-core`/);
+  assert.match(readme, /lower-level root Wasm reference/i);
+  assert.match(readme, /Overlay rendering, selection UX, label layout, and semantic feature recognition remain downstream concerns/i);
   assert.equal(packedPaths.some((entry) => /demo|tauri|occt-babylon/i.test(entry)), false);
   assert.equal(packageJson.files.some((entry) => /demo|tauri|occt-babylon/i.test(entry)), false);
   assert.equal(exportPaths.some((entry) => /demo|tauri|occt-babylon/i.test(entry)), false);
