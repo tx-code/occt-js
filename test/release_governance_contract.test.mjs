@@ -194,7 +194,8 @@ test("milestone archives preserve prior shipped requirements while active v1.4 r
   assert.match(activeRequirements, /## v1\.4 Requirements/);
   assert.match(activeRequirements, /\| PLCT-01 \| Phase 15 \| Completed \|/);
   assert.match(activeRequirements, /\| REL-01 \| Phase 16 \| Completed \|/);
-  assert.match(activeRequirements, /\| DOCS-01 \| Phase 17 \| Pending \|/);
+  assert.match(activeRequirements, /\| DOCS-01 \| Phase 17 \| Completed \|/);
+  assert.match(activeRequirements, /\| GOV-01 \| Phase 17 \| Completed \|/);
   assert.match(archivedV13Requirements, /# Requirements Archive: v1\.3 Appearance Expansion/);
   assert.match(archivedV13Requirements, /\| APPR-06 \| Phase 12 \| Completed \|/);
   assert.match(archivedV13Requirements, /\| APPR-07 \| Phase 13 \| Completed \|/);
@@ -247,6 +248,7 @@ test("project state stays aligned to the root Wasm carrier after starting v1.4",
   assert.match(requirements, /PLCT-01/);
   assert.match(requirements, /REL-02/);
   assert.match(requirements, /GOV-01/);
+  assert.match(project, /Phase 17 completed the package-first SDK docs, packaged typing\/tarball assertions, and authoritative release-gate coverage/i);
   assert.match(project, /## Evolution/);
 });
 
@@ -280,6 +282,8 @@ test("planning state reflects active v1.4 milestone", () => {
   assert.equal(existsSync(resolve(repoRoot, ".planning/phases/17-sdk-docs-governance/17-VALIDATION.md")), true);
   assert.equal(existsSync(resolve(repoRoot, ".planning/phases/17-sdk-docs-governance/17-01-PLAN.md")), true);
   assert.equal(existsSync(resolve(repoRoot, ".planning/phases/17-sdk-docs-governance/17-02-PLAN.md")), true);
+  assert.equal(existsSync(resolve(repoRoot, ".planning/phases/17-sdk-docs-governance/17-01-SUMMARY.md")), true);
+  assert.equal(existsSync(resolve(repoRoot, ".planning/phases/17-sdk-docs-governance/17-02-SUMMARY.md")), true);
 
   assert.match(state, /milestone:\s*v1\.4/i);
   assert.match(state, /milestone_name:\s*Exact Measurement Placement & Relation SDK/i);
@@ -288,12 +292,12 @@ test("planning state reflects active v1.4 milestone", () => {
   assert.match(roadmap, /\| 15\. Placement Contract Hardening \| 2\/2 \| Complete \| 2026-04-16 \|/);
   assert.match(roadmap, /\[x\] \*\*Phase 16: Exact Relation Classifier Contract\*\*/i);
   assert.match(roadmap, /\| 16\. Exact Relation Classifier Contract \| 2\/2 \| Complete \| 2026-04-16 \|/);
-  assert.match(roadmap, /\[ \] \*\*Phase 17: SDK Docs & Governance\*\*/i);
-  assert.match(roadmap, /\| 17\. SDK Docs & Governance \| 0\/2 \| Planned \| — \|/);
-  assert.match(state, /Current focus:\s*Phase 17 execution for v1\.4 Exact Measurement Placement & Relation SDK/i);
+  assert.match(roadmap, /\[x\] \*\*Phase 17: SDK Docs & Governance\*\*/i);
+  assert.match(roadmap, /\| 17\. SDK Docs & Governance \| 2\/2 \| Complete \| 2026-04-16 \|/);
+  assert.match(state, /Current focus:\s*Milestone closeout for v1\.4 Exact Measurement Placement & Relation SDK/i);
   assert.match(state, /Milestone:\s*v1\.4 Exact Measurement Placement & Relation SDK/i);
-  assert.match(state, /Phase:\s*17 \(sdk-docs-governance\) — PLANNED/i);
-  assert.match(state, /Status:\s*Phase 17 ready for execution/i);
-  assert.match(state, /Next step is `\/gsd-execute-phase 17`/i);
-  assert.match(state, /Progress:\s*\[#######---\]\s*67%/);
+  assert.match(state, /Phase:\s*17 \(sdk-docs-governance\) — COMPLETE/i);
+  assert.match(state, /Status:\s*Phase 17 complete; milestone closeout next/i);
+  assert.match(state, /Next step is `\/gsd-complete-milestone`/i);
+  assert.match(state, /Progress:\s*\[##########\]\s*100%/);
 });

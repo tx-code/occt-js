@@ -22,8 +22,8 @@
 
 - [x] **ADAPT-07**: `@tx-code/occt-core` exposes package-first placement helpers that preserve occurrence transforms and normalize root placement DTOs without hiding the runtime contract.
 - [x] **ADAPT-08**: `@tx-code/occt-core` exposes package-first relation classification that preserves occurrence transforms and normalizes supporting geometry DTOs without hiding the runtime contract.
-- [ ] **DOCS-01**: Package-first SDK docs show placement and relation workflows through `@tx-code/occt-core`, with root Wasm documented as the lower-level reference surface.
-- [ ] **GOV-01**: Root typings, tarball checks, and release verification lock the exact placement and relation SDK contract on the authoritative runtime-first release gate.
+- [x] **DOCS-01**: Package-first SDK docs show placement and relation workflows through `@tx-code/occt-core`, with root Wasm documented as the lower-level reference surface.
+- [x] **GOV-01**: Root typings, tarball checks, and release verification lock the exact placement and relation SDK contract on the authoritative runtime-first release gate.
 
 ## Future Requirements
 
@@ -60,8 +60,8 @@
 | REL-02 | Phase 16 | Completed |
 | REL-03 | Phase 16 | Completed |
 | ADAPT-08 | Phase 16 | Completed |
-| DOCS-01 | Phase 17 | Pending |
-| GOV-01 | Phase 17 | Pending |
+| DOCS-01 | Phase 17 | Completed |
+| GOV-01 | Phase 17 | Completed |
 
 **Coverage:**
 - v1.4 requirements: 11 total
@@ -70,4 +70,4 @@
 
 ---
 *Requirements defined: 2026-04-16*
-*Last updated: 2026-04-16 after completing Phase 16 exact relation classifier contract*
+*Last updated: 2026-04-16 after completing Phase 17 sdk docs and governance*

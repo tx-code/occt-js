@@ -28,10 +28,7 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 - ✓ Downstream JS code can request stable exact placement DTOs for distance, angle, radius, diameter, and thickness from the root Wasm carrier and `@tx-code/occt-core`.
 - ✓ Downstream JS code can now classify exact `parallel`, `perpendicular`, `concentric`, `tangent`, and `none` relations from the root Wasm carrier and `@tx-code/occt-core`.
 - ✓ Package-first exact relation classification now preserves occurrence transforms and explicit `none` / failure semantics without inventing viewer policy.
-
-### Active
-
-- [ ] Package-first SDK docs describe placement and relation APIs through `@tx-code/occt-core`, with root Wasm kept as the lower-level reference surface.
+- ✓ Package-first SDK docs, packaged typings, tarball checks, and the authoritative root release gate now lock the exact placement/relation surface end to end.
 
 ### Out of Scope
 
@@ -45,7 +42,7 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 
 `v1.3 Appearance Expansion` shipped on 2026-04-15 and is now archived in `.planning/milestones/`. The root runtime now exposes `appearancePreset`, `colorMode`, `defaultColor`, and `defaultOpacity`; `occt-core` forwards and normalizes that full contract without inventing viewer-side repaint behavior; and root/package docs plus `npm run test:release:root` now lock the shipped semantics in place.
 
-`v1.4 Exact Measurement Placement & Relation SDK` is now the active milestone. Phases 15 and 16 are complete: the root runtime and `occt-core` now expose additive exact placement helpers plus exact relation classification for `parallel`, `perpendicular`, `concentric`, `tangent`, and `none`, all with occurrence-safe supporting geometry DTOs. Phase 17 planning is now complete and the immediate next goal is execution for SDK docs and governance, while keeping viewer UX, feature semantics, and rendering policy outside the root runtime boundary.
+`v1.4 Exact Measurement Placement & Relation SDK` is now fully implemented. The root runtime and `occt-core` expose additive exact placement helpers plus exact relation classification for `parallel`, `perpendicular`, `concentric`, `tangent`, and `none`, all with occurrence-safe supporting geometry DTOs. Phase 17 completed the package-first SDK docs, packaged typing/tarball assertions, and authoritative release-gate coverage. The milestone is now ready for closeout while keeping viewer UX, feature semantics, and rendering policy outside the root runtime boundary.
 
 ## Current Milestone: v1.4 Exact Measurement Placement & Relation SDK
 
@@ -138,4 +135,4 @@ This document evolves at phase transitions and milestone boundaries.
 </details>
 
 ---
-*Last updated: 2026-04-16 after planning Phase 17 sdk docs and governance*
+*Last updated: 2026-04-16 after completing Phase 17 sdk docs and governance*
