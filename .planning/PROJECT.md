@@ -45,7 +45,7 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 
 `v1.3 Appearance Expansion` shipped on 2026-04-15 and is now archived in `.planning/milestones/`. The root runtime now exposes `appearancePreset`, `colorMode`, `defaultColor`, and `defaultOpacity`; `occt-core` forwards and normalizes that full contract without inventing viewer-side repaint behavior; and root/package docs plus `npm run test:release:root` now lock the shipped semantics in place.
 
-`v1.4 Exact Measurement Placement & Relation SDK` is now the active milestone. Phases 15 and 16 are complete: the root runtime and `occt-core` now expose additive exact placement helpers plus exact relation classification for `parallel`, `perpendicular`, `concentric`, `tangent`, and `none`, all with occurrence-safe supporting geometry DTOs. The immediate next goal is Phase 17 SDK docs and governance, while keeping viewer UX, feature semantics, and rendering policy outside the root runtime boundary.
+`v1.4 Exact Measurement Placement & Relation SDK` is now the active milestone. Phases 15 and 16 are complete: the root runtime and `occt-core` now expose additive exact placement helpers plus exact relation classification for `parallel`, `perpendicular`, `concentric`, `tangent`, and `none`, all with occurrence-safe supporting geometry DTOs. Phase 17 planning is now complete and the immediate next goal is execution for SDK docs and governance, while keeping viewer UX, feature semantics, and rendering policy outside the root runtime boundary.
 
 ## Current Milestone: v1.4 Exact Measurement Placement & Relation SDK
 
@@ -90,7 +90,7 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 | Use OCCT `PrsDim` as a geometry reference rather than a direct API shape | `v1.4` needs reusable placement and relation geometry, not AIS/Prs3d interactive objects in Wasm | ✓ Good |
 | Keep `kind: "none"` as a successful relation result | Downstream apps need to distinguish valid analytic non-relations from unsupported geometry without inventing wrapper-only semantics | ✓ Good |
 | Keep `occt-core` relation wrappers thin and transform-transparent | The runtime already returns occurrence-aware relation geometry, so the package layer should only validate refs, forward transforms, and attach refs on success | ✓ Good |
-| Keep SDK docs package-first with `@tx-code/occt-core` as the primary entry point | Most downstream JS consumers should start from exact refs and occurrence-safe adapters, with root Wasm documented as the lower-level reference | — Pending |
+| Keep SDK docs package-first with `@tx-code/occt-core` as the primary entry point | Most downstream JS consumers should start from exact refs and occurrence-safe adapters, with root Wasm documented as the lower-level reference | ✓ Good |
 
 ## Evolution
 
@@ -138,4 +138,4 @@ This document evolves at phase transitions and milestone boundaries.
 </details>
 
 ---
-*Last updated: 2026-04-16 after completing Phase 16 exact relation classifier contract*
+*Last updated: 2026-04-16 after planning Phase 17 sdk docs and governance*
