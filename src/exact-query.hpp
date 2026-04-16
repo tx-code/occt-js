@@ -76,6 +76,17 @@ OcctExactThicknessResult MeasureExactThickness(
     const gp_Trsf& transformA,
     const gp_Trsf& transformB);
 
+OcctExactRelationResult ClassifyExactRelation(
+    int exactModelId,
+    int exactShapeHandleA,
+    const std::string& kindA,
+    int elementIdA,
+    int exactShapeHandleB,
+    const std::string& kindB,
+    int elementIdB,
+    const gp_Trsf& transformA,
+    const gp_Trsf& transformB);
+
 OcctExactPlacementResult SuggestExactDistancePlacement(
     int exactModelId,
     int exactShapeHandleA,

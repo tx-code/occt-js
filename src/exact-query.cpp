@@ -433,10 +433,81 @@ void AddPlacementAnchor(OcctExactPlacementResult& result, const std::string& rol
     result.anchors.push_back(anchor);
 }
 
+void AddRelationAnchor(OcctExactRelationResult& result, const std::string& role, const gp_Pnt& point)
+{
+    OcctExactPlacementAnchor anchor;
+    anchor.role = role;
+    anchor.point = ToArray(point);
+    result.anchors.push_back(anchor);
+}
+
 template <typename TFailure>
 OcctExactPlacementResult ConvertPlacementFailure(const TFailure& failure)
 {
     return MakeFailure<OcctExactPlacementResult>(failure.code, failure.message);
+}
+
+OcctExactRelationResult MakeRelationSuccess(const std::string& kind)
+{
+    OcctExactRelationResult result;
+    result.ok = true;
+    result.kind = kind;
+    return result;
+}
+
+bool SetRelationFrameFromNormalAndX(
+    OcctExactRelationResult& result,
+    const gp_Pnt& origin,
+    const gp_Dir& normal,
+    const gp_Dir& preferredX)
+{
+    OcctExactPlacementFrame frame;
+    if (!BuildFrameFromNormalAndX(origin, normal, preferredX, frame)) {
+        return false;
+    }
+    result.frame = frame;
+    result.hasFrame = true;
+    return true;
+}
+
+bool SetRelationFrameFromXAxis(
+    OcctExactRelationResult& result,
+    const gp_Pnt& origin,
+    const gp_Dir& xAxis)
+{
+    OcctExactPlacementFrame frame;
+    if (!BuildFrameFromXAxis(origin, xAxis, frame)) {
+        return false;
+    }
+    result.frame = frame;
+    result.hasFrame = true;
+    return true;
+}
+
+void SetRelationDirections(OcctExactRelationResult& result, const gp_Dir& directionA, const gp_Dir& directionB)
+{
+    result.directionA = ToArray(directionA);
+    result.directionB = ToArray(directionB);
+    result.hasDirectionA = true;
+    result.hasDirectionB = true;
+}
+
+void SetRelationAxis(OcctExactRelationResult& result, const gp_Dir& axisDirection)
+{
+    result.axisDirection = ToArray(axisDirection);
+    result.hasAxisDirection = true;
+}
+
+void SetRelationCenter(OcctExactRelationResult& result, const gp_Pnt& centerPoint)
+{
+    result.center = ToArray(centerPoint);
+    result.hasCenter = true;
+}
+
+void SetRelationTangentPoint(OcctExactRelationResult& result, const gp_Pnt& tangentPoint)
+{
+    result.tangentPoint = ToArray(tangentPoint);
+    result.hasTangentPoint = true;
 }
 
 template <typename TResult>
@@ -551,6 +622,273 @@ OcctLifecycleResult ResolveCircularPlacementSupport(
     OcctLifecycleResult ok;
     ok.ok = true;
     return ok;
+}
+
+gp_Pnt SampleEdgePoint(BRepAdaptor_Curve& curve)
+{
+    return curve.Value(0.5 * (curve.FirstParameter() + curve.LastParameter()));
+}
+
+bool IsPerpendicular(const gp_Dir& left, const gp_Dir& right)
+{
+    return std::abs(CanonicalAngle(left.Angle(right)) - 1.5707963267948966) <= Precision::Angular();
+}
+
+OcctExactRelationResult ClassifyLineLineRelation(const TopoDS_Edge& edgeA, const TopoDS_Edge& edgeB)
+{
+    BRepAdaptor_Curve curveA(edgeA);
+    BRepAdaptor_Curve curveB(edgeB);
+    if (curveA.GetType() != GeomAbs_Line || curveB.GetType() != GeomAbs_Line) {
+        return MakeFailure<OcctExactRelationResult>(
+            "unsupported-geometry",
+            "Exact relation classification only supports line/line, plane/plane, circle/circle, and circle/cylinder analytic pairs."
+        );
+    }
+
+    const gp_Lin lineA = curveA.Line();
+    const gp_Lin lineB = curveB.Line();
+    const gp_Dir directionA = lineA.Direction();
+    const gp_Dir directionB = lineB.Direction();
+
+    double distanceValue = 0.0;
+    gp_Pnt pointA;
+    gp_Pnt pointB;
+    OcctLifecycleResult lifecycle = MeasureMinimumDistance(edgeA, edgeB, distanceValue, pointA, pointB);
+    if (!lifecycle.ok) {
+        return ConvertFailure<OcctExactRelationResult>(lifecycle);
+    }
+
+    if (directionA.IsParallel(directionB, Precision::Angular())) {
+        OcctExactRelationResult result = MakeRelationSuccess("parallel");
+        SetRelationDirections(result, directionA, directionB);
+        const gp_Pnt origin = Midpoint(pointA, pointB);
+        gp_Dir frameNormal;
+        if (distanceValue > Precision::Confusion()
+            && TryMakeDirection(pointA, pointB, frameNormal)
+            && SetRelationFrameFromNormalAndX(result, origin, frameNormal, directionA)) {
+            // Stable separated parallel frame established.
+        } else if (!SetRelationFrameFromXAxis(result, origin, directionA)) {
+            return MakeFailure<OcctExactRelationResult>(
+                "insufficient-precision",
+                "Exact parallel relation requires a stable working frame."
+            );
+        }
+        AddRelationAnchor(result, "attach", pointA);
+        AddRelationAnchor(result, "attach", pointB);
+        return result;
+    }
+
+    if (IsPerpendicular(directionA, directionB)) {
+        const gp_Vec normalVector(directionA.XYZ().Crossed(directionB.XYZ()));
+        if (normalVector.Magnitude() <= Precision::Confusion()) {
+            return MakeFailure<OcctExactRelationResult>(
+                "insufficient-precision",
+                "Exact perpendicular relation requires a stable working frame."
+            );
+        }
+
+        OcctExactRelationResult result = MakeRelationSuccess("perpendicular");
+        SetRelationDirections(result, directionA, directionB);
+        if (!SetRelationFrameFromNormalAndX(result, Midpoint(pointA, pointB), gp_Dir(normalVector), directionA)) {
+            return MakeFailure<OcctExactRelationResult>(
+                "insufficient-precision",
+                "Exact perpendicular relation requires a stable working frame."
+            );
+        }
+        AddRelationAnchor(result, "attach", pointA);
+        AddRelationAnchor(result, "attach", pointB);
+        return result;
+    }
+
+    return MakeRelationSuccess("none");
+}
+
+OcctExactRelationResult ClassifyPlanePlaneRelation(const TopoDS_Face& faceA, const TopoDS_Face& faceB)
+{
+    BRepAdaptor_Surface surfaceA(faceA, false);
+    BRepAdaptor_Surface surfaceB(faceB, false);
+    if (surfaceA.GetType() != GeomAbs_Plane || surfaceB.GetType() != GeomAbs_Plane) {
+        return MakeFailure<OcctExactRelationResult>(
+            "unsupported-geometry",
+            "Exact relation classification only supports line/line, plane/plane, circle/circle, and circle/cylinder analytic pairs."
+        );
+    }
+
+    const gp_Pln planeA = surfaceA.Plane();
+    const gp_Pln planeB = surfaceB.Plane();
+    const gp_Dir directionA = planeA.Axis().Direction();
+    const gp_Dir directionB = planeB.Axis().Direction();
+
+    double distanceValue = 0.0;
+    gp_Pnt pointA;
+    gp_Pnt pointB;
+    OcctLifecycleResult lifecycle = MeasureMinimumDistance(faceA, faceB, distanceValue, pointA, pointB);
+    if (!lifecycle.ok) {
+        return ConvertFailure<OcctExactRelationResult>(lifecycle);
+    }
+
+    if (directionA.IsParallel(directionB, Precision::Angular())) {
+        OcctExactRelationResult result = MakeRelationSuccess("parallel");
+        SetRelationDirections(result, directionA, directionB);
+        if (!SetRelationFrameFromNormalAndX(result, Midpoint(pointA, pointB), directionA, ChooseStableReferenceDirection(directionA))) {
+            return MakeFailure<OcctExactRelationResult>(
+                "insufficient-precision",
+                "Exact parallel relation requires a stable working frame."
+            );
+        }
+        AddRelationAnchor(result, "attach", pointA);
+        AddRelationAnchor(result, "attach", pointB);
+        return result;
+    }
+
+    if (IsPerpendicular(directionA, directionB)) {
+        const gp_Vec normalVector(directionA.XYZ().Crossed(directionB.XYZ()));
+        if (normalVector.Magnitude() <= Precision::Confusion()) {
+            return MakeFailure<OcctExactRelationResult>(
+                "insufficient-precision",
+                "Exact perpendicular relation requires a stable working frame."
+            );
+        }
+
+        OcctExactRelationResult result = MakeRelationSuccess("perpendicular");
+        SetRelationDirections(result, directionA, directionB);
+        if (!SetRelationFrameFromNormalAndX(result, Midpoint(pointA, pointB), gp_Dir(normalVector), directionA)) {
+            return MakeFailure<OcctExactRelationResult>(
+                "insufficient-precision",
+                "Exact perpendicular relation requires a stable working frame."
+            );
+        }
+        AddRelationAnchor(result, "attach", pointA);
+        AddRelationAnchor(result, "attach", pointB);
+        return result;
+    }
+
+    return MakeRelationSuccess("none");
+}
+
+OcctExactRelationResult ClassifyCircleCircleRelation(const TopoDS_Edge& edgeA, const TopoDS_Edge& edgeB)
+{
+    BRepAdaptor_Curve curveA(edgeA);
+    BRepAdaptor_Curve curveB(edgeB);
+    if (curveA.GetType() != GeomAbs_Circle || curveB.GetType() != GeomAbs_Circle) {
+        return MakeFailure<OcctExactRelationResult>(
+            "unsupported-geometry",
+            "Exact relation classification only supports line/line, plane/plane, circle/circle, and circle/cylinder analytic pairs."
+        );
+    }
+
+    const gp_Circ circleA = curveA.Circle();
+    const gp_Circ circleB = curveB.Circle();
+    const gp_Pnt centerA = circleA.Location();
+    const gp_Pnt centerB = circleB.Location();
+    const gp_Dir axisA = circleA.Axis().Direction();
+    const gp_Dir axisB = circleB.Axis().Direction();
+    const gp_Pnt anchorA = SampleEdgePoint(curveA);
+    const gp_Pnt anchorB = SampleEdgePoint(curveB);
+    const double radiusA = circleA.Radius();
+    const double radiusB = circleB.Radius();
+
+    if (!axisA.IsParallel(axisB, Precision::Angular())) {
+        return MakeRelationSuccess("none");
+    }
+
+    const gp_Vec centerDelta(centerA, centerB);
+    const double axialOffset = std::abs(centerDelta.Dot(gp_Vec(axisA)));
+    gp_Vec planarDelta = centerDelta - gp_Vec(axisA) * centerDelta.Dot(gp_Vec(axisA));
+    const double planarDistance = planarDelta.Magnitude();
+    const double tolerance = Precision::Confusion();
+
+    if (centerA.Distance(centerB) <= tolerance) {
+        gp_Dir preferredX = ChooseStableReferenceDirection(axisA);
+        TryMakeDirection(centerA, anchorA, preferredX);
+
+        OcctExactRelationResult result = MakeRelationSuccess("concentric");
+        SetRelationCenter(result, centerA);
+        SetRelationAxis(result, axisA);
+        if (!SetRelationFrameFromNormalAndX(result, centerA, axisA, preferredX)) {
+            return MakeFailure<OcctExactRelationResult>(
+                "insufficient-precision",
+                "Exact concentric relation requires a stable working frame."
+            );
+        }
+        AddRelationAnchor(result, "center", centerA);
+        AddRelationAnchor(result, "anchor", anchorA);
+        AddRelationAnchor(result, "anchor", anchorB);
+        return result;
+    }
+
+    if (axialOffset <= tolerance && planarDistance > tolerance) {
+        const gp_Dir centerDirection(planarDelta);
+        const double externalTangentDelta = std::abs(planarDistance - (radiusA + radiusB));
+        const double internalTangentDelta = std::abs(planarDistance - std::abs(radiusA - radiusB));
+        if (externalTangentDelta <= tolerance || internalTangentDelta <= tolerance) {
+            gp_Dir tangentRadial = centerDirection;
+            gp_Pnt tangentPoint = centerA.Translated(gp_Vec(centerDirection) * radiusA);
+            if (internalTangentDelta <= tolerance && radiusB > radiusA) {
+                tangentRadial.Reverse();
+                tangentPoint = centerA.Translated(gp_Vec(tangentRadial) * radiusA);
+            }
+
+            OcctExactRelationResult result = MakeRelationSuccess("tangent");
+            SetRelationAxis(result, axisA);
+            SetRelationTangentPoint(result, tangentPoint);
+            if (!SetRelationFrameFromNormalAndX(result, tangentPoint, axisA, tangentRadial)) {
+                return MakeFailure<OcctExactRelationResult>(
+                    "insufficient-precision",
+                    "Exact tangent relation requires a stable working frame."
+                );
+            }
+            AddRelationAnchor(result, "center", centerA);
+            AddRelationAnchor(result, "center", centerB);
+            AddRelationAnchor(result, "anchor", tangentPoint);
+            return result;
+        }
+    }
+
+    return MakeRelationSuccess("none");
+}
+
+OcctExactRelationResult ClassifyCircleCylinderRelation(const TopoDS_Edge& edge, const TopoDS_Face& face)
+{
+    BRepAdaptor_Curve curve(edge);
+    BRepAdaptor_Surface surface(face, false);
+    if (curve.GetType() != GeomAbs_Circle || surface.GetType() != GeomAbs_Cylinder) {
+        return MakeFailure<OcctExactRelationResult>(
+            "unsupported-geometry",
+            "Exact relation classification only supports line/line, plane/plane, circle/circle, and circle/cylinder analytic pairs."
+        );
+    }
+
+    const gp_Circ circle = curve.Circle();
+    const gp_Cylinder cylinder = surface.Cylinder();
+    const gp_Dir circleAxis = circle.Axis().Direction();
+    const gp_Dir cylinderAxis = cylinder.Axis().Direction();
+    if (!circleAxis.IsParallel(cylinderAxis, Precision::Angular())) {
+        return MakeRelationSuccess("none");
+    }
+
+    const gp_Lin cylinderAxisLine(cylinder.Location(), cylinderAxis);
+    if (cylinderAxisLine.Distance(circle.Location()) > Precision::Confusion()
+        || std::abs(circle.Radius() - cylinder.Radius()) > Precision::Confusion()) {
+        return MakeRelationSuccess("none");
+    }
+
+    gp_Dir preferredX = ChooseStableReferenceDirection(circleAxis);
+    const gp_Pnt anchorPoint = SampleEdgePoint(curve);
+    TryMakeDirection(circle.Location(), anchorPoint, preferredX);
+
+    OcctExactRelationResult result = MakeRelationSuccess("concentric");
+    SetRelationCenter(result, circle.Location());
+    SetRelationAxis(result, circleAxis);
+    if (!SetRelationFrameFromNormalAndX(result, circle.Location(), circleAxis, preferredX)) {
+        return MakeFailure<OcctExactRelationResult>(
+            "insufficient-precision",
+            "Exact concentric relation requires a stable working frame."
+        );
+    }
+    AddRelationAnchor(result, "center", circle.Location());
+    AddRelationAnchor(result, "anchor", anchorPoint);
+    return result;
 }
 
 } // namespace
@@ -1170,6 +1508,128 @@ OcctExactThicknessResult MeasureExactThickness(
         return MakeFailure<OcctExactThicknessResult>(
             "internal-error",
             failure.GetMessageString() != nullptr ? failure.GetMessageString() : "OCCT exact thickness query failed."
+        );
+    }
+}
+
+OcctExactRelationResult ClassifyExactRelation(
+    int exactModelId,
+    int exactShapeHandleA,
+    const std::string& kindA,
+    int elementIdA,
+    int exactShapeHandleB,
+    const std::string& kindB,
+    int elementIdB,
+    const gp_Trsf& transformA,
+    const gp_Trsf& transformB)
+{
+    try {
+        const std::string normalizedKindA = NormalizeKind(kindA);
+        const std::string normalizedKindB = NormalizeKind(kindB);
+
+        if (normalizedKindA == "edge" && normalizedKindB == "edge") {
+            TopoDS_Edge edgeA;
+            OcctLifecycleResult lifecycle = ResolveEdge(exactModelId, exactShapeHandleA, elementIdA, edgeA);
+            if (!lifecycle.ok) {
+                return ConvertFailure<OcctExactRelationResult>(lifecycle);
+            }
+
+            TopoDS_Edge edgeB;
+            lifecycle = ResolveEdge(exactModelId, exactShapeHandleB, elementIdB, edgeB);
+            if (!lifecycle.ok) {
+                return ConvertFailure<OcctExactRelationResult>(lifecycle);
+            }
+
+            edgeA = TopoDS::Edge(ApplyOccurrenceTransform(edgeA, transformA));
+            edgeB = TopoDS::Edge(ApplyOccurrenceTransform(edgeB, transformB));
+
+            BRepAdaptor_Curve curveA(edgeA);
+            BRepAdaptor_Curve curveB(edgeB);
+            if (curveA.GetType() == GeomAbs_Line && curveB.GetType() == GeomAbs_Line) {
+                return ClassifyLineLineRelation(edgeA, edgeB);
+            }
+            if (curveA.GetType() == GeomAbs_Circle && curveB.GetType() == GeomAbs_Circle) {
+                return ClassifyCircleCircleRelation(edgeA, edgeB);
+            }
+
+            return MakeFailure<OcctExactRelationResult>(
+                "unsupported-geometry",
+                "Exact relation classification only supports line/line, plane/plane, circle/circle, and circle/cylinder analytic pairs."
+            );
+        }
+
+        if (normalizedKindA == "face" && normalizedKindB == "face") {
+            TopoDS_Face faceA;
+            OcctLifecycleResult lifecycle = ResolveFace(exactModelId, exactShapeHandleA, elementIdA, faceA);
+            if (!lifecycle.ok) {
+                return ConvertFailure<OcctExactRelationResult>(lifecycle);
+            }
+
+            TopoDS_Face faceB;
+            lifecycle = ResolveFace(exactModelId, exactShapeHandleB, elementIdB, faceB);
+            if (!lifecycle.ok) {
+                return ConvertFailure<OcctExactRelationResult>(lifecycle);
+            }
+
+            faceA = TopoDS::Face(ApplyOccurrenceTransform(faceA, transformA));
+            faceB = TopoDS::Face(ApplyOccurrenceTransform(faceB, transformB));
+
+            BRepAdaptor_Surface surfaceA(faceA, false);
+            BRepAdaptor_Surface surfaceB(faceB, false);
+            if (surfaceA.GetType() == GeomAbs_Plane && surfaceB.GetType() == GeomAbs_Plane) {
+                return ClassifyPlanePlaneRelation(faceA, faceB);
+            }
+
+            return MakeFailure<OcctExactRelationResult>(
+                "unsupported-geometry",
+                "Exact relation classification only supports line/line, plane/plane, circle/circle, and circle/cylinder analytic pairs."
+            );
+        }
+
+        if (normalizedKindA == "edge" && normalizedKindB == "face") {
+            TopoDS_Edge edgeA;
+            OcctLifecycleResult lifecycle = ResolveEdge(exactModelId, exactShapeHandleA, elementIdA, edgeA);
+            if (!lifecycle.ok) {
+                return ConvertFailure<OcctExactRelationResult>(lifecycle);
+            }
+
+            TopoDS_Face faceB;
+            lifecycle = ResolveFace(exactModelId, exactShapeHandleB, elementIdB, faceB);
+            if (!lifecycle.ok) {
+                return ConvertFailure<OcctExactRelationResult>(lifecycle);
+            }
+
+            edgeA = TopoDS::Edge(ApplyOccurrenceTransform(edgeA, transformA));
+            faceB = TopoDS::Face(ApplyOccurrenceTransform(faceB, transformB));
+            return ClassifyCircleCylinderRelation(edgeA, faceB);
+        }
+
+        if (normalizedKindA == "face" && normalizedKindB == "edge") {
+            TopoDS_Face faceA;
+            OcctLifecycleResult lifecycle = ResolveFace(exactModelId, exactShapeHandleA, elementIdA, faceA);
+            if (!lifecycle.ok) {
+                return ConvertFailure<OcctExactRelationResult>(lifecycle);
+            }
+
+            TopoDS_Edge edgeB;
+            lifecycle = ResolveEdge(exactModelId, exactShapeHandleB, elementIdB, edgeB);
+            if (!lifecycle.ok) {
+                return ConvertFailure<OcctExactRelationResult>(lifecycle);
+            }
+
+            faceA = TopoDS::Face(ApplyOccurrenceTransform(faceA, transformA));
+            edgeB = TopoDS::Edge(ApplyOccurrenceTransform(edgeB, transformB));
+            return ClassifyCircleCylinderRelation(edgeB, faceA);
+        }
+
+        return MakeFailure<OcctExactRelationResult>(
+            "unsupported-geometry",
+            "Exact relation classification only supports line/line, plane/plane, circle/circle, and circle/cylinder analytic pairs."
+        );
+    } catch (const Standard_Failure& failure) {
+        return MakeFailure<OcctExactRelationResult>(
+            "internal-error",
+            failure.GetMessageString() != nullptr ? failure.GetMessageString() : "OCCT exact relation classification failed."
         );
     }
 }

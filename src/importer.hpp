@@ -210,6 +210,26 @@ struct OcctExactPlacementResult {
     bool hasAxisDirection = false;
 };
 
+struct OcctExactRelationResult {
+    bool ok = false;
+    std::string code;
+    std::string message;
+    std::string kind;
+    OcctExactPlacementFrame frame;
+    bool hasFrame = false;
+    std::vector<OcctExactPlacementAnchor> anchors;
+    std::array<double, 3> directionA = { 0.0, 0.0, 0.0 };
+    bool hasDirectionA = false;
+    std::array<double, 3> directionB = { 0.0, 0.0, 0.0 };
+    bool hasDirectionB = false;
+    std::array<double, 3> center = { 0.0, 0.0, 0.0 };
+    bool hasCenter = false;
+    std::array<double, 3> axisDirection = { 0.0, 0.0, 0.0 };
+    bool hasAxisDirection = false;
+    std::array<double, 3> tangentPoint = { 0.0, 0.0, 0.0 };
+    bool hasTangentPoint = false;
+};
+
 struct ImportParams {
     static constexpr double kCadGhostedOpacity = 0.35;
 

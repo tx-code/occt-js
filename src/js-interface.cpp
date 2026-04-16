@@ -702,6 +702,43 @@ val ExactPlacementResultToVal(const OcctExactPlacementResult& result)
     return obj;
 }
 
+val ExactRelationResultToVal(const OcctExactRelationResult& result)
+{
+    if (!result.ok) {
+        return ExactFailureToVal(result);
+    }
+
+    val obj = val::object();
+    obj.set("ok", true);
+    obj.set("kind", result.kind);
+    if (result.hasFrame) {
+        obj.set("frame", ExactPlacementFrameToVal(result.frame));
+    }
+    if (!result.anchors.empty()) {
+        val anchors = val::array();
+        for (const auto& anchor : result.anchors) {
+            anchors.call<void>("push", ExactPlacementAnchorToVal(anchor));
+        }
+        obj.set("anchors", anchors);
+    }
+    if (result.hasDirectionA) {
+        obj.set("directionA", Vector3ToVal(result.directionA));
+    }
+    if (result.hasDirectionB) {
+        obj.set("directionB", Vector3ToVal(result.directionB));
+    }
+    if (result.hasCenter) {
+        obj.set("center", Vector3ToVal(result.center));
+    }
+    if (result.hasAxisDirection) {
+        obj.set("axisDirection", Vector3ToVal(result.axisDirection));
+    }
+    if (result.hasTangentPoint) {
+        obj.set("tangentPoint", Vector3ToVal(result.tangentPoint));
+    }
+    return obj;
+}
+
 val ExactGeometryBindingsToVal(size_t geometryCount)
 {
     val bindings = val::array();
@@ -1075,6 +1112,32 @@ val MeasureExactThicknessBinding(
     );
 }
 
+val ClassifyExactRelationBinding(
+    int exactModelId,
+    int exactShapeHandleA,
+    const std::string& kindA,
+    int elementIdA,
+    int exactShapeHandleB,
+    const std::string& kindB,
+    int elementIdB,
+    const val& jsTransformA,
+    const val& jsTransformB)
+{
+    return ExactRelationResultToVal(
+        ClassifyExactRelation(
+            exactModelId,
+            exactShapeHandleA,
+            kindA,
+            elementIdA,
+            exactShapeHandleB,
+            kindB,
+            elementIdB,
+            MatrixToTrsf(ParseMatrix4(jsTransformA)),
+            MatrixToTrsf(ParseMatrix4(jsTransformB))
+        )
+    );
+}
+
 val SuggestExactDistancePlacementBinding(
     int exactModelId,
     int exactShapeHandleA,
@@ -1197,6 +1260,7 @@ EMSCRIPTEN_BINDINGS(occtjs)
     function("MeasureExactDistance", &MeasureExactDistanceBinding);
     function("MeasureExactAngle", &MeasureExactAngleBinding);
     function("MeasureExactThickness", &MeasureExactThicknessBinding);
+    function("ClassifyExactRelation", &ClassifyExactRelationBinding);
     function("SuggestExactDistancePlacement", &SuggestExactDistancePlacementBinding);
     function("SuggestExactAnglePlacement", &SuggestExactAnglePlacementBinding);
     function("SuggestExactThicknessPlacement", &SuggestExactThicknessPlacementBinding);
