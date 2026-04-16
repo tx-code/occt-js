@@ -178,6 +178,62 @@ function findRepeatedGeometryOccurrencePair(exactModel) {
   return null;
 }
 
+async function findCircularOccurrenceRef(core, exactModel) {
+  const occurrences = collectGeometryOccurrences(exactModel.rootNodes);
+  for (const occurrence of occurrences) {
+    const geometry = exactModel.geometries.find((entry) => entry.geometryId === occurrence.geometryId);
+    if (!geometry) {
+      continue;
+    }
+
+    for (const edge of geometry.edges ?? []) {
+      const ref = resolveExactElementRef(exactModel, {
+        nodeId: occurrence.nodeId,
+        geometryId: occurrence.geometryId,
+        kind: "edge",
+        elementId: edge.id,
+      });
+      if (ref?.ok !== true) {
+        continue;
+      }
+      const family = await core.getExactGeometryType(ref);
+      if (family?.ok === true && family.family === "circle") {
+        return ref;
+      }
+    }
+
+    for (const face of geometry.faces ?? []) {
+      const ref = resolveExactElementRef(exactModel, {
+        nodeId: occurrence.nodeId,
+        geometryId: occurrence.geometryId,
+        kind: "face",
+        elementId: face.id,
+      });
+      if (ref?.ok !== true) {
+        continue;
+      }
+      const family = await core.getExactGeometryType(ref);
+      if (family?.ok === true && family.family === "cylinder") {
+        return ref;
+      }
+    }
+  }
+
+  return null;
+}
+
+function translateTransform(transform, tx, ty, tz) {
+  const output = transform.slice();
+  output[12] += tx;
+  output[13] += ty;
+  output[14] += tz;
+  return output;
+}
+
+function translatePoint(point, tx, ty, tz) {
+  return [point[0] + tx, point[1] + ty, point[2] + tz];
+}
+
 test("createOcctCore resolves repeated geometry occurrences into distinct exact refs", async () => {
   const factory = loadOcctFactory();
   const wasmBinary = new Uint8Array(await readFile(new URL("../../../dist/occt-js.wasm", import.meta.url)));
@@ -344,6 +400,98 @@ test("occt-core pairwise wrappers honor occurrence transforms for repeated geome
   assert.deepEqual(distance?.refA, first);
   assert.deepEqual(distance?.refB, second);
 
+  assert.deepEqual(await core.releaseExactModel(exactModel.exactModelId), { ok: true });
+});
+
+test("occt-core pairwise placement wrappers honor occurrence transforms for repeated geometry", async () => {
+  const factory = loadOcctFactory();
+  const wasmBinary = new Uint8Array(await readFile(new URL("../../../dist/occt-js.wasm", import.meta.url)));
+  const assemblyBytes = new Uint8Array(await readFile(new URL("../../../test/assembly.step", import.meta.url)));
+
+  const core = createOcctCore({
+    factory,
+    wasmBinary,
+  });
+
+  const rawExact = await core.openExactStep(assemblyBytes, {
+    fileName: "assembly.step",
+  });
+  const exactModel = normalizeExactOpenResult(rawExact, {
+    sourceFileName: "assembly.step",
+  });
+  const repeated = findRepeatedGeometryOccurrencePair(exactModel);
+
+  assert.ok(repeated, "assembly.step should expose repeated geometry under at least two distinct nodeIds");
+
+  const geometry = exactModel.geometries.find((entry) => entry.geometryId === repeated.geometryId);
+  assert.ok(geometry?.faces?.length, "the repeated geometry should expose at least one face");
+
+  const faceId = geometry.faces[0].id;
+  const first = resolveExactElementRef(exactModel, {
+    nodeId: repeated.left.nodeId,
+    geometryId: repeated.geometryId,
+    kind: "face",
+    elementId: faceId,
+  });
+  const second = resolveExactElementRef(exactModel, {
+    nodeId: repeated.right.nodeId,
+    geometryId: repeated.geometryId,
+    kind: "face",
+    elementId: faceId,
+  });
+
+  assert.equal(first.ok, true);
+  assert.equal(second.ok, true);
+
+  const placement = await core.suggestExactDistancePlacement(first, second);
+
+  assert.equal(placement?.ok, true);
+  assert.equal(placement?.kind, "distance");
+  assert.equal(typeof placement?.value, "number");
+  assert.ok(Array.isArray(placement?.anchors) && placement.anchors.length >= 2);
+  assert.ok(Array.isArray(placement?.frame?.origin) && placement.frame.origin.length === 3);
+  assert.deepEqual(placement?.refA, first);
+  assert.deepEqual(placement?.refB, second);
+
+  assert.deepEqual(await core.releaseExactModel(exactModel.exactModelId), { ok: true });
+});
+
+test("occt-core placement wrappers normalize local circular placement into occurrence space", async () => {
+  const factory = loadOcctFactory();
+  const wasmBinary = new Uint8Array(await readFile(new URL("../../../dist/occt-js.wasm", import.meta.url)));
+  const brepBytes = new Uint8Array(await readFile(new URL("../../../test/as1_pe_203.brep", import.meta.url)));
+
+  const core = createOcctCore({
+    factory,
+    wasmBinary,
+  });
+
+  const rawExact = await core.openExactBrep(brepBytes, {
+    fileName: "as1_pe_203.brep",
+  });
+  const exactModel = normalizeExactOpenResult(rawExact, {
+    sourceFileName: "as1_pe_203.brep",
+  });
+  const baseRef = await findCircularOccurrenceRef(core, exactModel);
+
+  assert.ok(baseRef?.ok === true, "as1_pe_203.brep should expose at least one circular or cylindrical exact ref");
+
+  const shiftedRef = {
+    ...baseRef,
+    transform: translateTransform(baseRef.transform, 40, -20, 15),
+  };
+
+  const basePlacement = await core.suggestExactRadiusPlacement(baseRef);
+  const shiftedPlacement = await core.suggestExactRadiusPlacement(shiftedRef);
+
+  assert.equal(basePlacement?.ok, true);
+  assert.equal(shiftedPlacement?.ok, true);
+  assert.equal(basePlacement?.kind, "radius");
+  assert.equal(shiftedPlacement?.kind, "radius");
+  assert.deepEqual(shiftedPlacement?.frame.origin, translatePoint(basePlacement.frame.origin, 40, -20, 15));
+  assert.deepEqual(shiftedPlacement?.anchors[0].point, translatePoint(basePlacement.anchors[0].point, 40, -20, 15));
+  assert.deepEqual(shiftedPlacement?.anchors[1].point, translatePoint(basePlacement.anchors[1].point, 40, -20, 15));
+  assert.deepEqual(shiftedPlacement?.axisDirection, basePlacement.axisDirection);
   assert.deepEqual(await core.releaseExactModel(exactModel.exactModelId), { ok: true });
 });
 

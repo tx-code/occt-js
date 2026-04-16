@@ -966,6 +966,325 @@ describe("createOcctCore", () => {
     });
   });
 
+  it("wraps suggestExactDistancePlacement(refA, refB) through occurrence-scoped exact refs", async () => {
+    const calls = [];
+    const refA = {
+      exactModelId: 17,
+      exactShapeHandle: 33,
+      nodeId: "node-a",
+      geometryId: "geo_0",
+      kind: "face",
+      elementId: 7,
+      transform: [
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        10, 20, 30, 1,
+      ],
+    };
+    const refB = {
+      exactModelId: 17,
+      exactShapeHandle: 33,
+      nodeId: "node-b",
+      geometryId: "geo_0",
+      kind: "face",
+      elementId: 8,
+      transform: [
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        110, 20, 30, 1,
+      ],
+    };
+    const core = createOcctCore({
+      factory: async () => ({
+        SuggestExactDistancePlacement: (...args) => {
+          calls.push(args);
+          return {
+            ok: true,
+            kind: "distance",
+            value: 100,
+            frame: {
+              origin: [60, 20, 30],
+              normal: [0, 0, 1],
+              xDir: [1, 0, 0],
+              yDir: [0, 1, 0],
+            },
+            anchors: [
+              { role: "attach", point: [10, 20, 30] },
+              { role: "attach", point: [110, 20, 30] },
+            ],
+          };
+        },
+      }),
+    });
+
+    const result = await core.suggestExactDistancePlacement(refA, refB);
+
+    assert.deepEqual(calls, [[
+      17,
+      33,
+      "face",
+      7,
+      33,
+      "face",
+      8,
+      refA.transform,
+      refB.transform,
+    ]]);
+    assert.deepEqual(result, {
+      ok: true,
+      kind: "distance",
+      value: 100,
+      frame: {
+        origin: [60, 20, 30],
+        normal: [0, 0, 1],
+        xDir: [1, 0, 0],
+        yDir: [0, 1, 0],
+      },
+      anchors: [
+        { role: "attach", point: [10, 20, 30] },
+        { role: "attach", point: [110, 20, 30] },
+      ],
+      refA,
+      refB,
+    });
+  });
+
+  it("wraps suggestExactAnglePlacement(refA, refB) and suggestExactThicknessPlacement(refA, refB) through occurrence-scoped refs", async () => {
+    const angleCalls = [];
+    const thicknessCalls = [];
+    const refA = {
+      exactModelId: 17,
+      exactShapeHandle: 33,
+      nodeId: "node-a",
+      geometryId: "geo_0",
+      kind: "edge",
+      elementId: 5,
+      transform: [
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        10, 20, 30, 1,
+      ],
+    };
+    const refB = {
+      exactModelId: 17,
+      exactShapeHandle: 33,
+      nodeId: "node-b",
+      geometryId: "geo_0",
+      kind: "edge",
+      elementId: 6,
+      transform: [
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        10, 20, 30, 1,
+      ],
+    };
+    const faceRefA = { ...refA, kind: "face", elementId: 7 };
+    const faceRefB = { ...refB, kind: "face", elementId: 8 };
+    const core = createOcctCore({
+      factory: async () => ({
+        SuggestExactAnglePlacement: (...args) => {
+          angleCalls.push(args);
+          return {
+            ok: true,
+            kind: "angle",
+            value: Math.PI / 2,
+            frame: {
+              origin: [10, 20, 30],
+              normal: [0, 0, 1],
+              xDir: [1, 0, 0],
+              yDir: [0, 1, 0],
+            },
+            anchors: [
+              { role: "anchor", point: [10, 20, 30] },
+              { role: "attach", point: [12, 20, 30] },
+              { role: "attach", point: [10, 24, 30] },
+            ],
+            directionA: [1, 0, 0],
+            directionB: [0, 1, 0],
+          };
+        },
+        SuggestExactThicknessPlacement: (...args) => {
+          thicknessCalls.push(args);
+          return {
+            ok: true,
+            kind: "thickness",
+            value: 100,
+            frame: {
+              origin: [10, 20, 80],
+              normal: [1, 0, 0],
+              xDir: [0, 1, 0],
+              yDir: [0, 0, 1],
+            },
+            anchors: [
+              { role: "attach", point: [10, 20, 30] },
+              { role: "attach", point: [10, 20, 130] },
+            ],
+          };
+        },
+      }),
+    });
+
+    const angle = await core.suggestExactAnglePlacement(refA, refB);
+    const thickness = await core.suggestExactThicknessPlacement(faceRefA, faceRefB);
+
+    assert.deepEqual(angleCalls, [[
+      17,
+      33,
+      "edge",
+      5,
+      33,
+      "edge",
+      6,
+      refA.transform,
+      refB.transform,
+    ]]);
+    assert.deepEqual(thicknessCalls, [[
+      17,
+      33,
+      "face",
+      7,
+      33,
+      "face",
+      8,
+      faceRefA.transform,
+      faceRefB.transform,
+    ]]);
+    assert.deepEqual(angle, {
+      ok: true,
+      kind: "angle",
+      value: Math.PI / 2,
+      frame: {
+        origin: [10, 20, 30],
+        normal: [0, 0, 1],
+        xDir: [1, 0, 0],
+        yDir: [0, 1, 0],
+      },
+      anchors: [
+        { role: "anchor", point: [10, 20, 30] },
+        { role: "attach", point: [12, 20, 30] },
+        { role: "attach", point: [10, 24, 30] },
+      ],
+      directionA: [1, 0, 0],
+      directionB: [0, 1, 0],
+      refA,
+      refB,
+    });
+    assert.deepEqual(thickness, {
+      ok: true,
+      kind: "thickness",
+      value: 100,
+      frame: {
+        origin: [10, 20, 80],
+        normal: [1, 0, 0],
+        xDir: [0, 1, 0],
+        yDir: [0, 0, 1],
+      },
+      anchors: [
+        { role: "attach", point: [10, 20, 30] },
+        { role: "attach", point: [10, 20, 130] },
+      ],
+      refA: faceRefA,
+      refB: faceRefB,
+    });
+  });
+
+  it("transforms exact circular placement primitives into occurrence space", async () => {
+    const ref = {
+      exactModelId: 17,
+      exactShapeHandle: 33,
+      nodeId: "node-a",
+      geometryId: "geo_0",
+      kind: "edge",
+      elementId: 5,
+      transform: [
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        10, 20, 30, 1,
+      ],
+    };
+    const core = createOcctCore({
+      factory: async () => ({
+        SuggestExactRadiusPlacement: () => ({
+          ok: true,
+          kind: "radius",
+          value: 5,
+          frame: {
+            origin: [1, 2, 3],
+            normal: [0, 0, 1],
+            xDir: [1, 0, 0],
+            yDir: [0, 1, 0],
+          },
+          anchors: [
+            { role: "center", point: [1, 2, 3] },
+            { role: "anchor", point: [6, 2, 3] },
+          ],
+          axisDirection: [0, 0, 1],
+        }),
+        SuggestExactDiameterPlacement: () => ({
+          ok: true,
+          kind: "diameter",
+          value: 10,
+          frame: {
+            origin: [1, 2, 3],
+            normal: [0, 0, 1],
+            xDir: [1, 0, 0],
+            yDir: [0, 1, 0],
+          },
+          anchors: [
+            { role: "center", point: [1, 2, 3] },
+            { role: "anchor", point: [6, 2, 3] },
+            { role: "anchor", point: [-4, 2, 3] },
+          ],
+          axisDirection: [0, 0, 1],
+        }),
+      }),
+    });
+
+    const radius = await core.suggestExactRadiusPlacement(ref);
+    const diameter = await core.suggestExactDiameterPlacement(ref);
+
+    assert.deepEqual(radius, {
+      ok: true,
+      kind: "radius",
+      value: 5,
+      frame: {
+        origin: [11, 22, 33],
+        normal: [0, 0, 1],
+        xDir: [1, 0, 0],
+        yDir: [0, 1, 0],
+      },
+      anchors: [
+        { role: "center", point: [11, 22, 33] },
+        { role: "anchor", point: [16, 22, 33] },
+      ],
+      axisDirection: [0, 0, 1],
+      ref,
+    });
+    assert.deepEqual(diameter, {
+      ok: true,
+      kind: "diameter",
+      value: 10,
+      frame: {
+        origin: [11, 22, 33],
+        normal: [0, 0, 1],
+        xDir: [1, 0, 0],
+        yDir: [0, 1, 0],
+      },
+      anchors: [
+        { role: "center", point: [11, 22, 33] },
+        { role: "anchor", point: [16, 22, 33] },
+        { role: "anchor", point: [6, 22, 33] },
+      ],
+      axisDirection: [0, 0, 1],
+      ref,
+    });
+  });
+
   it("transforms exact radius primitives into occurrence space", async () => {
     const ref = {
       exactModelId: 17,
