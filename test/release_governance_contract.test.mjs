@@ -146,7 +146,7 @@ test("milestone archives preserve prior shipped requirements while active v1.4 r
   assert.match(activeRequirements, /# Requirements: occt-js/);
   assert.match(activeRequirements, /## v1\.4 Requirements/);
   assert.match(activeRequirements, /\| PLCT-01 \| Phase 15 \| Completed \|/);
-  assert.match(activeRequirements, /\| REL-01 \| Phase 16 \| Pending \|/);
+  assert.match(activeRequirements, /\| REL-01 \| Phase 16 \| Completed \|/);
   assert.match(activeRequirements, /\| DOCS-01 \| Phase 17 \| Pending \|/);
   assert.match(archivedV13Requirements, /# Requirements Archive: v1\.3 Appearance Expansion/);
   assert.match(archivedV13Requirements, /\| APPR-06 \| Phase 12 \| Completed \|/);
@@ -225,6 +225,8 @@ test("planning state reflects active v1.4 milestone", () => {
   assert.equal(existsSync(resolve(repoRoot, ".planning/phases/16-exact-relation-classifier-contract/16-VALIDATION.md")), true);
   assert.equal(existsSync(resolve(repoRoot, ".planning/phases/16-exact-relation-classifier-contract/16-01-PLAN.md")), true);
   assert.equal(existsSync(resolve(repoRoot, ".planning/phases/16-exact-relation-classifier-contract/16-02-PLAN.md")), true);
+  assert.equal(existsSync(resolve(repoRoot, ".planning/phases/16-exact-relation-classifier-contract/16-01-SUMMARY.md")), true);
+  assert.equal(existsSync(resolve(repoRoot, ".planning/phases/16-exact-relation-classifier-contract/16-02-SUMMARY.md")), true);
   assert.equal(existsSync(resolve(repoRoot, ".planning/phases/17-sdk-docs-governance")), false);
 
   assert.match(state, /milestone:\s*v1\.4/i);
@@ -232,10 +234,12 @@ test("planning state reflects active v1.4 milestone", () => {
   assert.match(state, /status:\s*executing/i);
   assert.match(roadmap, /\[x\] \*\*Phase 15: Placement Contract Hardening\*\*/i);
   assert.match(roadmap, /\| 15\. Placement Contract Hardening \| 2\/2 \| Complete \| 2026-04-16 \|/);
-  assert.match(state, /Current focus:\s*Phase 16 execution for v1\.4 Exact Measurement Placement & Relation SDK/i);
+  assert.match(roadmap, /\[x\] \*\*Phase 16: Exact Relation Classifier Contract\*\*/i);
+  assert.match(roadmap, /\| 16\. Exact Relation Classifier Contract \| 2\/2 \| Complete \| 2026-04-16 \|/);
+  assert.match(state, /Current focus:\s*Phase 17 planning for v1\.4 Exact Measurement Placement & Relation SDK/i);
   assert.match(state, /Milestone:\s*v1\.4 Exact Measurement Placement & Relation SDK/i);
-  assert.match(state, /Phase:\s*16 \(exact-relation-classifier-contract\) — PLANNED/i);
-  assert.match(state, /Status:\s*Phase 16 ready for execution/i);
-  assert.match(state, /Next step is `\/gsd-execute-phase 16`/i);
-  assert.match(state, /Progress:\s*\[#####-----\]\s*50%/);
+  assert.match(state, /Phase:\s*16 \(exact-relation-classifier-contract\) — COMPLETE/i);
+  assert.match(state, /Status:\s*Phase 16 complete; Phase 17 next/i);
+  assert.match(state, /Next step is `\/gsd-plan-phase 17`/i);
+  assert.match(state, /Progress:\s*\[#######---\]\s*67%/);
 });

@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Exact Measurement Placement & Relation SDK
 status: executing
-stopped_at: Phase 16 planning complete; next step is `/gsd-execute-phase 16`
-last_updated: "2026-04-16T01:18:01.2586579Z"
-last_activity: 2026-04-16 -- Phase 16 planning complete
+stopped_at: Phase 16 complete; next step is `/gsd-plan-phase 17`
+last_updated: "2026-04-16T05:42:00.0000000Z"
+last_activity: 2026-04-16 -- Phase 16 complete
 progress:
   total_phases: 3
-  completed_phases: 1
-  total_plans: 4
-  completed_plans: 2
-  percent: 50
+  completed_phases: 2
+  total_plans: 6
+  completed_plans: 4
+  percent: 67
 ---
 
 # Project State
@@ -21,24 +21,25 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-16)
 
 Core value: Downstream applications can reliably consume the OCCT Wasm runtime and its root API contract without build drift or packaging surprises.
-Current focus: Phase 16 execution for v1.4 Exact Measurement Placement & Relation SDK
+Current focus: Phase 17 planning for v1.4 Exact Measurement Placement & Relation SDK
 
 ## Current Position
 
 Milestone: v1.4 Exact Measurement Placement & Relation SDK
-Phase: 16 (exact-relation-classifier-contract) — PLANNED
-Plan: 0 of 2 complete
-Status: Phase 16 ready for execution
-Last activity: 2026-04-16 -- Phase 16 planning complete
+Phase: 16 (exact-relation-classifier-contract) — COMPLETE
+Plan: 2 of 2 complete
+Status: Phase 16 complete; Phase 17 next
+Last activity: 2026-04-16 -- Phase 16 complete
 
-Progress: [#####-----] 50%
+Progress: [#######---] 67%
 
 ## Milestone Snapshot
 
 - `v1.4 Exact Measurement Placement & Relation SDK` is active and starts at phases 15-17.
 - The root runtime already ships exact lifecycle, primitive queries, and pairwise distance/angle/thickness; the new work is additive placement and relation contract hardening.
 - Phase 15 is now complete and shipped additive placement helpers plus occurrence-safe `occt-core` wrappers for distance, angle, thickness, radius, and diameter.
-- Phase 16 planning is now complete and splits the remaining runtime work into root relation semantics first, then `occt-core` adapter parity.
+- Phase 16 is now complete and ships exact relation classification plus package-first `occt-core` parity for `parallel`, `perpendicular`, `concentric`, `tangent`, and `none`.
+- Phase 17 is the remaining milestone work and will focus on SDK docs, typings, tarball guidance, and release governance.
 - OCCT `PrsDim` is the geometry reference for placement and relation behavior, but Wasm stays away from AIS/Prs3d interactive objects.
 - Package-first SDK docs will center on `@tx-code/occt-core`, with root Wasm documented as the lower-level reference surface.
 
@@ -59,10 +60,10 @@ Progress: [#####-----] 50%
 ## Blockers/Concerns
 
 - No active blockers.
-- Next step is `/gsd-execute-phase 16`.
+- Next step is `/gsd-plan-phase 17`.
 
 ## Session Continuity
 
 Last session: 2026-04-16
-Stopped at: Phase 16 planning complete; next step is `/gsd-execute-phase 16`
+Stopped at: Phase 16 complete; next step is `/gsd-plan-phase 17`
 Resume file: .planning/ROADMAP.md

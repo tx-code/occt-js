@@ -14,14 +14,14 @@
 
 ### Relation Contract
 
-- [ ] **REL-01**: Downstream JS code can classify parallel or perpendicular relations between compatible exact refs and receive supporting geometry needed for presentation.
-- [ ] **REL-02**: Downstream JS code can classify concentric or tangent relations between compatible exact refs and receive supporting geometry needed for presentation.
-- [ ] **REL-03**: The relation classifier returns explicit `none` for valid non-related refs and uses shared typed failures for invalid or unsupported cases.
+- [x] **REL-01**: Downstream JS code can classify parallel or perpendicular relations between compatible exact refs and receive supporting geometry needed for presentation.
+- [x] **REL-02**: Downstream JS code can classify concentric or tangent relations between compatible exact refs and receive supporting geometry needed for presentation.
+- [x] **REL-03**: The relation classifier returns explicit `none` for valid non-related refs and uses shared typed failures for invalid or unsupported cases.
 
 ### Adapter & SDK
 
 - [x] **ADAPT-07**: `@tx-code/occt-core` exposes package-first placement helpers that preserve occurrence transforms and normalize root placement DTOs without hiding the runtime contract.
-- [ ] **ADAPT-08**: `@tx-code/occt-core` exposes package-first relation classification that preserves occurrence transforms and normalizes supporting geometry DTOs without hiding the runtime contract.
+- [x] **ADAPT-08**: `@tx-code/occt-core` exposes package-first relation classification that preserves occurrence transforms and normalizes supporting geometry DTOs without hiding the runtime contract.
 - [ ] **DOCS-01**: Package-first SDK docs show placement and relation workflows through `@tx-code/occt-core`, with root Wasm documented as the lower-level reference surface.
 - [ ] **GOV-01**: Root typings, tarball checks, and release verification lock the exact placement and relation SDK contract on the authoritative runtime-first release gate.
 
@@ -56,10 +56,10 @@
 | PLCT-03 | Phase 15 | Completed |
 | PLCT-04 | Phase 15 | Completed |
 | ADAPT-07 | Phase 15 | Completed |
-| REL-01 | Phase 16 | Pending |
-| REL-02 | Phase 16 | Pending |
-| REL-03 | Phase 16 | Pending |
-| ADAPT-08 | Phase 16 | Pending |
+| REL-01 | Phase 16 | Completed |
+| REL-02 | Phase 16 | Completed |
+| REL-03 | Phase 16 | Completed |
+| ADAPT-08 | Phase 16 | Completed |
 | DOCS-01 | Phase 17 | Pending |
 | GOV-01 | Phase 17 | Pending |
 
@@ -70,4 +70,4 @@
 
 ---
 *Requirements defined: 2026-04-16*
-*Last updated: 2026-04-16 after completing Phase 15 placement contract hardening*
+*Last updated: 2026-04-16 after completing Phase 16 exact relation classifier contract*

@@ -26,10 +26,11 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 - ✓ Downstream JS code can select named import appearance presets that map fallback color and opacity policy without requiring a viewer-side recolor pass.
 - ✓ Expanded appearance options now stay aligned across root Wasm, `occt-core`, typings, docs, and release verification.
 - ✓ Downstream JS code can request stable exact placement DTOs for distance, angle, radius, diameter, and thickness from the root Wasm carrier and `@tx-code/occt-core`.
+- ✓ Downstream JS code can now classify exact `parallel`, `perpendicular`, `concentric`, `tangent`, and `none` relations from the root Wasm carrier and `@tx-code/occt-core`.
+- ✓ Package-first exact relation classification now preserves occurrence transforms and explicit `none` / failure semantics without inventing viewer policy.
 
 ### Active
 
-- [ ] Downstream JS code can classify common exact geometric relations such as parallel, perpendicular, concentric, and tangent without depending on viewer-specific packages.
 - [ ] Package-first SDK docs describe placement and relation APIs through `@tx-code/occt-core`, with root Wasm kept as the lower-level reference surface.
 
 ### Out of Scope
@@ -44,7 +45,7 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 
 `v1.3 Appearance Expansion` shipped on 2026-04-15 and is now archived in `.planning/milestones/`. The root runtime now exposes `appearancePreset`, `colorMode`, `defaultColor`, and `defaultOpacity`; `occt-core` forwards and normalizes that full contract without inventing viewer-side repaint behavior; and root/package docs plus `npm run test:release:root` now lock the shipped semantics in place.
 
-`v1.4 Exact Measurement Placement & Relation SDK` is now the active milestone. Phase 15 is complete: the root runtime and `occt-core` now expose additive exact placement helpers for distance, angle, thickness, radius, and diameter, with occurrence-safe frames and anchors. The immediate next goal is Phase 16 relation classification, while keeping viewer UX, feature semantics, and rendering policy outside the root runtime boundary.
+`v1.4 Exact Measurement Placement & Relation SDK` is now the active milestone. Phases 15 and 16 are complete: the root runtime and `occt-core` now expose additive exact placement helpers plus exact relation classification for `parallel`, `perpendicular`, `concentric`, `tangent`, and `none`, all with occurrence-safe supporting geometry DTOs. The immediate next goal is Phase 17 SDK docs and governance, while keeping viewer UX, feature semantics, and rendering policy outside the root runtime boundary.
 
 ## Current Milestone: v1.4 Exact Measurement Placement & Relation SDK
 
@@ -87,6 +88,8 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 | Treat import appearance as a runtime contract instead of a viewer repaint convention | Downstream apps need deterministic imported material output that can be driven by settings and reused across package consumers | ✓ Good |
 | Expand appearance only through import-time package contract changes, not viewer post-processing | `v1.3` proved the runtime/core surface can grow without absorbing preset UIs, settings storage, or repaint flows | ✓ Good |
 | Use OCCT `PrsDim` as a geometry reference rather than a direct API shape | `v1.4` needs reusable placement and relation geometry, not AIS/Prs3d interactive objects in Wasm | ✓ Good |
+| Keep `kind: "none"` as a successful relation result | Downstream apps need to distinguish valid analytic non-relations from unsupported geometry without inventing wrapper-only semantics | ✓ Good |
+| Keep `occt-core` relation wrappers thin and transform-transparent | The runtime already returns occurrence-aware relation geometry, so the package layer should only validate refs, forward transforms, and attach refs on success | ✓ Good |
 | Keep SDK docs package-first with `@tx-code/occt-core` as the primary entry point | Most downstream JS consumers should start from exact refs and occurrence-safe adapters, with root Wasm documented as the lower-level reference | — Pending |
 
 ## Evolution
@@ -135,4 +138,4 @@ This document evolves at phase transitions and milestone boundaries.
 </details>
 
 ---
-*Last updated: 2026-04-16 after completing Phase 15 placement contract hardening*
+*Last updated: 2026-04-16 after completing Phase 16 exact relation classifier contract*
