@@ -216,17 +216,17 @@ test("planning state reflects active v1.4 milestone", () => {
   assert.equal(existsSync(resolve(repoRoot, ".planning/phases/12-root-alpha-opacity-fallback")), false);
   assert.equal(existsSync(resolve(repoRoot, ".planning/phases/13-appearance-preset-adapter-parity")), false);
   assert.equal(existsSync(resolve(repoRoot, ".planning/phases/14-appearance-expansion-governance")), false);
-  assert.equal(existsSync(resolve(repoRoot, ".planning/phases/15-placement-contract-hardening")), false);
+  assert.equal(existsSync(resolve(repoRoot, ".planning/phases/15-placement-contract-hardening")), true);
   assert.equal(existsSync(resolve(repoRoot, ".planning/phases/16-exact-relation-classifier-contract")), false);
   assert.equal(existsSync(resolve(repoRoot, ".planning/phases/17-sdk-docs-governance")), false);
 
   assert.match(state, /milestone:\s*v1\.4/i);
   assert.match(state, /milestone_name:\s*Exact Measurement Placement & Relation SDK/i);
-  assert.match(state, /status:\s*active/i);
-  assert.match(state, /Current focus:\s*Phase 15 planning for v1\.4 Exact Measurement Placement & Relation SDK/i);
+  assert.match(state, /status:\s*executing/i);
+  assert.match(state, /Current focus:\s*Phase 15 execution for v1\.4 Exact Measurement Placement & Relation SDK/i);
   assert.match(state, /Milestone:\s*v1\.4 Exact Measurement Placement & Relation SDK/i);
   assert.match(state, /Phase:\s*15 \(placement-contract-hardening\) — PLANNED/i);
-  assert.match(state, /Status:\s*Phase 15 ready for planning/i);
-  assert.match(state, /Next step is `\/gsd-plan-phase 15`/i);
+  assert.match(state, /Status:\s*Phase 15 ready to execute/i);
+  assert.match(state, /Next step is `\/gsd-execute-phase 15`/i);
   assert.match(state, /Progress:\s*\[----------\]\s*0%/);
 });
