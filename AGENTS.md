@@ -201,6 +201,13 @@ Important details:
 - documentation for agent behavior should live here, not be duplicated in tool-specific files
 - settings persistence and viewer overrides remain downstream concerns outside the root runtime scope
 
+## Workflow Norms
+
+- GSD is the default project workflow in this repository for milestone creation, requirements, roadmap updates, phase planning, phase execution, pause/resume, and milestone closeout.
+- When the user has already chosen GSD for the repository, continue in GSD by default instead of switching to superpowers planning or spec-writing flows.
+- Use superpowers only for narrow supporting tasks that GSD does not cover well enough on its own, such as structured debugging, strict TDD, explicit code review, worktree isolation, or final verification discipline.
+- Do not route normal milestone-definition work through superpowers brainstorming when the milestone direction and repository workflow have already been decided; capture those decisions in `.planning/` via GSD instead.
+
 ## Working Norms
 
 - Prefer isolated git worktrees over modifying `master` directly when feature work is in flight.
