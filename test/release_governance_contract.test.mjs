@@ -68,6 +68,14 @@ test("authoritative root release command surface excludes unconditional secondar
   assert.equal(releaseCommand.includes("occt-babylon"), false);
 });
 
+test("demo fallback CDN derives its semver from the root package instead of a hardcoded version", () => {
+  const demoHook = readRepoText("demo/src/hooks/useOcct.js");
+
+  assert.match(demoHook, /import packageJson from "\.\.\/\.\.\/\.\.\/package\.json";/);
+  assert.match(demoHook, /https:\/\/unpkg\.com\/@tx-code\/occt-js@\$\{packageJson\.version\}\/dist\//);
+  assert.doesNotMatch(demoHook, /https:\/\/unpkg\.com\/@tx-code\/occt-js@0\.\d+\.\d+\/dist\//);
+});
+
 test("release docs keep the root Wasm carrier authoritative", () => {
   const readme = readRepoText("README.md");
   const occtCoreReadme = readRepoText("packages/occt-core/README.md");

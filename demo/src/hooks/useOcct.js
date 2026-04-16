@@ -3,21 +3,29 @@ import { convertFileSrc, isTauri } from "@tauri-apps/api/core";
 import { resolveResource } from "@tauri-apps/api/path";
 import { inferOcctFormatFromFileName } from "@tx-code/occt-babylon-loader";
 import { createOcctCore, resolveAutoOrientedModel } from "@tx-code/occt-core";
+import packageJson from "../../../package.json";
 import { useViewerStore } from "../store/viewerStore";
 
-const CDN = "https://unpkg.com/@tx-code/occt-js@0.1.7/dist/";
+const CDN = `https://unpkg.com/@tx-code/occt-js@${packageJson.version}/dist/`;
 const DEFAULT_IMPORT_PARAMS = Object.freeze({
   readColors: true,
   readNames: true,
   rootMode: "multiple-shapes",
 });
 
-function getWebDistBase() {
+function getWebRuntime() {
   if (import.meta.env.DEV) {
-    const localDist = new URL("../../../dist/", import.meta.url).href;
-    return localDist.endsWith("/") ? localDist : `${localDist}/`;
+    const moduleUrl = new URL("../../../dist/occt-js.js", import.meta.url).href;
+    const wasmUrl = new URL("../../../dist/occt-js.wasm", import.meta.url).href;
+    return {
+      moduleUrl,
+      locateFile: () => wasmUrl,
+    };
   }
-  return CDN;
+  return {
+    moduleUrl: CDN + "occt-js.js",
+    locateFile: (fileName) => CDN + fileName,
+  };
 }
 
 export function useOcct() {
@@ -45,10 +53,10 @@ export function useOcct() {
         };
       }
 
-      const distBase = getWebDistBase();
+      const webRuntime = getWebRuntime();
       return {
-        moduleUrl: distBase + "occt-js.js",
-        locateFile: (fileName) => distBase + fileName,
+        moduleUrl: webRuntime.moduleUrl,
+        locateFile: webRuntime.locateFile,
         fallbackModuleUrl: CDN + "occt-js.js",
         fallbackLocateFile: (fileName) => CDN + fileName,
       };
