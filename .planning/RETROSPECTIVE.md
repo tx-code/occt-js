@@ -1,5 +1,32 @@
 # Retrospective
 
+## Milestone: v1.4 — Exact Measurement Placement & Relation SDK
+
+**Shipped:** 2026-04-16
+
+### What shipped
+
+- The root Wasm carrier now exposes stable placement helpers for exact distance, angle, thickness, radius, and diameter.
+- `@tx-code/occt-core` now provides package-first placement and relation wrappers that preserve occurrence transforms and explicit `none` semantics.
+- The root runtime now exposes exact relation classification for `parallel`, `perpendicular`, `concentric`, `tangent`, and `none`.
+- Package-first SDK docs, packaged typings, tarball checks, and `npm run test:release:root` now lock the exact placement/relation surface end to end.
+
+### What worked
+
+- Splitting the milestone into placement, relation, and docs/governance phases kept the surface area understandable and prevented viewer concerns from leaking into the runtime/package contract.
+- Contract-first tests made the root carrier, `occt-core`, docs, tarball expectations, and release gate converge without reopening unrelated CAD import logic.
+- Reusing the runtime-first release gate meant the new measurement SDK shipped without adding unconditional demo, Babylon, or Tauri verification creep.
+
+### What to revisit
+
+- `gsd-tools audit-open` still crashes with `ReferenceError: output is not defined` in this environment, so milestone-close preflight still requires manual fallback.
+- `gsd-tools milestone complete` still leaves manual cleanup work for `ROADMAP.md`, `PROJECT.md`, `STATE.md`, phase archival, and release-governance assertions.
+
+### Carry-forward ideas
+
+- Only add richer measurement semantics if they remain package-first and additive, such as higher-level relation helpers or semantic classifiers built on top of the current placement/relation primitives.
+- Keep selection UX, overlay rendering, label layout, and feature-recognition behavior explicitly downstream unless a future milestone intentionally changes that boundary.
+
 ## Milestone: v1.3 — Appearance Expansion
 
 **Shipped:** 2026-04-15

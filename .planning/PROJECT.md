@@ -30,43 +30,50 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 - ✓ Package-first exact relation classification now preserves occurrence transforms and explicit `none` / failure semantics without inventing viewer policy.
 - ✓ Package-first SDK docs, packaged typings, tarball checks, and the authoritative root release gate now lock the exact placement/relation surface end to end.
 
+### Active
+
+- [ ] Downstream JS code can derive richer measurement semantics such as hole, chamfer, equal-distance, or symmetry helpers on top of the shipped placement/relation primitives without turning `occt-js` into a viewer framework.
+- [ ] Any future exact-measurement expansion should stay package-first and additive, with `@tx-code/occt-core` as the primary downstream SDK entry point.
+
 ### Out of Scope
 
 - Evolving this repo into a full viewer framework as the primary goal — the main value is the OCCT Wasm runtime.
 - Making Tauri or desktop packaging a prerequisite for root npm publishing — root runtime must stay independently releasable.
 - Treating Babylon/demo layers as first-order release gates for the root runtime.
 - Selection sessions, overlay rendering, label layout, or measurement widgets in the runtime/package layer — those remain downstream app concerns.
-- Hole, chamfer, or other feature-recognition semantics — `v1.4` stays at placement/relation contract boundaries, not higher-level interpretation.
+- Hole, chamfer, or other feature-recognition semantics inside the runtime/package layer — future milestones should only touch them if they can stay package-first and additive.
 
 ## Current State
 
 `v1.3 Appearance Expansion` shipped on 2026-04-15 and is now archived in `.planning/milestones/`. The root runtime now exposes `appearancePreset`, `colorMode`, `defaultColor`, and `defaultOpacity`; `occt-core` forwards and normalizes that full contract without inventing viewer-side repaint behavior; and root/package docs plus `npm run test:release:root` now lock the shipped semantics in place.
 
-`v1.4 Exact Measurement Placement & Relation SDK` is now fully implemented. The root runtime and `occt-core` expose additive exact placement helpers plus exact relation classification for `parallel`, `perpendicular`, `concentric`, `tangent`, and `none`, all with occurrence-safe supporting geometry DTOs. Phase 17 completed the package-first SDK docs, packaged typing/tarball assertions, and authoritative release-gate coverage. The milestone is now ready for closeout while keeping viewer UX, feature semantics, and rendering policy outside the root runtime boundary.
+`v1.4 Exact Measurement Placement & Relation SDK` shipped on 2026-04-16 and is now archived in `.planning/milestones/`. The root runtime and `occt-core` now expose additive exact placement helpers plus exact relation classification for `parallel`, `perpendicular`, `concentric`, `tangent`, and `none`, all with occurrence-safe supporting geometry DTOs. Package-first SDK docs, packaged typings, tarball assertions, and the authoritative release gate now lock that exact measurement surface end to end.
 
-## Current Milestone: v1.4 Exact Measurement Placement & Relation SDK
+There is no active milestone. The next milestone should only expand the runtime/package contract if it stays package-first and keeps viewer UX, feature semantics, and app-owned interaction flows downstream.
 
-**Goal:** Add runtime-first exact placement helpers, relation classifiers, and package-first SDK documentation without turning `occt-js` into a viewer framework.
+## Next Milestone Goals
+
+**Goal:** Decide whether the next runtime-first milestone should deepen exact measurement semantics or shift to another package-level contract improvement.
 
 **Target features:**
-- Stable placement helpers for exact distance, angle, radius, diameter, and thickness
-- Exact relation classifiers for `parallel`, `perpendicular`, `concentric`, `tangent`, and `none`
-- Package-first SDK docs through `@tx-code/occt-core`, with root Wasm documented as the lower-level reference surface
+- Any new exact-measurement work should remain additive and package-first.
+- `@tx-code/occt-core` should remain the primary SDK entry point for downstream JS consumers.
+- The authoritative release boundary should remain `dist/` plus `npm run test:release:root`.
 
 ## Context
 
 - Brownfield repository with an established Wasm build flow, root package contract, demo app, Tauri shell, and package-layer adapters.
 - Root package version is still `0.1.7`; the root runtime and root tests remain the primary maintained contract.
 - `imos-app` remains the key downstream consumer signal: it vendors `@tx-code/occt-js` and consumes the Wasm/runtime surface directly, while viewer semantics live on the app side.
-- `SceneGraph.net` remains the best local reference for measurement behavior above the kernel layer, but `occt-js` intentionally stopped at exact-kernel foundations in v1.1.
-- OCCT `PrsDim` is the local geometry reference for placement and relation behavior, but `v1.4` intentionally stops short of AIS/Prs3d interactive dimensions.
-- The current exact runtime already exposes retained exact-model lifecycle, primitive exact queries, and pairwise distance/angle/thickness; `v1.4` extends that contract with placement and relation DTOs rather than viewer-owned semantics.
+- `SceneGraph.net` remains the best local reference for measurement behavior above the kernel layer, but `occt-js` intentionally stopped at exact-kernel foundations plus package-first placement/relation support.
+- OCCT `PrsDim` remains the local geometry reference for placement and relation behavior, but `occt-js` intentionally stops short of AIS/Prs3d interactive dimensions.
+- The current exact runtime now exposes retained exact-model lifecycle, primitive exact queries, pairwise distance/angle/thickness, placement DTOs, and relation classification; package docs and release verification treat that as a first-class SDK surface.
 - GSD is the primary repository workflow; superpowers remain optional support tooling for narrow tasks only.
 
 ## Constraints
 
 - **Release boundary**: `dist/occt-js.js`, `dist/occt-js.wasm`, and `dist/occt-js.d.ts` remain the root runtime contract — release verification stays centered on `npm run test:release:root`.
-- **Backward compatibility**: Existing `MeasureExact*` result shapes and `@tx-code/occt-core` exact measurement wrappers must remain source-compatible; placement and relation additions need to be additive.
+- **Backward compatibility**: Existing `MeasureExact*` result shapes and `@tx-code/occt-core` exact measurement wrappers must remain source-compatible; future additions need to stay additive.
 - **Product boundary**: App code owns selection sessions, overlay rendering, label layout, feature semantics, and settings persistence.
 - **Downstream compatibility**: Changes to exact DTOs, typings, or docs must preserve packaged and vendored consumption paths such as `imos-app`.
 
@@ -107,6 +114,20 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 <details>
+<summary>Archived v1.4 milestone framing</summary>
+
+## Current Milestone: v1.4 Exact Measurement Placement & Relation SDK
+
+**Goal:** Add runtime-first exact placement helpers, relation classifiers, and package-first SDK documentation without turning `occt-js` into a viewer framework.
+
+**Target features:**
+- Stable placement helpers for exact distance, angle, radius, diameter, and thickness
+- Exact relation classifiers for `parallel`, `perpendicular`, `concentric`, `tangent`, and `none`
+- Package-first SDK docs through `@tx-code/occt-core`, with root Wasm documented as the lower-level reference surface
+
+</details>
+
+<details>
 <summary>Archived v1.3 milestone framing</summary>
 
 ## Current Milestone: v1.3 Appearance Expansion
@@ -135,4 +156,4 @@ This document evolves at phase transitions and milestone boundaries.
 </details>
 
 ---
-*Last updated: 2026-04-16 after completing Phase 17 sdk docs and governance*
+*Last updated: 2026-04-16 after archiving v1.4 Exact Measurement Placement & Relation SDK*

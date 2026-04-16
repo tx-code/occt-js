@@ -1,5 +1,20 @@
 # Milestones
 
+## v1.4 Exact Measurement Placement & Relation SDK (Shipped: 2026-04-16)
+
+**Phases completed:** 3 phases, 6 plans, 12 tasks
+
+**Key accomplishments:**
+
+- The root Wasm carrier now exposes additive pairwise placement helpers for distance, angle, and thickness, with stable anchors and full working frames suitable for downstream overlay code.
+- The exact placement surface now covers circular geometry and package-first wrappers, so downstream JS can consume pairwise and circular placement data directly through `@tx-code/occt-core` in occurrence space.
+- The root Wasm carrier now exposes an additive exact relation classifier that can return `parallel`, `perpendicular`, `concentric`, `tangent`, or `none` with stable supporting geometry and explicit failures.
+- `@tx-code/occt-core` now exposes package-first exact relation classification with occurrence-safe wrapper behavior, explicit `none`, and live repeated-geometry proof against the built root carrier.
+- The exact measurement SDK is now documented package-first through `@tx-code/occt-core`, with the root Wasm carrier kept as the lower-level reference and downstream viewer concerns kept out of scope.
+- The packaged exact measurement SDK surface is now enforced by the authoritative root test and release gates, including placement and relation contract coverage.
+
+---
+
 ## v1.3 Appearance Expansion (Shipped: 2026-04-15)
 
 **Phases completed:** 3 phases, 6 plans, 12 tasks
