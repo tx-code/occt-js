@@ -136,12 +136,18 @@ test("release skill stays a thin AGENTS shim and keeps secondary surfaces condit
   assert.equal(skill.includes("@tx-code/occt-babylon-loader"), false);
 });
 
-test("milestone archives preserve v1.3 requirements while leaving no active requirements file", () => {
+test("milestone archives preserve prior shipped requirements while active v1.4 requirements exist", () => {
   const milestones = readRepoText(".planning/MILESTONES.md");
+  const activeRequirements = readRepoText(".planning/REQUIREMENTS.md");
   const archivedV13Requirements = readRepoText(".planning/milestones/v1.3-REQUIREMENTS.md");
   const archivedV12Requirements = readRepoText(".planning/milestones/v1.2-REQUIREMENTS.md");
 
-  assert.equal(existsSync(resolve(repoRoot, ".planning/REQUIREMENTS.md")), false);
+  assert.equal(existsSync(resolve(repoRoot, ".planning/REQUIREMENTS.md")), true);
+  assert.match(activeRequirements, /# Requirements: occt-js/);
+  assert.match(activeRequirements, /## v1\.4 Requirements/);
+  assert.match(activeRequirements, /\| PLCT-01 \| Phase 15 \| Pending \|/);
+  assert.match(activeRequirements, /\| REL-01 \| Phase 16 \| Pending \|/);
+  assert.match(activeRequirements, /\| DOCS-01 \| Phase 17 \| Pending \|/);
   assert.match(archivedV13Requirements, /# Requirements Archive: v1\.3 Appearance Expansion/);
   assert.match(archivedV13Requirements, /\| APPR-06 \| Phase 12 \| Completed \|/);
   assert.match(archivedV13Requirements, /\| APPR-07 \| Phase 13 \| Completed \|/);
@@ -175,43 +181,52 @@ test("milestone archives capture the shipped v1.3 planning corpus and preserve o
   assert.equal(existsSync(resolve(repoRoot, ".planning/milestones/v1.3-phases/14-appearance-expansion-governance")), true);
 });
 
-test("project state stays aligned to the root Wasm carrier after archiving v1.3", () => {
+test("project state stays aligned to the root Wasm carrier after starting v1.4", () => {
   const project = readRepoText(".planning/PROJECT.md");
+  const requirements = readRepoText(".planning/REQUIREMENTS.md");
   const roadmap = readRepoText(".planning/ROADMAP.md");
   const state = readRepoText(".planning/STATE.md");
   const coreValue = "Downstream applications can reliably consume the OCCT Wasm runtime and its root API contract without build drift or packaging surprises.";
 
   assert.match(project, new RegExp(coreValue.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   assert.match(state, new RegExp(coreValue.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
-  assert.match(roadmap, /No active milestone\./);
+  assert.match(roadmap, /🚧 \*\*v1\.4 Exact Measurement Placement & Relation SDK\*\* - Phases 15-17 \(active\)/);
   assert.match(project, /## Current State/);
   assert.match(project, /v1\.3 Appearance Expansion/i);
-  assert.match(project, /shipped on 2026-04-15/i);
-  assert.match(project, /## Next Milestone Goals/);
-  assert.match(project, /appearancePreset/);
-  assert.match(project, /defaultOpacity/);
+  assert.match(project, /v1\.4 Exact Measurement Placement & Relation SDK/i);
+  assert.match(project, /PrsDim/i);
+  assert.match(project, /@tx-code\/occt-core/);
+  assert.match(project, /## Current Milestone: v1\.4 Exact Measurement Placement & Relation SDK/);
+  assert.match(requirements, /PLCT-01/);
+  assert.match(requirements, /REL-02/);
+  assert.match(requirements, /GOV-01/);
   assert.match(project, /## Evolution/);
 });
 
-test("planning state reflects v1.3 archived with no active milestone", () => {
+test("planning state reflects active v1.4 milestone", () => {
   const roadmap = readRepoText(".planning/ROADMAP.md");
+  const requirements = readRepoText(".planning/REQUIREMENTS.md");
   const state = readRepoText(".planning/STATE.md");
 
+  assert.match(roadmap, /🚧 \*\*v1\.4 Exact Measurement Placement & Relation SDK\*\* - Phases 15-17 \(active\)/);
   assert.match(roadmap, /✅ \[v1\.3 Appearance Expansion\]\(\.\/milestones\/v1\.3-ROADMAP\.md\) — Phases 12-14, shipped 2026-04-15/);
   assert.match(roadmap, /✅ \[v1\.2 Import Appearance Contract\]\(\.\/milestones\/v1\.2-ROADMAP\.md\) — Phases 9-11, shipped 2026-04-15/);
-  assert.match(roadmap, /No active milestone\./);
-  assert.equal(existsSync(resolve(repoRoot, ".planning/REQUIREMENTS.md")), false);
+  assert.equal(existsSync(resolve(repoRoot, ".planning/REQUIREMENTS.md")), true);
+  assert.match(requirements, /## v1\.4 Requirements/);
   assert.equal(existsSync(resolve(repoRoot, ".planning/phases/12-root-alpha-opacity-fallback")), false);
   assert.equal(existsSync(resolve(repoRoot, ".planning/phases/13-appearance-preset-adapter-parity")), false);
   assert.equal(existsSync(resolve(repoRoot, ".planning/phases/14-appearance-expansion-governance")), false);
+  assert.equal(existsSync(resolve(repoRoot, ".planning/phases/15-placement-contract-hardening")), false);
+  assert.equal(existsSync(resolve(repoRoot, ".planning/phases/16-exact-relation-classifier-contract")), false);
+  assert.equal(existsSync(resolve(repoRoot, ".planning/phases/17-sdk-docs-governance")), false);
 
-  assert.match(state, /milestone:\s*none/i);
-  assert.match(state, /milestone_name:\s*none/i);
-  assert.match(state, /status:\s*ready/i);
-  assert.match(state, /Current focus:\s*Planning the next milestone/i);
-  assert.match(state, /Milestone:\s*none/i);
-  assert.match(state, /Phase:\s*none/i);
-  assert.match(state, /Status:\s*No active milestone; v1\.3 has been archived/i);
-  assert.match(state, /Next step is `\/gsd-new-milestone`/i);
+  assert.match(state, /milestone:\s*v1\.4/i);
+  assert.match(state, /milestone_name:\s*Exact Measurement Placement & Relation SDK/i);
+  assert.match(state, /status:\s*active/i);
+  assert.match(state, /Current focus:\s*Phase 15 planning for v1\.4 Exact Measurement Placement & Relation SDK/i);
+  assert.match(state, /Milestone:\s*v1\.4 Exact Measurement Placement & Relation SDK/i);
+  assert.match(state, /Phase:\s*15 \(placement-contract-hardening\) — PLANNED/i);
+  assert.match(state, /Status:\s*Phase 15 ready for planning/i);
+  assert.match(state, /Next step is `\/gsd-plan-phase 15`/i);
   assert.match(state, /Progress:\s*\[----------\]\s*0%/);
 });

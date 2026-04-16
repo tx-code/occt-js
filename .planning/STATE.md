@@ -1,15 +1,15 @@
 ---
 gsd_state_version: 1.0
-milestone: none
-milestone_name: none
-status: ready
-stopped_at: v1.3 archived; next step is /gsd-new-milestone
-last_updated: "2026-04-15T23:11:00.0000000+08:00"
-last_activity: 2026-04-15
+milestone: v1.4
+milestone_name: Exact Measurement Placement & Relation SDK
+status: active
+stopped_at: Milestone v1.4 defined; next step is /gsd-plan-phase 15
+last_updated: "2026-04-16T16:30:00.0000000+08:00"
+last_activity: 2026-04-16
 progress:
-  total_phases: 0
+  total_phases: 3
   completed_phases: 0
-  total_plans: 0
+  total_plans: 6
   completed_plans: 0
   percent: 0
 ---
@@ -18,27 +18,27 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-15)
+See: .planning/PROJECT.md (updated 2026-04-16)
 
 Core value: Downstream applications can reliably consume the OCCT Wasm runtime and its root API contract without build drift or packaging surprises.
-Current focus: Planning the next milestone
+Current focus: Phase 15 planning for v1.4 Exact Measurement Placement & Relation SDK
 
 ## Current Position
 
-Milestone: none
-Phase: none
-Plan: 0 of 0 complete
-Status: No active milestone; v1.3 has been archived
-Last activity: 2026-04-15
+Milestone: v1.4 Exact Measurement Placement & Relation SDK
+Phase: 15 (placement-contract-hardening) — PLANNED
+Plan: 0 of 2 complete
+Status: Phase 15 ready for planning
+Last activity: 2026-04-16
 
 Progress: [----------] 0%
 
 ## Milestone Snapshot
 
-- `v1.3 Appearance Expansion` shipped and was archived on 2026-04-15.
-- The root runtime now exposes `appearancePreset` alongside `colorMode`, `defaultColor`, and `defaultOpacity`.
-- `@tx-code/occt-core` now forwards preset/defaultOpacity input and preserves root raw opacity during normalization.
-- Root/package docs, tarball checks, and the release gate now all lock the finalized appearance expansion contract.
+- `v1.4 Exact Measurement Placement & Relation SDK` is active and starts at phases 15-17.
+- The root runtime already ships exact lifecycle, primitive queries, and pairwise distance/angle/thickness; the new work is additive placement and relation contract hardening.
+- OCCT `PrsDim` is the geometry reference for placement and relation behavior, but Wasm stays away from AIS/Prs3d interactive objects.
+- Package-first SDK docs will center on `@tx-code/occt-core`, with root Wasm documented as the lower-level reference surface.
 
 ## Accumulated Context
 
@@ -50,16 +50,16 @@ Progress: [----------] 0%
 
 ## Pending Todos
 
-- Decide what the next milestone should build on top of the now-stable appearance contract.
-- Start the next milestone with `/gsd-new-milestone`.
+- Keep placement DTOs stable enough for downstream overlay code before adding any higher-level semantics.
+- Keep relation classification limited to `parallel`, `perpendicular`, `concentric`, `tangent`, and `none` until the base contract is proven.
 
 ## Blockers/Concerns
 
 - No active blockers.
-- Next step is `/gsd-new-milestone`.
+- Next step is `/gsd-plan-phase 15`.
 
 ## Session Continuity
 
-Last session: 2026-04-15
-Stopped at: `v1.3` archived; next step is `/gsd-new-milestone`
-Resume file: .planning/MILESTONES.md
+Last session: 2026-04-16
+Stopped at: Milestone v1.4 defined; next step is `/gsd-plan-phase 15`
+Resume file: .planning/ROADMAP.md
