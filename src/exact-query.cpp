@@ -39,6 +39,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cmath>
 
 namespace {
 
@@ -69,6 +70,11 @@ std::array<double, 3> ToArray(const gp_Pnt& point)
 std::array<double, 3> ToArray(const gp_Dir& direction)
 {
     return { direction.X(), direction.Y(), direction.Z() };
+}
+
+std::array<double, 3> ToArray(const gp_Vec& vector)
+{
+    return { vector.X(), vector.Y(), vector.Z() };
 }
 
 gp_Pnt Midpoint(const gp_Pnt& left, const gp_Pnt& right)
@@ -292,6 +298,16 @@ bool TryMakeDirection(const gp_Pnt& from, const gp_Pnt& to, gp_Dir& direction)
     return true;
 }
 
+bool TryMakeDirection(const std::array<double, 3>& vector, gp_Dir& direction)
+{
+    gp_Vec delta(vector[0], vector[1], vector[2]);
+    if (delta.Magnitude() <= Precision::Confusion()) {
+        return false;
+    }
+    direction = gp_Dir(delta);
+    return true;
+}
+
 double CanonicalAngle(const double radians)
 {
     constexpr double halfPi = 1.5707963267948966;
@@ -336,6 +352,91 @@ gp_Pnt SampleFacePoint(const TopoDS_Face& face, BRepAdaptor_Surface& surface)
     double vLast = 0.0;
     BRepTools::UVBounds(face, uFirst, uLast, vFirst, vLast);
     return surface.Value(0.5 * (uFirst + uLast), 0.5 * (vFirst + vLast));
+}
+
+gp_Dir ChooseStableReferenceDirection(const gp_Dir& axis)
+{
+    const double absX = std::abs(axis.X());
+    const double absY = std::abs(axis.Y());
+    const double absZ = std::abs(axis.Z());
+
+    if (absX <= absY && absX <= absZ) {
+        return gp_Dir(1.0, 0.0, 0.0);
+    }
+    if (absY <= absZ) {
+        return gp_Dir(0.0, 1.0, 0.0);
+    }
+    return gp_Dir(0.0, 0.0, 1.0);
+}
+
+bool TryProjectDirectionOntoPlane(const gp_Dir& candidate, const gp_Dir& planeNormal, gp_Dir& projected)
+{
+    gp_Vec candidateVector(candidate.XYZ());
+    const gp_Vec normalVector(planeNormal.XYZ());
+    candidateVector -= normalVector * candidateVector.Dot(normalVector);
+    if (candidateVector.Magnitude() <= Precision::Confusion()) {
+        return false;
+    }
+
+    projected = gp_Dir(candidateVector);
+    return true;
+}
+
+bool BuildFrameFromNormalAndX(
+    const gp_Pnt& origin,
+    const gp_Dir& normal,
+    const gp_Dir& preferredX,
+    OcctExactPlacementFrame& frame)
+{
+    gp_Dir xDir;
+    if (!TryProjectDirectionOntoPlane(preferredX, normal, xDir)) {
+        const gp_Dir fallback = ChooseStableReferenceDirection(normal);
+        if (!TryProjectDirectionOntoPlane(fallback, normal, xDir)) {
+            return false;
+        }
+    }
+
+    gp_Vec yVector(normal.XYZ().Crossed(xDir.XYZ()));
+    if (yVector.Magnitude() <= Precision::Confusion()) {
+        return false;
+    }
+
+    const gp_Dir yDir(yVector);
+
+    frame.origin = ToArray(origin);
+    frame.normal = ToArray(normal);
+    frame.xDir = ToArray(xDir);
+    frame.yDir = ToArray(yDir);
+    return true;
+}
+
+bool BuildFrameFromXAxis(
+    const gp_Pnt& origin,
+    const gp_Dir& xAxis,
+    OcctExactPlacementFrame& frame)
+{
+    const gp_Dir reference = ChooseStableReferenceDirection(xAxis);
+    gp_Vec normalVector(xAxis.XYZ().Crossed(reference.XYZ()));
+    if (normalVector.Magnitude() <= Precision::Confusion()) {
+        return false;
+    }
+
+    const gp_Dir normal(normalVector);
+    return BuildFrameFromNormalAndX(origin, normal, xAxis, frame);
+}
+
+void AddPlacementAnchor(OcctExactPlacementResult& result, const std::string& role, const gp_Pnt& point)
+{
+    OcctExactPlacementAnchor anchor;
+    anchor.role = role;
+    anchor.point = ToArray(point);
+    result.anchors.push_back(anchor);
+}
+
+template <typename TFailure>
+OcctExactPlacementResult ConvertPlacementFailure(const TFailure& failure)
+{
+    return MakeFailure<OcctExactPlacementResult>(failure.code, failure.message);
 }
 
 template <typename TResult>
@@ -392,6 +493,60 @@ OcctLifecycleResult ResolveFaceProjection(
     if (classifier.State() != TopAbs_IN && classifier.State() != TopAbs_ON) {
         return MakeFailure<OcctLifecycleResult>("query-out-of-range", "Exact face normal query point does not project onto the trimmed face.");
     }
+
+    OcctLifecycleResult ok;
+    ok.ok = true;
+    return ok;
+}
+
+OcctLifecycleResult ResolveCircularPlacementSupport(
+    int exactModelId,
+    int exactShapeHandle,
+    const std::string& kind,
+    int elementId,
+    double& radiusValue,
+    gp_Pnt& centerPoint,
+    gp_Pnt& anchorPoint,
+    gp_Dir& axisDirection,
+    gp_Dir& radialDirection)
+{
+    const OcctExactRadiusResult radius = MeasureExactRadius(exactModelId, exactShapeHandle, kind, elementId);
+    if (!radius.ok) {
+        return MakeFailure<OcctLifecycleResult>(radius.code, radius.message);
+    }
+
+    if (radius.family != "circle" && radius.family != "cylinder") {
+        return MakeFailure<OcctLifecycleResult>(
+            "unsupported-geometry",
+            "Exact circular placement is only supported for circle or cylinder geometry."
+        );
+    }
+
+    if (!TryMakeDirection(radius.localAxisDirection, axisDirection)) {
+        return MakeFailure<OcctLifecycleResult>(
+            "unsupported-geometry",
+            "Exact circular placement requires geometry with a stable axis."
+        );
+    }
+
+    const gp_Pnt rawCenter = ToPoint(radius.localCenter);
+    const gp_Pnt rawAnchor = ToPoint(radius.localAnchorPoint);
+
+    centerPoint = rawCenter;
+    if (radius.family == "cylinder") {
+        const gp_Vec centerToAnchor(rawCenter, rawAnchor);
+        centerPoint = rawCenter.Translated(gp_Vec(axisDirection) * centerToAnchor.Dot(gp_Vec(axisDirection)));
+    }
+
+    if (!TryMakeDirection(centerPoint, rawAnchor, radialDirection)) {
+        return MakeFailure<OcctLifecycleResult>(
+            "unsupported-geometry",
+            "Exact circular placement requires geometry with a stable radial direction."
+        );
+    }
+
+    radiusValue = radius.radius;
+    anchorPoint = rawAnchor;
 
     OcctLifecycleResult ok;
     ok.ok = true;
@@ -1015,6 +1170,275 @@ OcctExactThicknessResult MeasureExactThickness(
         return MakeFailure<OcctExactThicknessResult>(
             "internal-error",
             failure.GetMessageString() != nullptr ? failure.GetMessageString() : "OCCT exact thickness query failed."
+        );
+    }
+}
+
+OcctExactPlacementResult SuggestExactDistancePlacement(
+    int exactModelId,
+    int exactShapeHandleA,
+    const std::string& kindA,
+    int elementIdA,
+    int exactShapeHandleB,
+    const std::string& kindB,
+    int elementIdB,
+    const gp_Trsf& transformA,
+    const gp_Trsf& transformB)
+{
+    const OcctExactDistanceResult distance = MeasureExactDistance(
+        exactModelId,
+        exactShapeHandleA,
+        kindA,
+        elementIdA,
+        exactShapeHandleB,
+        kindB,
+        elementIdB,
+        transformA,
+        transformB
+    );
+    if (!distance.ok) {
+        return ConvertPlacementFailure(distance);
+    }
+
+    gp_Dir measurementAxis;
+    if (!TryMakeDirection(ToPoint(distance.pointA), ToPoint(distance.pointB), measurementAxis)) {
+        return MakeFailure<OcctExactPlacementResult>(
+            "coincident-geometry",
+            "Exact distance placement requires geometry with a stable separation direction."
+        );
+    }
+
+    OcctExactPlacementResult result;
+    result.ok = true;
+    result.kind = "distance";
+    result.hasValue = true;
+    result.value = distance.value;
+    if (!BuildFrameFromXAxis(ToPoint(distance.workingPlaneOrigin), measurementAxis, result.frame)) {
+        return MakeFailure<OcctExactPlacementResult>(
+            "coincident-geometry",
+            "Exact distance placement requires a stable working frame."
+        );
+    }
+    AddPlacementAnchor(result, "attach", ToPoint(distance.pointA));
+    AddPlacementAnchor(result, "attach", ToPoint(distance.pointB));
+    return result;
+}
+
+OcctExactPlacementResult SuggestExactAnglePlacement(
+    int exactModelId,
+    int exactShapeHandleA,
+    const std::string& kindA,
+    int elementIdA,
+    int exactShapeHandleB,
+    const std::string& kindB,
+    int elementIdB,
+    const gp_Trsf& transformA,
+    const gp_Trsf& transformB)
+{
+    const OcctExactAngleResult angle = MeasureExactAngle(
+        exactModelId,
+        exactShapeHandleA,
+        kindA,
+        elementIdA,
+        exactShapeHandleB,
+        kindB,
+        elementIdB,
+        transformA,
+        transformB
+    );
+    if (!angle.ok) {
+        return ConvertPlacementFailure(angle);
+    }
+
+    gp_Dir directionA;
+    gp_Dir directionB;
+    if (!TryMakeDirection(angle.directionA, directionA) || !TryMakeDirection(angle.directionB, directionB)) {
+        return MakeFailure<OcctExactPlacementResult>(
+            "unsupported-geometry",
+            "Exact angle placement requires geometry with stable direction vectors."
+        );
+    }
+
+    gp_Vec planeNormalVector(directionA.XYZ().Crossed(directionB.XYZ()));
+    if (planeNormalVector.Magnitude() <= Precision::Confusion()) {
+        return MakeFailure<OcctExactPlacementResult>(
+            "parallel-geometry",
+            "Exact angle placement requires non-parallel geometry."
+        );
+    }
+
+    OcctExactPlacementResult result;
+    result.ok = true;
+    result.kind = "angle";
+    result.hasValue = true;
+    result.value = angle.value;
+    result.hasDirectionA = true;
+    result.directionA = ToArray(directionA);
+    result.hasDirectionB = true;
+    result.directionB = ToArray(directionB);
+    if (!BuildFrameFromNormalAndX(ToPoint(angle.origin), gp_Dir(planeNormalVector), directionA, result.frame)) {
+        return MakeFailure<OcctExactPlacementResult>(
+            "unsupported-geometry",
+            "Exact angle placement requires a stable working frame."
+        );
+    }
+    AddPlacementAnchor(result, "anchor", ToPoint(angle.origin));
+    AddPlacementAnchor(result, "attach", ToPoint(angle.pointA));
+    AddPlacementAnchor(result, "attach", ToPoint(angle.pointB));
+    return result;
+}
+
+OcctExactPlacementResult SuggestExactThicknessPlacement(
+    int exactModelId,
+    int exactShapeHandleA,
+    const std::string& kindA,
+    int elementIdA,
+    int exactShapeHandleB,
+    const std::string& kindB,
+    int elementIdB,
+    const gp_Trsf& transformA,
+    const gp_Trsf& transformB)
+{
+    const OcctExactThicknessResult thickness = MeasureExactThickness(
+        exactModelId,
+        exactShapeHandleA,
+        kindA,
+        elementIdA,
+        exactShapeHandleB,
+        kindB,
+        elementIdB,
+        transformA,
+        transformB
+    );
+    if (!thickness.ok) {
+        return ConvertPlacementFailure(thickness);
+    }
+
+    gp_Dir measurementAxis;
+    if (!TryMakeDirection(ToPoint(thickness.pointA), ToPoint(thickness.pointB), measurementAxis)) {
+        return MakeFailure<OcctExactPlacementResult>(
+            "coincident-geometry",
+            "Exact thickness placement requires geometry with a stable separation direction."
+        );
+    }
+
+    OcctExactPlacementResult result;
+    result.ok = true;
+    result.kind = "thickness";
+    result.hasValue = true;
+    result.value = thickness.value;
+    if (!BuildFrameFromXAxis(ToPoint(thickness.workingPlaneOrigin), measurementAxis, result.frame)) {
+        return MakeFailure<OcctExactPlacementResult>(
+            "coincident-geometry",
+            "Exact thickness placement requires a stable working frame."
+        );
+    }
+    AddPlacementAnchor(result, "attach", ToPoint(thickness.pointA));
+    AddPlacementAnchor(result, "attach", ToPoint(thickness.pointB));
+    return result;
+}
+
+OcctExactPlacementResult SuggestExactRadiusPlacement(
+    int exactModelId,
+    int exactShapeHandle,
+    const std::string& kind,
+    int elementId)
+{
+    try {
+        double radiusValue = 0.0;
+        gp_Pnt centerPoint;
+        gp_Pnt anchorPoint;
+        gp_Dir axisDirection;
+        gp_Dir radialDirection;
+        OcctLifecycleResult lifecycle = ResolveCircularPlacementSupport(
+            exactModelId,
+            exactShapeHandle,
+            kind,
+            elementId,
+            radiusValue,
+            centerPoint,
+            anchorPoint,
+            axisDirection,
+            radialDirection
+        );
+        if (!lifecycle.ok) {
+            return ConvertPlacementFailure(lifecycle);
+        }
+
+        OcctExactPlacementResult result;
+        result.ok = true;
+        result.kind = "radius";
+        result.hasValue = true;
+        result.value = radiusValue;
+        result.hasAxisDirection = true;
+        result.axisDirection = ToArray(axisDirection);
+        if (!BuildFrameFromNormalAndX(centerPoint, axisDirection, radialDirection, result.frame)) {
+            return MakeFailure<OcctExactPlacementResult>(
+                "unsupported-geometry",
+                "Exact radius placement requires a stable working frame."
+            );
+        }
+        AddPlacementAnchor(result, "center", centerPoint);
+        AddPlacementAnchor(result, "anchor", anchorPoint);
+        return result;
+    } catch (const Standard_Failure& failure) {
+        return MakeFailure<OcctExactPlacementResult>(
+            "internal-error",
+            failure.GetMessageString() != nullptr ? failure.GetMessageString() : "OCCT exact radius placement query failed."
+        );
+    }
+}
+
+OcctExactPlacementResult SuggestExactDiameterPlacement(
+    int exactModelId,
+    int exactShapeHandle,
+    const std::string& kind,
+    int elementId)
+{
+    try {
+        double radiusValue = 0.0;
+        gp_Pnt centerPoint;
+        gp_Pnt anchorPoint;
+        gp_Dir axisDirection;
+        gp_Dir radialDirection;
+        OcctLifecycleResult lifecycle = ResolveCircularPlacementSupport(
+            exactModelId,
+            exactShapeHandle,
+            kind,
+            elementId,
+            radiusValue,
+            centerPoint,
+            anchorPoint,
+            axisDirection,
+            radialDirection
+        );
+        if (!lifecycle.ok) {
+            return ConvertPlacementFailure(lifecycle);
+        }
+
+        const gp_Pnt oppositePoint = centerPoint.Translated(gp_Vec(radialDirection) * (-radiusValue));
+
+        OcctExactPlacementResult result;
+        result.ok = true;
+        result.kind = "diameter";
+        result.hasValue = true;
+        result.value = radiusValue * 2.0;
+        result.hasAxisDirection = true;
+        result.axisDirection = ToArray(axisDirection);
+        if (!BuildFrameFromNormalAndX(centerPoint, axisDirection, radialDirection, result.frame)) {
+            return MakeFailure<OcctExactPlacementResult>(
+                "unsupported-geometry",
+                "Exact diameter placement requires a stable working frame."
+            );
+        }
+        AddPlacementAnchor(result, "center", centerPoint);
+        AddPlacementAnchor(result, "anchor", anchorPoint);
+        AddPlacementAnchor(result, "anchor", oppositePoint);
+        return result;
+    } catch (const Standard_Failure& failure) {
+        return MakeFailure<OcctExactPlacementResult>(
+            "internal-error",
+            failure.GetMessageString() != nullptr ? failure.GetMessageString() : "OCCT exact diameter placement query failed."
         );
     }
 }

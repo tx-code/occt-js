@@ -224,6 +224,33 @@ export interface OcctJSExactThicknessSuccess {
 
 export type OcctJSExactThicknessResult = OcctJSExactThicknessSuccess | OcctJSExactPairwiseFailure;
 
+export type OcctJSExactPlacementKind = "distance" | "angle" | "radius" | "diameter" | "thickness";
+
+export interface OcctJSExactPlacementFrame {
+    origin: [number, number, number];
+    normal: [number, number, number];
+    xDir: [number, number, number];
+    yDir: [number, number, number];
+}
+
+export interface OcctJSExactPlacementAnchor {
+    role: "attach" | "center" | "anchor";
+    point: [number, number, number];
+}
+
+export interface OcctJSExactPlacementSuccess {
+    ok: true;
+    kind: OcctJSExactPlacementKind;
+    value?: number;
+    frame: OcctJSExactPlacementFrame;
+    anchors: OcctJSExactPlacementAnchor[];
+    directionA?: [number, number, number];
+    directionB?: [number, number, number];
+    axisDirection?: [number, number, number];
+}
+
+export type OcctJSExactPlacementResult = OcctJSExactPlacementSuccess | OcctJSExactPairwiseFailure;
+
 export interface OcctJSReadParams {
     rootMode?: "one-shape" | "multiple-shapes";
     linearUnit?: "millimeter" | "centimeter" | "meter" | "inch" | "foot";
@@ -318,6 +345,11 @@ export interface OcctJSModule {
     MeasureExactDistance(exactModelId: number, exactShapeHandleA: number, kindA: OcctJSExactElementKind, elementIdA: number, exactShapeHandleB: number, kindB: OcctJSExactElementKind, elementIdB: number, transformA: OcctJSMatrix4, transformB: OcctJSMatrix4): OcctJSExactDistanceResult;
     MeasureExactAngle(exactModelId: number, exactShapeHandleA: number, kindA: OcctJSExactElementKind, elementIdA: number, exactShapeHandleB: number, kindB: OcctJSExactElementKind, elementIdB: number, transformA: OcctJSMatrix4, transformB: OcctJSMatrix4): OcctJSExactAngleResult;
     MeasureExactThickness(exactModelId: number, exactShapeHandleA: number, kindA: OcctJSExactElementKind, elementIdA: number, exactShapeHandleB: number, kindB: OcctJSExactElementKind, elementIdB: number, transformA: OcctJSMatrix4, transformB: OcctJSMatrix4): OcctJSExactThicknessResult;
+    SuggestExactDistancePlacement(exactModelId: number, exactShapeHandleA: number, kindA: OcctJSExactElementKind, elementIdA: number, exactShapeHandleB: number, kindB: OcctJSExactElementKind, elementIdB: number, transformA: OcctJSMatrix4, transformB: OcctJSMatrix4): OcctJSExactPlacementResult;
+    SuggestExactAnglePlacement(exactModelId: number, exactShapeHandleA: number, kindA: OcctJSExactElementKind, elementIdA: number, exactShapeHandleB: number, kindB: OcctJSExactElementKind, elementIdB: number, transformA: OcctJSMatrix4, transformB: OcctJSMatrix4): OcctJSExactPlacementResult;
+    SuggestExactThicknessPlacement(exactModelId: number, exactShapeHandleA: number, kindA: OcctJSExactElementKind, elementIdA: number, exactShapeHandleB: number, kindB: OcctJSExactElementKind, elementIdB: number, transformA: OcctJSMatrix4, transformB: OcctJSMatrix4): OcctJSExactPlacementResult;
+    SuggestExactRadiusPlacement(exactModelId: number, exactShapeHandle: number, kind: OcctJSExactElementKind, elementId: number): OcctJSExactPlacementResult;
+    SuggestExactDiameterPlacement(exactModelId: number, exactShapeHandle: number, kind: OcctJSExactElementKind, elementId: number): OcctJSExactPlacementResult;
     AnalyzeOptimalOrientation(format: OcctFormat, content: Uint8Array, params?: OcctJSOrientationParams): OcctJSOrientationResult;
 }
 

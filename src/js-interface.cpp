@@ -652,6 +652,56 @@ val ExactThicknessResultToVal(const OcctExactThicknessResult& result)
     return obj;
 }
 
+val ExactPlacementAnchorToVal(const OcctExactPlacementAnchor& anchor)
+{
+    val obj = val::object();
+    obj.set("role", anchor.role);
+    obj.set("point", Vector3ToVal(anchor.point));
+    return obj;
+}
+
+val ExactPlacementFrameToVal(const OcctExactPlacementFrame& frame)
+{
+    val obj = val::object();
+    obj.set("origin", Vector3ToVal(frame.origin));
+    obj.set("normal", Vector3ToVal(frame.normal));
+    obj.set("xDir", Vector3ToVal(frame.xDir));
+    obj.set("yDir", Vector3ToVal(frame.yDir));
+    return obj;
+}
+
+val ExactPlacementResultToVal(const OcctExactPlacementResult& result)
+{
+    if (!result.ok) {
+        return ExactFailureToVal(result);
+    }
+
+    val obj = val::object();
+    obj.set("ok", true);
+    obj.set("kind", result.kind);
+    if (result.hasValue) {
+        obj.set("value", result.value);
+    }
+    obj.set("frame", ExactPlacementFrameToVal(result.frame));
+
+    val anchors = val::array();
+    for (const auto& anchor : result.anchors) {
+        anchors.call<void>("push", ExactPlacementAnchorToVal(anchor));
+    }
+    obj.set("anchors", anchors);
+
+    if (result.hasDirectionA) {
+        obj.set("directionA", Vector3ToVal(result.directionA));
+    }
+    if (result.hasDirectionB) {
+        obj.set("directionB", Vector3ToVal(result.directionB));
+    }
+    if (result.hasAxisDirection) {
+        obj.set("axisDirection", Vector3ToVal(result.axisDirection));
+    }
+    return obj;
+}
+
 val ExactGeometryBindingsToVal(size_t geometryCount)
 {
     val bindings = val::array();
@@ -1025,6 +1075,98 @@ val MeasureExactThicknessBinding(
     );
 }
 
+val SuggestExactDistancePlacementBinding(
+    int exactModelId,
+    int exactShapeHandleA,
+    const std::string& kindA,
+    int elementIdA,
+    int exactShapeHandleB,
+    const std::string& kindB,
+    int elementIdB,
+    const val& jsTransformA,
+    const val& jsTransformB)
+{
+    return ExactPlacementResultToVal(
+        SuggestExactDistancePlacement(
+            exactModelId,
+            exactShapeHandleA,
+            kindA,
+            elementIdA,
+            exactShapeHandleB,
+            kindB,
+            elementIdB,
+            MatrixToTrsf(ParseMatrix4(jsTransformA)),
+            MatrixToTrsf(ParseMatrix4(jsTransformB))
+        )
+    );
+}
+
+val SuggestExactAnglePlacementBinding(
+    int exactModelId,
+    int exactShapeHandleA,
+    const std::string& kindA,
+    int elementIdA,
+    int exactShapeHandleB,
+    const std::string& kindB,
+    int elementIdB,
+    const val& jsTransformA,
+    const val& jsTransformB)
+{
+    return ExactPlacementResultToVal(
+        SuggestExactAnglePlacement(
+            exactModelId,
+            exactShapeHandleA,
+            kindA,
+            elementIdA,
+            exactShapeHandleB,
+            kindB,
+            elementIdB,
+            MatrixToTrsf(ParseMatrix4(jsTransformA)),
+            MatrixToTrsf(ParseMatrix4(jsTransformB))
+        )
+    );
+}
+
+val SuggestExactThicknessPlacementBinding(
+    int exactModelId,
+    int exactShapeHandleA,
+    const std::string& kindA,
+    int elementIdA,
+    int exactShapeHandleB,
+    const std::string& kindB,
+    int elementIdB,
+    const val& jsTransformA,
+    const val& jsTransformB)
+{
+    return ExactPlacementResultToVal(
+        SuggestExactThicknessPlacement(
+            exactModelId,
+            exactShapeHandleA,
+            kindA,
+            elementIdA,
+            exactShapeHandleB,
+            kindB,
+            elementIdB,
+            MatrixToTrsf(ParseMatrix4(jsTransformA)),
+            MatrixToTrsf(ParseMatrix4(jsTransformB))
+        )
+    );
+}
+
+val SuggestExactRadiusPlacementBinding(int exactModelId, int exactShapeHandle, const std::string& kind, int elementId)
+{
+    return ExactPlacementResultToVal(
+        SuggestExactRadiusPlacement(exactModelId, exactShapeHandle, kind, elementId)
+    );
+}
+
+val SuggestExactDiameterPlacementBinding(int exactModelId, int exactShapeHandle, const std::string& kind, int elementId)
+{
+    return ExactPlacementResultToVal(
+        SuggestExactDiameterPlacement(exactModelId, exactShapeHandle, kind, elementId)
+    );
+}
+
 val AnalyzeOptimalOrientation(const std::string& format, const val& content, const val& jsParams)
 {
     std::vector<uint8_t> buffer = ExtractBytes(content);
@@ -1055,5 +1197,10 @@ EMSCRIPTEN_BINDINGS(occtjs)
     function("MeasureExactDistance", &MeasureExactDistanceBinding);
     function("MeasureExactAngle", &MeasureExactAngleBinding);
     function("MeasureExactThickness", &MeasureExactThicknessBinding);
+    function("SuggestExactDistancePlacement", &SuggestExactDistancePlacementBinding);
+    function("SuggestExactAnglePlacement", &SuggestExactAnglePlacementBinding);
+    function("SuggestExactThicknessPlacement", &SuggestExactThicknessPlacementBinding);
+    function("SuggestExactRadiusPlacement", &SuggestExactRadiusPlacementBinding);
+    function("SuggestExactDiameterPlacement", &SuggestExactDiameterPlacementBinding);
     function("AnalyzeOptimalOrientation", &AnalyzeOptimalOrientation);
 }

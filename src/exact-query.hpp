@@ -75,3 +75,48 @@ OcctExactThicknessResult MeasureExactThickness(
     int elementIdB,
     const gp_Trsf& transformA,
     const gp_Trsf& transformB);
+
+OcctExactPlacementResult SuggestExactDistancePlacement(
+    int exactModelId,
+    int exactShapeHandleA,
+    const std::string& kindA,
+    int elementIdA,
+    int exactShapeHandleB,
+    const std::string& kindB,
+    int elementIdB,
+    const gp_Trsf& transformA,
+    const gp_Trsf& transformB);
+
+OcctExactPlacementResult SuggestExactAnglePlacement(
+    int exactModelId,
+    int exactShapeHandleA,
+    const std::string& kindA,
+    int elementIdA,
+    int exactShapeHandleB,
+    const std::string& kindB,
+    int elementIdB,
+    const gp_Trsf& transformA,
+    const gp_Trsf& transformB);
+
+OcctExactPlacementResult SuggestExactThicknessPlacement(
+    int exactModelId,
+    int exactShapeHandleA,
+    const std::string& kindA,
+    int elementIdA,
+    int exactShapeHandleB,
+    const std::string& kindB,
+    int elementIdB,
+    const gp_Trsf& transformA,
+    const gp_Trsf& transformB);
+
+OcctExactPlacementResult SuggestExactRadiusPlacement(
+    int exactModelId,
+    int exactShapeHandle,
+    const std::string& kind,
+    int elementId);
+
+OcctExactPlacementResult SuggestExactDiameterPlacement(
+    int exactModelId,
+    int exactShapeHandle,
+    const std::string& kind,
+    int elementId);

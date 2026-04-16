@@ -181,6 +181,35 @@ struct OcctExactThicknessResult {
     std::array<double, 3> workingPlaneNormal = { 0.0, 0.0, 0.0 };
 };
 
+struct OcctExactPlacementAnchor {
+    std::string role;
+    std::array<double, 3> point = { 0.0, 0.0, 0.0 };
+};
+
+struct OcctExactPlacementFrame {
+    std::array<double, 3> origin = { 0.0, 0.0, 0.0 };
+    std::array<double, 3> normal = { 0.0, 0.0, 0.0 };
+    std::array<double, 3> xDir = { 0.0, 0.0, 0.0 };
+    std::array<double, 3> yDir = { 0.0, 0.0, 0.0 };
+};
+
+struct OcctExactPlacementResult {
+    bool ok = false;
+    std::string code;
+    std::string message;
+    std::string kind;
+    double value = 0.0;
+    bool hasValue = false;
+    OcctExactPlacementFrame frame;
+    std::vector<OcctExactPlacementAnchor> anchors;
+    std::array<double, 3> directionA = { 0.0, 0.0, 0.0 };
+    bool hasDirectionA = false;
+    std::array<double, 3> directionB = { 0.0, 0.0, 0.0 };
+    bool hasDirectionB = false;
+    std::array<double, 3> axisDirection = { 0.0, 0.0, 0.0 };
+    bool hasAxisDirection = false;
+};
+
 struct ImportParams {
     static constexpr double kCadGhostedOpacity = 0.35;
 

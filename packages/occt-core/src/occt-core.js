@@ -190,6 +190,28 @@ function transformDirection(transform, direction) {
   return output.map((value) => value / length);
 }
 
+function transformPlacementFrame(transform, frame) {
+  if (!frame || typeof frame !== "object") {
+    return frame;
+  }
+  return {
+    origin: transformPoint(transform, frame.origin),
+    normal: transformDirection(transform, frame.normal),
+    xDir: transformDirection(transform, frame.xDir),
+    yDir: transformDirection(transform, frame.yDir),
+  };
+}
+
+function transformPlacementAnchors(transform, anchors) {
+  if (!Array.isArray(anchors)) {
+    return [];
+  }
+  return anchors.map((anchor) => ({
+    ...anchor,
+    point: transformPoint(transform, anchor.point),
+  }));
+}
+
 function inverseTransformPoint(transform, point) {
   const [x, y, z] = point;
   const translated = [
@@ -488,6 +510,127 @@ export class OcctCoreClient {
     return result?.ok === true
       ? { ...result, refA: exactRefA, refB: exactRefB }
       : result;
+  }
+
+  async suggestExactDistancePlacement(refA, refB) {
+    const module = await this._ensureModule();
+    const [exactRefA, exactRefB] = validatePairwiseExactRefs(refA, refB, "suggestExactDistancePlacement");
+    if (typeof module.SuggestExactDistancePlacement !== "function") {
+      throw new Error("Loaded OCCT module does not expose SuggestExactDistancePlacement().");
+    }
+
+    const result = module.SuggestExactDistancePlacement(
+      exactRefA.exactModelId,
+      exactRefA.exactShapeHandle,
+      exactRefA.kind,
+      exactRefA.elementId,
+      exactRefB.exactShapeHandle,
+      exactRefB.kind,
+      exactRefB.elementId,
+      exactRefA.transform,
+      exactRefB.transform,
+    );
+    return result?.ok === true
+      ? { ...result, refA: exactRefA, refB: exactRefB }
+      : result;
+  }
+
+  async suggestExactAnglePlacement(refA, refB) {
+    const module = await this._ensureModule();
+    const [exactRefA, exactRefB] = validatePairwiseExactRefs(refA, refB, "suggestExactAnglePlacement");
+    if (typeof module.SuggestExactAnglePlacement !== "function") {
+      throw new Error("Loaded OCCT module does not expose SuggestExactAnglePlacement().");
+    }
+
+    const result = module.SuggestExactAnglePlacement(
+      exactRefA.exactModelId,
+      exactRefA.exactShapeHandle,
+      exactRefA.kind,
+      exactRefA.elementId,
+      exactRefB.exactShapeHandle,
+      exactRefB.kind,
+      exactRefB.elementId,
+      exactRefA.transform,
+      exactRefB.transform,
+    );
+    return result?.ok === true
+      ? { ...result, refA: exactRefA, refB: exactRefB }
+      : result;
+  }
+
+  async suggestExactThicknessPlacement(refA, refB) {
+    const module = await this._ensureModule();
+    const [exactRefA, exactRefB] = validatePairwiseExactRefs(refA, refB, "suggestExactThicknessPlacement");
+    if (typeof module.SuggestExactThicknessPlacement !== "function") {
+      throw new Error("Loaded OCCT module does not expose SuggestExactThicknessPlacement().");
+    }
+
+    const result = module.SuggestExactThicknessPlacement(
+      exactRefA.exactModelId,
+      exactRefA.exactShapeHandle,
+      exactRefA.kind,
+      exactRefA.elementId,
+      exactRefB.exactShapeHandle,
+      exactRefB.kind,
+      exactRefB.elementId,
+      exactRefA.transform,
+      exactRefB.transform,
+    );
+    return result?.ok === true
+      ? { ...result, refA: exactRefA, refB: exactRefB }
+      : result;
+  }
+
+  async suggestExactRadiusPlacement(ref) {
+    const module = await this._ensureModule();
+    const exactRef = validateExactRef(ref, "suggestExactRadiusPlacement");
+    if (typeof module.SuggestExactRadiusPlacement !== "function") {
+      throw new Error("Loaded OCCT module does not expose SuggestExactRadiusPlacement().");
+    }
+
+    const result = module.SuggestExactRadiusPlacement(
+      exactRef.exactModelId,
+      exactRef.exactShapeHandle,
+      exactRef.kind,
+      exactRef.elementId,
+    );
+    if (result?.ok !== true) {
+      return result;
+    }
+
+    return {
+      ...result,
+      frame: transformPlacementFrame(exactRef.transform, result.frame),
+      anchors: transformPlacementAnchors(exactRef.transform, result.anchors),
+      axisDirection: result.axisDirection ? transformDirection(exactRef.transform, result.axisDirection) : result.axisDirection,
+      ref: exactRef,
+    };
+  }
+
+  async suggestExactDiameterPlacement(ref) {
+    const module = await this._ensureModule();
+    const exactRef = validateExactRef(ref, "suggestExactDiameterPlacement");
+    if (typeof module.SuggestExactDiameterPlacement !== "function") {
+      throw new Error("Loaded OCCT module does not expose SuggestExactDiameterPlacement().");
+    }
+
+    const result = module.SuggestExactDiameterPlacement(
+      exactRef.exactModelId,
+      exactRef.exactShapeHandle,
+      exactRef.kind,
+      exactRef.elementId,
+    );
+    if (result?.ok !== true) {
+      return result;
+    }
+
+    return {
+      ...result,
+      frame: transformPlacementFrame(exactRef.transform, result.frame),
+      anchors: transformPlacementAnchors(exactRef.transform, result.anchors),
+      axisDirection: result.axisDirection ? transformDirection(exactRef.transform, result.axisDirection) : result.axisDirection,
+      ref: exactRef,
+    };
   }
 
   async measureExactRadius(ref) {
