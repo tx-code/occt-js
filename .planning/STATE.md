@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Root Release Hardening
 status: ready
-stopped_at: Phase 19 complete, ready to discuss Phase 20
-last_updated: "2026-04-17T13:15:27.1540556Z"
-last_activity: 2026-04-17 -- Phase 19 verified and marked complete
+stopped_at: Phase 20 context gathered
+last_updated: "2026-04-17T13:21:30.000Z"
+last_activity: 2026-04-17 -- Phase 20 context gathered
 progress:
   total_phases: 3
   completed_phases: 2
@@ -28,8 +28,8 @@ Current focus: Phase 20 Conditional Secondary-Surface Verification
 Milestone: v1.5 Root Release Hardening
 Phase: 20 of 20 (Conditional Secondary-Surface Verification)
 Plan: 0 of 2 in current phase
-Status: Ready to discuss
-Last activity: 2026-04-17 -- Phase 19 verified and marked complete
+Status: Ready to plan
+Last activity: 2026-04-17 -- Phase 20 context gathered
 
 Progress: [#######---] 67%
 
@@ -60,11 +60,11 @@ Recent Trend:
 
 - Phase 18 locked the shared local-dev runtime contract on concrete `dist/occt-js.js` and `dist/occt-js.wasm` file URLs.
 - Phase 19 separated `.planning` process checks from `npm run test:release:root` through the explicit `npm run test:planning:audit` path.
-- Demo, Babylon, and Tauri verification remains conditional secondary-surface work outside the authoritative root release gate.
+- Phase 20 will keep secondary-surface verification manifest-first and conditional instead of promoting it into the root release gate.
 
 ### Pending Todos
 
-- Discuss and plan Phase 20 against SURF-01, SURF-02, and SURF-03.
+- Plan Phase 20 against SURF-01, SURF-02, and SURF-03.
 - Surface demo and Babylon verification commands from manifests or top-level docs.
 - Remove hoist-only dependency assumptions without promoting secondary surfaces into the unconditional root release gate.
 
@@ -76,6 +76,6 @@ Recent Trend:
 
 ## Session Continuity
 
-Last session: 2026-04-17T13:15:27.1540556Z
-Stopped at: Phase 19 complete, ready to discuss Phase 20
-Resume file: None
+Last session: 2026-04-17T13:21:30.000Z
+Stopped at: Phase 20 context gathered
+Resume file: .planning/phases/20-conditional-secondary-surface-verification/20-CONTEXT.md
