@@ -28,7 +28,10 @@ test("demo useOcct hook stays on dist runtime paths instead of build intermediat
 
   assert.ok(hookSource.includes('resolveResource("dist/occt-js.js")'));
   assert.ok(hookSource.includes('resolveResource("dist/occt-js.wasm")'));
-  assert.ok(hookSource.includes('new URL("../../../dist/", import.meta.url).href'));
+  assert.match(hookSource, /new URL\(\s*"\.\.\/\.\.\/\.\.\/dist\/occt-js\.js",\s*import\.meta\.url\s*\)\.href/);
+  assert.match(hookSource, /new URL\(\s*"\.\.\/\.\.\/\.\.\/dist\/occt-js\.wasm",\s*import\.meta\.url\s*\)\.href/);
+  assert.doesNotMatch(hookSource, /new URL\(\s*\/\*\s*@vite-ignore\s*\*\/\s*"\.\.\/\.\.\/\.\.\/dist\/",\s*import\.meta\.url\s*\)/);
+  assert.doesNotMatch(hookSource, /new URL\(\s*"\.\.\/\.\.\/\.\.\/dist\/",\s*import\.meta\.url\s*\)/);
   assert.equal(hookSource.includes("build/wasm"), false);
 });
 
