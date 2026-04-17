@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Root Release Hardening
 status: ready
-stopped_at: Phase 18 complete, ready to discuss Phase 19
-last_updated: "2026-04-17T12:56:56.6803215Z"
-last_activity: 2026-04-17 -- Phase 18 verified and marked complete
+stopped_at: Phase 19 context gathered
+last_updated: "2026-04-17T13:01:40.7920814Z"
+last_activity: 2026-04-17 -- Phase 19 context gathered
 progress:
   total_phases: 3
   completed_phases: 1
@@ -28,8 +28,8 @@ Current focus: Phase 19 Root Release Governance Decoupling
 Milestone: v1.5 Root Release Hardening
 Phase: 19 of 20 (Root Release Governance Decoupling)
 Plan: 0 of 2 in current phase
-Status: Ready to discuss
-Last activity: 2026-04-17 -- Phase 18 verified and marked complete
+Status: Ready to plan
+Last activity: 2026-04-17 -- Phase 19 context gathered
 
 Progress: [###-------] 33%
 
@@ -59,14 +59,14 @@ Recent Trend:
 ### Decisions
 
 - Phase 18 locked the shared local-dev runtime contract on concrete `dist/occt-js.js` and `dist/occt-js.wasm` file URLs.
-- Demo runtime reconciliation closed by verification only; `demo/src/hooks/useOcct.js` already matched the intended contract.
-- `npm run test:release:root` remains the authoritative runtime-first root release gate.
+- Phase 19 keeps `npm run test:release:root` on the publishable root contract only, not live `.planning` archive-state strings.
+- Any retained planning/archive audit must move to a separate explicit maintainer path outside `npm run test:release:root`.
 
 ### Pending Todos
 
-- Discuss and plan Phase 19 against GOV-02, GOV-03, and DOCS-02.
+- Plan Phase 19 against GOV-02, GOV-03, and DOCS-02.
 - Remove `.planning` archive-state assertions from the authoritative root release gate without weakening runtime, package, typings, or docs coverage.
-- Keep any retained planning or archive audit on a separate maintainer path outside `npm run test:release:root`.
+- Align release docs to one authoritative root gate plus one separate planning/archive audit path.
 
 ### Blockers/Concerns
 
@@ -76,6 +76,6 @@ Recent Trend:
 
 ## Session Continuity
 
-Last session: 2026-04-17T12:56:56.6803215Z
-Stopped at: Phase 18 complete, ready to discuss Phase 19
-Resume file: None
+Last session: 2026-04-17T13:01:40.7920814Z
+Stopped at: Phase 19 context gathered
+Resume file: .planning/phases/19-root-release-governance-decoupling/19-CONTEXT.md
