@@ -20,7 +20,7 @@ This roadmap restores the runtime-first root release boundary after drift betwee
 - Decimal phases (18.1, 18.2): Urgent insertions (marked with INSERTED)
 
 - [x] **Phase 18: Runtime Path Contract Alignment** - Align root preflight assertions with the shipped `dist/occt-js.js` and `dist/occt-js.wasm` loading contract. (completed 2026-04-17)
-- [ ] **Phase 19: Root Release Governance Decoupling** - Keep the authoritative root release gate focused on runtime, package, typings, and docs contract coverage instead of `.planning` archive state.
+- [x] **Phase 19: Root Release Governance Decoupling** - Keep the authoritative root release gate focused on runtime, package, typings, and docs contract coverage instead of `.planning` archive state. (completed 2026-04-17)
 - [ ] **Phase 20: Conditional Secondary-Surface Verification** - Make demo and Babylon verification discoverable, runnable, and explicitly conditional outside the root npm release gate.
 
 ## Phase Details
@@ -50,8 +50,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 19-01-PLAN.md — Remove `.planning` archive-state coupling from the authoritative root release governance tests
-- [ ] 19-02-PLAN.md — Align root release documentation with the updated gate and separate planning audit path
+- [x] 19-01-PLAN.md — Remove `.planning` archive-state coupling from the authoritative root release governance tests
+- [x] 19-02-PLAN.md — Align root release documentation with the updated gate and separate planning audit path
 
 ### Phase 20: Conditional Secondary-Surface Verification
 **Goal**: Maintainers can discover and run secondary-surface verification intentionally, with package-local dependency declarations and without turning those checks into unconditional root release prerequisites.
@@ -75,5 +75,5 @@ Phases execute in numeric order: 18 → 19 → 20
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 18. Runtime Path Contract Alignment | 2/2 | Complete    | 2026-04-17 |
-| 19. Root Release Governance Decoupling | 0/2 | Not started | - |
+| 19. Root Release Governance Decoupling | 2/2 | Complete    | 2026-04-17 |
 | 20. Conditional Secondary-Surface Verification | 0/2 | Not started | - |

@@ -12,9 +12,9 @@
 
 ### Release Governance
 
-- [ ] **GOV-02**: `npm run test:release:root` enforces the published runtime/package/docs contract without hardcoding archived milestone filenames, shipped dates, or `.planning/STATE.md` strings unrelated to the npm release surface.
-- [ ] **GOV-03**: Planning/archive audits, if retained, run outside the authoritative root release gate so repository process drift does not block runtime releases.
-- [ ] **DOCS-02**: Root release guidance in `README.md`, `AGENTS.md`, and related package docs stays aligned with the updated runtime-first gate and any relocated planning audit path.
+- [x] **GOV-02**: `npm run test:release:root` enforces the published runtime/package/docs contract without hardcoding archived milestone filenames, shipped dates, or `.planning/STATE.md` strings unrelated to the npm release surface.
+- [x] **GOV-03**: Planning/archive audits, if retained, run outside the authoritative root release gate so repository process drift does not block runtime releases.
+- [x] **DOCS-02**: Root release guidance in `README.md`, `AGENTS.md`, and related package docs stays aligned with the updated runtime-first gate and any relocated planning audit path.
 
 ### Secondary-Surface Verification
 
@@ -57,9 +57,9 @@ The follow-on sequence after `v1.5` is currently planned as:
 |-------------|-------|--------|
 | PATH-01 | Phase 18 | Complete |
 | PATH-02 | Phase 18 | Complete |
-| GOV-02 | Phase 19 | Pending |
-| GOV-03 | Phase 19 | Pending |
-| DOCS-02 | Phase 19 | Pending |
+| GOV-02 | Phase 19 | Complete |
+| GOV-03 | Phase 19 | Complete |
+| DOCS-02 | Phase 19 | Complete |
 | SURF-01 | Phase 20 | Pending |
 | SURF-02 | Phase 20 | Pending |
 | SURF-03 | Phase 20 | Pending |
@@ -71,4 +71,4 @@ The follow-on sequence after `v1.5` is currently planned as:
 
 ---
 *Requirements defined: 2026-04-17*
-*Last updated: 2026-04-17 after Phase 18 Runtime Path Contract Alignment*
+*Last updated: 2026-04-17 after Phase 19 Root Release Governance Decoupling*

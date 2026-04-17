@@ -30,10 +30,11 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 - ✓ Package-first exact relation classification now preserves occurrence transforms and explicit `none` / failure semantics without inventing viewer policy.
 - ✓ Package-first SDK docs, packaged typings, tarball checks, and the authoritative root release gate now lock the exact placement/relation surface end to end.
 - ✓ Root preflight and the maintained demo dev runtime now share the same concrete `dist/occt-js.js` and `dist/occt-js.wasm` loading contract, with stale directory-base assumptions rejected by preflight coverage. — Phase 18
+- ✓ The authoritative root release gate now verifies publishable runtime/package/docs behavior without depending on live `.planning` archive-state strings, and any retained planning audit runs separately through `npm run test:planning:audit`. — Phase 19
+- ✓ README, AGENTS, `packages/occt-core/README.md`, and the thin release skill now document the same split between the authoritative root release gate and the separate planning audit path. — Phase 19
 
 ### Active
 
-- [ ] The authoritative root release gate verifies runtime/package/docs behavior without depending on brittle `.planning/` archive-state assertions.
 - [ ] Secondary-surface verification for `demo/` and Babylon packages is explicit, runnable, and kept outside the unconditional root npm release gate.
 
 ### Out of Scope
@@ -50,7 +51,7 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 
 `v1.4 Exact Measurement Placement & Relation SDK` shipped on 2026-04-16 and is now archived in `.planning/milestones/`. The root runtime and `occt-core` now expose additive exact placement helpers plus exact relation classification for `parallel`, `perpendicular`, `concentric`, `tangent`, and `none`, all with occurrence-safe supporting geometry DTOs. Package-first SDK docs, packaged typings, tarball assertions, and the authoritative release gate now lock that exact measurement surface end to end.
 
-`v1.5 Root Release Hardening` is now the active milestone. Phase 18 completed the runtime-path alignment work, so the remaining milestone focus is release-governance decoupling plus explicit secondary-surface verification without weakening the root runtime release boundary.
+`v1.5 Root Release Hardening` is now the active milestone. Phases 18 and 19 completed the runtime-path and release-governance hardening work, so the remaining milestone focus is explicit secondary-surface verification without weakening the root runtime release boundary.
 
 ## Current Milestone: v1.5 Root Release Hardening
 
@@ -100,6 +101,7 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 | Keep SDK docs package-first with `@tx-code/occt-core` as the primary entry point | Most downstream JS consumers should start from exact refs and occurrence-safe adapters, with root Wasm documented as the lower-level reference | ✓ Good |
 | Start the next cycle with release hardening before new exact helpers | The current codebase map shows root preflight drift and brittle governance checks; shipping more API surface before fixing the release boundary would compound risk | ✓ Good |
 | Lock Phase 18 on the concrete local-dev JS/Wasm file URLs already used by maintained consumers | One shared runtime-path contract across preflight and demo loading is safer than reintroducing ambiguous directory-base lookup semantics | ✓ Good |
+| Separate `.planning` audits from `npm run test:release:root` via an explicit maintainer command | Runtime/package release verification must stay independent of milestone lifecycle drift while planning audits remain intentionally runnable | ✓ Good |
 
 ## Evolution
 
@@ -161,4 +163,4 @@ This document evolves at phase transitions and milestone boundaries.
 </details>
 
 ---
-*Last updated: 2026-04-17 after Phase 18 Runtime Path Contract Alignment*
+*Last updated: 2026-04-17 after Phase 19 Root Release Governance Decoupling*
