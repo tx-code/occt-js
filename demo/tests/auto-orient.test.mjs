@@ -1,9 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { applyOrientationToResult, getOcctFormatFromFileName, resolveAutoOrientedResult } from "../src/lib/auto-orient.js";
 import { loadOcctFactory } from "../../test/load_occt_factory.mjs";
+
+const simplePartPath = fileURLToPath(new URL("../../test/simple_part.step", import.meta.url));
 
 function makeTranslation(tx, ty, tz) {
   return [
@@ -108,7 +110,7 @@ test("resolveAutoOrientedResult applies successful orientation analysis", async 
 
 test("resolveAutoOrientedResult keeps simple_part upright for Babylon's Y-up world", async () => {
   const occt = await loadOcctFactory()();
-  const bytes = new Uint8Array(readFileSync(resolve("test", "simple_part.step")));
+  const bytes = new Uint8Array(readFileSync(simplePartPath));
   const result = {
     rootNodes: [
       { id: "root", transform: makeIdentity(), children: [], meshes: [] },

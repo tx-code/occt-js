@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "test": "node --test tests/*.test.mjs",
+    "test:e2e": "cd .. && npx playwright test --config playwright.config.mjs demo/tests/app-home.spec.mjs",
     "preview": "vite preview",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build"

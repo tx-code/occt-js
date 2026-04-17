@@ -1,9 +1,9 @@
 import { useRef, useEffect, useCallback } from "react";
 import { convertFileSrc, isTauri } from "@tauri-apps/api/core";
 import { resolveResource } from "@tauri-apps/api/path";
-import { inferOcctFormatFromFileName } from "@tx-code/occt-babylon-loader";
-import { createOcctCore, resolveAutoOrientedModel } from "@tx-code/occt-core";
+import { createOcctCore } from "@tx-code/occt-core";
 import packageJson from "../../../package.json";
+import { getOcctFormatFromFileName, resolveAutoOrientedResult } from "../lib/auto-orient";
 import { useViewerStore } from "../store/viewerStore";
 
 const CDN = `https://unpkg.com/@tx-code/occt-js@${packageJson.version}/dist/`;
@@ -120,7 +120,7 @@ export function useOcct() {
     setLoading(true, "Loading engine...");
     try {
       const occt = await ensureModule();
-      const format = inferOcctFormatFromFileName(file.name);
+      const format = getOcctFormatFromFileName(file.name);
       if (!format) throw new Error("Unsupported format: " + file.name);
 
       const buffer = await file.arrayBuffer();
@@ -139,11 +139,11 @@ export function useOcct() {
       let autoOrientResult = null;
       setLoadingMessage("Analyzing orientation...");
       try {
-        const orientedResult = await resolveAutoOrientedModel({
+        const orientedResult = await resolveAutoOrientedResult({
           occt,
           format,
           bytes,
-          model: result,
+          result,
         });
         if (orientedResult !== result) {
           autoOrientResult = orientedResult;
