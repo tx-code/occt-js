@@ -32,3 +32,14 @@ import { buildOcctScene } from "@tx-code/occt-babylon-loader";
 
 const resources = buildOcctScene(model, scene, { createRootNode: false });
 ```
+
+## Verification
+
+From the repository root:
+
+```bash
+npm --prefix packages/occt-babylon-loader test
+```
+
+This package is conditional secondary-surface verification only. Run it when you touch loader code, its Babylon scene-construction path, or the package manifest.
+The loader owns its direct imports of `@babylonjs/core` and `@tx-code/occt-babylon-viewer`; `@tx-code/occt-core` remains caller-supplied.

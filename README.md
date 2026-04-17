@@ -283,7 +283,25 @@ npm run test:planning:audit
 
 That `.planning/` audit validates milestone/archive consistency for maintainers, but it is separate from the authoritative root npm release gate.
 
-Demo, Babylon, and Tauri surfaces are conditional secondary-surface verification only. Run their checks when your release changes `demo/`, `demo/tests/`, `demo/src-tauri/`, or the Babylon package surfaces.
+When you intentionally want to audit the command/docs contract for secondary surfaces, run:
+
+```bash
+npm run test:secondary:contracts
+```
+
+That audit locks the conditional demo/Babylon/Tauri routing below, but it stays outside the root release gate.
+
+Demo, Babylon, and Tauri surfaces are conditional secondary-surface verification only. Run their follow-up checks when your release changes those paths:
+
+| Touched paths | Follow-up commands | Scope |
+|---------------|--------------------|-------|
+| `demo/`, `demo/src/`, `demo/tests/` | `npm --prefix demo test` | demo node-style verification |
+| `demo/`, `demo/src/`, `demo/tests/` | `npm --prefix demo run test:e2e` | browser smoke verification for the current Project Home shell |
+| `demo/`, `demo/src/`, `demo/tests/` | `npm --prefix demo run build` | production demo build |
+| `demo/src-tauri/` | `npm --prefix demo run tauri:build` | desktop-only follow-up verification |
+| `packages/occt-babylon-loader/` | `npm --prefix packages/occt-babylon-loader test` | loader package verification |
+| `packages/occt-babylon-viewer/` | `npm --prefix packages/occt-babylon-viewer test` | viewer package verification |
+| `packages/occt-babylon-widgets/` | `npm --prefix packages/occt-babylon-widgets test` | widgets package verification |
 
 ## Repository Layout (2026-04-14)
 

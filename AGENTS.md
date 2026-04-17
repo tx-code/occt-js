@@ -107,7 +107,7 @@ Maintainers have two root verification entrypoints:
 - `npm test`
   - full root runtime verification after `npm run build:wasm:win`
 
-Maintainers have one root release gate and one separate planning audit:
+Maintainers have one root release gate and two separate optional audits:
 
 - `npm run test:release:root`
   - canonical runtime-first release verification for the root Wasm carrier
@@ -115,6 +115,9 @@ Maintainers have one root release gate and one separate planning audit:
   - excludes unconditional demo, Babylon, and Tauri checks
 - `npm run test:planning:audit`
   - optional planning/archive audit for `.planning/` milestone and archive consistency
+  - separate from the authoritative root release gate
+- `npm run test:secondary:contracts`
+  - optional manifest/docs audit for conditional demo, Babylon, and Tauri verification routing
   - separate from the authoritative root release gate
 
 Root tests require the `dist/` Wasm artifacts to exist first:
@@ -128,6 +131,8 @@ npm test
 From `demo/`:
 
 ```bash
+npm run test
+npm run test:e2e
 npm run dev
 npm run build
 npm run tauri:dev
@@ -193,7 +198,13 @@ Important details:
 - if viewer behavior changes, verify `demo` build and relevant viewer tests
 - use `npm run test:release:root` for root release verification
 - use `npm run test:planning:audit` only when intentionally auditing `.planning` milestone/archive consistency
+- use `npm run test:secondary:contracts` only when intentionally auditing the conditional secondary-surface command/docs contract
 - keep conditional secondary-surface verification limited to changes under `demo/`, `demo/src-tauri/`, or Babylon package surfaces
+- changes under `demo/`, `demo/src/`, or `demo/tests/`: run `npm --prefix demo test`, `npm --prefix demo run test:e2e`, and `npm --prefix demo run build`
+- changes under `demo/src-tauri/`: run `npm --prefix demo run tauri:build`
+- changes under `packages/occt-babylon-loader/`: run `npm --prefix packages/occt-babylon-loader test`
+- changes under `packages/occt-babylon-viewer/`: run `npm --prefix packages/occt-babylon-viewer test`
+- changes under `packages/occt-babylon-widgets/`: run `npm --prefix packages/occt-babylon-widgets test`
 
 ## Release Boundaries
 
@@ -202,6 +213,7 @@ Important details:
 - `demo/` is not the published npm package
 - desktop work must not become a prerequisite for npm release
 - `.planning` audits remain separate process checks outside the authoritative root release gate
+- `npm run test:secondary:contracts` remains a separate process/doc-routing audit outside the authoritative root release gate
 - demo, Babylon, and Tauri checks are conditional secondary-surface verification, not unconditional root release gates
 - documentation for agent behavior should live here, not be duplicated in tool-specific files
 - settings persistence and viewer overrides remain downstream concerns outside the root runtime scope

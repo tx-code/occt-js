@@ -22,3 +22,13 @@ widget.attach(viewer);
 ## Current Widgets
 
 - `createViewCubeWidget(options)`
+
+## Verification
+
+From the repository root:
+
+```bash
+npm --prefix packages/occt-babylon-widgets test
+```
+
+This package is conditional secondary-surface verification only. Run it when you touch widget code or its package manifest.

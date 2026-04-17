@@ -11,10 +11,15 @@
     "src"
   ],
   "license": "Apache-2.0",
+  "dependencies": {
+    "@babylonjs/core": "^9.0.0",
+    "@tx-code/occt-babylon-viewer": "file:../occt-babylon-viewer"
+  },
   "peerDependencies": {
-    "@tx-code/occt-core": "^0.1.7",
-    "@tx-code/occt-babylon-viewer": "^0.1.7",
-    "@babylonjs/core": "^8.0.0"
+    "@tx-code/occt-core": "^0.1.7"
+  },
+  "devDependencies": {
+    "@tx-code/occt-core": "file:../occt-core"
   },
   "scripts": {
     "test": "node --test test/*.test.mjs"

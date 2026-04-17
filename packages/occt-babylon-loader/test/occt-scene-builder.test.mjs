@@ -2,7 +2,6 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { NullEngine } from "@babylonjs/core/Engines/nullEngine.js";
 import { Scene } from "@babylonjs/core/scene.js";
-import { PBRMaterial } from "@babylonjs/core/Materials/PBR/pbrMaterial.js";
 import { buildOcctScene } from "../src/occt-scene-builder.js";
 
 describe("buildOcctScene", () => {
@@ -39,7 +38,7 @@ describe("buildOcctScene", () => {
     );
 
     assert.equal(resources.meshes.length, 1);
-    assert.ok(resources.meshes[0].material instanceof PBRMaterial);
+    assert.equal(resources.meshes[0].material?.getClassName?.(), "PBRMaterial");
     assert.equal(resources.meshes[0].material.albedoColor.r, 0.9);
     assert.equal(resources.meshes[0].material.albedoColor.g, 0.91);
     assert.equal(resources.meshes[0].material.albedoColor.b, 0.93);

@@ -86,3 +86,13 @@ const marker = createScreenSpaceVertexMarker(scene, worldPoint, camera, BABYLON,
   coreColor: new BABYLON.Color3(0.0, 1.0, 0.3),
 });
 ```
+
+## Verification
+
+From the repository root:
+
+```bash
+npm --prefix packages/occt-babylon-viewer test
+```
+
+This package is conditional secondary-surface verification only. Run it when you touch viewer runtime code or its package manifest.
