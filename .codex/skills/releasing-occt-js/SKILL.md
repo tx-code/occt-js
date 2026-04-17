@@ -85,6 +85,11 @@ Required result:
 
 - the root release gate passes
 
+Optional separate process audit:
+
+- Run `npm run test:planning:audit` only when you intentionally want to validate `.planning` milestone/archive consistency.
+- This audit is separate from the authoritative root release gate.
+
 ## Conditional Secondary-Surface Verification
 
 If the release also touches secondary surfaces, follow `AGENTS.md` and run the corresponding secondary-surface verification for those touched paths.
@@ -101,6 +106,7 @@ Notes:
 
 - Keep the skill thin: repo policy and conditional verification rules belong in `AGENTS.md`.
 - Secondary-surface verification is conditional; it is not part of the unconditional root release gate.
+- The planning audit is separate process verification; it is not part of the unconditional root release gate.
 
 ## Commit
 

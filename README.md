@@ -275,6 +275,14 @@ npm run test:release:root
 This gate is runtime-first. It covers the Windows Wasm build, root governance contracts, `@tx-code/occt-core`, and the full root runtime suite.
 That authoritative surface includes `test/exact_pairwise_measurement_contract.test.mjs`, `test/exact_placement_contract.test.mjs`, and `test/exact_relation_contract.test.mjs`, so the exact measurement SDK stays mandatory in root release verification.
 
+When you intentionally want to audit the GSD planning corpus, run the separate planning audit:
+
+```bash
+npm run test:planning:audit
+```
+
+That `.planning/` audit validates milestone/archive consistency for maintainers, but it is separate from the authoritative root npm release gate.
+
 Demo, Babylon, and Tauri surfaces are conditional secondary-surface verification only. Run their checks when your release changes `demo/`, `demo/tests/`, `demo/src-tauri/`, or the Babylon package surfaces.
 
 ## Repository Layout (2026-04-14)

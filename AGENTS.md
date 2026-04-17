@@ -107,12 +107,15 @@ Maintainers have two root verification entrypoints:
 - `npm test`
   - full root runtime verification after `npm run build:wasm:win`
 
-Maintainers have one root release gate:
+Maintainers have one root release gate and one separate planning audit:
 
 - `npm run test:release:root`
   - canonical runtime-first release verification for the root Wasm carrier
   - covers the Windows Wasm build, governance contract tests, `packages/occt-core`, and the full root runtime suite
   - excludes unconditional demo, Babylon, and Tauri checks
+- `npm run test:planning:audit`
+  - optional planning/archive audit for `.planning/` milestone and archive consistency
+  - separate from the authoritative root release gate
 
 Root tests require the `dist/` Wasm artifacts to exist first:
 
@@ -189,6 +192,7 @@ Important details:
 - if the root Wasm contract changes, verify root tests first
 - if viewer behavior changes, verify `demo` build and relevant viewer tests
 - use `npm run test:release:root` for root release verification
+- use `npm run test:planning:audit` only when intentionally auditing `.planning` milestone/archive consistency
 - keep conditional secondary-surface verification limited to changes under `demo/`, `demo/src-tauri/`, or Babylon package surfaces
 
 ## Release Boundaries
@@ -197,6 +201,7 @@ Important details:
 - import appearance options such as `appearancePreset`, `colorMode`, `defaultColor`, and `defaultOpacity` are part of that root runtime contract
 - `demo/` is not the published npm package
 - desktop work must not become a prerequisite for npm release
+- `.planning` audits remain separate process checks outside the authoritative root release gate
 - demo, Babylon, and Tauri checks are conditional secondary-surface verification, not unconditional root release gates
 - documentation for agent behavior should live here, not be duplicated in tool-specific files
 - settings persistence and viewer overrides remain downstream concerns outside the root runtime scope

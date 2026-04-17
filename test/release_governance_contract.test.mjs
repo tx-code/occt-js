@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -23,6 +23,14 @@ test("authoritative root release command surface stays runtime-first", () => {
     releaseCommand,
     "npm run build:wasm:win && node --test test/wasm_build_contract.test.mjs test/package_tarball_contract.test.mjs test/release_governance_contract.test.mjs test/exact_pairwise_measurement_contract.test.mjs test/exact_placement_contract.test.mjs test/exact_relation_contract.test.mjs && npm --prefix packages/occt-core test && npm test",
   );
+});
+
+test("authoritative root release command surface excludes planning audit coverage", () => {
+  const packageJson = readRepoJson("package.json");
+  const releaseCommand = packageJson.scripts?.["test:release:root"] ?? "";
+
+  assert.equal(releaseCommand.includes("planning_archive_contract"), false);
+  assert.equal(releaseCommand.includes("test:planning:audit"), false);
 });
 
 test("authoritative root release command surface includes exact measurement SDK coverage", () => {
@@ -86,6 +94,22 @@ test("release docs keep the root Wasm carrier authoritative", () => {
   assert.match(agents, /npm run test:release:root/);
   assert.match(readme, /root Wasm carrier/i);
   assert.match(agents, /conditional secondary-surface verification/i);
+});
+
+test("release docs surface the separate planning audit outside the root gate", () => {
+  const readme = readRepoText("README.md");
+  const occtCoreReadme = readRepoText("packages/occt-core/README.md");
+  const agents = readRepoText("AGENTS.md");
+  const skill = readRepoText(".codex/skills/releasing-occt-js/SKILL.md");
+
+  assert.match(readme, /npm run test:planning:audit/);
+  assert.match(readme, /separate from the authoritative root npm release gate/i);
+  assert.match(occtCoreReadme, /npm run test:planning:audit/);
+  assert.match(occtCoreReadme, /not part of the authoritative root release gate/i);
+  assert.match(agents, /npm run test:planning:audit/);
+  assert.match(agents, /separate from the authoritative root release gate/i);
+  assert.match(skill, /npm run test:planning:audit/);
+  assert.match(skill, /separate from the authoritative root release gate/i);
 });
 
 test("agent guidance distinguishes milestone tags from npm semver and downstream vendor refresh", () => {
@@ -199,85 +223,4 @@ test("release skill stays a thin AGENTS shim and keeps secondary surfaces condit
   assert.equal(skill.includes("demo/src/hooks/useOcct.js"), false);
   assert.equal(skill.includes("tauri:build"), false);
   assert.equal(skill.includes("@tx-code/occt-babylon-loader"), false);
-});
-
-test("milestone archives preserve v1.4 requirements while leaving no active requirements file", () => {
-  const milestones = readRepoText(".planning/MILESTONES.md");
-  const archivedV14Requirements = readRepoText(".planning/milestones/v1.4-REQUIREMENTS.md");
-  const archivedV13Requirements = readRepoText(".planning/milestones/v1.3-REQUIREMENTS.md");
-
-  assert.equal(existsSync(resolve(repoRoot, ".planning/REQUIREMENTS.md")), false);
-  assert.match(archivedV14Requirements, /# Requirements Archive: v1\.4 Exact Measurement Placement & Relation SDK/);
-  assert.match(archivedV14Requirements, /\| PLCT-01 \| Phase 15 \| Completed \|/);
-  assert.match(archivedV14Requirements, /\| REL-01 \| Phase 16 \| Completed \|/);
-  assert.match(archivedV14Requirements, /\| DOCS-01 \| Phase 17 \| Completed \|/);
-  assert.match(archivedV14Requirements, /\| GOV-01 \| Phase 17 \| Completed \|/);
-  assert.match(archivedV13Requirements, /# Requirements Archive: v1\.3 Appearance Expansion/);
-  assert.match(milestones, /## v1\.4 Exact Measurement Placement & Relation SDK/);
-  assert.match(milestones, /## v1\.3 Appearance Expansion/);
-});
-
-test("milestone archives capture the shipped v1.4 planning corpus and preserve older milestones", () => {
-  const milestones = readRepoText(".planning/MILESTONES.md");
-  const archivedRoadmap = readRepoText(".planning/milestones/v1.4-ROADMAP.md");
-  const archivedRequirements = readRepoText(".planning/milestones/v1.4-REQUIREMENTS.md");
-  const olderRoadmap = readRepoText(".planning/milestones/v1.3-ROADMAP.md");
-  const olderRequirements = readRepoText(".planning/milestones/v1.3-REQUIREMENTS.md");
-
-  assert.match(milestones, /## v1\.4 Exact Measurement Placement & Relation SDK/);
-  assert.match(milestones, /## v1\.3 Appearance Expansion/);
-  assert.match(milestones, /## v1\.2 Import Appearance Contract/);
-  assert.match(milestones, /## v1\.1 Exact BRep Measurement Foundation/);
-  assert.match(archivedRoadmap, /### Phase 17: SDK Docs & Governance/);
-  assert.match(archivedRequirements, /# Requirements Archive: v1\.4 Exact Measurement Placement & Relation SDK/);
-  assert.match(olderRoadmap, /### Phase 14: Appearance Expansion Governance/);
-  assert.match(olderRequirements, /# Requirements Archive: v1\.3 Appearance Expansion/);
-  assert.equal(existsSync(resolve(repoRoot, ".planning/milestones/v1.4-phases/15-placement-contract-hardening")), true);
-  assert.equal(existsSync(resolve(repoRoot, ".planning/milestones/v1.4-phases/16-exact-relation-classifier-contract")), true);
-  assert.equal(existsSync(resolve(repoRoot, ".planning/milestones/v1.4-phases/17-sdk-docs-governance")), true);
-});
-
-test("project state stays aligned to the root Wasm carrier after archiving v1.4", () => {
-  const project = readRepoText(".planning/PROJECT.md");
-  const roadmap = readRepoText(".planning/ROADMAP.md");
-  const state = readRepoText(".planning/STATE.md");
-  const coreValue = "Downstream applications can reliably consume the OCCT Wasm runtime and its root API contract without build drift or packaging surprises.";
-
-  assert.match(project, new RegExp(coreValue.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
-  assert.match(state, new RegExp(coreValue.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
-  assert.match(roadmap, /No active milestone\./);
-  assert.match(project, /## Current State/);
-  assert.match(project, /v1\.3 Appearance Expansion/i);
-  assert.match(project, /v1\.4 Exact Measurement Placement & Relation SDK/i);
-  assert.match(project, /PrsDim/i);
-  assert.match(project, /@tx-code\/occt-core/);
-  assert.match(project, /shipped on 2026-04-16/i);
-  assert.match(project, /There is no active milestone/i);
-  assert.match(project, /## Next Milestone Goals/);
-  assert.match(project, /package-first/i);
-  assert.match(project, /## Evolution/);
-});
-
-test("planning state reflects v1.4 archived with no active milestone", () => {
-  const roadmap = readRepoText(".planning/ROADMAP.md");
-  const state = readRepoText(".planning/STATE.md");
-
-  assert.match(roadmap, /✅ \[v1\.4 Exact Measurement Placement & Relation SDK\]\(\.\/milestones\/v1\.4-ROADMAP\.md\) — Phases 15-17, shipped 2026-04-16/);
-  assert.match(roadmap, /✅ \[v1\.3 Appearance Expansion\]\(\.\/milestones\/v1\.3-ROADMAP\.md\) — Phases 12-14, shipped 2026-04-15/);
-  assert.match(roadmap, /✅ \[v1\.2 Import Appearance Contract\]\(\.\/milestones\/v1\.2-ROADMAP\.md\) — Phases 9-11, shipped 2026-04-15/);
-  assert.match(roadmap, /No active milestone\./);
-  assert.equal(existsSync(resolve(repoRoot, ".planning/REQUIREMENTS.md")), false);
-  assert.equal(existsSync(resolve(repoRoot, ".planning/phases/15-placement-contract-hardening")), false);
-  assert.equal(existsSync(resolve(repoRoot, ".planning/phases/16-exact-relation-classifier-contract")), false);
-  assert.equal(existsSync(resolve(repoRoot, ".planning/phases/17-sdk-docs-governance")), false);
-
-  assert.match(state, /milestone:\s*none/i);
-  assert.match(state, /milestone_name:\s*none/i);
-  assert.match(state, /status:\s*ready/i);
-  assert.match(state, /Current focus:\s*Planning the next milestone/i);
-  assert.match(state, /Milestone:\s*none/i);
-  assert.match(state, /Phase:\s*none/i);
-  assert.match(state, /Status:\s*No active milestone; v1\.4 has been archived/i);
-  assert.match(state, /Next step is `\/gsd-new-milestone`/i);
-  assert.match(state, /Progress:\s*\[----------\]\s*0%/);
 });
