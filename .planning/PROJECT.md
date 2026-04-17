@@ -32,8 +32,9 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 
 ### Active
 
-- [ ] Downstream JS code can derive richer measurement semantics such as hole, chamfer, equal-distance, or symmetry helpers on top of the shipped placement/relation primitives without turning `occt-js` into a viewer framework.
-- [ ] Any future exact-measurement expansion should stay package-first and additive, with `@tx-code/occt-core` as the primary downstream SDK entry point.
+- [ ] Root preflight and runtime-path governance stay aligned with the shipped `dist/` artifact contract across root tests and demo runtime loading.
+- [ ] The authoritative root release gate verifies runtime/package/docs behavior without depending on brittle `.planning/` archive-state assertions.
+- [ ] Secondary-surface verification for `demo/` and Babylon packages is explicit, runnable, and kept outside the unconditional root npm release gate.
 
 ### Out of Scope
 
@@ -49,25 +50,27 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 
 `v1.4 Exact Measurement Placement & Relation SDK` shipped on 2026-04-16 and is now archived in `.planning/milestones/`. The root runtime and `occt-core` now expose additive exact placement helpers plus exact relation classification for `parallel`, `perpendicular`, `concentric`, `tangent`, and `none`, all with occurrence-safe supporting geometry DTOs. Package-first SDK docs, packaged typings, tarball assertions, and the authoritative release gate now lock that exact measurement surface end to end.
 
-There is no active milestone. The next milestone should only expand the runtime/package contract if it stays package-first and keeps viewer UX, feature semantics, and app-owned interaction flows downstream.
+`v1.5 Root Release Hardening` is now the active milestone. It focuses on re-stabilizing the runtime-first release boundary after drift between root preflight expectations, demo runtime loading paths, secondary-surface package test discoverability, and `.planning`-coupled governance assertions.
 
-## Next Milestone Goals
+## Current Milestone: v1.5 Root Release Hardening
 
-**Goal:** Decide whether the next runtime-first milestone should deepen exact measurement semantics or shift to another package-level contract improvement.
+**Goal:** Re-stabilize the authoritative root release contract so future runtime/package milestones can ship without preflight, governance, or secondary-surface drift.
 
 **Target features:**
-- Any new exact-measurement work should remain additive and package-first.
-- `@tx-code/occt-core` should remain the primary SDK entry point for downstream JS consumers.
-- The authoritative release boundary should remain `dist/` plus `npm run test:release:root`.
+- Align root preflight/runtime-path assertions with the shipped `dist/occt-js.js` and `dist/occt-js.wasm` loading contract.
+- Separate root release governance from brittle `.planning/` archive-state assertions while preserving runtime/package contract coverage.
+- Make secondary-surface package and demo verification discoverable and runnable without turning them into unconditional root release gates.
 
 ## Context
 
 - Brownfield repository with an established Wasm build flow, root package contract, demo app, Tauri shell, and package-layer adapters.
-- Root package version is still `0.1.7`; the root runtime and root tests remain the primary maintained contract.
+- Root package version is `0.1.8`; the root runtime and root tests remain the primary maintained contract.
 - `imos-app` remains the key downstream consumer signal: it vendors `@tx-code/occt-js` and consumes the Wasm/runtime surface directly, while viewer semantics live on the app side.
 - `SceneGraph.net` remains the best local reference for measurement behavior above the kernel layer, but `occt-js` intentionally stopped at exact-kernel foundations plus package-first placement/relation support.
 - OCCT `PrsDim` remains the local geometry reference for placement and relation behavior, but `occt-js` intentionally stops short of AIS/Prs3d interactive dimensions.
 - The current exact runtime now exposes retained exact-model lifecycle, primitive exact queries, pairwise distance/angle/thickness, placement DTOs, and relation classification; package docs and release verification treat that as a first-class SDK surface.
+- The formal follow-on milestone sequence after `v1.5` is:
+  `v1.6 Exact Semantics Helpers` → `v1.7 Exact Lifecycle & Performance` → `v1.8 Package Ecosystem & Secondary Surfaces`.
 - GSD is the primary repository workflow; superpowers remain optional support tooling for narrow tasks only.
 
 ## Constraints
@@ -95,6 +98,7 @@ There is no active milestone. The next milestone should only expand the runtime/
 | Keep `kind: "none"` as a successful relation result | Downstream apps need to distinguish valid analytic non-relations from unsupported geometry without inventing wrapper-only semantics | ✓ Good |
 | Keep `occt-core` relation wrappers thin and transform-transparent | The runtime already returns occurrence-aware relation geometry, so the package layer should only validate refs, forward transforms, and attach refs on success | ✓ Good |
 | Keep SDK docs package-first with `@tx-code/occt-core` as the primary entry point | Most downstream JS consumers should start from exact refs and occurrence-safe adapters, with root Wasm documented as the lower-level reference | ✓ Good |
+| Start the next cycle with release hardening before new exact helpers | The current codebase map shows root preflight drift and brittle governance checks; shipping more API surface before fixing the release boundary would compound risk | ✓ Good |
 
 ## Evolution
 
@@ -156,4 +160,4 @@ This document evolves at phase transitions and milestone boundaries.
 </details>
 
 ---
-*Last updated: 2026-04-16 after archiving v1.4 Exact Measurement Placement & Relation SDK*
+*Last updated: 2026-04-17 after starting v1.5 Root Release Hardening*
