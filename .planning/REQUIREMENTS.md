@@ -55,20 +55,20 @@ The follow-on sequence after `v1.5` is currently planned as:
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PATH-01 | TBD | Pending |
-| PATH-02 | TBD | Pending |
-| GOV-02 | TBD | Pending |
-| GOV-03 | TBD | Pending |
-| DOCS-02 | TBD | Pending |
-| SURF-01 | TBD | Pending |
-| SURF-02 | TBD | Pending |
-| SURF-03 | TBD | Pending |
+| PATH-01 | Phase 18 | Pending |
+| PATH-02 | Phase 18 | Pending |
+| GOV-02 | Phase 19 | Pending |
+| GOV-03 | Phase 19 | Pending |
+| DOCS-02 | Phase 19 | Pending |
+| SURF-01 | Phase 20 | Pending |
+| SURF-02 | Phase 20 | Pending |
+| SURF-03 | Phase 20 | Pending |
 
 **Coverage:**
 - v1.5 requirements: 8 total
-- Mapped to phases: 0
-- Unmapped: 8
+- Mapped to phases: 8
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-17*
-*Last updated: 2026-04-17 after starting v1.5 Root Release Hardening*
+*Last updated: 2026-04-17 after roadmap creation for v1.5 Root Release Hardening*
