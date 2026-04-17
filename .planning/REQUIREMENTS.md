@@ -7,8 +7,8 @@
 
 ### Runtime Path Contract
 
-- [ ] **PATH-01**: Root preflight verifies the same concrete local `dist/occt-js.js` and `dist/occt-js.wasm` paths used by the shipped demo dev runtime instead of stale directory-base assumptions.
-- [ ] **PATH-02**: `npm run test:wasm:preflight` passes against the shipped runtime-loading contract while still guarding the canonical `dist/` artifact boundary.
+- [x] **PATH-01**: Root preflight verifies the same concrete local `dist/occt-js.js` and `dist/occt-js.wasm` paths used by the shipped demo dev runtime instead of stale directory-base assumptions.
+- [x] **PATH-02**: `npm run test:wasm:preflight` passes against the shipped runtime-loading contract while still guarding the canonical `dist/` artifact boundary.
 
 ### Release Governance
 
@@ -55,8 +55,8 @@ The follow-on sequence after `v1.5` is currently planned as:
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PATH-01 | Phase 18 | Pending |
-| PATH-02 | Phase 18 | Pending |
+| PATH-01 | Phase 18 | Complete |
+| PATH-02 | Phase 18 | Complete |
 | GOV-02 | Phase 19 | Pending |
 | GOV-03 | Phase 19 | Pending |
 | DOCS-02 | Phase 19 | Pending |
@@ -71,4 +71,4 @@ The follow-on sequence after `v1.5` is currently planned as:
 
 ---
 *Requirements defined: 2026-04-17*
-*Last updated: 2026-04-17 after roadmap creation for v1.5 Root Release Hardening*
+*Last updated: 2026-04-17 after Phase 18 Runtime Path Contract Alignment*

@@ -19,7 +19,7 @@ This roadmap restores the runtime-first root release boundary after drift betwee
 - Integer phases (18, 19, 20): Planned milestone work
 - Decimal phases (18.1, 18.2): Urgent insertions (marked with INSERTED)
 
-- [ ] **Phase 18: Runtime Path Contract Alignment** - Align root preflight assertions with the shipped `dist/occt-js.js` and `dist/occt-js.wasm` loading contract.
+- [x] **Phase 18: Runtime Path Contract Alignment** - Align root preflight assertions with the shipped `dist/occt-js.js` and `dist/occt-js.wasm` loading contract. (completed 2026-04-17)
 - [ ] **Phase 19: Root Release Governance Decoupling** - Keep the authoritative root release gate focused on runtime, package, typings, and docs contract coverage instead of `.planning` archive state.
 - [ ] **Phase 20: Conditional Secondary-Surface Verification** - Make demo and Babylon verification discoverable, runnable, and explicitly conditional outside the root npm release gate.
 
@@ -36,8 +36,8 @@ This roadmap restores the runtime-first root release boundary after drift betwee
 **Plans**: 2 plans
 
 Plans:
-- [ ] 18-01-PLAN.md — Align root preflight assertions with the canonical `dist/` artifact paths
-- [ ] 18-02-PLAN.md — Reconcile demo runtime loading with the shipped root artifact contract
+- [x] 18-01-PLAN.md — Align root preflight assertions with the canonical `dist/` artifact paths
+- [x] 18-02-PLAN.md — Reconcile demo runtime loading with the shipped root artifact contract
 
 ### Phase 19: Root Release Governance Decoupling
 **Goal**: Maintainers can run the authoritative root release gate without `.planning` archive-state coupling while still enforcing the published runtime, package, typings, and docs contract.
@@ -74,6 +74,6 @@ Phases execute in numeric order: 18 → 19 → 20
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 18. Runtime Path Contract Alignment | 0/2 | Not started | - |
+| 18. Runtime Path Contract Alignment | 2/2 | Complete    | 2026-04-17 |
 | 19. Root Release Governance Decoupling | 0/2 | Not started | - |
 | 20. Conditional Secondary-Surface Verification | 0/2 | Not started | - |
