@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Root Release Hardening
 status: ready
-stopped_at: Phase 19 context gathered
-last_updated: "2026-04-17T13:01:40.7920814Z"
-last_activity: 2026-04-17 -- Phase 19 context gathered
+stopped_at: Phase 19 planning complete
+last_updated: "2026-04-17T13:05:18.3883435Z"
+last_activity: 2026-04-17 -- Phase 19 planning complete
 progress:
   total_phases: 3
   completed_phases: 1
@@ -28,8 +28,8 @@ Current focus: Phase 19 Root Release Governance Decoupling
 Milestone: v1.5 Root Release Hardening
 Phase: 19 of 20 (Root Release Governance Decoupling)
 Plan: 0 of 2 in current phase
-Status: Ready to plan
-Last activity: 2026-04-17 -- Phase 19 context gathered
+Status: Ready to execute
+Last activity: 2026-04-17 -- Phase 19 planning complete
 
 Progress: [###-------] 33%
 
@@ -64,9 +64,9 @@ Recent Trend:
 
 ### Pending Todos
 
-- Plan Phase 19 against GOV-02, GOV-03, and DOCS-02.
-- Remove `.planning` archive-state assertions from the authoritative root release gate without weakening runtime, package, typings, or docs coverage.
-- Align release docs to one authoritative root gate plus one separate planning/archive audit path.
+- Execute Plan 19-01 to split root release governance from planning/archive audit coverage.
+- Execute Plan 19-02 to align release docs and governance assertions to the new gate split.
+- Preserve conditional secondary-surface wording while updating release guidance.
 
 ### Blockers/Concerns
 
@@ -76,6 +76,6 @@ Recent Trend:
 
 ## Session Continuity
 
-Last session: 2026-04-17T13:01:40.7920814Z
-Stopped at: Phase 19 context gathered
-Resume file: .planning/phases/19-root-release-governance-decoupling/19-CONTEXT.md
+Last session: 2026-04-17T13:05:18.3883435Z
+Stopped at: Phase 19 planning complete
+Resume file: None
