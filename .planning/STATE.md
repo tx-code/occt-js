@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Exact Semantics Helpers
-status: ready
-stopped_at: Phase 22 complete
-last_updated: "2026-04-18T03:37:27.8133002Z"
-last_activity: 2026-04-18 -- Phase 22 complete
+status: executing
+stopped_at: Phase 23 context gathered
+last_updated: "2026-04-18T05:16:51.197Z"
+last_activity: 2026-04-18 -- Phase 23 planning complete
 progress:
   total_phases: 3
   completed_phases: 2
@@ -28,8 +28,8 @@ Current focus: Phase 23 Helper SDK Docs & Governance
 Milestone: v1.6 Exact Semantics Helpers
 Phase: 23 of 23 (Helper SDK Docs & Governance)
 Plan: 0 of 2 in current phase
-Status: Ready to discuss
-Last activity: 2026-04-18 -- Phase 22 complete
+Status: Ready to execute
+Last activity: 2026-04-18 -- Phase 23 planning complete
 
 Progress: [######----] 67%
 
@@ -72,14 +72,14 @@ Recent Trend:
 
 ### Pending Todos
 
-- Run `$gsd-discuss-phase 23` to lock package-first helper docs, typings, tarball assertions, and release-governance coverage.
+- Run `$gsd-plan-phase 23` to turn the locked docs, typings, tarball assertions, and release-governance decisions into executable plan slices.
 - Keep helper docs package-first through `@tx-code/occt-core`, with the root Wasm carrier documented as the lower-level reference surface.
 - Keep the `SEED-001` carry-forward narrow: additive helper semantics only, not a reopened viewer or broad kernel milestone.
 - Keep `demo/.codex-run/` and `demo/dist/` out of planning commits.
 
 ### Blockers/Concerns
 
-- No technical blockers remain. Phase 22 is complete and the milestone is ready for Phase 23 discussion or direct planning.
+- No technical blockers remain. Phase 23 context is captured and the milestone is ready for planning.
 
 ## Deferred Items
 
@@ -91,6 +91,6 @@ Items acknowledged and deferred at milestone close on 2026-04-18:
 
 ## Session Continuity
 
-Last session: 2026-04-18T03:37:27.8133002Z
-Stopped at: Phase 22 complete
-Resume file: .planning/ROADMAP.md
+Last session: 2026-04-18T05:13:25.619Z
+Stopped at: Phase 23 context gathered
+Resume file: .planning/phases/23-helper-sdk-docs-governance/23-CONTEXT.md
