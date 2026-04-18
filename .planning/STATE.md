@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Exact Semantics Helpers
-status: ready
-stopped_at: Phase 21 complete
-last_updated: "2026-04-18T02:49:56.6060835Z"
+status: Ready to discuss
+stopped_at: Phase 22 planning complete
+last_updated: "2026-04-18T03:12:59.812Z"
 last_activity: 2026-04-18 -- Phase 21 complete
 progress:
   total_phases: 3
   completed_phases: 1
-  total_plans: 6
+  total_plans: 4
   completed_plans: 2
-  percent: 33
+  percent: 50
 ---
 
 # Project State
@@ -87,6 +87,6 @@ Items acknowledged and deferred at milestone close on 2026-04-18:
 
 ## Session Continuity
 
-Last session: 2026-04-18T02:49:56.6060835Z
-Stopped at: Phase 21 complete
-Resume file: .planning/ROADMAP.md
+Last session: 2026-04-18T03:12:59.808Z
+Stopped at: Phase 22 planning complete
+Resume file: .planning/phases/22-chamfer-constraint-helpers/22-01-PLAN.md
