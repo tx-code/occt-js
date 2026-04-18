@@ -66,19 +66,30 @@ test("occt-core README documents the package-first adapter path without requirin
   assert.equal(readme.includes("@tx-code/occt-babylon-loader"), false);
 });
 
-test("package docs describe exact pairwise measurement entrypoints without viewer prerequisites", () => {
+test("consumer-facing docs describe the helper SDK without widening secondary-surface requirements", () => {
   const rootReadme = readRepoText("README.md");
   const coreReadme = readRepoText("packages/occt-core/README.md");
 
   assert.ok(rootReadme.includes("MeasureExactDistance"));
   assert.ok(rootReadme.includes("MeasureExactAngle"));
   assert.ok(rootReadme.includes("MeasureExactThickness"));
-  assert.match(rootReadme, /semantic feature recognition remain downstream concerns/i);
+  assert.ok(rootReadme.includes("describeExactHole"));
+  assert.ok(rootReadme.includes("describeExactChamfer"));
+  assert.ok(rootReadme.includes("suggestExactMidpointPlacement"));
+  assert.ok(rootReadme.includes("describeExactEqualDistance"));
+  assert.ok(rootReadme.includes("suggestExactSymmetryPlacement"));
+  assert.match(rootReadme, /Richer feature discovery.*viewer policy remain downstream concerns/i);
   assert.ok(coreReadme.includes("createOcctCore"));
   assert.ok(coreReadme.includes("measureExactDistance"));
   assert.ok(coreReadme.includes("measureExactAngle"));
   assert.ok(coreReadme.includes("measureExactThickness"));
-  assert.match(coreReadme, /semantic feature recognition remain downstream concerns/i);
+  assert.ok(coreReadme.includes("describeExactHole"));
+  assert.ok(coreReadme.includes("describeExactChamfer"));
+  assert.ok(coreReadme.includes("suggestExactMidpointPlacement"));
+  assert.ok(coreReadme.includes("describeExactEqualDistance"));
+  assert.ok(coreReadme.includes("suggestExactSymmetryPlacement"));
+  assert.match(coreReadme, /feature discovery/i);
+  assert.match(coreReadme, /viewer policy/i);
   assert.match(rootReadme, /Optional secondary surfaces/i);
   assert.equal(coreReadme.includes("@tx-code/occt-babylon-loader"), false);
 });

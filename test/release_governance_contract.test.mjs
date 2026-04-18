@@ -15,14 +15,16 @@ function readRepoJson(relativePath) {
   return JSON.parse(readRepoText(relativePath));
 }
 
-test("authoritative root release command surface stays runtime-first", () => {
+test("authoritative root release command surface includes exact helper contract coverage", () => {
   const packageJson = readRepoJson("package.json");
   const releaseCommand = packageJson.scripts?.["test:release:root"];
 
   assert.equal(
     releaseCommand,
-    "npm run build:wasm:win && node --test test/wasm_build_contract.test.mjs test/package_tarball_contract.test.mjs test/release_governance_contract.test.mjs test/exact_pairwise_measurement_contract.test.mjs test/exact_placement_contract.test.mjs test/exact_relation_contract.test.mjs && npm --prefix packages/occt-core test && npm test",
+    "npm run build:wasm:win && node --test test/wasm_build_contract.test.mjs test/package_tarball_contract.test.mjs test/release_governance_contract.test.mjs test/exact_hole_contract.test.mjs test/exact_chamfer_contract.test.mjs test/exact_pairwise_measurement_contract.test.mjs test/exact_placement_contract.test.mjs test/exact_relation_contract.test.mjs && npm --prefix packages/occt-core test && npm test",
   );
+  assert.match(releaseCommand ?? "", /test\/exact_hole_contract\.test\.mjs/);
+  assert.match(releaseCommand ?? "", /test\/exact_chamfer_contract\.test\.mjs/);
 });
 
 test("authoritative root release command surface excludes planning audit coverage", () => {
@@ -150,30 +152,56 @@ test("release docs describe the import appearance contract and downstream settin
   assert.match(agents, /viewer overrides/i);
 });
 
-test("release docs describe the exact measurement SDK package-first and keep viewer concerns downstream", () => {
+test("release docs describe the helper SDK package-first while keeping deeper feature discovery downstream", () => {
   const readme = readRepoText("README.md");
   const occtCoreReadme = readRepoText("packages/occt-core/README.md");
   const sdkGuide = readRepoText("docs/sdk/measurement.md");
 
-  assert.match(readme, /## Exact Measurement SDK/);
+  assert.match(readme, /## Exact Measurement and Helper SDK/);
   assert.match(readme, /@tx-code\/occt-core/);
+  assert.match(readme, /describeExactHole/);
+  assert.match(readme, /describeExactChamfer/);
+  assert.match(readme, /suggestExactMidpointPlacement/);
+  assert.match(readme, /describeExactEqualDistance/);
+  assert.match(readme, /suggestExactSymmetryPlacement/);
   assert.match(readme, /SuggestExactDistancePlacement/);
   assert.match(readme, /ClassifyExactRelation/);
   assert.match(readme, /docs\/sdk\/measurement\.md/);
-  assert.match(readme, /Overlay rendering, selection UX, label layout, and semantic feature recognition remain downstream concerns/i);
-  assert.match(occtCoreReadme, /## Exact Measurement SDK/);
+  assert.match(readme, /supported cylindrical hole/i);
+  assert.match(readme, /supported planar chamfer face/i);
+  assert.match(readme, /midplane-style symmetry helper/i);
+  assert.match(readme, /Richer feature discovery.*viewer policy remain downstream concerns/i);
+  assert.match(occtCoreReadme, /## Exact Measurement and Helper SDK/);
   assert.match(occtCoreReadme, /suggestExactDistancePlacement/);
   assert.match(occtCoreReadme, /suggestExactRadiusPlacement/);
   assert.match(occtCoreReadme, /classifyExactRelation/);
+  assert.match(occtCoreReadme, /describeExactHole/);
+  assert.match(occtCoreReadme, /describeExactChamfer/);
+  assert.match(occtCoreReadme, /suggestExactMidpointPlacement/);
+  assert.match(occtCoreReadme, /describeExactEqualDistance/);
+  assert.match(occtCoreReadme, /suggestExactSymmetryPlacement/);
   assert.match(occtCoreReadme, /MeasureExactDistance/);
-  assert.match(occtCoreReadme, /Overlay rendering, selection UX, label layout, and semantic feature recognition remain downstream concerns/i);
-  assert.match(sdkGuide, /# Exact Measurement SDK/);
+  assert.match(occtCoreReadme, /supported cylindrical hole/i);
+  assert.match(occtCoreReadme, /supported planar chamfer face/i);
+  assert.match(occtCoreReadme, /midplane-style symmetry helper/i);
+  assert.match(occtCoreReadme, /feature discovery/i);
+  assert.match(occtCoreReadme, /viewer policy/i);
+  assert.match(sdkGuide, /# Exact Measurement and Helper SDK/);
   assert.match(sdkGuide, /Package-First Workflow/);
   assert.match(sdkGuide, /suggestExactDistancePlacement/);
   assert.match(sdkGuide, /suggestExactRadiusPlacement/);
   assert.match(sdkGuide, /classifyExactRelation/);
+  assert.match(sdkGuide, /describeExactHole/);
+  assert.match(sdkGuide, /describeExactChamfer/);
+  assert.match(sdkGuide, /suggestExactMidpointPlacement/);
+  assert.match(sdkGuide, /describeExactEqualDistance/);
+  assert.match(sdkGuide, /suggestExactSymmetryPlacement/);
   assert.match(sdkGuide, /Lower-Level Root Reference/);
-  assert.match(sdkGuide, /overlay rendering/i);
+  assert.match(sdkGuide, /supported cylindrical hole/i);
+  assert.match(sdkGuide, /supported planar chamfer face/i);
+  assert.match(sdkGuide, /midplane-style symmetry helper/i);
+  assert.match(sdkGuide, /feature discovery/i);
+  assert.match(sdkGuide, /viewer policy/i);
 });
 
 test("published typings document the finalized import appearance option shape", () => {

@@ -98,7 +98,7 @@ test("packed root package ships appearance typings needed by downstream consumer
   assert.match(typesSource, /built-in ghost opacity 0\.35/i);
 });
 
-test("packed root package ships measurement SDK docs and typings needed by downstream consumers", () => {
+test("packed root package helper docs and typings stay aligned with the shipped helper family", () => {
   const manifest = getDryRunPackManifest();
   const packedPaths = new Set(manifest.files.map((entry) => entry.path));
   const typesSource = readRepoText("dist/occt-js.d.ts");
@@ -106,13 +106,22 @@ test("packed root package ships measurement SDK docs and typings needed by downs
 
   assert.equal(packedPaths.has("README.md"), true);
   assert.equal(packedPaths.has("dist/occt-js.d.ts"), true);
-  assert.match(readme, /## Exact Measurement SDK/);
+  assert.match(readme, /## Exact Measurement and Helper SDK/);
   assert.match(readme, /@tx-code\/occt-core/);
+  assert.match(readme, /describeExactHole/);
+  assert.match(readme, /describeExactChamfer/);
+  assert.match(readme, /suggestExactMidpointPlacement/);
+  assert.match(readme, /describeExactEqualDistance/);
+  assert.match(readme, /suggestExactSymmetryPlacement/);
   assert.match(readme, /SuggestExactDistancePlacement/);
   assert.match(readme, /ClassifyExactRelation/);
   assert.match(readme, /docs\/sdk\/measurement\.md/);
+  assert.match(typesSource, /export type OcctJSExactHoleResult = OcctJSExactHoleSuccess \| OcctJSExactQueryFailure;/);
+  assert.match(typesSource, /export type OcctJSExactChamferResult = OcctJSExactChamferSuccess \| OcctJSExactQueryFailure;/);
   assert.match(typesSource, /export type OcctJSExactPlacementResult = OcctJSExactPlacementSuccess \| OcctJSExactPairwiseFailure;/);
   assert.match(typesSource, /export type OcctJSExactRelationResult = OcctJSExactRelationSuccess \| OcctJSExactPairwiseFailure;/);
+  assert.match(typesSource, /DescribeExactHole/);
+  assert.match(typesSource, /DescribeExactChamfer/);
   assert.match(typesSource, /SuggestExactDistancePlacement/);
   assert.match(typesSource, /SuggestExactDiameterPlacement/);
   assert.match(typesSource, /ClassifyExactRelation/);
@@ -141,7 +150,7 @@ test("package contract keeps measurement SDK package-first and independent of vi
 
   assert.match(readme, /Most downstream JS consumers should start with the package-first adapter surface in `@tx-code\/occt-core`/);
   assert.match(readme, /lower-level root Wasm reference/i);
-  assert.match(readme, /Overlay rendering, selection UX, label layout, and semantic feature recognition remain downstream concerns/i);
+  assert.match(readme, /Richer feature discovery.*viewer policy remain downstream concerns/i);
   assert.equal(packedPaths.some((entry) => /demo|tauri|occt-babylon/i.test(entry)), false);
   assert.equal(packageJson.files.some((entry) => /demo|tauri|occt-babylon/i.test(entry)), false);
   assert.equal(exportPaths.some((entry) => /demo|tauri|occt-babylon/i.test(entry)), false);

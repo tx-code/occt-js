@@ -24,7 +24,7 @@
   "scripts": {
     "build:wasm": "bash tools/build_wasm.sh",
     "build:wasm:win": "tools\\build_wasm_win_dist.bat",
-    "test:release:root": "npm run build:wasm:win && node --test test/wasm_build_contract.test.mjs test/package_tarball_contract.test.mjs test/release_governance_contract.test.mjs test/exact_pairwise_measurement_contract.test.mjs test/exact_placement_contract.test.mjs test/exact_relation_contract.test.mjs && npm --prefix packages/occt-core test && npm test",
+    "test:release:root": "npm run build:wasm:win && node --test test/wasm_build_contract.test.mjs test/package_tarball_contract.test.mjs test/release_governance_contract.test.mjs test/exact_hole_contract.test.mjs test/exact_chamfer_contract.test.mjs test/exact_pairwise_measurement_contract.test.mjs test/exact_placement_contract.test.mjs test/exact_relation_contract.test.mjs && npm --prefix packages/occt-core test && npm test",
     "test:planning:audit": "node --test test/planning_archive_contract.test.mjs",
     "test:secondary:contracts": "node --test test/secondary_surface_contract.test.mjs",
     "test:wasm:preflight": "node --test test/wasm_build_prereqs.test.mjs test/load_occt_factory.test.mjs test/dist_contract_consumers.test.mjs",

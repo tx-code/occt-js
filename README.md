@@ -98,7 +98,7 @@ Contract rules:
 Apps own settings persistence. `occt-js` only consumes the selected import-time appearance options and returns the resulting colors/materials.
 Viewer overrides remain downstream concerns; post-import repaint, theme switching, and display policy are outside the root Wasm carrier scope.
 
-## Exact Measurement SDK
+## Exact Measurement and Helper SDK
 
 Most downstream JS consumers should start with the package-first adapter surface in `@tx-code/occt-core`. A fuller walkthrough lives in [docs/sdk/measurement.md](./docs/sdk/measurement.md); the root README stays the lower-level reference.
 
