@@ -1,5 +1,31 @@
 # Retrospective
 
+## Milestone: v1.6 — Exact Semantics Helpers
+
+**Shipped:** 2026-04-18
+
+### What shipped
+
+- Package-first exact hole and chamfer helpers now ship through `@tx-code/occt-core`, with the root carrier only adding narrow selected-ref semantics where package composition required them.
+- Package-only midpoint, equal-distance, and narrow midplane-style symmetry helpers now compose over the shipped exact placement and relation surface.
+- `@tx-code/occt-core` now publishes explicit typings, and the authoritative root release gate now includes helper-aware governance coverage.
+
+### What worked
+
+- Keeping the root carrier narrow while composing higher-level helper semantics in package land preserved the runtime boundary and still delivered downstream value.
+- Contract-first tests across root, package, docs, tarball, and governance layers kept the helper family coherent without reopening viewer behavior.
+- Reusing the same runtime-first release gate let the milestone ship without adding unconditional secondary-surface verification creep.
+
+### What to revisit
+
+- `gsd-tools milestone complete` still leaves manual cleanup work for `ROADMAP.md`, `PROJECT.md`, `STATE.md`, `MILESTONES.md`, `RETROSPECTIVE.md`, and tag sequencing.
+- Nyquist validation artifacts are still absent for Phases 21-23, so `v1.6` closes without phase-level validation records.
+
+### Carry-forward ideas
+
+- Promote deeper semantics only if they stay package-first, additive, and downstream-consumable without reopening viewer ownership.
+- The next milestone should focus on lifecycle and performance before broader semantic discovery or ecosystem widening.
+
 ## Milestone: v1.5 — Root Release Hardening
 
 **Shipped:** 2026-04-18

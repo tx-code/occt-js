@@ -1,5 +1,21 @@
 # Milestones
 
+## v1.6 Exact Semantics Helpers (Shipped: 2026-04-18)
+
+**Phases completed:** 3 phases, 6 plans, 8 tasks
+**Known deferred items at close:** 1 (see `STATE.md` Deferred Items)
+
+**Key accomplishments:**
+
+- Supported cylindrical hole semantics now ship package-first through `@tx-code/occt-core`, with the root carrier only growing by one narrow selected-ref query where package composition needed it.
+- Supported planar chamfer semantics plus midpoint, equal-distance, and narrow midplane-style symmetry helpers now compose over the shipped exact placement/relation surface.
+- Helper SDK docs are now package-first through `@tx-code/occt-core`, with the root Wasm carrier kept as the lower-level reference.
+- `@tx-code/occt-core` now publishes an explicit typed entrypoint aligned with its shipped helper barrel.
+- Root tarball, governance, and consumer contract suites now lock the helper family and the release-boundary wording end to end.
+- `npm run test:release:root` now includes hole and chamfer contract coverage without widening unconditional demo, Babylon, or Tauri release gates.
+
+---
+
 ## v1.5 Root Release Hardening (Shipped: 2026-04-18)
 
 **Phases completed:** 3 phases, 6 plans, 6 tasks

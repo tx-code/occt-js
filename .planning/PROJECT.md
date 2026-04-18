@@ -39,7 +39,10 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 
 ### Active
 
-- [ ] Milestone closeout for `v1.6 Exact Semantics Helpers`.
+- [ ] `v1.7` should tighten exact-model lifetime management and diagnostics for retained handles.
+- [ ] `v1.7` should remove avoidable exact-query/store copies and temp-file staging overhead from the exact runtime path.
+- [ ] `v1.8` should align Babylon package dependency ownership and standalone install behavior.
+- [ ] `v1.8` should keep demo and Tauri verification explicit, conditional, and downstream of the authoritative root release gate.
 
 ### Out of Scope
 
@@ -47,7 +50,7 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 - Making Tauri or desktop packaging a prerequisite for root npm publishing — root runtime must stay independently releasable.
 - Treating Babylon/demo layers as first-order release gates for the root runtime.
 - Selection sessions, overlay rendering, label layout, or measurement widgets in the runtime/package layer — those remain downstream app concerns.
-- Whole-model feature discovery, batch semantic indexing, or viewer-owned semantic workflows — `v1.6` only ships caller-selected package-first helper semantics.
+- Whole-model feature discovery, batch semantic indexing, or viewer-owned semantic workflows — `v1.6` only shipped caller-selected package-first helper semantics.
 
 ## Current State
 
@@ -57,18 +60,19 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 
 `v1.5 Root Release Hardening` shipped on 2026-04-18 and is now archived in `.planning/milestones/`. Phases 18-20 stabilized the root runtime-path contract, separated `.planning` governance audits from the authoritative release gate, and made demo/Babylon verification explicit and conditional through manifest-first commands and `test:secondary:contracts`.
 
-`v1.6 Exact Semantics Helpers` has finished execution and is ready for milestone closeout. The milestone now ships package-first hole/chamfer descriptors, midpoint/equal-distance/symmetry helpers, published `@tx-code/occt-core` typings, and authoritative root release-governance coverage for the helper family.
+`v1.6 Exact Semantics Helpers` shipped on 2026-04-18 and is now archived in `.planning/milestones/`. The milestone added package-first hole/chamfer descriptors, midpoint/equal-distance/symmetry helpers, published `@tx-code/occt-core` typings, and helper-aware authoritative release-governance coverage for the shipped family.
 
-## Current Milestone: v1.6 Exact Semantics Helpers
+The repository is now between milestones. The next workflow step is `$gsd-new-milestone`.
 
-**Goal:** Add package-first exact semantics helpers on top of the shipped kernel primitives without turning `occt-js` into a viewer-first or feature-recognition-first product.
+## Next Milestone Direction
 
-**Current status:** All three phases shipped on 2026-04-18. `v1.6` now includes package-first hole/chamfer helpers, package-only midpoint/equal-distance/symmetry semantics, published helper typings, and helper-aware release governance. The next workflow step is milestone closeout.
+There is no active milestone open.
 
-**Target features:**
-- Package-first `hole` and `chamfer` helper semantics, using existing exact primitives where possible and minimal additive kernel support only when unavoidable.
-- Reusable equal-distance, symmetry, midpoint, and similar higher-level exact helper semantics built on the shipped placement/relation surface.
-- Package-first docs, typings, tarball expectations, and release governance that lock the helper surface without widening secondary-surface release gates.
+**Next target:** `v1.7 Exact Lifecycle & Performance`
+
+**Sequenced after that:** `v1.8 Package Ecosystem & Secondary Surfaces`
+
+**Immediate next step:** `$gsd-new-milestone`
 
 ## Context
 
@@ -77,11 +81,11 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 - `imos-app` remains the key downstream consumer signal: it vendors `@tx-code/occt-js` and consumes the Wasm/runtime surface directly, while viewer semantics live on the app side.
 - `SceneGraph.net` remains the best local reference for measurement behavior above the kernel layer, but `occt-js` intentionally stopped at exact-kernel foundations plus package-first placement/relation support.
 - OCCT `PrsDim` remains the local geometry reference for placement and relation behavior, but `occt-js` intentionally stops short of AIS/Prs3d interactive dimensions.
-- The current exact runtime now exposes retained exact-model lifecycle, primitive exact queries, pairwise distance/angle/thickness, placement DTOs, relation classification, narrow selected-ref hole/chamfer helper semantics, and package-only midpoint/equal-distance/symmetry helpers; package docs and release verification treat the shipped runtime/package surface as a first-class SDK contract.
+- The current exact runtime now exposes retained exact-model lifecycle, primitive exact queries, pairwise distance/angle/thickness, placement DTOs, relation classification, narrow selected-ref hole/chamfer helper semantics, package-only midpoint/equal-distance/symmetry helpers, published package typings, and helper-aware release verification; the shipped runtime/package surface is now treated as a first-class SDK contract.
 - The formal follow-on milestone sequence after `v1.6` is:
   `v1.7 Exact Lifecycle & Performance` → `v1.8 Package Ecosystem & Secondary Surfaces`.
 - GSD is the primary repository workflow; superpowers remain optional support tooling for narrow tasks only.
-- Deferred seed `SEED-001-web-exact-brep-measurement` is now only partially relevant: its kernel foundation shipped in `v1.1`/`v1.4`, while its remaining forward path is the package-first helper layer being scoped in `v1.6`.
+- Deferred seed `SEED-001-web-exact-brep-measurement` is now only partially relevant: its kernel foundation shipped in `v1.1`/`v1.4`, its package-first helper layer shipped in `v1.6`, and any future follow-on should stay additive and package-first.
 
 ## Constraints
 
@@ -135,6 +139,20 @@ This document evolves at phase transitions and milestone boundaries.
 2. Core Value check — still the right priority?
 3. Audit Out of Scope — reasons still valid?
 4. Update Context with current state
+
+<details>
+<summary>Archived v1.6 milestone framing</summary>
+
+## Current Milestone: v1.6 Exact Semantics Helpers
+
+**Goal:** Add package-first exact semantics helpers on top of the shipped kernel primitives without turning `occt-js` into a viewer-first or feature-recognition-first product.
+
+**Target features:**
+- Package-first `hole` and `chamfer` helper semantics, using existing exact primitives where possible and minimal additive kernel support only when unavoidable.
+- Reusable equal-distance, symmetry, midpoint, and similar higher-level exact helper semantics built on the shipped placement/relation surface.
+- Package-first docs, typings, tarball expectations, and release governance that lock the helper surface without widening secondary-surface release gates.
+
+</details>
 
 <details>
 <summary>Archived v1.5 milestone framing</summary>
@@ -193,4 +211,4 @@ This document evolves at phase transitions and milestone boundaries.
 </details>
 
 ---
-*Last updated: 2026-04-18 after completing Phase 23 helper SDK docs and governance*
+*Last updated: 2026-04-18 after v1.6 milestone closeout*
