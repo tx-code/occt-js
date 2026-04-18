@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Exact Semantics Helpers
 status: ready
-stopped_at: Phase 21 context captured
-last_updated: "2026-04-18T02:23:00.3244285Z"
-last_activity: 2026-04-18 -- Phase 21 context captured
+stopped_at: Phase 21 plans created
+last_updated: "2026-04-18T02:28:40.6465097Z"
+last_activity: 2026-04-18 -- Phase 21 plans created
 progress:
   total_phases: 3
   completed_phases: 0
@@ -28,8 +28,8 @@ Current focus: Phase 21 Hole Helper Foundations
 Milestone: v1.6 Exact Semantics Helpers
 Phase: 21 of 23 (Hole Helper Foundations)
 Plan: 0 of 2 in current phase
-Status: Ready to plan
-Last activity: 2026-04-18 -- Phase 21 context captured
+Status: Ready to execute
+Last activity: 2026-04-18 -- Phase 21 plans created
 
 Progress: [----------] 0%
 
@@ -67,13 +67,13 @@ Recent Trend:
 
 ### Pending Todos
 
-- Run `$gsd-plan-phase 21` to turn the locked hole helper decisions into executable plan docs.
+- Run `$gsd-execute-phase 21` to implement the package-first hole helper contract and the minimal root `DescribeExactHole` carrier support.
 - Keep the `SEED-001` carry-forward narrow: additive helper semantics only, not a reopened viewer or broad kernel milestone.
 - Keep `demo/.codex-run/` and `demo/dist/` out of planning commits.
 
 ### Blockers/Concerns
 
-- No technical blockers remain. The milestone is initialized and ready for Phase 21 discussion or direct planning.
+- No technical blockers remain. Phase 21 is planned and ready for execution.
 
 ## Deferred Items
 
@@ -85,6 +85,6 @@ Items acknowledged and deferred at milestone close on 2026-04-18:
 
 ## Session Continuity
 
-Last session: 2026-04-18T02:23:00.3244285Z
-Stopped at: Phase 21 context captured
-Resume file: .planning/phases/21-hole-helper-foundations/21-CONTEXT.md
+Last session: 2026-04-18T02:28:40.6465097Z
+Stopped at: Phase 21 plans created
+Resume file: .planning/phases/21-hole-helper-foundations/21-01-PLAN.md
