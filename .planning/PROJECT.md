@@ -32,10 +32,11 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 - ✓ Root preflight and the maintained demo dev runtime now share the same concrete `dist/occt-js.js` and `dist/occt-js.wasm` loading contract, with stale directory-base assumptions rejected by preflight coverage. — Phase 18
 - ✓ The authoritative root release gate now verifies publishable runtime/package/docs behavior without depending on live `.planning` archive-state strings, and any retained planning audit runs separately through `npm run test:planning:audit`. — Phase 19
 - ✓ README, AGENTS, `packages/occt-core/README.md`, and the thin release skill now document the same split between the authoritative root release gate and the separate planning audit path. — Phase 19
+- ✓ Demo and Babylon verification are now discoverable from manifests and top-level docs, loader tests no longer depend on hoisted Babylon installs, and `npm run test:secondary:contracts` locks those surfaces outside the authoritative root release gate. — Phase 20
 
 ### Active
 
-- [ ] Secondary-surface verification for `demo/` and Babylon packages is explicit, runnable, and kept outside the unconditional root npm release gate.
+- [ ] None — `v1.5` implementation scope is complete and the milestone is ready for closeout.
 
 ### Out of Scope
 
@@ -51,7 +52,7 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 
 `v1.4 Exact Measurement Placement & Relation SDK` shipped on 2026-04-16 and is now archived in `.planning/milestones/`. The root runtime and `occt-core` now expose additive exact placement helpers plus exact relation classification for `parallel`, `perpendicular`, `concentric`, `tangent`, and `none`, all with occurrence-safe supporting geometry DTOs. Package-first SDK docs, packaged typings, tarball assertions, and the authoritative release gate now lock that exact measurement surface end to end.
 
-`v1.5 Root Release Hardening` is now the active milestone. Phases 18 and 19 completed the runtime-path and release-governance hardening work, so the remaining milestone focus is explicit secondary-surface verification without weakening the root runtime release boundary.
+`v1.5 Root Release Hardening` implementation is now complete. Phases 18-20 stabilized the root runtime-path contract, separated `.planning` governance audits from the authoritative release gate, and made demo/Babylon verification explicit and conditional through manifest-first commands and `test:secondary:contracts`. The next workflow step is milestone audit and closeout before promoting `v1.6 Exact Semantics Helpers`.
 
 ## Current Milestone: v1.5 Root Release Hardening
 
@@ -102,6 +103,8 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 | Start the next cycle with release hardening before new exact helpers | The current codebase map shows root preflight drift and brittle governance checks; shipping more API surface before fixing the release boundary would compound risk | ✓ Good |
 | Lock Phase 18 on the concrete local-dev JS/Wasm file URLs already used by maintained consumers | One shared runtime-path contract across preflight and demo loading is safer than reintroducing ambiguous directory-base lookup semantics | ✓ Good |
 | Separate `.planning` audits from `npm run test:release:root` via an explicit maintainer command | Runtime/package release verification must stay independent of milestone lifecycle drift while planning audits remain intentionally runnable | ✓ Good |
+| Keep the default demo browser E2E lane on a current Project Home smoke path instead of the stale viewer-first suite | Phase 20 needed a maintained manifest-first browser command that matches the shipped shell instead of asserting an outdated demo layout | ✓ Good |
+| Lock secondary-surface routing through `npm run test:secondary:contracts` and touched-path docs instead of widening `npm run test:release:root` | Demo, Babylon, and Tauri surfaces need discoverability and repeatability without polluting the authoritative root Wasm release boundary | ✓ Good |
 
 ## Evolution
 
@@ -163,4 +166,4 @@ This document evolves at phase transitions and milestone boundaries.
 </details>
 
 ---
-*Last updated: 2026-04-17 after Phase 19 Root Release Governance Decoupling*
+*Last updated: 2026-04-18 after Phase 20 Conditional Secondary-Surface Verification*

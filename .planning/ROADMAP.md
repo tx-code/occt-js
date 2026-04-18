@@ -21,7 +21,7 @@ This roadmap restores the runtime-first root release boundary after drift betwee
 
 - [x] **Phase 18: Runtime Path Contract Alignment** - Align root preflight assertions with the shipped `dist/occt-js.js` and `dist/occt-js.wasm` loading contract. (completed 2026-04-17)
 - [x] **Phase 19: Root Release Governance Decoupling** - Keep the authoritative root release gate focused on runtime, package, typings, and docs contract coverage instead of `.planning` archive state. (completed 2026-04-17)
-- [ ] **Phase 20: Conditional Secondary-Surface Verification** - Make demo and Babylon verification discoverable, runnable, and explicitly conditional outside the root npm release gate.
+- [x] **Phase 20: Conditional Secondary-Surface Verification** - Make demo and Babylon verification discoverable, runnable, and explicitly conditional outside the root npm release gate. (completed 2026-04-17)
 
 ## Phase Details
 
@@ -64,8 +64,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 20-01-PLAN.md — Surface demo and Babylon verification commands in the relevant package manifests and top-level guidance
-- [ ] 20-02-PLAN.md — Remove hoist-only assumptions and codify conditional secondary-surface coverage
+- [x] 20-01-PLAN.md — Surface demo and Babylon verification commands in the relevant package manifests and top-level guidance
+- [x] 20-02-PLAN.md — Remove hoist-only assumptions and codify conditional secondary-surface coverage
 
 ## Progress
 
@@ -76,4 +76,4 @@ Phases execute in numeric order: 18 → 19 → 20
 |-------|----------------|--------|-----------|
 | 18. Runtime Path Contract Alignment | 2/2 | Complete    | 2026-04-17 |
 | 19. Root Release Governance Decoupling | 2/2 | Complete    | 2026-04-17 |
-| 20. Conditional Secondary-Surface Verification | 0/2 | Not started | - |
+| 20. Conditional Secondary-Surface Verification | 2/2 | Complete | 2026-04-17 |

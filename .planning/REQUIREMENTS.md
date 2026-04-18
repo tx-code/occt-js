@@ -18,9 +18,9 @@
 
 ### Secondary-Surface Verification
 
-- [ ] **SURF-01**: Demo and secondary package verification commands are discoverable from the relevant package manifests or top-level docs instead of hidden in ad-hoc maintainer knowledge.
-- [ ] **SURF-02**: `packages/occt-babylon-loader` can run its test surface without depending on undeclared hoisted Babylon dependencies.
-- [ ] **SURF-03**: Secondary-surface checks remain explicitly conditional to changes under `demo/`, `demo/src-tauri/`, or Babylon package surfaces and do not become unconditional root npm release prerequisites.
+- [x] **SURF-01**: Demo and secondary package verification commands are discoverable from the relevant package manifests or top-level docs instead of hidden in ad-hoc maintainer knowledge.
+- [x] **SURF-02**: `packages/occt-babylon-loader` can run its test surface without depending on undeclared hoisted Babylon dependencies.
+- [x] **SURF-03**: Secondary-surface checks remain explicitly conditional to changes under `demo/`, `demo/src-tauri/`, or Babylon package surfaces and do not become unconditional root npm release prerequisites.
 
 ## Future Requirements
 
@@ -60,9 +60,9 @@ The follow-on sequence after `v1.5` is currently planned as:
 | GOV-02 | Phase 19 | Complete |
 | GOV-03 | Phase 19 | Complete |
 | DOCS-02 | Phase 19 | Complete |
-| SURF-01 | Phase 20 | Pending |
-| SURF-02 | Phase 20 | Pending |
-| SURF-03 | Phase 20 | Pending |
+| SURF-01 | Phase 20 | Complete |
+| SURF-02 | Phase 20 | Complete |
+| SURF-03 | Phase 20 | Complete |
 
 **Coverage:**
 - v1.5 requirements: 8 total
@@ -71,4 +71,4 @@ The follow-on sequence after `v1.5` is currently planned as:
 
 ---
 *Requirements defined: 2026-04-17*
-*Last updated: 2026-04-17 after Phase 19 Root Release Governance Decoupling*
+*Last updated: 2026-04-18 after Phase 20 Conditional Secondary-Surface Verification*
