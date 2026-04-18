@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Root Release Hardening
 status: ready
-stopped_at: v1.5 milestone audit passed
-last_updated: "2026-04-18T01:48:43.5613599Z"
-last_activity: 2026-04-18 -- v1.5 milestone audit passed
+stopped_at: v1.5 milestone archived
+last_updated: "2026-04-18T01:52:10.1513921Z"
+last_activity: 2026-04-18 -- v1.5 milestone archived
 progress:
   total_phases: 3
   completed_phases: 3
@@ -21,15 +21,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-18)
 
 Core value: Downstream applications can reliably consume the OCCT Wasm runtime and its root API contract without build drift or packaging surprises.
-Current focus: Milestone closeout for v1.5 Root Release Hardening
+Current focus: Planning the next milestone
 
 ## Current Position
 
-Milestone: v1.5 Root Release Hardening
-Phase: 20 of 20 (Conditional Secondary-Surface Verification)
-Plan: 2 of 2 in current phase
-Status: Ready to complete milestone
-Last activity: 2026-04-18 -- v1.5 milestone audit passed
+Milestone: None active
+Phase: None active
+Plan: 0 of 0
+Status: Ready to start next milestone
+Last activity: 2026-04-18 -- v1.5 milestone archived
 
 Progress: [##########] 100%
 
@@ -66,17 +66,24 @@ Recent Trend:
 
 ### Pending Todos
 
-- Run `$gsd-complete-milestone v1.5`.
-- Keep `.planning/v1.5-MILESTONE-AUDIT.md` with the milestone-close commit or archive step.
-- Keep `demo/.codex-run/` and `demo/dist/` out of milestone closeout commits.
+- Run `$gsd-new-milestone`.
+- Review deferred seed `001-web-exact-brep-measurement` when choosing whether `v1.6` should stay package-first or widen its kernel scope.
+- Keep `demo/.codex-run/` and `demo/dist/` out of future planning commits.
 
 ### Blockers/Concerns
 
-- `gsd-tools audit-open` still crashes with `ReferenceError: output is not defined`, so any planning-audit lane may need a manual fallback until that tool is fixed.
-- No technical blockers remain for `v1.5`; the remaining work is workflow closeout and archival.
+- No technical blockers remain. The repository is ready for the next milestone definition step.
+
+## Deferred Items
+
+Items acknowledged and deferred at milestone close on 2026-04-18:
+
+| Category | Item | Status |
+|----------|------|--------|
+| seed | 001-web-exact-brep-measurement | dormant |
 
 ## Session Continuity
 
-Last session: 2026-04-18T01:48:43.5613599Z
-Stopped at: v1.5 milestone audit passed
-Resume file: .planning/v1.5-MILESTONE-AUDIT.md
+Last session: 2026-04-18T01:52:10.1513921Z
+Stopped at: v1.5 milestone archived
+Resume file: .planning/MILESTONES.md

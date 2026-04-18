@@ -1,5 +1,21 @@
 # Milestones
 
+## v1.5 Root Release Hardening (Shipped: 2026-04-18)
+
+**Phases completed:** 3 phases, 6 plans, 6 tasks
+**Known deferred items at close:** 1 (see `STATE.md` Deferred Items)
+
+**Key accomplishments:**
+
+- The root preflight contract now asserts the same concrete `dist/occt-js.js` and `dist/occt-js.wasm` paths already used by maintained runtime consumers.
+- The demo-side runtime contract already matched the intended concrete-file loader behavior, so this plan completed by verification-only confirmation instead of source changes.
+- The authoritative root release governance lane now ignores live `.planning` archive-state drift, and any retained planning audit runs from a separate explicit maintainer command.
+- Release-facing docs now tell one consistent story: `npm run test:release:root` is the authoritative runtime-first gate, and `npm run test:planning:audit` is a separate optional planning/process audit.
+- The demo now exposes explicit non-Tauri verification commands, and both its node-style lane and browser smoke lane run against the current repo state.
+- Secondary-surface verification is now codified as an explicit conditional contract: the loader owns its direct imports, root/docs routing is discoverable, and none of it polluted `npm run test:release:root`.
+
+---
+
 ## v1.4 Exact Measurement Placement & Relation SDK (Shipped: 2026-04-16)
 
 **Phases completed:** 3 phases, 6 plans, 12 tasks

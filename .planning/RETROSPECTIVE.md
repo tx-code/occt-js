@@ -1,5 +1,31 @@
 # Retrospective
 
+## Milestone: v1.5 — Root Release Hardening
+
+**Shipped:** 2026-04-18
+
+### What shipped
+
+- Root preflight and the maintained demo dev runtime now share one concrete `dist/occt-js.js` / `dist/occt-js.wasm` contract.
+- `npm run test:release:root` no longer depends on live `.planning` archive-state drift, and `npm run test:planning:audit` remains a separate process lane.
+- Demo and Babylon verification is now manifest-first, package-owned, and explicitly conditional through touched-path docs plus `npm run test:secondary:contracts`.
+
+### What worked
+
+- Splitting the milestone into runtime-path, governance, and secondary-surface phases kept the corrective work narrow and avoided reopening unrelated CAD runtime behavior.
+- Contract-first tests continued to be the fastest way to align implementation, docs, and release boundaries without turning demo or Babylon surfaces into unconditional blockers.
+- Using a dedicated milestone audit before archival made the final closeout simpler and forced the requirement traceability back into one place.
+
+### What to revisit
+
+- `gsd-tools milestone complete` still leaves manual cleanup work for `ROADMAP.md`, `PROJECT.md`, `STATE.md`, `RETROSPECTIVE.md`, and final tag sequencing.
+- Nyquist validation artifacts are still absent for Phases 18-20, so `v1.5` closes with optional follow-up validation rather than phase-level validation records.
+
+### Carry-forward ideas
+
+- Keep future secondary-surface work manifest-first and path-conditional instead of allowing demo, Babylon, or Tauri checks to creep into the authoritative root release gate.
+- Review the deferred seed `001-web-exact-brep-measurement` against `v1.6` planning, but only promote it if the resulting scope stays package-first and additive.
+
 ## Milestone: v1.4 — Exact Measurement Placement & Relation SDK
 
 **Shipped:** 2026-04-16

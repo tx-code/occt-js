@@ -36,7 +36,12 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 
 ### Active
 
-- [ ] None — `v1.5` implementation scope is complete and the milestone is ready for closeout.
+- [ ] `v1.6`: Package-first hole and chamfer helper semantics on top of the shipped exact primitives.
+- [ ] `v1.6`: Equal-distance, symmetry, midpoint, or similar reusable exact semantics without moving viewer policy into the runtime.
+- [ ] `v1.7`: Safer exact-model lifetime management and diagnostics for unreleased exact handles.
+- [ ] `v1.7`: Remove avoidable exact-query/store copies and redundant temp-file staging in long-running workflows.
+- [ ] `v1.8`: Keep Babylon package dependency ownership and standalone install behavior aligned across repo-local packages.
+- [ ] `v1.8`: Keep demo and Tauri verification explicit, repeatable, and downstream of the authoritative root release gate.
 
 ### Out of Scope
 
@@ -52,16 +57,15 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 
 `v1.4 Exact Measurement Placement & Relation SDK` shipped on 2026-04-16 and is now archived in `.planning/milestones/`. The root runtime and `occt-core` now expose additive exact placement helpers plus exact relation classification for `parallel`, `perpendicular`, `concentric`, `tangent`, and `none`, all with occurrence-safe supporting geometry DTOs. Package-first SDK docs, packaged typings, tarball assertions, and the authoritative release gate now lock that exact measurement surface end to end.
 
-`v1.5 Root Release Hardening` implementation is now complete. Phases 18-20 stabilized the root runtime-path contract, separated `.planning` governance audits from the authoritative release gate, and made demo/Babylon verification explicit and conditional through manifest-first commands and `test:secondary:contracts`. The next workflow step is milestone audit and closeout before promoting `v1.6 Exact Semantics Helpers`.
+`v1.5 Root Release Hardening` shipped on 2026-04-18 and is now archived in `.planning/milestones/`. Phases 18-20 stabilized the root runtime-path contract, separated `.planning` governance audits from the authoritative release gate, and made demo/Babylon verification explicit and conditional through manifest-first commands and `test:secondary:contracts`.
 
-## Current Milestone: v1.5 Root Release Hardening
+The repository is now between milestones. The planned follow-on sequence remains `v1.6 Exact Semantics Helpers` → `v1.7 Exact Lifecycle & Performance` → `v1.8 Package Ecosystem & Secondary Surfaces`, and the next workflow step is `$gsd-new-milestone`.
 
-**Goal:** Re-stabilize the authoritative root release contract so future runtime/package milestones can ship without preflight, governance, or secondary-surface drift.
+## Next Milestone Direction
 
-**Target features:**
-- Align root preflight/runtime-path assertions with the shipped `dist/occt-js.js` and `dist/occt-js.wasm` loading contract.
-- Separate root release governance from brittle `.planning/` archive-state assertions while preserving runtime/package contract coverage.
-- Make secondary-surface package and demo verification discoverable and runnable without turning them into unconditional root release gates.
+No active milestone is open. The next planning target remains `v1.6 Exact Semantics Helpers`, with `v1.7` and `v1.8` already sequenced behind it.
+
+Immediate next step: `$gsd-new-milestone`
 
 ## Context
 
@@ -124,6 +128,20 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 <details>
+<summary>Archived v1.5 milestone framing</summary>
+
+## Current Milestone: v1.5 Root Release Hardening
+
+**Goal:** Re-stabilize the authoritative root release contract so future runtime/package milestones can ship without preflight, governance, or secondary-surface drift.
+
+**Target features:**
+- Align root preflight/runtime-path assertions with the shipped `dist/occt-js.js` and `dist/occt-js.wasm` loading contract.
+- Separate root release governance from brittle `.planning/` archive-state assertions while preserving runtime/package contract coverage.
+- Make secondary-surface package and demo verification discoverable and runnable without turning them into unconditional root release gates.
+
+</details>
+
+<details>
 <summary>Archived v1.4 milestone framing</summary>
 
 ## Current Milestone: v1.4 Exact Measurement Placement & Relation SDK
@@ -166,4 +184,4 @@ This document evolves at phase transitions and milestone boundaries.
 </details>
 
 ---
-*Last updated: 2026-04-18 after Phase 20 Conditional Secondary-Surface Verification*
+*Last updated: 2026-04-18 after v1.5 milestone closeout*
