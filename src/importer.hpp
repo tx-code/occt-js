@@ -230,6 +230,25 @@ struct OcctExactRelationResult {
     bool hasTangentPoint = false;
 };
 
+struct OcctExactHoleResult {
+    bool ok = false;
+    std::string code;
+    std::string message;
+    std::string kind;
+    std::string profile;
+    double radius = 0.0;
+    double diameter = 0.0;
+    OcctExactPlacementFrame frame;
+    bool hasFrame = false;
+    std::vector<OcctExactPlacementAnchor> anchors;
+    std::array<double, 3> axisDirection = { 0.0, 0.0, 0.0 };
+    bool hasAxisDirection = false;
+    double depth = 0.0;
+    bool hasDepth = false;
+    bool isThrough = false;
+    bool hasIsThrough = false;
+};
+
 struct ImportParams {
     static constexpr double kCadGhostedOpacity = 0.35;
 

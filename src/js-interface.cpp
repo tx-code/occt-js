@@ -739,6 +739,40 @@ val ExactRelationResultToVal(const OcctExactRelationResult& result)
     return obj;
 }
 
+val ExactHoleResultToVal(const OcctExactHoleResult& result)
+{
+    if (!result.ok) {
+        return ExactFailureToVal(result);
+    }
+
+    val obj = val::object();
+    obj.set("ok", true);
+    obj.set("kind", result.kind);
+    obj.set("profile", result.profile);
+    obj.set("radius", result.radius);
+    obj.set("diameter", result.diameter);
+    if (result.hasFrame) {
+        obj.set("frame", ExactPlacementFrameToVal(result.frame));
+    }
+    if (!result.anchors.empty()) {
+        val anchors = val::array();
+        for (const auto& anchor : result.anchors) {
+            anchors.call<void>("push", ExactPlacementAnchorToVal(anchor));
+        }
+        obj.set("anchors", anchors);
+    }
+    if (result.hasAxisDirection) {
+        obj.set("axisDirection", Vector3ToVal(result.axisDirection));
+    }
+    if (result.hasDepth) {
+        obj.set("depth", result.depth);
+    }
+    if (result.hasIsThrough) {
+        obj.set("isThrough", result.isThrough);
+    }
+    return obj;
+}
+
 val ExactGeometryBindingsToVal(size_t geometryCount)
 {
     val bindings = val::array();
@@ -1230,6 +1264,13 @@ val SuggestExactDiameterPlacementBinding(int exactModelId, int exactShapeHandle,
     );
 }
 
+val DescribeExactHoleBinding(int exactModelId, int exactShapeHandle, const std::string& kind, int elementId)
+{
+    return ExactHoleResultToVal(
+        DescribeExactHole(exactModelId, exactShapeHandle, kind, elementId)
+    );
+}
+
 val AnalyzeOptimalOrientation(const std::string& format, const val& content, const val& jsParams)
 {
     std::vector<uint8_t> buffer = ExtractBytes(content);
@@ -1266,5 +1307,6 @@ EMSCRIPTEN_BINDINGS(occtjs)
     function("SuggestExactThicknessPlacement", &SuggestExactThicknessPlacementBinding);
     function("SuggestExactRadiusPlacement", &SuggestExactRadiusPlacementBinding);
     function("SuggestExactDiameterPlacement", &SuggestExactDiameterPlacementBinding);
+    function("DescribeExactHole", &DescribeExactHoleBinding);
     function("AnalyzeOptimalOrientation", &AnalyzeOptimalOrientation);
 }

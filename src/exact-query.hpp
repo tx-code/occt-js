@@ -131,3 +131,9 @@ OcctExactPlacementResult SuggestExactDiameterPlacement(
     int exactShapeHandle,
     const std::string& kind,
     int elementId);
+
+OcctExactHoleResult DescribeExactHole(
+    int exactModelId,
+    int exactShapeHandle,
+    const std::string& kind,
+    int elementId);

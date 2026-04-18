@@ -3,6 +3,7 @@
 #include "exact-model-store.hpp"
 
 #include <BRepExtrema_DistShapeShape.hxx>
+#include <BRepClass3d_SolidClassifier.hxx>
 #include <BRepClass_FaceClassifier.hxx>
 #include <BRepAdaptor_Curve.hxx>
 #include <BRepLProp_SLProps.hxx>
@@ -19,6 +20,8 @@
 #include <TopAbs_Orientation.hxx>
 #include <TopExp.hxx>
 #include <TopTools_IndexedMapOfShape.hxx>
+#include <TopTools_IndexedDataMapOfShapeListOfShape.hxx>
+#include <TopTools_ListIteratorOfListOfShape.hxx>
 #include <TopoDS.hxx>
 #include <TopoDS_Edge.hxx>
 #include <TopoDS_Face.hxx>
@@ -439,6 +442,227 @@ void AddRelationAnchor(OcctExactRelationResult& result, const std::string& role,
     anchor.role = role;
     anchor.point = ToArray(point);
     result.anchors.push_back(anchor);
+}
+
+void AddHoleAnchor(OcctExactHoleResult& result, const std::string& role, const gp_Pnt& point)
+{
+    OcctExactPlacementAnchor anchor;
+    anchor.role = role;
+    anchor.point = ToArray(point);
+    result.anchors.push_back(anchor);
+}
+
+bool IsOutsideState(const TopAbs_State state)
+{
+    return state == TopAbs_OUT || state == TopAbs_ON;
+}
+
+OcctLifecycleResult ClassifyPointInShape(
+    const TopoDS_Shape& shape,
+    const gp_Pnt& point,
+    TopAbs_State& state)
+{
+    BRepClass3d_SolidClassifier classifier(shape, point, Precision::Confusion());
+    state = classifier.State();
+    if (state == TopAbs_UNKNOWN) {
+        return MakeFailure<OcctLifecycleResult>(
+            "internal-error",
+            "OCCT exact hole classification could not determine whether a probe point was inside or outside the retained geometry."
+        );
+    }
+
+    OcctLifecycleResult ok;
+    ok.ok = true;
+    return ok;
+}
+
+OcctLifecycleResult ResolveHoleCandidateFace(
+    int exactModelId,
+    int exactShapeHandle,
+    const std::string& kind,
+    int elementId,
+    TopoDS_Shape& geometryShape,
+    TopoDS_Face& holeFace)
+{
+    ExactModelEntry entry;
+    OcctLifecycleResult lifecycle = LookupGeometryShape(exactModelId, exactShapeHandle, entry, geometryShape);
+    if (!lifecycle.ok) {
+        return lifecycle;
+    }
+
+    const std::string normalizedKind = NormalizeKind(kind);
+    if (normalizedKind == "face") {
+        lifecycle = ResolveFace(exactModelId, exactShapeHandle, elementId, holeFace);
+        if (!lifecycle.ok) {
+            return lifecycle;
+        }
+
+        BRepAdaptor_Surface surface(holeFace, false);
+        if (surface.GetType() != GeomAbs_Cylinder) {
+            return MakeFailure<OcctLifecycleResult>(
+                "unsupported-geometry",
+                "Exact hole helper only supports cylindrical face refs or circular edge refs adjacent to one cylindrical face."
+            );
+        }
+
+        OcctLifecycleResult ok;
+        ok.ok = true;
+        return ok;
+    }
+
+    if (normalizedKind != "edge") {
+        return MakeFailure<OcctLifecycleResult>(
+            "unsupported-kind",
+            "Exact hole helper only supports edge or face refs."
+        );
+    }
+
+    TopoDS_Edge edge;
+    lifecycle = ResolveEdge(exactModelId, exactShapeHandle, elementId, edge);
+    if (!lifecycle.ok) {
+        return lifecycle;
+    }
+
+    BRepAdaptor_Curve curve(edge);
+    if (curve.GetType() != GeomAbs_Circle) {
+        return MakeFailure<OcctLifecycleResult>(
+            "unsupported-geometry",
+            "Exact hole helper only supports cylindrical face refs or circular edge refs adjacent to one cylindrical face."
+        );
+    }
+
+    TopTools_IndexedDataMapOfShapeListOfShape edgeToFaces;
+    TopExp::MapShapesAndAncestors(geometryShape, TopAbs_EDGE, TopAbs_FACE, edgeToFaces);
+    if (!edgeToFaces.Contains(edge)) {
+        return MakeFailure<OcctLifecycleResult>(
+            "invalid-id",
+            "Requested edge id did not resolve to a retained exact hole candidate."
+        );
+    }
+
+    int cylinderFaceCount = 0;
+    for (TopTools_ListIteratorOfListOfShape it(edgeToFaces.FindFromKey(edge)); it.More(); it.Next()) {
+        const TopoDS_Face candidateFace = TopoDS::Face(it.Value());
+        if (candidateFace.IsNull()) {
+            continue;
+        }
+
+        BRepAdaptor_Surface surface(candidateFace, false);
+        if (surface.GetType() != GeomAbs_Cylinder) {
+            continue;
+        }
+
+        holeFace = candidateFace;
+        cylinderFaceCount += 1;
+    }
+
+    if (cylinderFaceCount != 1 || holeFace.IsNull()) {
+        return MakeFailure<OcctLifecycleResult>(
+            "unsupported-geometry",
+            "Exact hole helper only supports circular edge refs adjacent to exactly one cylindrical face."
+        );
+    }
+
+    OcctLifecycleResult ok;
+    ok.ok = true;
+    return ok;
+}
+
+struct HoleBoundaryInfo {
+    gp_Pnt center;
+    double axisParameter = 0.0;
+    bool isOpen = false;
+};
+
+OcctLifecycleResult CollectHoleBoundaryInfo(
+    const TopoDS_Face& holeFace,
+    const gp_Cylinder& cylinder,
+    const gp_Dir& axisDirection,
+    std::vector<HoleBoundaryInfo>& boundaries)
+{
+    TopTools_IndexedMapOfShape edges;
+    TopExp::MapShapes(holeFace, TopAbs_EDGE, edges);
+    const gp_Lin axisLine(cylinder.Location(), axisDirection);
+    const double tolerance = Precision::Confusion();
+
+    for (int edgeIndex = 1; edgeIndex <= edges.Extent(); edgeIndex += 1) {
+        const TopoDS_Edge edge = TopoDS::Edge(edges(edgeIndex));
+        if (edge.IsNull()) {
+            continue;
+        }
+
+        BRepAdaptor_Curve curve(edge);
+        if (curve.GetType() != GeomAbs_Circle) {
+            continue;
+        }
+
+        const gp_Circ circle = curve.Circle();
+        if (!circle.Axis().Direction().IsParallel(axisDirection, Precision::Angular())) {
+            continue;
+        }
+        if (axisLine.Distance(circle.Location()) > tolerance) {
+            continue;
+        }
+        if (std::abs(circle.Radius() - cylinder.Radius()) > tolerance) {
+            continue;
+        }
+
+        bool duplicate = false;
+        for (const auto& boundary : boundaries) {
+            if (boundary.center.Distance(circle.Location()) <= tolerance) {
+                duplicate = true;
+                break;
+            }
+        }
+        if (duplicate) {
+            continue;
+        }
+
+        HoleBoundaryInfo boundary;
+        boundary.center = circle.Location();
+        boundary.axisParameter = gp_Vec(cylinder.Location(), boundary.center).Dot(gp_Vec(axisDirection));
+        boundaries.push_back(boundary);
+    }
+
+    if (boundaries.size() != 2) {
+        return MakeFailure<OcctLifecycleResult>(
+            "unsupported-geometry",
+            "Exact hole helper only supports cylindrical holes with exactly two circular boundary loops."
+        );
+    }
+
+    std::sort(boundaries.begin(), boundaries.end(), [](const HoleBoundaryInfo& left, const HoleBoundaryInfo& right) {
+        return left.axisParameter < right.axisParameter;
+    });
+
+    OcctLifecycleResult ok;
+    ok.ok = true;
+    return ok;
+}
+
+OcctLifecycleResult ResolveHoleBoundaryOpenStates(
+    const TopoDS_Shape& geometryShape,
+    const gp_Dir& axisDirection,
+    std::vector<HoleBoundaryInfo>& boundaries)
+{
+    const double depth = std::abs(boundaries[1].axisParameter - boundaries[0].axisParameter);
+    const double probeDistance = std::max(Precision::Confusion() * 100.0, std::min(depth * 0.1, 0.5));
+    const double midpoint = 0.5 * (boundaries[0].axisParameter + boundaries[1].axisParameter);
+
+    for (auto& boundary : boundaries) {
+        const double direction = boundary.axisParameter >= midpoint ? 1.0 : -1.0;
+        const gp_Pnt probePoint = boundary.center.Translated(gp_Vec(axisDirection) * (direction * probeDistance));
+        TopAbs_State state = TopAbs_UNKNOWN;
+        OcctLifecycleResult lifecycle = ClassifyPointInShape(geometryShape, probePoint, state);
+        if (!lifecycle.ok) {
+            return lifecycle;
+        }
+        boundary.isOpen = IsOutsideState(state);
+    }
+
+    OcctLifecycleResult ok;
+    ok.ok = true;
+    return ok;
 }
 
 template <typename TFailure>
@@ -1899,6 +2123,126 @@ OcctExactPlacementResult SuggestExactDiameterPlacement(
         return MakeFailure<OcctExactPlacementResult>(
             "internal-error",
             failure.GetMessageString() != nullptr ? failure.GetMessageString() : "OCCT exact diameter placement query failed."
+        );
+    }
+}
+
+OcctExactHoleResult DescribeExactHole(
+    int exactModelId,
+    int exactShapeHandle,
+    const std::string& kind,
+    int elementId)
+{
+    try {
+        TopoDS_Shape geometryShape;
+        TopoDS_Face holeFace;
+        OcctLifecycleResult lifecycle = ResolveHoleCandidateFace(
+            exactModelId,
+            exactShapeHandle,
+            kind,
+            elementId,
+            geometryShape,
+            holeFace
+        );
+        if (!lifecycle.ok) {
+            return MakeFailure<OcctExactHoleResult>(lifecycle.code, lifecycle.message);
+        }
+
+        BRepAdaptor_Surface surface(holeFace, false);
+        if (surface.GetType() != GeomAbs_Cylinder) {
+            return MakeFailure<OcctExactHoleResult>(
+                "unsupported-geometry",
+                "Exact hole helper only supports cylindrical face refs or circular edge refs adjacent to one cylindrical face."
+            );
+        }
+
+        const gp_Cylinder cylinder = surface.Cylinder();
+        const gp_Dir axisDirection = cylinder.Axis().Direction();
+        const gp_Pnt samplePoint = SampleFacePoint(holeFace, surface);
+        const gp_Vec axialOffset(cylinder.Location(), samplePoint);
+        const gp_Pnt axisPoint = cylinder.Location().Translated(gp_Vec(axisDirection) * axialOffset.Dot(gp_Vec(axisDirection)));
+        gp_Dir radialDirection;
+        if (!TryMakeDirection(axisPoint, samplePoint, radialDirection)) {
+            return MakeFailure<OcctExactHoleResult>(
+                "unsupported-geometry",
+                "Exact hole helper requires cylindrical geometry with a stable radial direction."
+            );
+        }
+
+        const double radialProbeDistance = std::max(Precision::Confusion() * 100.0, std::min(cylinder.Radius() * 0.25, 0.5));
+        const gp_Pnt inwardProbe = samplePoint.Translated(gp_Vec(radialDirection) * (-radialProbeDistance));
+        TopAbs_State inwardState = TopAbs_UNKNOWN;
+        lifecycle = ClassifyPointInShape(geometryShape, inwardProbe, inwardState);
+        if (!lifecycle.ok) {
+            return MakeFailure<OcctExactHoleResult>(lifecycle.code, lifecycle.message);
+        }
+        if (!IsOutsideState(inwardState)) {
+            return MakeFailure<OcctExactHoleResult>(
+                "unsupported-geometry",
+                "Selected cylindrical geometry does not bound a supported hole cavity."
+            );
+        }
+
+        std::vector<HoleBoundaryInfo> boundaries;
+        lifecycle = CollectHoleBoundaryInfo(holeFace, cylinder, axisDirection, boundaries);
+        if (!lifecycle.ok) {
+            return MakeFailure<OcctExactHoleResult>(lifecycle.code, lifecycle.message);
+        }
+
+        lifecycle = ResolveHoleBoundaryOpenStates(geometryShape, axisDirection, boundaries);
+        if (!lifecycle.ok) {
+            return MakeFailure<OcctExactHoleResult>(lifecycle.code, lifecycle.message);
+        }
+
+        const bool openFirst = boundaries[0].isOpen;
+        const bool openSecond = boundaries[1].isOpen;
+        if (!openFirst && !openSecond) {
+            return MakeFailure<OcctExactHoleResult>(
+                "unsupported-geometry",
+                "Exact hole helper requires at least one open circular boundary."
+            );
+        }
+
+        const gp_Pnt centerPoint = Midpoint(boundaries[0].center, boundaries[1].center);
+        const double depth = std::abs(boundaries[1].axisParameter - boundaries[0].axisParameter);
+
+        OcctExactHoleResult result;
+        result.ok = true;
+        result.kind = "hole";
+        result.profile = "cylindrical";
+        result.radius = cylinder.Radius();
+        result.diameter = result.radius * 2.0;
+        result.hasAxisDirection = true;
+        result.axisDirection = ToArray(axisDirection);
+        result.hasDepth = true;
+        result.depth = depth;
+        result.hasIsThrough = true;
+        result.isThrough = openFirst && openSecond;
+        if (!BuildFrameFromNormalAndX(centerPoint, axisDirection, radialDirection, result.frame)) {
+            return MakeFailure<OcctExactHoleResult>(
+                "unsupported-geometry",
+                "Exact hole helper requires a stable working frame."
+            );
+        }
+        result.hasFrame = true;
+
+        AddHoleAnchor(result, "center", centerPoint);
+        if (result.isThrough) {
+            AddHoleAnchor(result, "entry", boundaries[0].center);
+            AddHoleAnchor(result, "exit", boundaries[1].center);
+        } else if (openFirst) {
+            AddHoleAnchor(result, "entry", boundaries[0].center);
+            AddHoleAnchor(result, "bottom", boundaries[1].center);
+        } else {
+            AddHoleAnchor(result, "entry", boundaries[1].center);
+            AddHoleAnchor(result, "bottom", boundaries[0].center);
+        }
+
+        return result;
+    } catch (const Standard_Failure& failure) {
+        return MakeFailure<OcctExactHoleResult>(
+            "internal-error",
+            failure.GetMessageString() != nullptr ? failure.GetMessageString() : "OCCT exact hole query failed."
         );
     }
 }

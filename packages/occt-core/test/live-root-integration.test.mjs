@@ -222,6 +222,58 @@ async function findCircularOccurrenceRef(core, exactModel) {
   return null;
 }
 
+async function findSupportedHoleOccurrenceRef(core, exactModel) {
+  const occurrences = collectGeometryOccurrences(exactModel.rootNodes);
+  for (const occurrence of occurrences) {
+    const geometry = exactModel.geometries.find((entry) => entry.geometryId === occurrence.geometryId);
+    if (!geometry) {
+      continue;
+    }
+
+    for (const edge of geometry.edges ?? []) {
+      const ref = resolveExactElementRef(exactModel, {
+        nodeId: occurrence.nodeId,
+        geometryId: occurrence.geometryId,
+        kind: "edge",
+        elementId: edge.id,
+      });
+      if (ref?.ok !== true) {
+        continue;
+      }
+      const family = await core.getExactGeometryType(ref);
+      if (family?.ok !== true || family.family !== "circle") {
+        continue;
+      }
+      const hole = await core.describeExactHole(ref);
+      if (hole?.ok === true) {
+        return ref;
+      }
+    }
+
+    for (const face of geometry.faces ?? []) {
+      const ref = resolveExactElementRef(exactModel, {
+        nodeId: occurrence.nodeId,
+        geometryId: occurrence.geometryId,
+        kind: "face",
+        elementId: face.id,
+      });
+      if (ref?.ok !== true) {
+        continue;
+      }
+      const family = await core.getExactGeometryType(ref);
+      if (family?.ok !== true || family.family !== "cylinder") {
+        continue;
+      }
+      const hole = await core.describeExactHole(ref);
+      if (hole?.ok === true) {
+        return ref;
+      }
+    }
+  }
+
+  return null;
+}
+
 function translateTransform(transform, tx, ty, tz) {
   const output = transform.slice();
   output[12] += tx;
@@ -546,6 +598,49 @@ test("occt-core placement wrappers normalize local circular placement into occur
   assert.deepEqual(shiftedPlacement?.anchors[0].point, translatePoint(basePlacement.anchors[0].point, 40, -20, 15));
   assert.deepEqual(shiftedPlacement?.anchors[1].point, translatePoint(basePlacement.anchors[1].point, 40, -20, 15));
   assert.deepEqual(shiftedPlacement?.axisDirection, basePlacement.axisDirection);
+  assert.deepEqual(await core.releaseExactModel(exactModel.exactModelId), { ok: true });
+});
+
+test("occt-core describeExactHole normalizes live hole semantics into occurrence space", async () => {
+  const factory = loadOcctFactory();
+  const wasmBinary = new Uint8Array(await readFile(new URL("../../../dist/occt-js.wasm", import.meta.url)));
+  const brepBytes = new Uint8Array(await readFile(new URL("../../../test/as1_pe_203.brep", import.meta.url)));
+
+  const core = createOcctCore({
+    factory,
+    wasmBinary,
+  });
+
+  const rawExact = await core.openExactBrep(brepBytes, {
+    fileName: "as1_pe_203.brep",
+  });
+  const exactModel = normalizeExactOpenResult(rawExact, {
+    sourceFileName: "as1_pe_203.brep",
+  });
+  const baseRef = await findSupportedHoleOccurrenceRef(core, exactModel);
+
+  assert.ok(baseRef?.ok === true, "as1_pe_203.brep should expose at least one supported exact hole ref");
+
+  const shiftedRef = {
+    ...baseRef,
+    transform: translateTransform(baseRef.transform, 40, -20, 15),
+  };
+
+  const baseHole = await core.describeExactHole(baseRef);
+  const shiftedHole = await core.describeExactHole(shiftedRef);
+
+  assert.equal(baseHole?.ok, true);
+  assert.equal(shiftedHole?.ok, true);
+  assert.equal(baseHole?.kind, "hole");
+  assert.equal(shiftedHole?.kind, "hole");
+  assert.equal(baseHole?.profile, "cylindrical");
+  assert.equal(shiftedHole?.profile, "cylindrical");
+  assert.ok(Math.abs(baseHole.radius - shiftedHole.radius) < 1e-6);
+  assert.ok(Math.abs(baseHole.diameter - shiftedHole.diameter) < 1e-6);
+  assert.deepEqual(shiftedHole?.frame.origin, translatePoint(baseHole.frame.origin, 40, -20, 15));
+  assert.deepEqual(shiftedHole?.anchors[0].point, translatePoint(baseHole.anchors[0].point, 40, -20, 15));
+  assert.deepEqual(shiftedHole?.anchors[1].point, translatePoint(baseHole.anchors[1].point, 40, -20, 15));
+  assert.deepEqual(shiftedHole?.axisDirection, baseHole.axisDirection);
   assert.deepEqual(await core.releaseExactModel(exactModel.exactModelId), { ok: true });
 });
 
