@@ -20,7 +20,7 @@ This roadmap moves `occt-js` from exact kernel foundations into package-first he
 - Integer phases (21, 22, 23): Planned milestone work
 - Decimal phases (21.1, 21.2): Urgent insertions (marked with INSERTED)
 
-- [ ] **Phase 21: Hole Helper Foundations** - Add package-first hole helper semantics with occurrence-safe DTOs and only the minimal additive runtime support needed for supported cases.
+- [x] **Phase 21: Hole Helper Foundations** - Add package-first hole helper semantics with occurrence-safe DTOs and only the minimal additive runtime support needed for supported cases.
 - [ ] **Phase 22: Chamfer & Constraint Helpers** - Extend the helper surface to supported chamfer cases plus equal-distance, symmetry, midpoint, and similar reusable helper semantics.
 - [ ] **Phase 23: Helper SDK Docs & Governance** - Lock the exact helper surface into docs, typings, tarball expectations, and authoritative release governance without widening secondary-surface release gates.
 
@@ -30,6 +30,7 @@ This roadmap moves `occt-js` from exact kernel foundations into package-first he
 **Goal**: Downstream JS can request package-first hole helper semantics from exact refs while the runtime/package boundary stays additive, occurrence-safe, and free of viewer/session policy.
 **Depends on**: Phase 20
 **Requirements**: FEAT-03, ADAPT-09
+**Completed**: 2026-04-18
 **Success Criteria** (what must be TRUE):
   1. `@tx-code/occt-core` exposes package-first hole helper APIs that return stable typed outputs and explicit unsupported/failure results for supported hole cases.
   2. Hole helper outputs preserve occurrence transforms plus supporting geometry conventions already used by the exact placement/relation surface.
@@ -37,8 +38,8 @@ This roadmap moves `occt-js` from exact kernel foundations into package-first he
 **Plans**: 2 plans
 
 Plans:
-- [ ] 21-01-PLAN.md — Define package-first hole helper DTOs and `occt-core` APIs
-- [ ] 21-02-PLAN.md — Add only the minimal runtime support required for supported hole helper cases
+- [x] 21-01-PLAN.md — Define package-first hole helper DTOs and `occt-core` APIs
+- [x] 21-02-PLAN.md — Add only the minimal runtime support required for supported hole helper cases
 
 ### Phase 22: Chamfer & Constraint Helpers
 **Goal**: Downstream JS can request supported chamfer semantics and higher-level reusable helper relations such as equal-distance, symmetry, and midpoint without inventing viewer policy in the runtime/package layer.
@@ -75,6 +76,6 @@ Phases execute in numeric order: 21 → 22 → 23
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 21. Hole Helper Foundations | v1.6 | 0/2 | Not started | - |
+| 21. Hole Helper Foundations | v1.6 | 2/2 | Complete | 2026-04-18 |
 | 22. Chamfer & Constraint Helpers | v1.6 | 0/2 | Not started | - |
 | 23. Helper SDK Docs & Governance | v1.6 | 0/2 | Not started | - |

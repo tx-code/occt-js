@@ -62,6 +62,8 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 
 **Goal:** Add package-first exact semantics helpers on top of the shipped kernel primitives without turning `occt-js` into a viewer-first or feature-recognition-first product.
 
+**Current status:** Phase 21 shipped on 2026-04-18 through package-first cylindrical hole semantics (`describeExactHole(ref)` / `DescribeExactHole(...)`). Phase 22 is next and expands the helper family into chamfer and reusable constraint semantics.
+
 **Target features:**
 - Package-first `hole` and `chamfer` helper semantics, using existing exact primitives where possible and minimal additive kernel support only when unavoidable.
 - Reusable equal-distance, symmetry, midpoint, and similar higher-level exact helper semantics built on the shipped placement/relation surface.
@@ -74,7 +76,7 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 - `imos-app` remains the key downstream consumer signal: it vendors `@tx-code/occt-js` and consumes the Wasm/runtime surface directly, while viewer semantics live on the app side.
 - `SceneGraph.net` remains the best local reference for measurement behavior above the kernel layer, but `occt-js` intentionally stopped at exact-kernel foundations plus package-first placement/relation support.
 - OCCT `PrsDim` remains the local geometry reference for placement and relation behavior, but `occt-js` intentionally stops short of AIS/Prs3d interactive dimensions.
-- The current exact runtime now exposes retained exact-model lifecycle, primitive exact queries, pairwise distance/angle/thickness, placement DTOs, and relation classification; package docs and release verification treat that as a first-class SDK surface.
+- The current exact runtime now exposes retained exact-model lifecycle, primitive exact queries, pairwise distance/angle/thickness, placement DTOs, relation classification, and the first package-first hole helper semantics; package docs and release verification treat the shipped runtime/package surface as a first-class SDK contract.
 - The formal follow-on milestone sequence after `v1.6` is:
   `v1.7 Exact Lifecycle & Performance` → `v1.8 Package Ecosystem & Secondary Surfaces`.
 - GSD is the primary repository workflow; superpowers remain optional support tooling for narrow tasks only.
@@ -111,6 +113,7 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 | Keep the default demo browser E2E lane on a current Project Home smoke path instead of the stale viewer-first suite | Phase 20 needed a maintained manifest-first browser command that matches the shipped shell instead of asserting an outdated demo layout | ✓ Good |
 | Lock secondary-surface routing through `npm run test:secondary:contracts` and touched-path docs instead of widening `npm run test:release:root` | Demo, Babylon, and Tauri surfaces need discoverability and repeatability without polluting the authoritative root Wasm release boundary | ✓ Good |
 | Carry the deferred web exact-measurement seed forward only through package-first helper semantics | The exact kernel foundation already shipped in `v1.1`/`v1.4`; `v1.6` should build additive helper semantics, not reopen viewer or broad kernel-boundary work | ✓ Good |
+| Ship hole semantics as a package-first single-ref helper backed by one narrow carrier query | `v1.6` needs reusable helper semantics without reopening whole-model feature recognition or viewer-owned selection policy | ✓ Good |
 
 ## Evolution
 
@@ -186,4 +189,4 @@ This document evolves at phase transitions and milestone boundaries.
 </details>
 
 ---
-*Last updated: 2026-04-18 after starting milestone v1.6 Exact Semantics Helpers*
+*Last updated: 2026-04-18 after completing Phase 21 hole helper foundations*
