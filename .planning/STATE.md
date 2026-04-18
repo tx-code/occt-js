@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Exact Semantics Helpers
 status: ready
-stopped_at: v1.6 roadmap created
-last_updated: "2026-04-18T01:59:40.2741928Z"
-last_activity: 2026-04-18 -- v1.6 roadmap created
+stopped_at: Phase 21 context captured
+last_updated: "2026-04-18T02:23:00.3244285Z"
+last_activity: 2026-04-18 -- Phase 21 context captured
 progress:
   total_phases: 3
   completed_phases: 0
@@ -28,8 +28,8 @@ Current focus: Phase 21 Hole Helper Foundations
 Milestone: v1.6 Exact Semantics Helpers
 Phase: 21 of 23 (Hole Helper Foundations)
 Plan: 0 of 2 in current phase
-Status: Ready to discuss
-Last activity: 2026-04-18 -- v1.6 roadmap created
+Status: Ready to plan
+Last activity: 2026-04-18 -- Phase 21 context captured
 
 Progress: [----------] 0%
 
@@ -63,10 +63,11 @@ Recent Trend:
 - Phase 20 kept secondary-surface verification manifest-first and conditional instead of promoting it into the root release gate.
 - Phase 20 split demo browser/node verification from `tauri:*` and locked the browser lane to a maintained Project Home smoke spec.
 - Phase 20 locked secondary-surface policy through `npm run test:secondary:contracts` instead of extending `npm run test:release:root`.
+- Phase 21 discussion locked the helper scope to caller-selected analytic cylindrical hole semantics, a package-first single-ref API shape, and only minimal ref-based carrier expansion if composition from shipped primitives is insufficient.
 
 ### Pending Todos
 
-- Run `$gsd-discuss-phase 21` to lock the intended supported hole cases and the package-first API shape before planning.
+- Run `$gsd-plan-phase 21` to turn the locked hole helper decisions into executable plan docs.
 - Keep the `SEED-001` carry-forward narrow: additive helper semantics only, not a reopened viewer or broad kernel milestone.
 - Keep `demo/.codex-run/` and `demo/dist/` out of planning commits.
 
@@ -84,6 +85,6 @@ Items acknowledged and deferred at milestone close on 2026-04-18:
 
 ## Session Continuity
 
-Last session: 2026-04-18T01:59:40.2741928Z
-Stopped at: v1.6 roadmap created
-Resume file: .planning/ROADMAP.md
+Last session: 2026-04-18T02:23:00.3244285Z
+Stopped at: Phase 21 context captured
+Resume file: .planning/phases/21-hole-helper-foundations/21-CONTEXT.md
