@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.5
-milestone_name: Root Release Hardening
-status: ready
-stopped_at: v1.5 milestone archived
-last_updated: "2026-04-18T01:52:10.1513921Z"
-last_activity: 2026-04-18 -- v1.5 milestone archived
+milestone: v1.6
+milestone_name: Exact Semantics Helpers
+status: active
+stopped_at: Milestone v1.6 started
+last_updated: "2026-04-18T01:57:52.3910100Z"
+last_activity: 2026-04-18 -- Milestone v1.6 started
 progress:
-  total_phases: 3
-  completed_phases: 3
-  total_plans: 6
-  completed_plans: 6
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -21,17 +21,17 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-18)
 
 Core value: Downstream applications can reliably consume the OCCT Wasm runtime and its root API contract without build drift or packaging surprises.
-Current focus: Planning the next milestone
+Current focus: Defining requirements for v1.6 Exact Semantics Helpers
 
 ## Current Position
 
-Milestone: None active
-Phase: None active
-Plan: 0 of 0
-Status: Ready to start next milestone
-Last activity: 2026-04-18 -- v1.5 milestone archived
+Milestone: v1.6 Exact Semantics Helpers
+Phase: Not started (defining requirements)
+Plan: -
+Status: Defining requirements
+Last activity: 2026-04-18 -- Milestone v1.6 started
 
-Progress: [##########] 100%
+Progress: [----------] 0%
 
 ## Performance Metrics
 
@@ -66,13 +66,13 @@ Recent Trend:
 
 ### Pending Todos
 
-- Run `$gsd-new-milestone`.
-- Review deferred seed `001-web-exact-brep-measurement` when choosing whether `v1.6` should stay package-first or widen its kernel scope.
-- Keep `demo/.codex-run/` and `demo/dist/` out of future planning commits.
+- Define scoped `v1.6` requirements for package-first exact semantics helpers.
+- Create the `v1.6` roadmap with continued phase numbering after Phase 20.
+- Keep `demo/.codex-run/` and `demo/dist/` out of planning commits.
 
 ### Blockers/Concerns
 
-- No technical blockers remain. The repository is ready for the next milestone definition step.
+- No technical blockers remain. The open work is milestone setup and scope definition only.
 
 ## Deferred Items
 
@@ -84,6 +84,6 @@ Items acknowledged and deferred at milestone close on 2026-04-18:
 
 ## Session Continuity
 
-Last session: 2026-04-18T01:52:10.1513921Z
-Stopped at: v1.5 milestone archived
-Resume file: .planning/MILESTONES.md
+Last session: 2026-04-18T01:57:52.3910100Z
+Stopped at: Milestone v1.6 started
+Resume file: .planning/PROJECT.md

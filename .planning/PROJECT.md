@@ -36,12 +36,9 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 
 ### Active
 
-- [ ] `v1.6`: Package-first hole and chamfer helper semantics on top of the shipped exact primitives.
-- [ ] `v1.6`: Equal-distance, symmetry, midpoint, or similar reusable exact semantics without moving viewer policy into the runtime.
-- [ ] `v1.7`: Safer exact-model lifetime management and diagnostics for unreleased exact handles.
-- [ ] `v1.7`: Remove avoidable exact-query/store copies and redundant temp-file staging in long-running workflows.
-- [ ] `v1.8`: Keep Babylon package dependency ownership and standalone install behavior aligned across repo-local packages.
-- [ ] `v1.8`: Keep demo and Tauri verification explicit, repeatable, and downstream of the authoritative root release gate.
+- [ ] Package-first hole and chamfer helper semantics on top of the shipped exact primitives, with minimal additive kernel support only where helper composition genuinely needs it.
+- [ ] Reusable equal-distance, symmetry, midpoint, and similar exact helper semantics on top of the shipped placement/relation primitives.
+- [ ] Package-first docs, typings, and release governance for exact semantics helpers without widening the authoritative root release gate.
 
 ### Out of Scope
 
@@ -59,13 +56,16 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 
 `v1.5 Root Release Hardening` shipped on 2026-04-18 and is now archived in `.planning/milestones/`. Phases 18-20 stabilized the root runtime-path contract, separated `.planning` governance audits from the authoritative release gate, and made demo/Babylon verification explicit and conditional through manifest-first commands and `test:secondary:contracts`.
 
-The repository is now between milestones. The planned follow-on sequence remains `v1.6 Exact Semantics Helpers` → `v1.7 Exact Lifecycle & Performance` → `v1.8 Package Ecosystem & Secondary Surfaces`, and the next workflow step is `$gsd-new-milestone`.
+`v1.6 Exact Semantics Helpers` is now the active milestone. The goal is to extend the shipped exact primitive, placement, and relation surface upward through package-first helper semantics such as `hole`, `chamfer`, `equal-distance`, `symmetry`, and `midpoint`, while keeping viewer workflows and session policy downstream.
 
-## Next Milestone Direction
+## Current Milestone: v1.6 Exact Semantics Helpers
 
-No active milestone is open. The next planning target remains `v1.6 Exact Semantics Helpers`, with `v1.7` and `v1.8` already sequenced behind it.
+**Goal:** Add package-first exact semantics helpers on top of the shipped kernel primitives without turning `occt-js` into a viewer-first or feature-recognition-first product.
 
-Immediate next step: `$gsd-new-milestone`
+**Target features:**
+- Package-first `hole` and `chamfer` helper semantics, using existing exact primitives where possible and minimal additive kernel support only when unavoidable.
+- Reusable equal-distance, symmetry, midpoint, and similar higher-level exact helper semantics built on the shipped placement/relation surface.
+- Package-first docs, typings, tarball expectations, and release governance that lock the helper surface without widening secondary-surface release gates.
 
 ## Context
 
@@ -75,9 +75,10 @@ Immediate next step: `$gsd-new-milestone`
 - `SceneGraph.net` remains the best local reference for measurement behavior above the kernel layer, but `occt-js` intentionally stopped at exact-kernel foundations plus package-first placement/relation support.
 - OCCT `PrsDim` remains the local geometry reference for placement and relation behavior, but `occt-js` intentionally stops short of AIS/Prs3d interactive dimensions.
 - The current exact runtime now exposes retained exact-model lifecycle, primitive exact queries, pairwise distance/angle/thickness, placement DTOs, and relation classification; package docs and release verification treat that as a first-class SDK surface.
-- The formal follow-on milestone sequence after `v1.5` is:
-  `v1.6 Exact Semantics Helpers` → `v1.7 Exact Lifecycle & Performance` → `v1.8 Package Ecosystem & Secondary Surfaces`.
+- The formal follow-on milestone sequence after `v1.6` is:
+  `v1.7 Exact Lifecycle & Performance` → `v1.8 Package Ecosystem & Secondary Surfaces`.
 - GSD is the primary repository workflow; superpowers remain optional support tooling for narrow tasks only.
+- Deferred seed `SEED-001-web-exact-brep-measurement` is now only partially relevant: its kernel foundation shipped in `v1.1`/`v1.4`, while its remaining forward path is the package-first helper layer being scoped in `v1.6`.
 
 ## Constraints
 
@@ -109,6 +110,7 @@ Immediate next step: `$gsd-new-milestone`
 | Separate `.planning` audits from `npm run test:release:root` via an explicit maintainer command | Runtime/package release verification must stay independent of milestone lifecycle drift while planning audits remain intentionally runnable | ✓ Good |
 | Keep the default demo browser E2E lane on a current Project Home smoke path instead of the stale viewer-first suite | Phase 20 needed a maintained manifest-first browser command that matches the shipped shell instead of asserting an outdated demo layout | ✓ Good |
 | Lock secondary-surface routing through `npm run test:secondary:contracts` and touched-path docs instead of widening `npm run test:release:root` | Demo, Babylon, and Tauri surfaces need discoverability and repeatability without polluting the authoritative root Wasm release boundary | ✓ Good |
+| Carry the deferred web exact-measurement seed forward only through package-first helper semantics | The exact kernel foundation already shipped in `v1.1`/`v1.4`; `v1.6` should build additive helper semantics, not reopen viewer or broad kernel-boundary work | ✓ Good |
 
 ## Evolution
 
@@ -184,4 +186,4 @@ This document evolves at phase transitions and milestone boundaries.
 </details>
 
 ---
-*Last updated: 2026-04-18 after v1.5 milestone closeout*
+*Last updated: 2026-04-18 after starting milestone v1.6 Exact Semantics Helpers*
