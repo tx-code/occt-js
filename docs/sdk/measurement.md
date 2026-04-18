@@ -1,6 +1,6 @@
-# Exact Measurement SDK
+# Exact Measurement and Helper SDK
 
-This is the package-first SDK guide for exact measurement in `occt-js`.
+This is the package-first SDK guide for exact measurement and shipped helper semantics in `occt-js`.
 
 Downstream JS consumers should normally start with `@tx-code/occt-core`. The root Wasm carrier `@tx-code/occt-js` remains the lower-level reference surface and authoritative release boundary.
 
@@ -110,6 +110,32 @@ Supported relation kinds are:
 
 `none` is a valid successful result for supported geometry that simply does not satisfy one of the named relations. Invalid refs or unsupported geometry still return explicit typed failures.
 
+## Shipped Helper Family
+
+Phase `v1.6` extends the package-first SDK with a narrow helper family that builds on the shipped measurement, placement, and relation surfaces:
+
+```js
+const hole = await core.describeExactHole(refA);
+const chamfer = await core.describeExactChamfer(refA);
+const midpoint = await core.suggestExactMidpointPlacement(refA, refB);
+const equalDistance = await core.describeExactEqualDistance(refA, refB, refC, refD, {
+  tolerance: 0.01,
+});
+const symmetry = await core.suggestExactSymmetryPlacement(refA, refB);
+```
+
+Those helpers divide into two buckets:
+
+- carrier-backed wrappers: `describeExactHole(ref)` and `describeExactChamfer(ref)`
+- package-first compositions: `suggestExactMidpointPlacement(refA, refB)`, `describeExactEqualDistance(refA, refB, refC, refD, options?)`, and `suggestExactSymmetryPlacement(refA, refB)`
+
+The shipped helper boundaries stay intentionally narrow:
+
+- `describeExactHole(ref)` only recognizes a supported cylindrical hole from a circular edge ref or cylindrical face ref.
+- `describeExactChamfer(ref)` only recognizes a supported planar chamfer face ref.
+- `suggestExactSymmetryPlacement(refA, refB)` is a midplane-style symmetry helper for supported parallel pairs.
+- `suggestExactMidpointPlacement(...)` and `describeExactEqualDistance(...)` stay package-first compositions over the shipped placement and pairwise measurement primitives.
+
 ## Lower-Level Root Reference
 
 If you need direct access to the carrier, the root Wasm module exposes:
@@ -123,12 +149,14 @@ If you need direct access to the carrier, the root Wasm module exposes:
 - `SuggestExactRadiusPlacement`
 - `SuggestExactDiameterPlacement`
 - `ClassifyExactRelation`
+- `DescribeExactHole`
+- `DescribeExactChamfer`
 
 This lower-level reference stays additive to the package-first SDK. Most downstream JS should still use `@tx-code/occt-core` unless it needs direct retained-model orchestration.
 
 ## Boundary
 
-This SDK intentionally stops at exact measurement DTOs and relation semantics.
+This SDK intentionally stops at exact measurement DTOs and the shipped narrow helper family.
 
 Downstream concerns include:
 
@@ -136,6 +164,6 @@ Downstream concerns include:
 - selection UX
 - label layout
 - viewer policy
-- feature semantics such as hole or chamfer recognition
+- richer feature discovery beyond the shipped helper family
 
 The authoritative release gate for this contract remains `npm run test:release:root` from the repository root.

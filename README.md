@@ -130,14 +130,23 @@ const placement = await core.suggestExactDistancePlacement(refA, refB);
 const relation = await core.classifyExactRelation(refA, refB);
 ```
 
-The package-first exact measurement SDK includes:
+The package-first exact measurement and helper SDK includes:
 
 - `measureExactDistance(refA, refB)`, `measureExactAngle(refA, refB)`, and `measureExactThickness(refA, refB)`
 - `suggestExactDistancePlacement(refA, refB)`, `suggestExactAnglePlacement(refA, refB)`, and `suggestExactThicknessPlacement(refA, refB)`
 - `suggestExactRadiusPlacement(ref)` and `suggestExactDiameterPlacement(ref)`
 - `classifyExactRelation(refA, refB)`
+- `describeExactHole(ref)` and `describeExactChamfer(ref)`
+- `suggestExactMidpointPlacement(refA, refB)`, `describeExactEqualDistance(refA, refB, refC, refD, options?)`, and `suggestExactSymmetryPlacement(refA, refB)`
 
 Placement helpers return stable anchors plus a working-plane frame; relation classification returns `parallel`, `perpendicular`, `concentric`, `tangent`, or `none` together with any supporting geometry DTOs.
+
+The shipped helper family stays intentionally narrow:
+
+- `describeExactHole(ref)` only recognizes a supported cylindrical hole from a circular edge ref or cylindrical face ref.
+- `describeExactChamfer(ref)` only recognizes a supported planar chamfer face ref.
+- `suggestExactSymmetryPlacement(refA, refB)` is a midplane-style symmetry helper for supported parallel pairs.
+- `suggestExactMidpointPlacement(...)` and `describeExactEqualDistance(...)` are package-first compositions over the shipped placement and pairwise measurement surface.
 
 ### Lower-level root Wasm reference
 
@@ -188,9 +197,9 @@ const relation = occt.ClassifyExactRelation(
 );
 ```
 
-The lower-level root surface also includes `SuggestExactAnglePlacement`, `SuggestExactThicknessPlacement`, `SuggestExactRadiusPlacement`, `SuggestExactDiameterPlacement`, and `ClassifyExactRelation`.
+The lower-level root surface also includes `SuggestExactAnglePlacement`, `SuggestExactThicknessPlacement`, `SuggestExactRadiusPlacement`, `SuggestExactDiameterPlacement`, `ClassifyExactRelation`, `DescribeExactHole`, and `DescribeExactChamfer`.
 
-Overlay rendering, selection UX, label layout, and semantic feature recognition remain downstream concerns. `occt-js` and `@tx-code/occt-core` stop at the exact Wasm/kernel and package-adapter boundary.
+Richer feature discovery, overlay rendering, selection UX, label layout, and app-owned viewer policy remain downstream concerns. `occt-js` and `@tx-code/occt-core` stop at the exact Wasm/kernel and package-adapter boundary.
 
 ## Prerequisites
 

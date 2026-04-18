@@ -83,9 +83,9 @@ Contract rules:
 Apps own settings persistence, and `@tx-code/occt-core` only consumes the chosen import-time appearance options.
 Viewer overrides remain downstream concerns; the adapter does not own repaint, theme switching, or post-import display policy.
 
-## Exact Measurement SDK
+## Exact Measurement and Helper SDK
 
-`@tx-code/occt-core` keeps exact measurement package-first by wrapping the root Wasm carrier's retained exact-model APIs and occurrence transforms:
+`@tx-code/occt-core` keeps exact measurement and helper semantics package-first by wrapping the root Wasm carrier's retained exact-model APIs and occurrence transforms:
 
 ```js
 const rawExact = await core.openExactStep(stepBytes, {
@@ -111,21 +111,31 @@ const placement = await core.suggestExactDistancePlacement(refA, refB);
 const relation = await core.classifyExactRelation(refA, refB);
 ```
 
-Available package-first helpers:
+Available package-first measurement and helper surfaces:
 
 - `measureExactDistance(refA, refB)`, `measureExactAngle(refA, refB)`, and `measureExactThickness(refA, refB)`
 - `suggestExactDistancePlacement(refA, refB)`, `suggestExactAnglePlacement(refA, refB)`, and `suggestExactThicknessPlacement(refA, refB)`
 - `suggestExactRadiusPlacement(ref)` and `suggestExactDiameterPlacement(ref)`
 - `classifyExactRelation(refA, refB)`
+- `describeExactHole(ref)` and `describeExactChamfer(ref)`
+- `suggestExactMidpointPlacement(refA, refB)`, `describeExactEqualDistance(refA, refB, refC, refD, options?)`, and `suggestExactSymmetryPlacement(refA, refB)`
 
 These helpers keep occurrence transforms explicit and return package-friendly DTOs:
 
 - pairwise measurements return numeric results plus supporting points or axes
 - placement helpers return stable anchors and working-plane frames
 - relation classification returns `parallel`, `perpendicular`, `concentric`, `tangent`, or `none`
+- helper wrappers and package-only compositions keep the same ref/frame/anchor vocabulary instead of inventing a second viewer API
 
-If you need the raw carrier directly, the underlying root Wasm entrypoints are `MeasureExactDistance`, `MeasureExactAngle`, `MeasureExactThickness`, `SuggestExactDistancePlacement`, `SuggestExactAnglePlacement`, `SuggestExactThicknessPlacement`, `SuggestExactRadiusPlacement`, `SuggestExactDiameterPlacement`, and `ClassifyExactRelation`.
+Shipped helper boundaries stay intentionally narrow:
+
+- `describeExactHole(ref)` only recognizes a supported cylindrical hole from a circular edge ref or cylindrical face ref.
+- `describeExactChamfer(ref)` only recognizes a supported planar chamfer face ref.
+- `suggestExactSymmetryPlacement(refA, refB)` is a midplane-style symmetry helper for supported parallel pairs.
+- `suggestExactMidpointPlacement(...)` and `describeExactEqualDistance(...)` stay package-first compositions over the shipped placement and pairwise measurement primitives.
+
+If you need the raw carrier directly, the underlying root Wasm entrypoints are `MeasureExactDistance`, `MeasureExactAngle`, `MeasureExactThickness`, `SuggestExactDistancePlacement`, `SuggestExactAnglePlacement`, `SuggestExactThicknessPlacement`, `SuggestExactRadiusPlacement`, `SuggestExactDiameterPlacement`, `ClassifyExactRelation`, `DescribeExactHole`, and `DescribeExactChamfer`.
 
 For a longer package-first walkthrough, see [`docs/sdk/measurement.md`](../../docs/sdk/measurement.md).
 
-Overlay rendering, selection UX, label layout, and semantic feature recognition remain downstream concerns. `@tx-code/occt-core` stays at the adapter boundary and does not require Babylon, viewer widgets, or demo-local code.
+Richer feature discovery, overlay rendering, selection UX, label layout, and app-owned viewer policy remain downstream concerns. `@tx-code/occt-core` stays at the adapter boundary and does not require Babylon, viewer widgets, or demo-local code.
