@@ -212,6 +212,29 @@ function transformPlacementAnchors(transform, anchors) {
   }));
 }
 
+function transformOptionalPoint(transform, point) {
+  return Array.isArray(point) && point.length >= 3
+    ? transformPoint(transform, point)
+    : point;
+}
+
+function transformExactHoleResult(transform, result) {
+  const transformed = {
+    ...result,
+    frame: transformPlacementFrame(transform, result.frame),
+    anchors: transformPlacementAnchors(transform, result.anchors),
+    axisDirection: result.axisDirection ? transformDirection(transform, result.axisDirection) : result.axisDirection,
+  };
+
+  for (const key of ["centerPoint", "entryPoint", "exitPoint", "bottomPoint"]) {
+    if (Array.isArray(result[key]) && result[key].length >= 3) {
+      transformed[key] = transformPoint(transform, result[key]);
+    }
+  }
+
+  return transformed;
+}
+
 function inverseTransformPoint(transform, point) {
   const [x, y, z] = point;
   const translated = [
@@ -652,6 +675,29 @@ export class OcctCoreClient {
       frame: transformPlacementFrame(exactRef.transform, result.frame),
       anchors: transformPlacementAnchors(exactRef.transform, result.anchors),
       axisDirection: result.axisDirection ? transformDirection(exactRef.transform, result.axisDirection) : result.axisDirection,
+      ref: exactRef,
+    };
+  }
+
+  async describeExactHole(ref) {
+    const module = await this._ensureModule();
+    const exactRef = validateExactRef(ref, "describeExactHole");
+    if (typeof module.DescribeExactHole !== "function") {
+      throw new Error("Loaded OCCT module does not expose DescribeExactHole().");
+    }
+
+    const result = module.DescribeExactHole(
+      exactRef.exactModelId,
+      exactRef.exactShapeHandle,
+      exactRef.kind,
+      exactRef.elementId,
+    );
+    if (result?.ok !== true) {
+      return result;
+    }
+
+    return {
+      ...transformExactHoleResult(exactRef.transform, result),
       ref: exactRef,
     };
   }

@@ -19,6 +19,12 @@ const EMPTY_STATS = {
 const CUSTOM_DEFAULT_COLOR = { r: 0.2, g: 0.4, b: 0.6 };
 const CUSTOM_DEFAULT_OPACITY = 0.35;
 const GHOSTED_PRESET_OPACITY = 0.35;
+const IDENTITY_MATRIX = [
+  1, 0, 0, 0,
+  0, 1, 0, 0,
+  0, 0, 1, 0,
+  0, 0, 0, 1,
+];
 
 function hasOwn(object, key) {
   return Object.prototype.hasOwnProperty.call(object, key);
@@ -1431,6 +1437,184 @@ describe("createOcctCore", () => {
       axisDirection: [0, 0, 1],
       ref,
     });
+  });
+
+  it("wraps describeExactHole(ref) through occurrence-scoped exact refs", async () => {
+    const calls = [];
+    const ref = {
+      exactModelId: 17,
+      exactShapeHandle: 33,
+      nodeId: "node-a",
+      geometryId: "geo_0",
+      kind: "edge",
+      elementId: 5,
+      transform: IDENTITY_MATRIX.slice(),
+    };
+    const core = createOcctCore({
+      factory: async () => ({
+        DescribeExactHole: (...args) => {
+          calls.push(args);
+          return {
+            ok: true,
+            kind: "hole",
+            profile: "cylindrical",
+            radius: 5,
+            diameter: 10,
+            depth: 20,
+            isThrough: false,
+            frame: {
+              origin: [1, 2, 3],
+              normal: [0, 0, 1],
+              xDir: [1, 0, 0],
+              yDir: [0, 1, 0],
+            },
+            anchors: [
+              { role: "center", point: [1, 2, 3] },
+              { role: "entry", point: [1, 2, 13] },
+              { role: "bottom", point: [1, 2, -7] },
+            ],
+            axisDirection: [0, 0, 1],
+          };
+        },
+      }),
+    });
+
+    const result = await core.describeExactHole(ref);
+
+    assert.deepEqual(calls, [[17, 33, "edge", 5]]);
+    assert.deepEqual(result, {
+      ok: true,
+      kind: "hole",
+      profile: "cylindrical",
+      radius: 5,
+      diameter: 10,
+      depth: 20,
+      isThrough: false,
+      frame: {
+        origin: [1, 2, 3],
+        normal: [0, 0, 1],
+        xDir: [1, 0, 0],
+        yDir: [0, 1, 0],
+      },
+      anchors: [
+        { role: "center", point: [1, 2, 3] },
+        { role: "entry", point: [1, 2, 13] },
+        { role: "bottom", point: [1, 2, -7] },
+      ],
+      axisDirection: [0, 0, 1],
+      ref,
+    });
+  });
+
+  it("transforms describeExactHole semantic geometry into occurrence space", async () => {
+    const ref = {
+      exactModelId: 17,
+      exactShapeHandle: 33,
+      nodeId: "node-a",
+      geometryId: "geo_0",
+      kind: "face",
+      elementId: 9,
+      transform: [
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        10, 20, 30, 1,
+      ],
+    };
+    const core = createOcctCore({
+      factory: async () => ({
+        DescribeExactHole: () => ({
+          ok: true,
+          kind: "hole",
+          profile: "cylindrical",
+          radius: 5,
+          diameter: 10,
+          depth: 20,
+          isThrough: true,
+          frame: {
+            origin: [1, 2, 3],
+            normal: [0, 0, 1],
+            xDir: [1, 0, 0],
+            yDir: [0, 1, 0],
+          },
+          anchors: [
+            { role: "center", point: [1, 2, 3] },
+            { role: "entry", point: [1, 2, 13] },
+            { role: "exit", point: [1, 2, -7] },
+          ],
+          axisDirection: [0, 0, 1],
+          centerPoint: [1, 2, 3],
+          entryPoint: [1, 2, 13],
+          exitPoint: [1, 2, -7],
+        }),
+      }),
+    });
+
+    const result = await core.describeExactHole(ref);
+
+    assert.deepEqual(result, {
+      ok: true,
+      kind: "hole",
+      profile: "cylindrical",
+      radius: 5,
+      diameter: 10,
+      depth: 20,
+      isThrough: true,
+      frame: {
+        origin: [11, 22, 33],
+        normal: [0, 0, 1],
+        xDir: [1, 0, 0],
+        yDir: [0, 1, 0],
+      },
+      anchors: [
+        { role: "center", point: [11, 22, 33] },
+        { role: "entry", point: [11, 22, 43] },
+        { role: "exit", point: [11, 22, 23] },
+      ],
+      axisDirection: [0, 0, 1],
+      centerPoint: [11, 22, 33],
+      entryPoint: [11, 22, 43],
+      exitPoint: [11, 22, 23],
+      ref,
+    });
+  });
+
+  it("describeExactHole preserves explicit unsupported and failure results", async () => {
+    const ref = {
+      exactModelId: 17,
+      exactShapeHandle: 33,
+      nodeId: "node-a",
+      geometryId: "geo_0",
+      kind: "edge",
+      elementId: 5,
+      transform: IDENTITY_MATRIX.slice(),
+    };
+    const failingCore = createOcctCore({
+      factory: async () => ({
+        DescribeExactHole: () => ({
+          ok: false,
+          code: "unsupported-geometry",
+          message: "Exact hole helper only supports cylindrical hole refs.",
+        }),
+      }),
+    });
+
+    assert.deepEqual(await failingCore.describeExactHole(ref), {
+      ok: false,
+      code: "unsupported-geometry",
+      message: "Exact hole helper only supports cylindrical hole refs.",
+    });
+  });
+
+  it("describeExactHole requires an occurrence-scoped exact ref object", async () => {
+    const core = createOcctCore({
+      factory: async () => ({}),
+    });
+
+    await assert.rejects(
+      core.describeExactHole(null),
+      /occurrence-scoped exact ref object/i,
+    );
   });
 
   it("transforms exact radius primitives into occurrence space", async () => {
