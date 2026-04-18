@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Root Release Hardening
 status: ready
-stopped_at: Phase 20 verification complete
-last_updated: "2026-04-18T01:45:58.8018786Z"
-last_activity: 2026-04-18 -- Phase 20 verification complete
+stopped_at: v1.5 milestone audit passed
+last_updated: "2026-04-18T01:48:43.5613599Z"
+last_activity: 2026-04-18 -- v1.5 milestone audit passed
 progress:
   total_phases: 3
   completed_phases: 3
@@ -29,7 +29,7 @@ Milestone: v1.5 Root Release Hardening
 Phase: 20 of 20 (Conditional Secondary-Surface Verification)
 Plan: 2 of 2 in current phase
 Status: Ready to complete milestone
-Last activity: 2026-04-18 -- Phase 20 verification complete
+Last activity: 2026-04-18 -- v1.5 milestone audit passed
 
 Progress: [##########] 100%
 
@@ -66,8 +66,8 @@ Recent Trend:
 
 ### Pending Todos
 
-- Run `$gsd-audit-milestone` for `v1.5` before archival.
-- If the audit passes, run `$gsd-complete-milestone v1.5`.
+- Run `$gsd-complete-milestone v1.5`.
+- Keep `.planning/v1.5-MILESTONE-AUDIT.md` with the milestone-close commit or archive step.
 - Keep `demo/.codex-run/` and `demo/dist/` out of milestone closeout commits.
 
 ### Blockers/Concerns
@@ -77,6 +77,6 @@ Recent Trend:
 
 ## Session Continuity
 
-Last session: 2026-04-18T01:45:58.8018786Z
-Stopped at: Phase 20 verification complete
-Resume file: .planning/phases/20-conditional-secondary-surface-verification/20-VERIFICATION.md
+Last session: 2026-04-18T01:48:43.5613599Z
+Stopped at: v1.5 milestone audit passed
+Resume file: .planning/v1.5-MILESTONE-AUDIT.md
