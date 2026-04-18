@@ -137,3 +137,9 @@ OcctExactHoleResult DescribeExactHole(
     int exactShapeHandle,
     const std::string& kind,
     int elementId);
+
+OcctExactChamferResult DescribeExactChamfer(
+    int exactModelId,
+    int exactShapeHandle,
+    const std::string& kind,
+    int elementId);

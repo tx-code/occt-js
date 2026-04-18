@@ -249,6 +249,27 @@ struct OcctExactHoleResult {
     bool hasIsThrough = false;
 };
 
+struct OcctExactChamferResult {
+    bool ok = false;
+    std::string code;
+    std::string message;
+    std::string kind;
+    std::string profile;
+    std::string variant;
+    double distanceA = 0.0;
+    double distanceB = 0.0;
+    double supportAngle = 0.0;
+    OcctExactPlacementFrame frame;
+    bool hasFrame = false;
+    std::vector<OcctExactPlacementAnchor> anchors;
+    std::array<double, 3> edgeDirection = { 0.0, 0.0, 0.0 };
+    bool hasEdgeDirection = false;
+    std::array<double, 3> supportNormalA = { 0.0, 0.0, 0.0 };
+    bool hasSupportNormalA = false;
+    std::array<double, 3> supportNormalB = { 0.0, 0.0, 0.0 };
+    bool hasSupportNormalB = false;
+};
+
 struct ImportParams {
     static constexpr double kCadGhostedOpacity = 0.35;
 

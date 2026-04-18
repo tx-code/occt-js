@@ -160,6 +160,10 @@ function getFaceTriangleCentroid(geometry, face) {
   ));
 }
 
+function dot(left, right) {
+  return left[0] * right[0] + left[1] * right[1] + left[2] * right[2];
+}
+
 function findRepeatedGeometryOccurrencePair(exactModel) {
   const occurrences = collectGeometryOccurrences(exactModel.rootNodes);
   for (let leftIndex = 0; leftIndex < occurrences.length; leftIndex += 1) {
@@ -267,6 +271,78 @@ async function findSupportedHoleOccurrenceRef(core, exactModel) {
       const hole = await core.describeExactHole(ref);
       if (hole?.ok === true) {
         return ref;
+      }
+    }
+  }
+
+  return null;
+}
+
+async function findSupportedChamferOccurrenceRef(core, exactModel) {
+  const occurrences = collectGeometryOccurrences(exactModel.rootNodes);
+  for (const occurrence of occurrences) {
+    const geometry = exactModel.geometries.find((entry) => entry.geometryId === occurrence.geometryId);
+    if (!geometry) {
+      continue;
+    }
+
+    const planarFaces = new Map();
+    for (const face of geometry.faces ?? []) {
+      const ref = resolveExactElementRef(exactModel, {
+        nodeId: occurrence.nodeId,
+        geometryId: occurrence.geometryId,
+        kind: "face",
+        elementId: face.id,
+      });
+      if (ref?.ok !== true) {
+        continue;
+      }
+
+      const family = await core.getExactGeometryType(ref);
+      if (family?.ok !== true || family.family !== "plane") {
+        continue;
+      }
+
+      const normal = await core.evaluateExactFaceNormal(ref, getFaceTriangleCentroid(geometry, face));
+      if (normal?.ok !== true) {
+        continue;
+      }
+
+      planarFaces.set(face.id, {
+        face,
+        ref,
+        normal: normal.normal,
+      });
+    }
+
+    for (const info of planarFaces.values()) {
+      const obliqueSupportIds = new Set();
+      for (const edgeIndex of info.face.edgeIndices ?? []) {
+        const edge = geometry.edges?.[edgeIndex];
+        for (const ownerFaceId of edge?.ownerFaceIds ?? []) {
+          if (ownerFaceId === info.face.id) {
+            continue;
+          }
+          const adjacent = planarFaces.get(ownerFaceId);
+          if (!adjacent) {
+            continue;
+          }
+          const alignment = Math.abs(dot(info.normal, adjacent.normal));
+          if (alignment < 0.999 && alignment > 1e-4) {
+            obliqueSupportIds.add(ownerFaceId);
+          }
+        }
+      }
+
+      if (obliqueSupportIds.size === 2) {
+        const [firstId, secondId] = [...obliqueSupportIds];
+        const first = planarFaces.get(firstId);
+        const second = planarFaces.get(secondId);
+        const supportAlignment = Math.abs(dot(first.normal, second.normal));
+        if (supportAlignment >= 0.999) {
+          continue;
+        }
+        return info.ref;
       }
     }
   }
@@ -641,6 +717,52 @@ test("occt-core describeExactHole normalizes live hole semantics into occurrence
   assert.deepEqual(shiftedHole?.anchors[0].point, translatePoint(baseHole.anchors[0].point, 40, -20, 15));
   assert.deepEqual(shiftedHole?.anchors[1].point, translatePoint(baseHole.anchors[1].point, 40, -20, 15));
   assert.deepEqual(shiftedHole?.axisDirection, baseHole.axisDirection);
+  assert.deepEqual(await core.releaseExactModel(exactModel.exactModelId), { ok: true });
+});
+
+test("occt-core describeExactChamfer normalizes live chamfer semantics into occurrence space", async () => {
+  const factory = loadOcctFactory();
+  const wasmBinary = new Uint8Array(await readFile(new URL("../../../dist/occt-js.wasm", import.meta.url)));
+  const stepBytes = new Uint8Array(await readFile(new URL("../../../test/ANC101.stp", import.meta.url)));
+
+  const core = createOcctCore({
+    factory,
+    wasmBinary,
+  });
+
+  const rawExact = await core.openExactStep(stepBytes, {
+    fileName: "ANC101.stp",
+  });
+  const exactModel = normalizeExactOpenResult(rawExact, {
+    sourceFileName: "ANC101.stp",
+  });
+  const baseRef = await findSupportedChamferOccurrenceRef(core, exactModel);
+
+  assert.ok(baseRef?.ok === true, "ANC101.stp should expose at least one supported exact chamfer ref");
+
+  const shiftedRef = {
+    ...baseRef,
+    transform: translateTransform(baseRef.transform, 40, -20, 15),
+  };
+
+  const baseChamfer = await core.describeExactChamfer(baseRef);
+  const shiftedChamfer = await core.describeExactChamfer(shiftedRef);
+
+  assert.equal(baseChamfer?.ok, true);
+  assert.equal(shiftedChamfer?.ok, true);
+  assert.equal(baseChamfer?.kind, "chamfer");
+  assert.equal(shiftedChamfer?.kind, "chamfer");
+  assert.equal(baseChamfer?.profile, "planar");
+  assert.equal(shiftedChamfer?.profile, "planar");
+  assert.ok(Math.abs(baseChamfer.distanceA - shiftedChamfer.distanceA) < 1e-6);
+  assert.ok(Math.abs(baseChamfer.distanceB - shiftedChamfer.distanceB) < 1e-6);
+  assert.ok(Math.abs(baseChamfer.supportAngle - shiftedChamfer.supportAngle) < 1e-6);
+  assert.deepEqual(shiftedChamfer?.frame.origin, translatePoint(baseChamfer.frame.origin, 40, -20, 15));
+  assert.deepEqual(shiftedChamfer?.anchors[0].point, translatePoint(baseChamfer.anchors[0].point, 40, -20, 15));
+  assert.deepEqual(shiftedChamfer?.anchors[1].point, translatePoint(baseChamfer.anchors[1].point, 40, -20, 15));
+  assert.deepEqual(shiftedChamfer?.edgeDirection, baseChamfer.edgeDirection);
+  assert.deepEqual(shiftedChamfer?.supportNormalA, baseChamfer.supportNormalA);
+  assert.deepEqual(shiftedChamfer?.supportNormalB, baseChamfer.supportNormalB);
   assert.deepEqual(await core.releaseExactModel(exactModel.exactModelId), { ok: true });
 });
 

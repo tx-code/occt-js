@@ -235,6 +235,17 @@ function transformExactHoleResult(transform, result) {
   return transformed;
 }
 
+function transformExactChamferResult(transform, result) {
+  return {
+    ...result,
+    frame: transformPlacementFrame(transform, result.frame),
+    anchors: transformPlacementAnchors(transform, result.anchors),
+    edgeDirection: result.edgeDirection ? transformDirection(transform, result.edgeDirection) : result.edgeDirection,
+    supportNormalA: result.supportNormalA ? transformDirection(transform, result.supportNormalA) : result.supportNormalA,
+    supportNormalB: result.supportNormalB ? transformDirection(transform, result.supportNormalB) : result.supportNormalB,
+  };
+}
+
 function inverseTransformPoint(transform, point) {
   const [x, y, z] = point;
   const translated = [
@@ -698,6 +709,29 @@ export class OcctCoreClient {
 
     return {
       ...transformExactHoleResult(exactRef.transform, result),
+      ref: exactRef,
+    };
+  }
+
+  async describeExactChamfer(ref) {
+    const module = await this._ensureModule();
+    const exactRef = validateExactRef(ref, "describeExactChamfer");
+    if (typeof module.DescribeExactChamfer !== "function") {
+      throw new Error("Loaded OCCT module does not expose DescribeExactChamfer().");
+    }
+
+    const result = module.DescribeExactChamfer(
+      exactRef.exactModelId,
+      exactRef.exactShapeHandle,
+      exactRef.kind,
+      exactRef.elementId,
+    );
+    if (result?.ok !== true) {
+      return result;
+    }
+
+    return {
+      ...transformExactChamferResult(exactRef.transform, result),
       ref: exactRef,
     };
   }

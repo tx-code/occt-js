@@ -1617,6 +1617,182 @@ describe("createOcctCore", () => {
     );
   });
 
+  it("wraps describeExactChamfer(ref) through occurrence-scoped exact refs", async () => {
+    const calls = [];
+    const ref = {
+      exactModelId: 17,
+      exactShapeHandle: 33,
+      nodeId: "node-a",
+      geometryId: "geo_0",
+      kind: "face",
+      elementId: 9,
+      transform: IDENTITY_MATRIX.slice(),
+    };
+    const core = createOcctCore({
+      factory: async () => ({
+        DescribeExactChamfer: (...args) => {
+          calls.push(args);
+          return {
+            ok: true,
+            kind: "chamfer",
+            profile: "planar",
+            variant: "equal-distance",
+            distanceA: 4,
+            distanceB: 4,
+            supportAngle: Math.PI / 2,
+            frame: {
+              origin: [1, 2, 3],
+              normal: [0, 0, 1],
+              xDir: [1, 0, 0],
+              yDir: [0, 1, 0],
+            },
+            anchors: [
+              { role: "support-a", point: [1, -2, 3] },
+              { role: "support-b", point: [1, 6, 3] },
+            ],
+            edgeDirection: [1, 0, 0],
+            supportNormalA: [0, -1, 0],
+            supportNormalB: [0, 1, 0],
+          };
+        },
+      }),
+    });
+
+    const result = await core.describeExactChamfer(ref);
+
+    assert.deepEqual(calls, [[17, 33, "face", 9]]);
+    assert.deepEqual(result, {
+      ok: true,
+      kind: "chamfer",
+      profile: "planar",
+      variant: "equal-distance",
+      distanceA: 4,
+      distanceB: 4,
+      supportAngle: Math.PI / 2,
+      frame: {
+        origin: [1, 2, 3],
+        normal: [0, 0, 1],
+        xDir: [1, 0, 0],
+        yDir: [0, 1, 0],
+      },
+      anchors: [
+        { role: "support-a", point: [1, -2, 3] },
+        { role: "support-b", point: [1, 6, 3] },
+      ],
+      edgeDirection: [1, 0, 0],
+      supportNormalA: [0, -1, 0],
+      supportNormalB: [0, 1, 0],
+      ref,
+    });
+  });
+
+  it("transforms describeExactChamfer semantic geometry into occurrence space", async () => {
+    const ref = {
+      exactModelId: 17,
+      exactShapeHandle: 33,
+      nodeId: "node-a",
+      geometryId: "geo_0",
+      kind: "face",
+      elementId: 9,
+      transform: [
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        10, 20, 30, 1,
+      ],
+    };
+    const core = createOcctCore({
+      factory: async () => ({
+        DescribeExactChamfer: () => ({
+          ok: true,
+          kind: "chamfer",
+          profile: "planar",
+          variant: "two-distance",
+          distanceA: 4,
+          distanceB: 6,
+          supportAngle: Math.PI / 3,
+          frame: {
+            origin: [1, 2, 3],
+            normal: [0, 0, 1],
+            xDir: [1, 0, 0],
+            yDir: [0, 1, 0],
+          },
+          anchors: [
+            { role: "support-a", point: [1, -2, 3] },
+            { role: "support-b", point: [1, 6, 3] },
+          ],
+          edgeDirection: [1, 0, 0],
+          supportNormalA: [0, -1, 0],
+          supportNormalB: [0, 1, 0],
+        }),
+      }),
+    });
+
+    const result = await core.describeExactChamfer(ref);
+
+    assert.deepEqual(result, {
+      ok: true,
+      kind: "chamfer",
+      profile: "planar",
+      variant: "two-distance",
+      distanceA: 4,
+      distanceB: 6,
+      supportAngle: Math.PI / 3,
+      frame: {
+        origin: [11, 22, 33],
+        normal: [0, 0, 1],
+        xDir: [1, 0, 0],
+        yDir: [0, 1, 0],
+      },
+      anchors: [
+        { role: "support-a", point: [11, 18, 33] },
+        { role: "support-b", point: [11, 26, 33] },
+      ],
+      edgeDirection: [1, 0, 0],
+      supportNormalA: [0, -1, 0],
+      supportNormalB: [0, 1, 0],
+      ref,
+    });
+  });
+
+  it("describeExactChamfer preserves explicit unsupported and failure results", async () => {
+    const ref = {
+      exactModelId: 17,
+      exactShapeHandle: 33,
+      nodeId: "node-a",
+      geometryId: "geo_0",
+      kind: "face",
+      elementId: 9,
+      transform: IDENTITY_MATRIX.slice(),
+    };
+    const failingCore = createOcctCore({
+      factory: async () => ({
+        DescribeExactChamfer: () => ({
+          ok: false,
+          code: "unsupported-geometry",
+          message: "Exact chamfer helper only supports planar chamfer face refs.",
+        }),
+      }),
+    });
+
+    assert.deepEqual(await failingCore.describeExactChamfer(ref), {
+      ok: false,
+      code: "unsupported-geometry",
+      message: "Exact chamfer helper only supports planar chamfer face refs.",
+    });
+  });
+
+  it("describeExactChamfer requires an occurrence-scoped exact ref object", async () => {
+    const core = createOcctCore({
+      factory: async () => ({}),
+    });
+
+    await assert.rejects(
+      core.describeExactChamfer(null),
+      /occurrence-scoped exact ref object/i,
+    );
+  });
+
   it("transforms exact radius primitives into occurrence space", async () => {
     const ref = {
       exactModelId: 17,

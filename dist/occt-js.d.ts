@@ -234,7 +234,7 @@ export interface OcctJSExactPlacementFrame {
 }
 
 export interface OcctJSExactPlacementAnchor {
-    role: "attach" | "center" | "anchor" | "entry" | "exit" | "bottom";
+    role: "attach" | "center" | "anchor" | "entry" | "exit" | "bottom" | "support-a" | "support-b";
     point: [number, number, number];
 }
 
@@ -286,6 +286,23 @@ export interface OcctJSExactHoleSuccess {
 }
 
 export type OcctJSExactHoleResult = OcctJSExactHoleSuccess | OcctJSExactQueryFailure;
+
+export interface OcctJSExactChamferSuccess {
+    ok: true;
+    kind: "chamfer";
+    profile: "planar";
+    variant: "equal-distance" | "two-distance";
+    distanceA: number;
+    distanceB: number;
+    supportAngle: number;
+    frame?: OcctJSExactPlacementFrame;
+    anchors?: OcctJSExactPlacementAnchor[];
+    edgeDirection?: [number, number, number];
+    supportNormalA?: [number, number, number];
+    supportNormalB?: [number, number, number];
+}
+
+export type OcctJSExactChamferResult = OcctJSExactChamferSuccess | OcctJSExactQueryFailure;
 
 export interface OcctJSReadParams {
     rootMode?: "one-shape" | "multiple-shapes";
@@ -388,6 +405,7 @@ export interface OcctJSModule {
     SuggestExactRadiusPlacement(exactModelId: number, exactShapeHandle: number, kind: OcctJSExactElementKind, elementId: number): OcctJSExactPlacementResult;
     SuggestExactDiameterPlacement(exactModelId: number, exactShapeHandle: number, kind: OcctJSExactElementKind, elementId: number): OcctJSExactPlacementResult;
     DescribeExactHole(exactModelId: number, exactShapeHandle: number, kind: OcctJSExactElementKind, elementId: number): OcctJSExactHoleResult;
+    DescribeExactChamfer(exactModelId: number, exactShapeHandle: number, kind: OcctJSExactElementKind, elementId: number): OcctJSExactChamferResult;
     AnalyzeOptimalOrientation(format: OcctFormat, content: Uint8Array, params?: OcctJSOrientationParams): OcctJSOrientationResult;
 }
 

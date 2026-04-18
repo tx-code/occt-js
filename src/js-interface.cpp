@@ -773,6 +773,42 @@ val ExactHoleResultToVal(const OcctExactHoleResult& result)
     return obj;
 }
 
+val ExactChamferResultToVal(const OcctExactChamferResult& result)
+{
+    if (!result.ok) {
+        return ExactFailureToVal(result);
+    }
+
+    val obj = val::object();
+    obj.set("ok", true);
+    obj.set("kind", result.kind);
+    obj.set("profile", result.profile);
+    obj.set("variant", result.variant);
+    obj.set("distanceA", result.distanceA);
+    obj.set("distanceB", result.distanceB);
+    obj.set("supportAngle", result.supportAngle);
+    if (result.hasFrame) {
+        obj.set("frame", ExactPlacementFrameToVal(result.frame));
+    }
+    if (!result.anchors.empty()) {
+        val anchors = val::array();
+        for (const auto& anchor : result.anchors) {
+            anchors.call<void>("push", ExactPlacementAnchorToVal(anchor));
+        }
+        obj.set("anchors", anchors);
+    }
+    if (result.hasEdgeDirection) {
+        obj.set("edgeDirection", Vector3ToVal(result.edgeDirection));
+    }
+    if (result.hasSupportNormalA) {
+        obj.set("supportNormalA", Vector3ToVal(result.supportNormalA));
+    }
+    if (result.hasSupportNormalB) {
+        obj.set("supportNormalB", Vector3ToVal(result.supportNormalB));
+    }
+    return obj;
+}
+
 val ExactGeometryBindingsToVal(size_t geometryCount)
 {
     val bindings = val::array();
@@ -1271,6 +1307,13 @@ val DescribeExactHoleBinding(int exactModelId, int exactShapeHandle, const std::
     );
 }
 
+val DescribeExactChamferBinding(int exactModelId, int exactShapeHandle, const std::string& kind, int elementId)
+{
+    return ExactChamferResultToVal(
+        DescribeExactChamfer(exactModelId, exactShapeHandle, kind, elementId)
+    );
+}
+
 val AnalyzeOptimalOrientation(const std::string& format, const val& content, const val& jsParams)
 {
     std::vector<uint8_t> buffer = ExtractBytes(content);
@@ -1308,5 +1351,6 @@ EMSCRIPTEN_BINDINGS(occtjs)
     function("SuggestExactRadiusPlacement", &SuggestExactRadiusPlacementBinding);
     function("SuggestExactDiameterPlacement", &SuggestExactDiameterPlacementBinding);
     function("DescribeExactHole", &DescribeExactHoleBinding);
+    function("DescribeExactChamfer", &DescribeExactChamferBinding);
     function("AnalyzeOptimalOrientation", &AnalyzeOptimalOrientation);
 }

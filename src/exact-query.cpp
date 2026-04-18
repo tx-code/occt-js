@@ -452,6 +452,14 @@ void AddHoleAnchor(OcctExactHoleResult& result, const std::string& role, const g
     result.anchors.push_back(anchor);
 }
 
+void AddChamferAnchor(OcctExactChamferResult& result, const std::string& role, const gp_Pnt& point)
+{
+    OcctExactPlacementAnchor anchor;
+    anchor.role = role;
+    anchor.point = ToArray(point);
+    result.anchors.push_back(anchor);
+}
+
 bool IsOutsideState(const TopAbs_State state)
 {
     return state == TopAbs_OUT || state == TopAbs_ON;
@@ -658,6 +666,165 @@ OcctLifecycleResult ResolveHoleBoundaryOpenStates(
             return lifecycle;
         }
         boundary.isOpen = IsOutsideState(state);
+    }
+
+    OcctLifecycleResult ok;
+    ok.ok = true;
+    return ok;
+}
+
+gp_Pnt ProjectPointOntoLine(const gp_Lin& line, const gp_Pnt& point)
+{
+    const gp_Vec offset(line.Location(), point);
+    const double parameter = offset.Dot(gp_Vec(line.Direction()));
+    return line.Location().Translated(gp_Vec(line.Direction()) * parameter);
+}
+
+bool TryIntersectPlanes(const gp_Pln& planeA, const gp_Pln& planeB, gp_Lin& intersection)
+{
+    const gp_Vec normalA(planeA.Axis().Direction().XYZ());
+    const gp_Vec normalB(planeB.Axis().Direction().XYZ());
+    const gp_Vec directionVector(normalA.Crossed(normalB));
+    const double denominator = directionVector.SquareMagnitude();
+    if (denominator <= Precision::Confusion()) {
+        return false;
+    }
+
+    const double constantA = normalA.Dot(gp_Vec(planeA.Location().XYZ()));
+    const double constantB = normalB.Dot(gp_Vec(planeB.Location().XYZ()));
+    const gp_Vec pointVector =
+        normalB.Crossed(directionVector) * (constantA / denominator)
+        + directionVector.Crossed(normalA) * (constantB / denominator);
+
+    intersection = gp_Lin(
+        gp_Pnt(pointVector.X(), pointVector.Y(), pointVector.Z()),
+        gp_Dir(directionVector)
+    );
+    return true;
+}
+
+struct ChamferSupportCandidate {
+    TopoDS_Face face;
+    TopoDS_Edge edge;
+    gp_Pln plane;
+    gp_Dir normal;
+    gp_Lin boundaryLine;
+};
+
+OcctLifecycleResult ResolveChamferCandidateFace(
+    int exactModelId,
+    int exactShapeHandle,
+    const std::string& kind,
+    int elementId,
+    TopoDS_Shape& geometryShape,
+    TopoDS_Face& chamferFace)
+{
+    ExactModelEntry entry;
+    OcctLifecycleResult lifecycle = LookupGeometryShape(exactModelId, exactShapeHandle, entry, geometryShape);
+    if (!lifecycle.ok) {
+        return lifecycle;
+    }
+
+    if (NormalizeKind(kind) != "face") {
+        return MakeFailure<OcctLifecycleResult>(
+            "unsupported-kind",
+            "Exact chamfer helper only supports face refs."
+        );
+    }
+
+    lifecycle = ResolveFace(exactModelId, exactShapeHandle, elementId, chamferFace);
+    if (!lifecycle.ok) {
+        return lifecycle;
+    }
+
+    BRepAdaptor_Surface surface(chamferFace, false);
+    if (surface.GetType() != GeomAbs_Plane) {
+        return MakeFailure<OcctLifecycleResult>(
+            "unsupported-geometry",
+            "Exact chamfer helper only supports planar chamfer face refs."
+        );
+    }
+
+    OcctLifecycleResult ok;
+    ok.ok = true;
+    return ok;
+}
+
+OcctLifecycleResult CollectChamferSupportCandidates(
+    const TopoDS_Shape& geometryShape,
+    const TopoDS_Face& chamferFace,
+    const gp_Pln& chamferPlane,
+    std::vector<ChamferSupportCandidate>& supports)
+{
+    TopTools_IndexedDataMapOfShapeListOfShape edgeToFaces;
+    TopExp::MapShapesAndAncestors(geometryShape, TopAbs_EDGE, TopAbs_FACE, edgeToFaces);
+
+    TopTools_IndexedMapOfShape edges;
+    TopExp::MapShapes(chamferFace, TopAbs_EDGE, edges);
+
+    const gp_Dir chamferNormal = chamferPlane.Axis().Direction();
+    for (int edgeIndex = 1; edgeIndex <= edges.Extent(); edgeIndex += 1) {
+        const TopoDS_Edge edge = TopoDS::Edge(edges(edgeIndex));
+        if (edge.IsNull() || !edgeToFaces.Contains(edge)) {
+            continue;
+        }
+
+        BRepAdaptor_Curve boundaryCurve(edge);
+        if (boundaryCurve.GetType() != GeomAbs_Line) {
+            continue;
+        }
+
+        for (TopTools_ListIteratorOfListOfShape it(edgeToFaces.FindFromKey(edge)); it.More(); it.Next()) {
+            const TopoDS_Face candidateFace = TopoDS::Face(it.Value());
+            if (candidateFace.IsNull() || candidateFace.IsSame(chamferFace)) {
+                continue;
+            }
+
+            BRepAdaptor_Surface supportSurface(candidateFace, false);
+            if (supportSurface.GetType() != GeomAbs_Plane) {
+                continue;
+            }
+
+            const gp_Pln supportPlane = supportSurface.Plane();
+            const gp_Dir supportNormal = supportPlane.Axis().Direction();
+            if (supportNormal.IsParallel(chamferNormal, Precision::Angular())
+                || std::abs(CanonicalAngle(supportNormal.Angle(chamferNormal)) - 1.5707963267948966) <= Precision::Angular()) {
+                continue;
+            }
+
+            bool duplicate = false;
+            for (const auto& existing : supports) {
+                if (existing.face.IsSame(candidateFace)) {
+                    duplicate = true;
+                    break;
+                }
+            }
+            if (duplicate) {
+                continue;
+            }
+
+            ChamferSupportCandidate candidate;
+            candidate.face = candidateFace;
+            candidate.edge = edge;
+            candidate.plane = supportPlane;
+            candidate.normal = supportNormal;
+            candidate.boundaryLine = boundaryCurve.Line();
+            supports.push_back(candidate);
+        }
+    }
+
+    if (supports.size() != 2) {
+        return MakeFailure<OcctLifecycleResult>(
+            "unsupported-geometry",
+            "Exact chamfer helper requires one planar chamfer face with exactly two oblique planar support faces."
+        );
+    }
+
+    if (supports[0].normal.IsParallel(supports[1].normal, Precision::Angular())) {
+        return MakeFailure<OcctLifecycleResult>(
+            "unsupported-geometry",
+            "Exact chamfer helper requires two non-parallel planar support faces."
+        );
     }
 
     OcctLifecycleResult ok;
@@ -2243,6 +2410,111 @@ OcctExactHoleResult DescribeExactHole(
         return MakeFailure<OcctExactHoleResult>(
             "internal-error",
             failure.GetMessageString() != nullptr ? failure.GetMessageString() : "OCCT exact hole query failed."
+        );
+    }
+}
+
+OcctExactChamferResult DescribeExactChamfer(
+    int exactModelId,
+    int exactShapeHandle,
+    const std::string& kind,
+    int elementId)
+{
+    try {
+        TopoDS_Shape geometryShape;
+        TopoDS_Face chamferFace;
+        OcctLifecycleResult lifecycle = ResolveChamferCandidateFace(
+            exactModelId,
+            exactShapeHandle,
+            kind,
+            elementId,
+            geometryShape,
+            chamferFace
+        );
+        if (!lifecycle.ok) {
+            return MakeFailure<OcctExactChamferResult>(lifecycle.code, lifecycle.message);
+        }
+
+        BRepAdaptor_Surface chamferSurface(chamferFace, false);
+        if (chamferSurface.GetType() != GeomAbs_Plane) {
+            return MakeFailure<OcctExactChamferResult>(
+                "unsupported-geometry",
+                "Exact chamfer helper only supports planar chamfer face refs."
+            );
+        }
+
+        const gp_Pln chamferPlane = chamferSurface.Plane();
+        std::vector<ChamferSupportCandidate> supports;
+        lifecycle = CollectChamferSupportCandidates(geometryShape, chamferFace, chamferPlane, supports);
+        if (!lifecycle.ok) {
+            return MakeFailure<OcctExactChamferResult>(lifecycle.code, lifecycle.message);
+        }
+
+        gp_Lin supportIntersection;
+        if (!TryIntersectPlanes(supports[0].plane, supports[1].plane, supportIntersection)) {
+            return MakeFailure<OcctExactChamferResult>(
+                "unsupported-geometry",
+                "Exact chamfer helper requires two support planes with a stable intersection edge."
+            );
+        }
+
+        if (!supportIntersection.Direction().IsParallel(supports[0].boundaryLine.Direction(), Precision::Angular())
+            || !supportIntersection.Direction().IsParallel(supports[1].boundaryLine.Direction(), Precision::Angular())) {
+            return MakeFailure<OcctExactChamferResult>(
+                "unsupported-geometry",
+                "Exact chamfer helper requires support boundary edges parallel to the support-plane intersection edge."
+            );
+        }
+
+        const double distanceA = supportIntersection.Distance(supports[0].boundaryLine);
+        const double distanceB = supportIntersection.Distance(supports[1].boundaryLine);
+        if (distanceA <= Precision::Confusion() || distanceB <= Precision::Confusion()) {
+            return MakeFailure<OcctExactChamferResult>(
+                "unsupported-geometry",
+                "Selected planar face does not describe a separated chamfer offset from the support intersection edge."
+            );
+        }
+
+        const gp_Pnt samplePoint = SampleFacePoint(chamferFace, chamferSurface);
+        const gp_Pnt anchorA = ProjectPointOntoLine(supports[0].boundaryLine, samplePoint);
+        const gp_Pnt anchorB = ProjectPointOntoLine(supports[1].boundaryLine, samplePoint);
+        const gp_Pnt origin = Midpoint(anchorA, anchorB);
+        const gp_Dir chamferNormal = chamferPlane.Axis().Direction();
+        const gp_Dir edgeDirection = supportIntersection.Direction();
+        const double supportAngle = CanonicalAngle(supports[0].normal.Angle(supports[1].normal));
+        const double equalTolerance = std::max(
+            Precision::Confusion() * 100.0,
+            std::max(distanceA, distanceB) * 1e-6
+        );
+
+        OcctExactChamferResult result;
+        result.ok = true;
+        result.kind = "chamfer";
+        result.profile = "planar";
+        result.variant = std::abs(distanceA - distanceB) <= equalTolerance ? "equal-distance" : "two-distance";
+        result.distanceA = distanceA;
+        result.distanceB = distanceB;
+        result.supportAngle = supportAngle;
+        if (!BuildFrameFromNormalAndX(origin, chamferNormal, edgeDirection, result.frame)) {
+            return MakeFailure<OcctExactChamferResult>(
+                "unsupported-geometry",
+                "Exact chamfer helper requires a stable working frame."
+            );
+        }
+        result.hasFrame = true;
+        AddChamferAnchor(result, "support-a", anchorA);
+        AddChamferAnchor(result, "support-b", anchorB);
+        result.edgeDirection = ToArray(edgeDirection);
+        result.hasEdgeDirection = true;
+        result.supportNormalA = ToArray(supports[0].normal);
+        result.hasSupportNormalA = true;
+        result.supportNormalB = ToArray(supports[1].normal);
+        result.hasSupportNormalB = true;
+        return result;
+    } catch (const Standard_Failure& failure) {
+        return MakeFailure<OcctExactChamferResult>(
+            "internal-error",
+            failure.GetMessageString() != nullptr ? failure.GetMessageString() : "OCCT exact chamfer query failed."
         );
     }
 }
