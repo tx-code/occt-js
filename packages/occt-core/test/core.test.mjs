@@ -1793,6 +1793,218 @@ describe("createOcctCore", () => {
     );
   });
 
+  it("suggestExactMidpointPlacement derives midpoint geometry from supported distance placement", async () => {
+    const refA = {
+      exactModelId: 17,
+      exactShapeHandle: 33,
+      nodeId: "node-a",
+      geometryId: "geo_0",
+      kind: "face",
+      elementId: 5,
+      transform: IDENTITY_MATRIX.slice(),
+    };
+    const refB = {
+      exactModelId: 17,
+      exactShapeHandle: 34,
+      nodeId: "node-b",
+      geometryId: "geo_1",
+      kind: "face",
+      elementId: 7,
+      transform: IDENTITY_MATRIX.slice(),
+    };
+    const core = createOcctCore({
+      factory: async () => ({
+        SuggestExactDistancePlacement: () => ({
+          ok: true,
+          kind: "distance",
+          value: 8,
+          frame: {
+            origin: [1, 2, 3],
+            normal: [1, 0, 0],
+            xDir: [0, 0, 1],
+            yDir: [0, 1, 0],
+          },
+          anchors: [
+            { role: "attach", point: [1, 2, -1] },
+            { role: "attach", point: [1, 2, 7] },
+          ],
+        }),
+      }),
+    });
+
+    const result = await core.suggestExactMidpointPlacement(refA, refB);
+
+    assert.deepEqual(result, {
+      ok: true,
+      kind: "midpoint",
+      value: 8,
+      point: [1, 2, 3],
+      frame: {
+        origin: [1, 2, 3],
+        normal: [1, 0, 0],
+        xDir: [0, 0, 1],
+        yDir: [0, 1, 0],
+      },
+      anchors: [
+        { role: "attach", point: [1, 2, -1] },
+        { role: "attach", point: [1, 2, 7] },
+        { role: "center", point: [1, 2, 3] },
+      ],
+      refA,
+      refB,
+    });
+  });
+
+  it("describeExactEqualDistance compares two pairwise distances with explicit tolerance output", async () => {
+    const refA = {
+      exactModelId: 17,
+      exactShapeHandle: 33,
+      nodeId: "node-a",
+      geometryId: "geo_0",
+      kind: "face",
+      elementId: 5,
+      transform: IDENTITY_MATRIX.slice(),
+    };
+    const refB = {
+      exactModelId: 17,
+      exactShapeHandle: 34,
+      nodeId: "node-b",
+      geometryId: "geo_1",
+      kind: "face",
+      elementId: 7,
+      transform: IDENTITY_MATRIX.slice(),
+    };
+    const refC = {
+      exactModelId: 17,
+      exactShapeHandle: 35,
+      nodeId: "node-c",
+      geometryId: "geo_2",
+      kind: "face",
+      elementId: 9,
+      transform: IDENTITY_MATRIX.slice(),
+    };
+    const refD = {
+      exactModelId: 17,
+      exactShapeHandle: 36,
+      nodeId: "node-d",
+      geometryId: "geo_3",
+      kind: "face",
+      elementId: 11,
+      transform: IDENTITY_MATRIX.slice(),
+    };
+    let callCount = 0;
+    const core = createOcctCore({
+      factory: async () => ({
+        MeasureExactDistance: () => {
+          callCount += 1;
+          return {
+            ok: true,
+            value: callCount === 1 ? 5 : 5.005,
+            pointA: [0, 0, 0],
+            pointB: [0, 0, 5],
+            workingPlaneOrigin: [0, 0, 2.5],
+            workingPlaneNormal: [1, 0, 0],
+          };
+        },
+      }),
+    });
+
+    const result = await core.describeExactEqualDistance(refA, refB, refC, refD, { tolerance: 0.01 });
+
+    assert.deepEqual(result, {
+      ok: true,
+      kind: "equal-distance",
+      equal: true,
+      distanceA: 5,
+      distanceB: 5.005,
+      delta: 0.004999999999999893,
+      tolerance: 0.01,
+      refA,
+      refB,
+      refC,
+      refD,
+    });
+  });
+
+  it("suggestExactSymmetryPlacement derives a midplane-style symmetry helper from supported parallel pairs", async () => {
+    const refA = {
+      exactModelId: 17,
+      exactShapeHandle: 33,
+      nodeId: "node-a",
+      geometryId: "geo_0",
+      kind: "face",
+      elementId: 5,
+      transform: IDENTITY_MATRIX.slice(),
+    };
+    const refB = {
+      exactModelId: 17,
+      exactShapeHandle: 34,
+      nodeId: "node-b",
+      geometryId: "geo_1",
+      kind: "face",
+      elementId: 7,
+      transform: IDENTITY_MATRIX.slice(),
+    };
+    const core = createOcctCore({
+      factory: async () => ({
+        ClassifyExactRelation: () => ({
+          ok: true,
+          kind: "parallel",
+          frame: {
+            origin: [0, 0, 0],
+            normal: [1, 0, 0],
+            xDir: [0, 0, 1],
+            yDir: [0, 1, 0],
+          },
+          anchors: [
+            { role: "attach", point: [0, 0, -4] },
+            { role: "attach", point: [0, 0, 4] },
+          ],
+          directionA: [0, 0, 1],
+          directionB: [0, 0, 1],
+        }),
+        SuggestExactDistancePlacement: () => ({
+          ok: true,
+          kind: "distance",
+          value: 8,
+          frame: {
+            origin: [0, 0, 0],
+            normal: [1, 0, 0],
+            xDir: [0, 0, 1],
+            yDir: [0, 1, 0],
+          },
+          anchors: [
+            { role: "attach", point: [0, 0, -4] },
+            { role: "attach", point: [0, 0, 4] },
+          ],
+        }),
+      }),
+    });
+
+    const result = await core.suggestExactSymmetryPlacement(refA, refB);
+
+    assert.deepEqual(result, {
+      ok: true,
+      kind: "symmetry",
+      variant: "midplane",
+      value: 8,
+      frame: {
+        origin: [0, 0, 0],
+        normal: [0, 0, 1],
+        xDir: [1, 0, 0],
+        yDir: [0, 1, 0],
+      },
+      anchors: [
+        { role: "attach", point: [0, 0, -4] },
+        { role: "attach", point: [0, 0, 4] },
+        { role: "center", point: [0, 0, 0] },
+      ],
+      planeNormal: [0, 0, 1],
+      refA,
+      refB,
+    });
+  });
+
   it("transforms exact radius primitives into occurrence space", async () => {
     const ref = {
       exactModelId: 17,

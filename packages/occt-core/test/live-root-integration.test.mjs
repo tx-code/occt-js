@@ -766,6 +766,76 @@ test("occt-core describeExactChamfer normalizes live chamfer semantics into occu
   assert.deepEqual(await core.releaseExactModel(exactModel.exactModelId), { ok: true });
 });
 
+test("occt-core package-only helper semantics compose over retained exact placements and relations", async () => {
+  const factory = loadOcctFactory();
+  const wasmBinary = new Uint8Array(await readFile(new URL("../../../dist/occt-js.wasm", import.meta.url)));
+  const assemblyBytes = new Uint8Array(await readFile(new URL("../../../test/assembly.step", import.meta.url)));
+
+  const core = createOcctCore({
+    factory,
+    wasmBinary,
+  });
+
+  const rawExact = await core.openExactStep(assemblyBytes, {
+    fileName: "assembly.step",
+  });
+  const exactModel = normalizeExactOpenResult(rawExact, {
+    sourceFileName: "assembly.step",
+  });
+  const repeated = findRepeatedGeometryOccurrencePair(exactModel);
+
+  assert.ok(repeated, "assembly.step should expose repeated geometry under at least two distinct nodeIds");
+
+  const geometry = exactModel.geometries.find((entry) => entry.geometryId === repeated.geometryId);
+  assert.ok(geometry?.faces?.length, "the repeated geometry should expose at least one face");
+
+  const faceId = geometry.faces[0].id;
+  const first = resolveExactElementRef(exactModel, {
+    nodeId: repeated.left.nodeId,
+    geometryId: repeated.geometryId,
+    kind: "face",
+    elementId: faceId,
+  });
+  const second = resolveExactElementRef(exactModel, {
+    nodeId: repeated.right.nodeId,
+    geometryId: repeated.geometryId,
+    kind: "face",
+    elementId: faceId,
+  });
+
+  assert.equal(first.ok, true);
+  assert.equal(second.ok, true);
+
+  const midpoint = await core.suggestExactMidpointPlacement(first, second);
+  const symmetry = await core.suggestExactSymmetryPlacement(first, second);
+  const equalDistance = await core.describeExactEqualDistance(first, second, first, second);
+
+  assert.equal(midpoint?.ok, true);
+  assert.equal(midpoint?.kind, "midpoint");
+  assert.ok(Array.isArray(midpoint?.point) && midpoint.point.length === 3);
+  assert.ok(Array.isArray(midpoint?.anchors) && midpoint.anchors.some((anchor) => anchor.role === "center"));
+  assert.deepEqual(midpoint?.refA, first);
+  assert.deepEqual(midpoint?.refB, second);
+
+  assert.equal(symmetry?.ok, true);
+  assert.equal(symmetry?.kind, "symmetry");
+  assert.equal(symmetry?.variant, "midplane");
+  assert.ok(Array.isArray(symmetry?.planeNormal) && symmetry.planeNormal.length === 3);
+  assert.ok(Array.isArray(symmetry?.anchors) && symmetry.anchors.some((anchor) => anchor.role === "center"));
+  assert.deepEqual(symmetry?.frame.origin, midpoint?.point);
+
+  assert.equal(equalDistance?.ok, true);
+  assert.equal(equalDistance?.kind, "equal-distance");
+  assert.equal(equalDistance?.equal, true);
+  assert.ok(equalDistance?.delta <= equalDistance?.tolerance);
+  assert.deepEqual(equalDistance?.refA, first);
+  assert.deepEqual(equalDistance?.refB, second);
+  assert.deepEqual(equalDistance?.refC, first);
+  assert.deepEqual(equalDistance?.refD, second);
+
+  assert.deepEqual(await core.releaseExactModel(exactModel.exactModelId), { ok: true });
+});
+
 test("occt-core exact thickness wrappers honor repeated parallel occurrences", async () => {
   const factory = loadOcctFactory();
   const wasmBinary = new Uint8Array(await readFile(new URL("../../../dist/occt-js.wasm", import.meta.url)));

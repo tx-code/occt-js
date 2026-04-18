@@ -260,6 +260,86 @@ function inverseTransformPoint(transform, point) {
   ];
 }
 
+function subtractPoints(left, right) {
+  return [
+    left[0] - right[0],
+    left[1] - right[1],
+    left[2] - right[2],
+  ];
+}
+
+function dotVectors(left, right) {
+  return left[0] * right[0] + left[1] * right[1] + left[2] * right[2];
+}
+
+function crossVectors(left, right) {
+  return [
+    left[1] * right[2] - left[2] * right[1],
+    left[2] * right[0] - left[0] * right[2],
+    left[0] * right[1] - left[1] * right[0],
+  ];
+}
+
+function normalizeVector(vector) {
+  const length = Math.hypot(vector[0], vector[1], vector[2]);
+  return length > 0
+    ? vector.map((value) => value / length)
+    : [0, 0, 0];
+}
+
+function midpoint(left, right) {
+  return [
+    0.5 * (left[0] + right[0]),
+    0.5 * (left[1] + right[1]),
+    0.5 * (left[2] + right[2]),
+  ];
+}
+
+function chooseStableReferenceDirection(axis) {
+  const absolute = axis.map((value) => Math.abs(value));
+  if (absolute[0] <= absolute[1] && absolute[0] <= absolute[2]) {
+    return [1, 0, 0];
+  }
+  if (absolute[1] <= absolute[2]) {
+    return [0, 1, 0];
+  }
+  return [0, 0, 1];
+}
+
+function projectDirectionOntoPlane(candidate, planeNormal) {
+  const scale = dotVectors(candidate, planeNormal);
+  const projected = [
+    candidate[0] - planeNormal[0] * scale,
+    candidate[1] - planeNormal[1] * scale,
+    candidate[2] - planeNormal[2] * scale,
+  ];
+  return normalizeVector(projected);
+}
+
+function buildFrameFromNormalAndX(origin, normal, preferredX) {
+  const normalizedNormal = normalizeVector(normal);
+  let xDir = projectDirectionOntoPlane(preferredX, normalizedNormal);
+  if (Math.hypot(xDir[0], xDir[1], xDir[2]) <= 0) {
+    xDir = projectDirectionOntoPlane(chooseStableReferenceDirection(normalizedNormal), normalizedNormal);
+  }
+  const yDir = normalizeVector(crossVectors(normalizedNormal, xDir));
+  if (Math.hypot(xDir[0], xDir[1], xDir[2]) <= 0 || Math.hypot(yDir[0], yDir[1], yDir[2]) <= 0) {
+    return null;
+  }
+  return {
+    origin,
+    normal: normalizedNormal,
+    xDir,
+    yDir,
+  };
+}
+
+function getAttachAnchors(anchors) {
+  return Array.isArray(anchors)
+    ? anchors.filter((anchor) => anchor?.role === "attach" && Array.isArray(anchor.point) && anchor.point.length >= 3)
+    : [];
+}
+
 function validatePoint3(point, operationName) {
   const values = Array.isArray(point)
     ? point
@@ -733,6 +813,138 @@ export class OcctCoreClient {
     return {
       ...transformExactChamferResult(exactRef.transform, result),
       ref: exactRef,
+    };
+  }
+
+  async suggestExactMidpointPlacement(refA, refB) {
+    const [exactRefA, exactRefB] = validatePairwiseExactRefs(refA, refB, "suggestExactMidpointPlacement");
+    const placement = await this.suggestExactDistancePlacement(exactRefA, exactRefB);
+    if (placement?.ok !== true) {
+      return placement;
+    }
+
+    const attachAnchors = getAttachAnchors(placement.anchors);
+    if (attachAnchors.length < 2) {
+      return {
+        ok: false,
+        code: "unsupported-geometry",
+        message: "Exact midpoint placement requires distance placement anchors.",
+      };
+    }
+
+    const point = midpoint(attachAnchors[0].point, attachAnchors[1].point);
+    return {
+      ok: true,
+      kind: "midpoint",
+      value: placement.value,
+      point,
+      frame: {
+        ...placement.frame,
+        origin: point,
+      },
+      anchors: [
+        ...placement.anchors,
+        { role: "center", point },
+      ],
+      refA: exactRefA,
+      refB: exactRefB,
+    };
+  }
+
+  async describeExactEqualDistance(refA, refB, refC, refD, options = {}) {
+    const [exactRefA, exactRefB] = validatePairwiseExactRefs(refA, refB, "describeExactEqualDistance");
+    const [exactRefC, exactRefD] = validatePairwiseExactRefs(refC, refD, "describeExactEqualDistance");
+    const distanceA = await this.measureExactDistance(exactRefA, exactRefB);
+    if (distanceA?.ok !== true) {
+      return distanceA;
+    }
+
+    const distanceB = await this.measureExactDistance(exactRefC, exactRefD);
+    if (distanceB?.ok !== true) {
+      return distanceB;
+    }
+
+    const requestedTolerance = Number(options?.tolerance);
+    const tolerance = Number.isFinite(requestedTolerance) && requestedTolerance >= 0
+      ? requestedTolerance
+      : Math.max(1e-6, Math.max(distanceA.value, distanceB.value) * 1e-6);
+    const delta = Math.abs(distanceA.value - distanceB.value);
+
+    return {
+      ok: true,
+      kind: "equal-distance",
+      equal: delta <= tolerance,
+      distanceA: distanceA.value,
+      distanceB: distanceB.value,
+      delta,
+      tolerance,
+      refA: exactRefA,
+      refB: exactRefB,
+      refC: exactRefC,
+      refD: exactRefD,
+    };
+  }
+
+  async suggestExactSymmetryPlacement(refA, refB) {
+    const [exactRefA, exactRefB] = validatePairwiseExactRefs(refA, refB, "suggestExactSymmetryPlacement");
+    const relation = await this.classifyExactRelation(exactRefA, exactRefB);
+    if (relation?.ok !== true) {
+      return relation;
+    }
+    if (relation.kind !== "parallel") {
+      return {
+        ok: false,
+        code: "unsupported-geometry",
+        message: "Exact symmetry placement requires supported parallel pairs.",
+      };
+    }
+
+    const placement = await this.suggestExactDistancePlacement(exactRefA, exactRefB);
+    if (placement?.ok !== true) {
+      return placement;
+    }
+
+    const attachAnchors = getAttachAnchors(placement.anchors);
+    if (attachAnchors.length < 2) {
+      return {
+        ok: false,
+        code: "unsupported-geometry",
+        message: "Exact symmetry placement requires distance placement anchors.",
+      };
+    }
+
+    const origin = midpoint(attachAnchors[0].point, attachAnchors[1].point);
+    const symmetryNormal = normalizeVector(subtractPoints(attachAnchors[1].point, attachAnchors[0].point));
+    if (Math.hypot(symmetryNormal[0], symmetryNormal[1], symmetryNormal[2]) <= 0) {
+      return {
+        ok: false,
+        code: "coincident-geometry",
+        message: "Exact symmetry placement requires separated parallel geometry.",
+      };
+    }
+
+    const frame = buildFrameFromNormalAndX(origin, symmetryNormal, placement.frame?.normal ?? placement.frame?.yDir ?? [1, 0, 0]);
+    if (!frame) {
+      return {
+        ok: false,
+        code: "unsupported-geometry",
+        message: "Exact symmetry placement requires a stable working frame.",
+      };
+    }
+
+    return {
+      ok: true,
+      kind: "symmetry",
+      variant: "midplane",
+      value: placement.value,
+      frame,
+      anchors: [
+        ...placement.anchors,
+        { role: "center", point: origin },
+      ],
+      planeNormal: symmetryNormal,
+      refA: exactRefA,
+      refB: exactRefB,
     };
   }
 
