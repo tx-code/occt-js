@@ -39,10 +39,9 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 
 ### Active
 
-- [ ] `v1.7` should tighten exact-model lifetime management and diagnostics for retained handles.
-- [ ] `v1.7` should remove avoidable exact-query/store copies and temp-file staging overhead from the exact runtime path.
-- [ ] `v1.8` should align Babylon package dependency ownership and standalone install behavior.
-- [ ] `v1.8` should keep demo and Tauri verification explicit, conditional, and downstream of the authoritative root release gate.
+- [ ] Safer exact-model lifetime management through explicit JS-side disposal helpers, deterministic invalid-after-release behavior, and diagnostics for unreleased retained handles.
+- [ ] Lower per-call overhead in retained exact-model access by removing avoidable store/query copies and reducing import temp-file staging cost for large-model workflows.
+- [ ] Lifecycle/performance docs, verification, and release governance for the exact runtime/package surface without widening unconditional secondary-surface release gates.
 
 ### Out of Scope
 
@@ -50,7 +49,7 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 - Making Tauri or desktop packaging a prerequisite for root npm publishing — root runtime must stay independently releasable.
 - Treating Babylon/demo layers as first-order release gates for the root runtime.
 - Selection sessions, overlay rendering, label layout, or measurement widgets in the runtime/package layer — those remain downstream app concerns.
-- Whole-model feature discovery, batch semantic indexing, or viewer-owned semantic workflows — `v1.6` only shipped caller-selected package-first helper semantics.
+- Whole-model feature discovery, batch semantic indexing, or new helper-family expansion — `v1.7` is reserved for lifecycle/performance hardening of the shipped exact surface.
 
 ## Current State
 
@@ -62,17 +61,16 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 
 `v1.6 Exact Semantics Helpers` shipped on 2026-04-18 and is now archived in `.planning/milestones/`. The milestone added package-first hole/chamfer descriptors, midpoint/equal-distance/symmetry helpers, published `@tx-code/occt-core` typings, and helper-aware authoritative release-governance coverage for the shipped family.
 
-The repository is now between milestones. The next workflow step is `$gsd-new-milestone`.
+`v1.7 Exact Lifecycle & Performance` is now the active milestone. The goal is to harden retained exact-model lifetime management, remove known retained-query and import-staging cost hotspots, and lock long-session lifecycle/performance governance before widening helper breadth or package ecosystem scope.
 
-## Next Milestone Direction
+## Current Milestone: v1.7 Exact Lifecycle & Performance
 
-There is no active milestone open.
+**Goal:** Harden retained exact-model lifecycle and performance on top of the shipped exact runtime/helper surface without expanding into viewer-owned behavior or secondary-surface sprawl.
 
-**Next target:** `v1.7 Exact Lifecycle & Performance`
-
-**Sequenced after that:** `v1.8 Package Ecosystem & Secondary Surfaces`
-
-**Immediate next step:** `$gsd-new-milestone`
+**Target features:**
+- Safer exact-model lifetime management, disposal helpers, and diagnostics for retained-handle workflows.
+- Lower-cost exact-model store/query access and reduced import staging overhead for large-model exact workflows.
+- Long-session verification, docs, and release governance for lifecycle/performance expectations while keeping `npm run test:release:root` runtime-first.
 
 ## Context
 
@@ -81,11 +79,12 @@ There is no active milestone open.
 - `imos-app` remains the key downstream consumer signal: it vendors `@tx-code/occt-js` and consumes the Wasm/runtime surface directly, while viewer semantics live on the app side.
 - `SceneGraph.net` remains the best local reference for measurement behavior above the kernel layer, but `occt-js` intentionally stopped at exact-kernel foundations plus package-first placement/relation support.
 - OCCT `PrsDim` remains the local geometry reference for placement and relation behavior, but `occt-js` intentionally stops short of AIS/Prs3d interactive dimensions.
-- The current exact runtime now exposes retained exact-model lifecycle, primitive exact queries, pairwise distance/angle/thickness, placement DTOs, relation classification, narrow selected-ref hole/chamfer helper semantics, package-only midpoint/equal-distance/symmetry helpers, published package typings, and helper-aware release verification; the shipped runtime/package surface is now treated as a first-class SDK contract.
-- The formal follow-on milestone sequence after `v1.6` is:
-  `v1.7 Exact Lifecycle & Performance` → `v1.8 Package Ecosystem & Secondary Surfaces`.
+- The current exact runtime now exposes retained exact-model lifecycle, primitive exact queries, pairwise distance/angle/thickness, placement DTOs, relation classification, narrow selected-ref hole/chamfer helper semantics, package-only midpoint/equal-distance/symmetry helpers, published package typings, and helper-aware release verification; `v1.7` now focuses on lifecycle safety and runtime cost hotspots inside that shipped surface.
+- Known `v1.7` pressure points already visible in the current codebase include retained-model release discipline, lack of caller-facing diagnostics for unreleased handles, avoidable `ExactModelStore` copy costs, and temp-file staging overhead in import paths such as IGES.
+- The formal follow-on milestone sequence after `v1.7` is:
+  `v1.8 Package Ecosystem & Secondary Surfaces`.
 - GSD is the primary repository workflow; superpowers remain optional support tooling for narrow tasks only.
-- Deferred seed `SEED-001-web-exact-brep-measurement` is now only partially relevant: its kernel foundation shipped in `v1.1`/`v1.4`, its package-first helper layer shipped in `v1.6`, and any future follow-on should stay additive and package-first.
+- Deferred seed `SEED-001-web-exact-brep-measurement` is effectively exhausted: its kernel foundation shipped in `v1.1`/`v1.4`, its package-first helper layer shipped in `v1.6`, and any future follow-on should stay additive and package-first rather than reopen viewer ownership.
 
 ## Constraints
 
@@ -122,6 +121,7 @@ There is no active milestone open.
 | Keep supported chamfer semantics narrow and selected-ref-based | `v1.6` needs reusable chamfer data without adding broad feature discovery or whole-model topology APIs to the root carrier | ✓ Good |
 | Keep midpoint, equal-distance, and symmetry helpers package-only where shipped placement/relation DTOs already suffice | The existing occurrence-space geometry surface is rich enough to derive these helpers without reopening the root runtime boundary; symmetry stays intentionally limited to a midplane helper over supported parallel pairs | ✓ Good |
 | Lock the helper SDK package-first through package-local typings plus root governance/tarball coverage | Phase 23 needed the helper family to be releasable without blurring the root/package boundary or widening secondary-surface gates | ✓ Good |
+| Sequence lifecycle/performance hardening before broader semantics or ecosystem cleanup | The exact helper surface is now shipped; stabilizing retained-handle safety and large-model cost hotspots reduces downstream risk before adding more breadth | ✓ Good |
 
 ## Evolution
 
@@ -211,4 +211,4 @@ This document evolves at phase transitions and milestone boundaries.
 </details>
 
 ---
-*Last updated: 2026-04-18 after v1.6 milestone closeout*
+*Last updated: 2026-04-18 after starting milestone v1.7 Exact Lifecycle & Performance*
