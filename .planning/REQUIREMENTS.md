@@ -50,18 +50,18 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FEAT-03 | TBD | Pending |
-| FEAT-04 | TBD | Pending |
-| FEAT-05 | TBD | Pending |
-| ADAPT-09 | TBD | Pending |
-| DOCS-03 | TBD | Pending |
-| GOV-04 | TBD | Pending |
+| FEAT-03 | Phase 21 | Pending |
+| FEAT-04 | Phase 22 | Pending |
+| FEAT-05 | Phase 22 | Pending |
+| ADAPT-09 | Phase 21 | Pending |
+| DOCS-03 | Phase 23 | Pending |
+| GOV-04 | Phase 23 | Pending |
 
 **Coverage:**
 - v1.6 requirements: 6 total
-- Mapped to phases: 0
-- Unmapped: 6
+- Mapped to phases: 6
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-18*
-*Last updated: 2026-04-18 after initial v1.6 requirement definition*
+*Last updated: 2026-04-18 after creating the v1.6 roadmap*

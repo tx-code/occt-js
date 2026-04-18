@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Exact Semantics Helpers
-status: active
-stopped_at: Milestone v1.6 started
-last_updated: "2026-04-18T01:57:52.3910100Z"
-last_activity: 2026-04-18 -- Milestone v1.6 started
+status: ready
+stopped_at: v1.6 roadmap created
+last_updated: "2026-04-18T01:59:40.2741928Z"
+last_activity: 2026-04-18 -- v1.6 roadmap created
 progress:
-  total_phases: 0
+  total_phases: 3
   completed_phases: 0
-  total_plans: 0
+  total_plans: 6
   completed_plans: 0
   percent: 0
 ---
@@ -21,15 +21,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-18)
 
 Core value: Downstream applications can reliably consume the OCCT Wasm runtime and its root API contract without build drift or packaging surprises.
-Current focus: Defining requirements for v1.6 Exact Semantics Helpers
+Current focus: Phase 21 Hole Helper Foundations
 
 ## Current Position
 
 Milestone: v1.6 Exact Semantics Helpers
-Phase: Not started (defining requirements)
-Plan: -
-Status: Defining requirements
-Last activity: 2026-04-18 -- Milestone v1.6 started
+Phase: 21 of 23 (Hole Helper Foundations)
+Plan: 0 of 2 in current phase
+Status: Ready to discuss
+Last activity: 2026-04-18 -- v1.6 roadmap created
 
 Progress: [----------] 0%
 
@@ -66,13 +66,13 @@ Recent Trend:
 
 ### Pending Todos
 
-- Define scoped `v1.6` requirements for package-first exact semantics helpers.
-- Create the `v1.6` roadmap with continued phase numbering after Phase 20.
+- Run `$gsd-discuss-phase 21` to lock the intended supported hole cases and the package-first API shape before planning.
+- Keep the `SEED-001` carry-forward narrow: additive helper semantics only, not a reopened viewer or broad kernel milestone.
 - Keep `demo/.codex-run/` and `demo/dist/` out of planning commits.
 
 ### Blockers/Concerns
 
-- No technical blockers remain. The open work is milestone setup and scope definition only.
+- No technical blockers remain. The milestone is initialized and ready for Phase 21 discussion or direct planning.
 
 ## Deferred Items
 
@@ -84,6 +84,6 @@ Items acknowledged and deferred at milestone close on 2026-04-18:
 
 ## Session Continuity
 
-Last session: 2026-04-18T01:57:52.3910100Z
-Stopped at: Milestone v1.6 started
-Resume file: .planning/PROJECT.md
+Last session: 2026-04-18T01:59:40.2741928Z
+Stopped at: v1.6 roadmap created
+Resume file: .planning/ROADMAP.md
