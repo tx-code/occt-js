@@ -8,8 +8,8 @@
 ### Feature Semantics
 
 - [x] **FEAT-03**: Downstream JS can request package-first hole helper semantics from exact refs and receive stable typed outputs for supported hole cases.
-- [ ] **FEAT-04**: Downstream JS can request package-first chamfer helper semantics from exact refs and receive stable typed outputs for supported chamfer cases.
-- [ ] **FEAT-05**: Downstream JS can request equal-distance, symmetry, midpoint, or similar reusable helper semantics on top of the shipped placement and relation primitives.
+- [x] **FEAT-04**: Downstream JS can request package-first chamfer helper semantics from exact refs and receive stable typed outputs for supported chamfer cases.
+- [x] **FEAT-05**: Downstream JS can request equal-distance, symmetry, midpoint, or similar reusable helper semantics on top of the shipped placement and relation primitives.
 
 ### Adapter Boundary
 
@@ -51,8 +51,8 @@
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | FEAT-03 | Phase 21 | Complete |
-| FEAT-04 | Phase 22 | Pending |
-| FEAT-05 | Phase 22 | Pending |
+| FEAT-04 | Phase 22 | Complete |
+| FEAT-05 | Phase 22 | Complete |
 | ADAPT-09 | Phase 21 | Complete |
 | DOCS-03 | Phase 23 | Pending |
 | GOV-04 | Phase 23 | Pending |
@@ -64,4 +64,4 @@
 
 ---
 *Requirements defined: 2026-04-18*
-*Last updated: 2026-04-18 after completing Phase 21 hole helper foundations*
+*Last updated: 2026-04-18 after completing Phase 22 chamfer and constraint helpers*

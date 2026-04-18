@@ -21,7 +21,7 @@ This roadmap moves `occt-js` from exact kernel foundations into package-first he
 - Decimal phases (21.1, 21.2): Urgent insertions (marked with INSERTED)
 
 - [x] **Phase 21: Hole Helper Foundations** - Add package-first hole helper semantics with occurrence-safe DTOs and only the minimal additive runtime support needed for supported cases.
-- [ ] **Phase 22: Chamfer & Constraint Helpers** - Extend the helper surface to supported chamfer cases plus equal-distance, symmetry, midpoint, and similar reusable helper semantics.
+- [x] **Phase 22: Chamfer & Constraint Helpers** - Extend the helper surface to supported chamfer cases plus equal-distance, symmetry, midpoint, and similar reusable helper semantics. (completed 2026-04-18)
 - [ ] **Phase 23: Helper SDK Docs & Governance** - Lock the exact helper surface into docs, typings, tarball expectations, and authoritative release governance without widening secondary-surface release gates.
 
 ## Phase Details
@@ -52,8 +52,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 22-01-PLAN.md — Add package-first chamfer helper semantics over shipped exact refs
-- [ ] 22-02-PLAN.md — Add equal-distance, symmetry, midpoint, and similar reusable helper semantics
+- [x] 22-01-PLAN.md — Add package-first chamfer helper semantics over shipped exact refs
+- [x] 22-02-PLAN.md — Add equal-distance, symmetry, midpoint, and similar reusable helper semantics
 
 ### Phase 23: Helper SDK Docs & Governance
 **Goal**: The exact helper surface is package-first, documented, typed, packaged, and enforced by the authoritative release governance path.
@@ -77,5 +77,5 @@ Phases execute in numeric order: 21 → 22 → 23
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 21. Hole Helper Foundations | v1.6 | 2/2 | Complete | 2026-04-18 |
-| 22. Chamfer & Constraint Helpers | v1.6 | 0/2 | Not started | - |
+| 22. Chamfer & Constraint Helpers | v1.6 | 2/2 | Complete    | 2026-04-18 |
 | 23. Helper SDK Docs & Governance | v1.6 | 0/2 | Not started | - |

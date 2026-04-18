@@ -33,11 +33,11 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 - ✓ The authoritative root release gate now verifies publishable runtime/package/docs behavior without depending on live `.planning` archive-state strings, and any retained planning audit runs separately through `npm run test:planning:audit`. — Phase 19
 - ✓ README, AGENTS, `packages/occt-core/README.md`, and the thin release skill now document the same split between the authoritative root release gate and the separate planning audit path. — Phase 19
 - ✓ Demo and Babylon verification are now discoverable from manifests and top-level docs, loader tests no longer depend on hoisted Babylon installs, and `npm run test:secondary:contracts` locks those surfaces outside the authoritative root release gate. — Phase 20
+- ✓ Package-first exact helper semantics now include supported cylindrical hole and planar chamfer descriptors through `@tx-code/occt-core`, with the root carrier growing only by narrow selected-ref queries where package composition genuinely needed them. — Phases 21-22
+- ✓ Reusable midpoint, equal-distance, and narrow midplane-style symmetry helpers now compose package-first over the shipped exact placement/relation surface without adding new root carrier APIs. — Phase 22
 
 ### Active
 
-- [ ] Package-first hole and chamfer helper semantics on top of the shipped exact primitives, with minimal additive kernel support only where helper composition genuinely needs it.
-- [ ] Reusable equal-distance, symmetry, midpoint, and similar exact helper semantics on top of the shipped placement/relation primitives.
 - [ ] Package-first docs, typings, and release governance for exact semantics helpers without widening the authoritative root release gate.
 
 ### Out of Scope
@@ -62,7 +62,7 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 
 **Goal:** Add package-first exact semantics helpers on top of the shipped kernel primitives without turning `occt-js` into a viewer-first or feature-recognition-first product.
 
-**Current status:** Phase 21 shipped on 2026-04-18 through package-first cylindrical hole semantics (`describeExactHole(ref)` / `DescribeExactHole(...)`). Phase 22 is next and expands the helper family into chamfer and reusable constraint semantics.
+**Current status:** Phases 21-22 shipped on 2026-04-18 through package-first hole and chamfer helpers plus reusable midpoint, equal-distance, and narrow symmetry semantics. Phase 23 is next and locks the helper family into docs, typings, tarball expectations, and release governance.
 
 **Target features:**
 - Package-first `hole` and `chamfer` helper semantics, using existing exact primitives where possible and minimal additive kernel support only when unavoidable.
@@ -76,7 +76,7 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 - `imos-app` remains the key downstream consumer signal: it vendors `@tx-code/occt-js` and consumes the Wasm/runtime surface directly, while viewer semantics live on the app side.
 - `SceneGraph.net` remains the best local reference for measurement behavior above the kernel layer, but `occt-js` intentionally stopped at exact-kernel foundations plus package-first placement/relation support.
 - OCCT `PrsDim` remains the local geometry reference for placement and relation behavior, but `occt-js` intentionally stops short of AIS/Prs3d interactive dimensions.
-- The current exact runtime now exposes retained exact-model lifecycle, primitive exact queries, pairwise distance/angle/thickness, placement DTOs, relation classification, and the first package-first hole helper semantics; package docs and release verification treat the shipped runtime/package surface as a first-class SDK contract.
+- The current exact runtime now exposes retained exact-model lifecycle, primitive exact queries, pairwise distance/angle/thickness, placement DTOs, relation classification, narrow selected-ref hole/chamfer helper semantics, and package-only midpoint/equal-distance/symmetry helpers; package docs and release verification treat the shipped runtime/package surface as a first-class SDK contract.
 - The formal follow-on milestone sequence after `v1.6` is:
   `v1.7 Exact Lifecycle & Performance` → `v1.8 Package Ecosystem & Secondary Surfaces`.
 - GSD is the primary repository workflow; superpowers remain optional support tooling for narrow tasks only.
@@ -114,6 +114,8 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 | Lock secondary-surface routing through `npm run test:secondary:contracts` and touched-path docs instead of widening `npm run test:release:root` | Demo, Babylon, and Tauri surfaces need discoverability and repeatability without polluting the authoritative root Wasm release boundary | ✓ Good |
 | Carry the deferred web exact-measurement seed forward only through package-first helper semantics | The exact kernel foundation already shipped in `v1.1`/`v1.4`; `v1.6` should build additive helper semantics, not reopen viewer or broad kernel-boundary work | ✓ Good |
 | Ship hole semantics as a package-first single-ref helper backed by one narrow carrier query | `v1.6` needs reusable helper semantics without reopening whole-model feature recognition or viewer-owned selection policy | ✓ Good |
+| Keep supported chamfer semantics narrow and selected-ref-based | `v1.6` needs reusable chamfer data without adding broad feature discovery or whole-model topology APIs to the root carrier | ✓ Good |
+| Keep midpoint, equal-distance, and symmetry helpers package-only where shipped placement/relation DTOs already suffice | The existing occurrence-space geometry surface is rich enough to derive these helpers without reopening the root runtime boundary; symmetry stays intentionally limited to a midplane helper over supported parallel pairs | ✓ Good |
 
 ## Evolution
 
@@ -189,4 +191,4 @@ This document evolves at phase transitions and milestone boundaries.
 </details>
 
 ---
-*Last updated: 2026-04-18 after completing Phase 21 hole helper foundations*
+*Last updated: 2026-04-18 after completing Phase 22 chamfer and constraint helpers*
