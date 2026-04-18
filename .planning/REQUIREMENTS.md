@@ -50,19 +50,19 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| LIFE-01 | TBD | Pending |
-| LIFE-02 | TBD | Pending |
-| PERF-01 | TBD | Pending |
-| PERF-02 | TBD | Pending |
-| ADAPT-10 | TBD | Pending |
-| DOCS-04 | TBD | Pending |
-| GOV-05 | TBD | Pending |
+| LIFE-01 | Phase 24 | Pending |
+| LIFE-02 | Phase 24 | Pending |
+| PERF-01 | Phase 25 | Pending |
+| PERF-02 | Phase 25 | Pending |
+| ADAPT-10 | Phase 24 | Pending |
+| DOCS-04 | Phase 26 | Pending |
+| GOV-05 | Phase 26 | Pending |
 
 **Coverage:**
 - v1.7 requirements: 7 total
-- Mapped to phases: 0
-- Unmapped: 7
+- Mapped to phases: 7
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-04-18*
-*Last updated: 2026-04-18 after initial v1.7 requirement definition*
+*Last updated: 2026-04-18 after v1.7 roadmap creation*

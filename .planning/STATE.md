@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Exact Lifecycle & Performance
-status: active
-stopped_at: Milestone v1.7 started
-last_updated: "2026-04-18T06:55:28.2828527Z"
-last_activity: 2026-04-18 -- Milestone v1.7 started
+status: ready
+stopped_at: v1.7 roadmap created
+last_updated: "2026-04-18T06:57:21.2341908Z"
+last_activity: 2026-04-18 -- v1.7 roadmap created
 progress:
-  total_phases: 0
+  total_phases: 3
   completed_phases: 0
-  total_plans: 0
+  total_plans: 6
   completed_plans: 0
   percent: 0
 ---
@@ -21,15 +21,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-18)
 
 Core value: Downstream applications can reliably consume the OCCT Wasm runtime and its root API contract without build drift or packaging surprises.
-Current focus: Defining requirements for v1.7 Exact Lifecycle & Performance
+Current focus: Phase 24 Exact Model Lifecycle Governance
 
 ## Current Position
 
 Milestone: v1.7 Exact Lifecycle & Performance
-Phase: Not started (defining requirements)
-Plan: -
-Status: Defining requirements
-Last activity: 2026-04-18 -- Milestone v1.7 started
+Phase: 24 of 26 (Exact Model Lifecycle Governance)
+Plan: 0 of 2 in current phase
+Status: Ready to discuss
+Last activity: 2026-04-18 -- v1.7 roadmap created
 
 Progress: [----------] 0%
 
@@ -66,14 +66,13 @@ Recent Trend:
 
 ### Pending Todos
 
-- Define scoped `v1.7` requirements for exact lifecycle and performance hardening.
-- Create the `v1.7` roadmap with continued phase numbering after Phase 23.
-- Keep future semantic expansion and ecosystem cleanup out of `v1.7` unless lifecycle/performance work proves it is strictly required.
+- Run `$gsd-discuss-phase 24` to lock exact-model lifetime semantics, diagnostics, and disposal expectations before planning.
+- Keep `v1.7` focused on lifecycle/performance hardening; no new helper families or ecosystem cleanup unless strictly required by the implementation.
 - Keep `demo/.codex-run/` and `demo/dist/` out of planning commits.
 
 ### Blockers/Concerns
 
-- No technical blockers remain. The open work is milestone setup and scope definition only.
+- No technical blockers remain. The milestone is initialized and ready for Phase 24 discussion or direct planning.
 
 ## Deferred Items
 
@@ -85,6 +84,6 @@ Items acknowledged and deferred at milestone close on 2026-04-18:
 
 ## Session Continuity
 
-Last session: 2026-04-18T06:55:28.2828527Z
-Stopped at: Milestone v1.7 started
-Resume file: .planning/PROJECT.md
+Last session: 2026-04-18T06:57:21.2341908Z
+Stopped at: v1.7 roadmap created
+Resume file: .planning/ROADMAP.md
