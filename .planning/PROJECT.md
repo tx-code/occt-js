@@ -35,10 +35,11 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 - ✓ Demo and Babylon verification are now discoverable from manifests and top-level docs, loader tests no longer depend on hoisted Babylon installs, and `npm run test:secondary:contracts` locks those surfaces outside the authoritative root release gate. — Phase 20
 - ✓ Package-first exact helper semantics now include supported cylindrical hole and planar chamfer descriptors through `@tx-code/occt-core`, with the root carrier growing only by narrow selected-ref queries where package composition genuinely needed them. — Phases 21-22
 - ✓ Reusable midpoint, equal-distance, and narrow midplane-style symmetry helpers now compose package-first over the shipped exact placement/relation surface without adding new root carrier APIs. — Phase 22
+- ✓ Package-first helper docs, published `@tx-code/occt-core` typings, tarball checks, and the authoritative root release gate now lock the shipped exact helper family end to end without widening secondary-surface release gates. — Phase 23
 
 ### Active
 
-- [ ] Package-first docs, typings, and release governance for exact semantics helpers without widening the authoritative root release gate.
+- [ ] Milestone closeout for `v1.6 Exact Semantics Helpers`.
 
 ### Out of Scope
 
@@ -46,7 +47,7 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 - Making Tauri or desktop packaging a prerequisite for root npm publishing — root runtime must stay independently releasable.
 - Treating Babylon/demo layers as first-order release gates for the root runtime.
 - Selection sessions, overlay rendering, label layout, or measurement widgets in the runtime/package layer — those remain downstream app concerns.
-- Hole, chamfer, or other feature-recognition semantics inside the runtime/package layer — future milestones should only touch them if they can stay package-first and additive.
+- Whole-model feature discovery, batch semantic indexing, or viewer-owned semantic workflows — `v1.6` only ships caller-selected package-first helper semantics.
 
 ## Current State
 
@@ -56,13 +57,13 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 
 `v1.5 Root Release Hardening` shipped on 2026-04-18 and is now archived in `.planning/milestones/`. Phases 18-20 stabilized the root runtime-path contract, separated `.planning` governance audits from the authoritative release gate, and made demo/Babylon verification explicit and conditional through manifest-first commands and `test:secondary:contracts`.
 
-`v1.6 Exact Semantics Helpers` is now the active milestone. The goal is to extend the shipped exact primitive, placement, and relation surface upward through package-first helper semantics such as `hole`, `chamfer`, `equal-distance`, `symmetry`, and `midpoint`, while keeping viewer workflows and session policy downstream.
+`v1.6 Exact Semantics Helpers` has finished execution and is ready for milestone closeout. The milestone now ships package-first hole/chamfer descriptors, midpoint/equal-distance/symmetry helpers, published `@tx-code/occt-core` typings, and authoritative root release-governance coverage for the helper family.
 
 ## Current Milestone: v1.6 Exact Semantics Helpers
 
 **Goal:** Add package-first exact semantics helpers on top of the shipped kernel primitives without turning `occt-js` into a viewer-first or feature-recognition-first product.
 
-**Current status:** Phases 21-22 shipped on 2026-04-18 through package-first hole and chamfer helpers plus reusable midpoint, equal-distance, and narrow symmetry semantics. Phase 23 is next and locks the helper family into docs, typings, tarball expectations, and release governance.
+**Current status:** All three phases shipped on 2026-04-18. `v1.6` now includes package-first hole/chamfer helpers, package-only midpoint/equal-distance/symmetry semantics, published helper typings, and helper-aware release governance. The next workflow step is milestone closeout.
 
 **Target features:**
 - Package-first `hole` and `chamfer` helper semantics, using existing exact primitives where possible and minimal additive kernel support only when unavoidable.
@@ -116,6 +117,7 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 | Ship hole semantics as a package-first single-ref helper backed by one narrow carrier query | `v1.6` needs reusable helper semantics without reopening whole-model feature recognition or viewer-owned selection policy | ✓ Good |
 | Keep supported chamfer semantics narrow and selected-ref-based | `v1.6` needs reusable chamfer data without adding broad feature discovery or whole-model topology APIs to the root carrier | ✓ Good |
 | Keep midpoint, equal-distance, and symmetry helpers package-only where shipped placement/relation DTOs already suffice | The existing occurrence-space geometry surface is rich enough to derive these helpers without reopening the root runtime boundary; symmetry stays intentionally limited to a midplane helper over supported parallel pairs | ✓ Good |
+| Lock the helper SDK package-first through package-local typings plus root governance/tarball coverage | Phase 23 needed the helper family to be releasable without blurring the root/package boundary or widening secondary-surface gates | ✓ Good |
 
 ## Evolution
 
@@ -191,4 +193,4 @@ This document evolves at phase transitions and milestone boundaries.
 </details>
 
 ---
-*Last updated: 2026-04-18 after completing Phase 22 chamfer and constraint helpers*
+*Last updated: 2026-04-18 after completing Phase 23 helper SDK docs and governance*

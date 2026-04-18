@@ -17,8 +17,8 @@
 
 ### SDK Governance
 
-- [ ] **DOCS-03**: Package-first SDK docs show exact helper workflows through `@tx-code/occt-core`, with the root Wasm carrier kept as the lower-level reference surface.
-- [ ] **GOV-04**: Public typings, packaged entrypoints, and release verification lock the exact semantics helper surface without adding unconditional demo, Babylon, or Tauri release blockers.
+- [x] **DOCS-03**: Package-first SDK docs show exact helper workflows through `@tx-code/occt-core`, with the root Wasm carrier kept as the lower-level reference surface.
+- [x] **GOV-04**: Public typings, packaged entrypoints, and release verification lock the exact semantics helper surface without adding unconditional demo, Babylon, or Tauri release blockers.
 
 ## Future Requirements
 
@@ -54,8 +54,8 @@
 | FEAT-04 | Phase 22 | Complete |
 | FEAT-05 | Phase 22 | Complete |
 | ADAPT-09 | Phase 21 | Complete |
-| DOCS-03 | Phase 23 | Pending |
-| GOV-04 | Phase 23 | Pending |
+| DOCS-03 | Phase 23 | Complete |
+| GOV-04 | Phase 23 | Complete |
 
 **Coverage:**
 - v1.6 requirements: 6 total
@@ -64,4 +64,4 @@
 
 ---
 *Requirements defined: 2026-04-18*
-*Last updated: 2026-04-18 after completing Phase 22 chamfer and constraint helpers*
+*Last updated: 2026-04-18 after completing Phase 23 helper SDK docs and governance*

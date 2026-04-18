@@ -2,7 +2,7 @@
 
 ## Milestones
 
-- 🚧 **v1.6 Exact Semantics Helpers** - Phases 21-23 (active)
+- 🚧 **v1.6 Exact Semantics Helpers** - Phases 21-23 (execution complete; closeout next)
 - ✅ [v1.5 Root Release Hardening](./milestones/v1.5-ROADMAP.md) — Phases 18-20, shipped 2026-04-18
 - ✅ [v1.4 Exact Measurement Placement & Relation SDK](./milestones/v1.4-ROADMAP.md) — Phases 15-17, shipped 2026-04-16
 - ✅ [v1.3 Appearance Expansion](./milestones/v1.3-ROADMAP.md) — Phases 12-14, shipped 2026-04-15
@@ -12,7 +12,7 @@
 
 ## Overview
 
-This roadmap moves `occt-js` from exact kernel foundations into package-first helper semantics. `v1.6` focuses on additive helper APIs such as `hole`, `chamfer`, `equal-distance`, `symmetry`, and `midpoint`, while preserving the runtime-first release boundary and keeping viewer/session workflows downstream.
+This roadmap moved `occt-js` from exact kernel foundations into package-first helper semantics. `v1.6` delivered additive helper APIs such as `hole`, `chamfer`, `equal-distance`, `symmetry`, and `midpoint`, while preserving the runtime-first release boundary and keeping viewer/session workflows downstream.
 
 ## Phases
 
@@ -22,7 +22,7 @@ This roadmap moves `occt-js` from exact kernel foundations into package-first he
 
 - [x] **Phase 21: Hole Helper Foundations** - Add package-first hole helper semantics with occurrence-safe DTOs and only the minimal additive runtime support needed for supported cases.
 - [x] **Phase 22: Chamfer & Constraint Helpers** - Extend the helper surface to supported chamfer cases plus equal-distance, symmetry, midpoint, and similar reusable helper semantics. (completed 2026-04-18)
-- [ ] **Phase 23: Helper SDK Docs & Governance** - Lock the exact helper surface into docs, typings, tarball expectations, and authoritative release governance without widening secondary-surface release gates.
+- [x] **Phase 23: Helper SDK Docs & Governance** - Lock the exact helper surface into docs, typings, tarball expectations, and authoritative release governance without widening secondary-surface release gates. (completed 2026-04-18)
 
 ## Phase Details
 
@@ -59,6 +59,7 @@ Plans:
 **Goal**: The exact helper surface is package-first, documented, typed, packaged, and enforced by the authoritative release governance path.
 **Depends on**: Phase 22
 **Requirements**: DOCS-03, GOV-04
+**Completed**: 2026-04-18
 **Success Criteria** (what must be TRUE):
   1. Root and package docs describe the helper workflows package-first through `@tx-code/occt-core`, while keeping viewer workflows and session policy explicitly out of scope.
   2. Public typings and packaged entrypoints expose the finalized helper surface required by downstream consumers.
@@ -66,8 +67,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 23-01-PLAN.md — Write package-first helper SDK docs and root reference guidance
-- [ ] 23-02-PLAN.md — Extend typings, tarball checks, and release governance for exact helper semantics
+- [x] 23-01-PLAN.md — Write package-first helper SDK docs and root reference guidance
+- [x] 23-02-PLAN.md — Extend typings, tarball checks, and release governance for exact helper semantics
 
 ## Progress
 
@@ -78,4 +79,4 @@ Phases execute in numeric order: 21 → 22 → 23
 |-------|-----------|----------------|--------|-----------|
 | 21. Hole Helper Foundations | v1.6 | 2/2 | Complete | 2026-04-18 |
 | 22. Chamfer & Constraint Helpers | v1.6 | 2/2 | Complete    | 2026-04-18 |
-| 23. Helper SDK Docs & Governance | v1.6 | 0/2 | Not started | - |
+| 23. Helper SDK Docs & Governance | v1.6 | 2/2 | Complete | 2026-04-18 |
