@@ -4,7 +4,7 @@ import { Button } from "./ui/button";
 import OrientationModeToggle from "./OrientationModeToggle";
 import { useViewerStore } from "../store/viewerStore";
 
-export default function DropZone({ onFile, visible }) {
+export default function DropZone({ onFile, onOpenGenerator, visible }) {
   const [dragOver, setDragOver] = useState(false);
   const theme = useViewerStore((s) => s.theme);
   const isLight = theme === "light";
@@ -30,7 +30,7 @@ export default function DropZone({ onFile, visible }) {
       data-testid="drop-zone"
     >
       <div
-        className={`w-[min(92vw,34rem)] rounded-3xl p-8 text-center transition-colors ${
+        className={`w-[min(92vw,38rem)] rounded-3xl p-8 text-center transition-colors ${
           isLight
             ? "border border-zinc-300/90 bg-white/90 shadow-2xl shadow-zinc-300/35"
             : "border border-zinc-800/90 bg-zinc-950/90 shadow-2xl shadow-black/30"
@@ -52,9 +52,12 @@ export default function DropZone({ onFile, visible }) {
             autoTestId="orientation-mode-auto-empty"
           />
         </div>
-        <div className="mt-6">
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
           <Button onClick={() => document.getElementById("file-input").click()}>
             Browse Files
+          </Button>
+          <Button variant="ghost" onClick={onOpenGenerator} data-testid="open-generated-tool-panel-empty">
+            Tool MVP
           </Button>
         </div>
         <input
@@ -66,7 +69,7 @@ export default function DropZone({ onFile, visible }) {
           data-testid="file-input"
         />
         <p className={`mt-4 text-xs ${isLight ? "text-zinc-500" : "text-zinc-600"}`}>
-          Drag and drop is supported too.
+          Drag and drop is supported too. Or generate a revolved tool directly from JSON.
         </p>
       </div>
     </div>

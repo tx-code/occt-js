@@ -193,6 +193,35 @@ test("shows drop zone on initial load", async ({ page }) => {
   await expect(page.locator("[data-testid='toolbar']")).toBeHidden();
 });
 
+test("generated tool MVP can build a preset directly in the viewer", async ({ page }) => {
+  await page.click("[data-testid='open-generated-tool-panel-empty']");
+  await expect(page.locator("[data-testid='generated-tool-panel']")).toBeVisible();
+
+  await page.click("[data-testid='generated-tool-preset-flat-endmill']");
+  await page.click("[data-testid='generated-tool-build']");
+
+  await expect(page.locator("[data-testid='toolbar']")).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator("[data-testid='file-name']")).toContainText("Generated");
+  await expect(page.locator("[data-testid='generated-tool-panel']")).toBeHidden();
+  await expect(page.locator("[data-testid='stats-panel']")).toBeVisible();
+
+  const modelSummary = await page.evaluate(() => {
+    const scene = window.BABYLON?.EngineStore?.LastCreatedScene;
+    const visibleMesh = scene?.meshes?.find((candidate) =>
+      candidate?.isVisible &&
+      !candidate?.metadata?.occtLinePassManaged &&
+      typeof candidate.getTotalVertices === "function" &&
+      candidate.getTotalVertices() > 0
+    );
+    return {
+      hasVisibleMesh: !!visibleMesh,
+      name: visibleMesh?.name ?? null,
+    };
+  });
+
+  expect(modelSummary.hasVisibleMesh).toBeTruthy();
+});
+
 test("auto-orient mode is selected by default", async ({ page }) => {
   await expect(page.locator("[data-testid='orientation-mode-auto-empty']")).toHaveClass(/cyan/);
   await loadFixture(page);

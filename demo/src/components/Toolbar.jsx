@@ -4,7 +4,15 @@ import { Button } from "./ui/button";
 import { useViewerStore } from "../store/viewerStore";
 import OrientationModeToggle from "./OrientationModeToggle";
 
-export default function Toolbar({ chromeIntegrated = false, onOpenFile, onFitAll, onCameraView, onSetProjection, onSnapshot }) {
+export default function Toolbar({
+  chromeIntegrated = false,
+  onOpenFile,
+  onFitAll,
+  onCameraView,
+  onSetProjection,
+  onSnapshot,
+  onOpenGenerator,
+}) {
   const [menuOpen, setMenuOpen] = useState(false);
   const fileName = useViewerStore((s) => s.fileName);
   const facesVisible = useViewerStore((s) => s.facesVisible);
@@ -107,6 +115,9 @@ export default function Toolbar({ chromeIntegrated = false, onOpenFile, onFitAll
           <Button size="sm" variant="ghost" onClick={onOpenFile} data-testid="open-file">
             Open
           </Button>
+          <Button size="sm" variant="ghost" onClick={onOpenGenerator} data-testid="open-generated-tool-panel-toolbar">
+            Generate
+          </Button>
           <OrientationModeToggle
             rawTestId="orientation-mode-raw-toolbar"
             autoTestId="orientation-mode-auto-toolbar"
@@ -130,6 +141,9 @@ export default function Toolbar({ chromeIntegrated = false, onOpenFile, onFitAll
         <div className="flex md:hidden items-center gap-1">
           <Button size="sm" variant="ghost" onClick={onOpenFile} data-testid="open-file">
             Open
+          </Button>
+          <Button size="sm" variant="ghost" onClick={onOpenGenerator} data-testid="open-generated-tool-panel-toolbar">
+            Tool
           </Button>
           <Button size="sm" variant="ghost" onClick={onFitAll} data-testid="fit-all">
             Fit

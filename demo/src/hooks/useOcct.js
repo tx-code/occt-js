@@ -34,6 +34,7 @@ export function useOcct() {
   const runtimeRef = useRef(null);
   const runtimePromiseRef = useRef(null);
   const setImportedModels = useViewerStore((s) => s.setImportedModels);
+  const setModel = useViewerStore((s) => s.setModel);
   const setLoading = useViewerStore((s) => s.setLoading);
   const setLoadingMessage = useViewerStore((s) => s.setLoadingMessage);
 
@@ -163,5 +164,51 @@ export function useOcct() {
     }
   }, [ensureModule, setImportedModels, setLoading, setLoadingMessage]);
 
-  return { importFile, ensureModule };
+  const validateGeneratedToolSpec = useCallback(async (spec) => {
+    const occt = await ensureModule();
+    return occt.ValidateRevolvedToolSpec(spec);
+  }, [ensureModule]);
+
+  const buildGeneratedTool = useCallback(async ({
+    spec,
+    options = {},
+    label = "Generated Tool",
+  }) => {
+    setLoading(true, "Loading engine...");
+    try {
+      const occt = await ensureModule();
+
+      setLoadingMessage("Validating revolved tool...");
+      const validation = occt.ValidateRevolvedToolSpec(spec);
+      if (!validation?.ok) {
+        const error = new Error(validation?.diagnostics?.[0]?.message || "Revolved tool spec validation failed.");
+        error.diagnostics = validation?.diagnostics ?? [];
+        throw error;
+      }
+
+      setLoadingMessage("Generating revolved tool...");
+      const result = occt.BuildRevolvedTool(spec, options);
+      if (!result?.success) {
+        const error = new Error(result?.error || result?.diagnostics?.[0]?.message || "Generated tool build failed.");
+        error.diagnostics = result?.diagnostics ?? [];
+        error.result = result;
+        throw error;
+      }
+
+      setModel(result, label);
+      return {
+        validation,
+        result,
+      };
+    } finally {
+      setLoading(false);
+    }
+  }, [ensureModule, setLoading, setLoadingMessage, setModel]);
+
+  return {
+    importFile,
+    ensureModule,
+    validateGeneratedToolSpec,
+    buildGeneratedTool,
+  };
 }

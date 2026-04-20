@@ -1,5 +1,5 @@
 // demo/src/App.jsx
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useViewerStore } from "./store/viewerStore";
 import { useOcct } from "./hooks/useOcct";
 import { useViewer } from "./hooks/useViewer";
@@ -13,6 +13,7 @@ import Toolbar from "./components/Toolbar";
 import ModelTreeDrawer from "./components/ModelTreeDrawer";
 import ViewCube from "./components/ViewCube";
 import DesktopChrome from "./components/DesktopChrome";
+import GeneratedToolPanel from "./components/GeneratedToolPanel";
 import { shouldUseWindowsCustomChrome } from "./lib/desktop-runtime";
 import { getAppShellLayout } from "./lib/app-shell";
 
@@ -27,12 +28,13 @@ export default function App() {
   const canvasRef = useRef(null);
   const model = useViewerStore((s) => s.model);
   const loading = useViewerStore((s) => s.loading);
-  const { importFile } = useOcct();
+  const { importFile, validateGeneratedToolSpec, buildGeneratedTool } = useOcct();
   const viewerRefs = useViewer(canvasRef);
   const { buildScene, clearScene, fitAll, setCameraView, takeSnapshot } = viewerRefs;
   usePicking(viewerRefs);
   const fileInputRef = useRef(null);
   const sampleBootstrappedRef = useRef(false);
+  const [generatorOpen, setGeneratorOpen] = useState(false);
   const windowsDesktopChrome = shouldUseWindowsCustomChrome();
   const shellLayout = getAppShellLayout(windowsDesktopChrome);
   const {
@@ -97,11 +99,16 @@ export default function App() {
             onChange={(e) => { if (e.target.files[0]) importModelFile(e.target.files[0]); e.target.value = ""; }}
           />
 
-          <DropZone visible={!model} onFile={importModelFile} />
+          <DropZone
+            visible={!model}
+            onFile={importModelFile}
+            onOpenGenerator={() => setGeneratorOpen(true)}
+          />
           <LoadingOverlay />
           <Toolbar
             chromeIntegrated={windowsDesktopChrome}
             onOpenFile={openFile}
+            onOpenGenerator={() => setGeneratorOpen(true)}
             onFitAll={fitAll}
             onCameraView={setCameraView}
             onSetProjection={setProjectionAction}
@@ -111,6 +118,12 @@ export default function App() {
           <SelectionPanel />
           <ModelTreeDrawer />
           <ViewCube onCameraView={setCameraView} cameraRef={viewerRefs.cameraRef} />
+          <GeneratedToolPanel
+            open={generatorOpen}
+            onClose={() => setGeneratorOpen(false)}
+            validateGeneratedToolSpec={validateGeneratedToolSpec}
+            buildGeneratedTool={buildGeneratedTool}
+          />
         </div>
       </div>
     </div>
