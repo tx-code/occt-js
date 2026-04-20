@@ -2,11 +2,13 @@
 
 #include "importer-utils.hpp"
 
+#include <BRepCheck_Analyzer.hxx>
 #include <BRepBuilderAPI_MakeEdge.hxx>
 #include <BRepBuilderAPI_MakeFace.hxx>
 #include <BRepBuilderAPI_MakeWire.hxx>
 #include <BRepAdaptor_Surface.hxx>
 #include <BRepPrimAPI_MakeRevol.hxx>
+#include <BRep_Tool.hxx>
 #include <BRepTools.hxx>
 #include <GC_MakeArcOfCircle.hxx>
 #include <GC_MakeSegment.hxx>
@@ -14,7 +16,9 @@
 #include <GeomAbs_SurfaceType.hxx>
 #include <Standard_Failure.hxx>
 #include <TopAbs.hxx>
+#include <TopAbs_ShapeEnum.hxx>
 #include <TopExp.hxx>
+#include <TopExp_Explorer.hxx>
 #include <TopTools_IndexedMapOfShape.hxx>
 #include <TopTools_ListIteratorOfListOfShape.hxx>
 #include <TopoDS.hxx>
@@ -34,6 +38,7 @@
 #include <cstdint>
 #include <cmath>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 using emscripten::val;
@@ -1168,6 +1173,148 @@ OcctGeneratedToolMetadata BuildGeneratedToolMetadata(const OcctRevolvedToolSpec&
     return metadata;
 }
 
+std::string ShapeTypeToString(const TopAbs_ShapeEnum shapeType)
+{
+    switch (shapeType) {
+        case TopAbs_COMPOUND:
+            return "compound";
+        case TopAbs_COMPSOLID:
+            return "compsolid";
+        case TopAbs_SOLID:
+            return "solid";
+        case TopAbs_SHELL:
+            return "shell";
+        case TopAbs_FACE:
+            return "face";
+        case TopAbs_WIRE:
+            return "wire";
+        case TopAbs_EDGE:
+            return "edge";
+        case TopAbs_VERTEX:
+            return "vertex";
+        case TopAbs_SHAPE:
+            return "shape";
+        default:
+            return "unknown";
+    }
+}
+
+OcctGeneratedToolMeshValidation AnalyzeGeneratedToolMesh(const OcctMeshData& mesh)
+{
+    constexpr double kMeshWeldTolerance = 1e-6;
+
+    OcctGeneratedToolMeshValidation validation;
+    const size_t vertexCount = mesh.positions.size() / 3;
+    std::vector<int> weldedVertexIds(vertexCount, -1);
+    std::unordered_map<std::string, int> weldedIdsByKey;
+    weldedIdsByKey.reserve(vertexCount);
+
+    for (size_t vertexIndex = 0; vertexIndex < vertexCount; ++vertexIndex) {
+        const size_t offset = vertexIndex * 3;
+        const long long qx = std::llround(static_cast<double>(mesh.positions[offset]) / kMeshWeldTolerance);
+        const long long qy = std::llround(static_cast<double>(mesh.positions[offset + 1]) / kMeshWeldTolerance);
+        const long long qz = std::llround(static_cast<double>(mesh.positions[offset + 2]) / kMeshWeldTolerance);
+        const std::string key = std::to_string(qx) + ":" + std::to_string(qy) + ":" + std::to_string(qz);
+
+        auto [iterator, inserted] = weldedIdsByKey.emplace(key, static_cast<int>(weldedIdsByKey.size()));
+        weldedVertexIds[vertexIndex] = iterator->second;
+        if (inserted) {
+            validation.weldedVertexCount += 1;
+        }
+    }
+
+    std::unordered_map<std::string, int> edgeUseCounts;
+    edgeUseCounts.reserve(mesh.indices.size());
+    for (size_t indexOffset = 0; (indexOffset + 2) < mesh.indices.size(); indexOffset += 3) {
+        const int triangle[3] = {
+            weldedVertexIds[mesh.indices[indexOffset]],
+            weldedVertexIds[mesh.indices[indexOffset + 1]],
+            weldedVertexIds[mesh.indices[indexOffset + 2]]
+        };
+
+        if (triangle[0] == triangle[1]
+            || triangle[1] == triangle[2]
+            || triangle[2] == triangle[0]) {
+            continue;
+        }
+
+        for (int edgeIndex = 0; edgeIndex < 3; ++edgeIndex) {
+            const int left = triangle[edgeIndex];
+            const int right = triangle[(edgeIndex + 1) % 3];
+            const int minIndex = std::min(left, right);
+            const int maxIndex = std::max(left, right);
+            const std::string edgeKey = std::to_string(minIndex) + ":" + std::to_string(maxIndex);
+            edgeUseCounts[edgeKey] += 1;
+        }
+    }
+
+    for (const auto& [edgeKey, count] : edgeUseCounts) {
+        (void)edgeKey;
+        if (count == 1) {
+            validation.boundaryEdgeCount += 1;
+        } else if (count > 2) {
+            validation.nonManifoldEdgeCount += 1;
+        }
+    }
+
+    validation.isManifold = validation.nonManifoldEdgeCount == 0;
+    validation.isWatertight = validation.boundaryEdgeCount == 0 && validation.isManifold;
+    return validation;
+}
+
+OcctGeneratedToolShapeValidation BuildGeneratedToolShapeValidation(
+    const TopoDS_Shape& shape,
+    const OcctMeshData& mesh)
+{
+    OcctGeneratedToolShapeValidation validation;
+    validation.exact.shapeType = ShapeTypeToString(shape.ShapeType());
+    validation.exact.isValid = BRepCheck_Analyzer(shape).IsValid();
+
+    TopTools_IndexedMapOfShape solidMap;
+    TopTools_IndexedMapOfShape shellMap;
+    TopTools_IndexedMapOfShape faceMap;
+    TopTools_IndexedMapOfShape edgeMap;
+    TopTools_IndexedMapOfShape vertexMap;
+    TopExp::MapShapes(shape, TopAbs_SOLID, solidMap);
+    TopExp::MapShapes(shape, TopAbs_SHELL, shellMap);
+    TopExp::MapShapes(shape, TopAbs_FACE, faceMap);
+    TopExp::MapShapes(shape, TopAbs_EDGE, edgeMap);
+    TopExp::MapShapes(shape, TopAbs_VERTEX, vertexMap);
+
+    validation.exact.solidCount = solidMap.Extent();
+    validation.exact.shellCount = shellMap.Extent();
+    validation.exact.faceCount = faceMap.Extent();
+    validation.exact.edgeCount = edgeMap.Extent();
+    validation.exact.vertexCount = vertexMap.Extent();
+    validation.exact.isSolid = validation.exact.solidCount > 0;
+
+    bool hasClosableTopology = false;
+    bool allClosed = true;
+    for (TopExp_Explorer explorer(shape, TopAbs_SOLID); explorer.More(); explorer.Next()) {
+        hasClosableTopology = true;
+        bool solidHasShell = false;
+        for (TopExp_Explorer shellExplorer(explorer.Current(), TopAbs_SHELL); shellExplorer.More(); shellExplorer.Next()) {
+            solidHasShell = true;
+            if (!BRep_Tool::IsClosed(shellExplorer.Current())) {
+                allClosed = false;
+            }
+        }
+        if (!solidHasShell) {
+            allClosed = false;
+        }
+    }
+    for (TopExp_Explorer explorer(shape, TopAbs_SHELL, TopAbs_SOLID); explorer.More(); explorer.Next()) {
+        hasClosableTopology = true;
+        if (!BRep_Tool::IsClosed(explorer.Current())) {
+            allClosed = false;
+        }
+    }
+    validation.exact.isClosed = hasClosableTopology && allClosed;
+
+    validation.mesh = AnalyzeGeneratedToolMesh(mesh);
+    return validation;
+}
+
 void PopulateGeneratedScene(
     const OcctMeshData& mesh,
     const OcctRevolvedToolSpec& spec,
@@ -1320,6 +1467,8 @@ OcctRevolvedToolBuildResult BuildRevolvedTool(const val& jsSpec, const val& jsOp
         mesh.name = "Generated Revolved Tool";
         mesh.color = NeutralToolColor();
         ApplyGeneratedToolFaceColors(mesh, faceBindings);
+        result.generatedTool.shapeValidation = BuildGeneratedToolShapeValidation(revolvedShape, mesh);
+        result.generatedTool.hasShapeValidation = true;
 
         PopulateGeneratedScene(mesh, spec, result.scene);
         result.exactShape = revolvedShape;

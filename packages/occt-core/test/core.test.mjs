@@ -251,6 +251,26 @@ describe("normalizeOcctResult", () => {
         hasStableFaceBindings: true,
         closureMode: "explicit",
         closure: "explicit",
+        shapeValidation: {
+          exact: {
+            isValid: true,
+            isClosed: true,
+            isSolid: true,
+            shapeType: "solid",
+            solidCount: 1,
+            shellCount: 1,
+            faceCount: 1,
+            edgeCount: 0,
+            vertexCount: 0,
+          },
+          mesh: {
+            isWatertight: true,
+            isManifold: true,
+            weldedVertexCount: 3,
+            boundaryEdgeCount: 0,
+            nonManifoldEdgeCount: 0,
+          },
+        },
         segments: [{ index: 0, kind: "line", id: "tool-body", tag: "cutting" }],
         faceBindings: [{
           geometryIndex: 0,
@@ -271,6 +291,8 @@ describe("normalizeOcctResult", () => {
     assert.equal(result.generatedTool.segments[0].tag, "cutting");
     assert.equal(result.generatedTool.faceBindings[0].geometryId, "geo_0");
     assert.equal(result.generatedTool.faceBindings[0].segmentId, "tool-body");
+    assert.equal(result.generatedTool.shapeValidation.exact.isClosed, true);
+    assert.equal(result.generatedTool.shapeValidation.mesh.isWatertight, true);
   });
 
   it("keeps unit metadata absent when the raw payload omits it", () => {

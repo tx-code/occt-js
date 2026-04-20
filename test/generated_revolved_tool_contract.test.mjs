@@ -189,6 +189,35 @@ function analyzeWeldedMeshTopology(geometry, tolerance = 1e-6) {
   };
 }
 
+function assertGeneratedToolShapeValidation(result, label) {
+  const geometry = result.geometries[0];
+  const validation = result.generatedTool?.shapeValidation;
+  assert.ok(validation && typeof validation === "object", `${label}: shapeValidation should be present`);
+  assert.ok(validation.exact && typeof validation.exact === "object", `${label}: exact validation should be present`);
+  assert.ok(validation.mesh && typeof validation.mesh === "object", `${label}: mesh validation should be present`);
+
+  const welded = analyzeWeldedMeshTopology(geometry);
+  assert.equal(validation.mesh.weldedVertexCount, welded.weldedVertexCount, `${label}: welded vertex count parity`);
+  assert.equal(validation.mesh.boundaryEdgeCount, welded.boundaryEdgeCount, `${label}: boundary edge count parity`);
+  assert.equal(validation.mesh.nonManifoldEdgeCount, welded.nonManifoldEdgeCount, `${label}: non-manifold edge count parity`);
+  assert.equal(validation.mesh.isManifold, welded.nonManifoldEdgeCount === 0, `${label}: isManifold parity`);
+  assert.equal(
+    validation.mesh.isWatertight,
+    welded.boundaryEdgeCount === 0 && welded.nonManifoldEdgeCount === 0,
+    `${label}: isWatertight parity`,
+  );
+
+  assert.equal(validation.exact.isValid, true, `${label}: exact shape should validate successfully`);
+  assert.equal(validation.exact.isClosed, true, `${label}: exact shape should be closed`);
+  assert.equal(validation.exact.isSolid, true, `${label}: exact shape should contain at least one solid`);
+  assert.equal(typeof validation.exact.shapeType, "string", `${label}: exact shape type should be present`);
+  assert.ok(validation.exact.shapeType.length > 0, `${label}: exact shape type should not be empty`);
+  assert.ok(validation.exact.solidCount >= 1, `${label}: exact shape should expose at least one solid`);
+  assert.equal(validation.exact.faceCount, geometry.faces.length, `${label}: face count parity`);
+  assert.equal(validation.exact.edgeCount, geometry.edges.length, `${label}: edge count parity`);
+  assert.equal(validation.exact.vertexCount, geometry.vertices.length, `${label}: vertex count parity`);
+}
+
 function roundColor(color) {
   return {
     r: Number(color.r.toFixed(6)),
@@ -265,6 +294,14 @@ test("BuildRevolvedTool emits a welded-manifold mesh for the endmill-like full r
   const welded = analyzeWeldedMeshTopology(result.geometries[0]);
   assert.equal(welded.boundaryEdgeCount, 0, "endmill-like welded manifold: mesh should not expose free boundary edges");
   assert.equal(welded.nonManifoldEdgeCount, 0, "endmill-like welded manifold: mesh should not expose non-manifold welded edges");
+});
+
+test("BuildRevolvedTool reports exact and mesh validation metadata for the full revolve", async () => {
+  const module = await createModule();
+  const result = module.BuildRevolvedTool(createEndmillLikeSpec(), {});
+
+  assertCanonicalGeneratedResult(result, "endmill-like validation metadata");
+  assertGeneratedToolShapeValidation(result, "endmill-like validation metadata");
 });
 
 test("BuildRevolvedTool builds a drill-like partial revolve and keeps topology invariants intact", async () => {
@@ -367,6 +404,14 @@ test("BuildRevolvedTool reports runtime-owned cap bindings for partial revolves"
   assert.ok(endCapKey, "partial revolve face bindings: end cap should carry a deterministic color");
   assert.notEqual(startCapKey, endCapKey, "partial revolve face bindings: start/end caps should remain visually distinguishable");
   assert.notEqual(startCapKey, closureKey, "partial revolve face bindings: cap appearance should stay distinct from closure appearance");
+});
+
+test("BuildRevolvedTool reports exact and mesh validation metadata for the partial revolve", async () => {
+  const module = await createModule();
+  const result = module.BuildRevolvedTool(createDrillLikePartialSpec(), {});
+
+  assertCanonicalGeneratedResult(result, "partial revolve validation metadata");
+  assertGeneratedToolShapeValidation(result, "partial revolve validation metadata");
 });
 
 test("BuildRevolvedTool preserves explicit diagnostics for validation-passing specs that OCCT cannot build", async () => {

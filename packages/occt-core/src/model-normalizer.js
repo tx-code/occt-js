@@ -478,6 +478,30 @@ function normalizeGeneratedToolMetadata(rawGeneratedTool, geometries) {
     segments,
   };
 
+  if (rawGeneratedTool.shapeValidation && typeof rawGeneratedTool.shapeValidation === "object") {
+    const rawValidation = rawGeneratedTool.shapeValidation;
+    metadata.shapeValidation = {
+      exact: {
+        isValid: rawValidation?.exact?.isValid === true,
+        isClosed: rawValidation?.exact?.isClosed === true,
+        isSolid: rawValidation?.exact?.isSolid === true,
+        shapeType: typeof rawValidation?.exact?.shapeType === "string" ? rawValidation.exact.shapeType : "unknown",
+        solidCount: Number.isFinite(rawValidation?.exact?.solidCount) ? rawValidation.exact.solidCount : 0,
+        shellCount: Number.isFinite(rawValidation?.exact?.shellCount) ? rawValidation.exact.shellCount : 0,
+        faceCount: Number.isFinite(rawValidation?.exact?.faceCount) ? rawValidation.exact.faceCount : 0,
+        edgeCount: Number.isFinite(rawValidation?.exact?.edgeCount) ? rawValidation.exact.edgeCount : 0,
+        vertexCount: Number.isFinite(rawValidation?.exact?.vertexCount) ? rawValidation.exact.vertexCount : 0,
+      },
+      mesh: {
+        isWatertight: rawValidation?.mesh?.isWatertight === true,
+        isManifold: rawValidation?.mesh?.isManifold === true,
+        weldedVertexCount: Number.isFinite(rawValidation?.mesh?.weldedVertexCount) ? rawValidation.mesh.weldedVertexCount : 0,
+        boundaryEdgeCount: Number.isFinite(rawValidation?.mesh?.boundaryEdgeCount) ? rawValidation.mesh.boundaryEdgeCount : 0,
+        nonManifoldEdgeCount: Number.isFinite(rawValidation?.mesh?.nonManifoldEdgeCount) ? rawValidation.mesh.nonManifoldEdgeCount : 0,
+      },
+    };
+  }
+
   if (Array.isArray(rawGeneratedTool.faceBindings)) {
     metadata.faceBindings = rawGeneratedTool.faceBindings.map((binding) => {
       const geometryIndex = Number.isFinite(binding?.geometryIndex) ? binding.geometryIndex : -1;

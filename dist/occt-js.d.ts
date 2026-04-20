@@ -422,6 +422,31 @@ export interface OcctJSGeneratedToolFaceBinding {
     segmentTag?: string;
 }
 
+export interface OcctJSGeneratedToolExactShapeValidation {
+    isValid: boolean;
+    isClosed: boolean;
+    isSolid: boolean;
+    shapeType: string;
+    solidCount: number;
+    shellCount: number;
+    faceCount: number;
+    edgeCount: number;
+    vertexCount: number;
+}
+
+export interface OcctJSGeneratedToolMeshValidation {
+    isWatertight: boolean;
+    isManifold: boolean;
+    weldedVertexCount: number;
+    boundaryEdgeCount: number;
+    nonManifoldEdgeCount: number;
+}
+
+export interface OcctJSGeneratedToolShapeValidation {
+    exact: OcctJSGeneratedToolExactShapeValidation;
+    mesh: OcctJSGeneratedToolMeshValidation;
+}
+
 export interface OcctJSGeneratedToolMetadata {
     version: 1;
     units: OcctJSRevolvedToolUnits;
@@ -431,6 +456,7 @@ export interface OcctJSGeneratedToolMetadata {
     segmentCount: number;
     hasStableFaceBindings: boolean;
     segments: OcctJSGeneratedToolSegmentDescriptor[];
+    shapeValidation?: OcctJSGeneratedToolShapeValidation;
     faceBindings?: OcctJSGeneratedToolFaceBinding[];
 }
 

@@ -353,6 +353,31 @@ struct OcctGeneratedToolFaceBinding {
     bool hasSegmentTag = false;
 };
 
+struct OcctGeneratedToolExactShapeValidation {
+    bool isValid = false;
+    bool isClosed = false;
+    bool isSolid = false;
+    std::string shapeType;
+    int solidCount = 0;
+    int shellCount = 0;
+    int faceCount = 0;
+    int edgeCount = 0;
+    int vertexCount = 0;
+};
+
+struct OcctGeneratedToolMeshValidation {
+    bool isWatertight = false;
+    bool isManifold = false;
+    int weldedVertexCount = 0;
+    int boundaryEdgeCount = 0;
+    int nonManifoldEdgeCount = 0;
+};
+
+struct OcctGeneratedToolShapeValidation {
+    OcctGeneratedToolExactShapeValidation exact;
+    OcctGeneratedToolMeshValidation mesh;
+};
+
 struct OcctGeneratedToolMetadata {
     int version = 1;
     std::string units;
@@ -361,8 +386,10 @@ struct OcctGeneratedToolMetadata {
     double angleDeg = 360.0;
     int segmentCount = 0;
     bool hasStableFaceBindings = false;
+    bool hasShapeValidation = false;
     std::vector<OcctGeneratedToolSegmentDescriptor> segments;
     std::vector<OcctGeneratedToolFaceBinding> faceBindings;
+    OcctGeneratedToolShapeValidation shapeValidation;
 };
 
 struct OcctRevolvedToolBuildResult {

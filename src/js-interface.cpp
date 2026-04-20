@@ -891,6 +891,40 @@ val GeneratedToolFaceBindingToVal(const OcctGeneratedToolFaceBinding& binding)
     return obj;
 }
 
+val GeneratedToolExactShapeValidationToVal(const OcctGeneratedToolExactShapeValidation& validation)
+{
+    val obj = val::object();
+    obj.set("isValid", validation.isValid);
+    obj.set("isClosed", validation.isClosed);
+    obj.set("isSolid", validation.isSolid);
+    obj.set("shapeType", validation.shapeType);
+    obj.set("solidCount", validation.solidCount);
+    obj.set("shellCount", validation.shellCount);
+    obj.set("faceCount", validation.faceCount);
+    obj.set("edgeCount", validation.edgeCount);
+    obj.set("vertexCount", validation.vertexCount);
+    return obj;
+}
+
+val GeneratedToolMeshValidationToVal(const OcctGeneratedToolMeshValidation& validation)
+{
+    val obj = val::object();
+    obj.set("isWatertight", validation.isWatertight);
+    obj.set("isManifold", validation.isManifold);
+    obj.set("weldedVertexCount", validation.weldedVertexCount);
+    obj.set("boundaryEdgeCount", validation.boundaryEdgeCount);
+    obj.set("nonManifoldEdgeCount", validation.nonManifoldEdgeCount);
+    return obj;
+}
+
+val GeneratedToolShapeValidationToVal(const OcctGeneratedToolShapeValidation& validation)
+{
+    val obj = val::object();
+    obj.set("exact", GeneratedToolExactShapeValidationToVal(validation.exact));
+    obj.set("mesh", GeneratedToolMeshValidationToVal(validation.mesh));
+    return obj;
+}
+
 val GeneratedToolMetadataToVal(const OcctGeneratedToolMetadata& metadata)
 {
     val obj = val::object();
@@ -906,6 +940,9 @@ val GeneratedToolMetadataToVal(const OcctGeneratedToolMetadata& metadata)
         segments.call<void>("push", GeneratedToolSegmentDescriptorToVal(segment));
     }
     obj.set("segments", segments);
+    if (metadata.hasShapeValidation) {
+        obj.set("shapeValidation", GeneratedToolShapeValidationToVal(metadata.shapeValidation));
+    }
     if (!metadata.faceBindings.empty()) {
         val faceBindings = val::array();
         for (const auto& faceBinding : metadata.faceBindings) {

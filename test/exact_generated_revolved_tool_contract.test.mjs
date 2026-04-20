@@ -63,6 +63,9 @@ function assertCanonicalExactGeneratedPayload(result, label) {
   assert.equal(result?.generatedTool?.hasStableFaceBindings, true, `${label}: stable bindings should be available`);
   assert.ok(Array.isArray(result?.generatedTool?.faceBindings), `${label}: faceBindings should be an array`);
   assert.ok(result.generatedTool.faceBindings.length > 0, `${label}: faceBindings should not be empty`);
+  assert.ok(result?.generatedTool?.shapeValidation, `${label}: shape validation should be available`);
+  assert.equal(result.generatedTool.shapeValidation.exact.isValid, true, `${label}: exact shape validation should pass`);
+  assert.equal(result.generatedTool.shapeValidation.mesh.isWatertight, true, `${label}: generated mesh should be watertight`);
 }
 
 function findRepresentativeFace(module, result, expectedFamily) {
