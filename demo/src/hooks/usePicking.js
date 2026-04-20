@@ -115,6 +115,13 @@ function getSourceMesh(mesh) {
   return mesh?.sourceMesh || mesh;
 }
 
+function resolveGeometryIdForMesh(mesh) {
+  const sourceMesh = getSourceMesh(mesh);
+  const metadata = (mesh?.metadata && typeof mesh.metadata === "object" ? mesh.metadata : null)
+    || (sourceMesh?.metadata && typeof sourceMesh.metadata === "object" ? sourceMesh.metadata : null);
+  return typeof metadata?.occt?.geometryId === "string" ? metadata.occt.geometryId : null;
+}
+
 // ---------------------------------------------------------------------------
 // Highlight builders (all in WORLD SPACE)
 // ---------------------------------------------------------------------------
@@ -471,12 +478,20 @@ function buildFaceDetail(geo, faceId, meshUniqueId) {
   if (!face) return null;
   const info = {
     faceId,
+    geometryId: geo?.id,
     triangles: face.indexCount / 3,
     boundaryEdges: face.edgeIndices || [],
     color: face.color || geo.color || null,
     adjacentFaces: face.adjacentFaces || [],
   };
-  return { mode: "face", id: `face:${meshUniqueId}:${faceId}`, meshUniqueId, info };
+  return {
+    mode: "face",
+    id: `face:${meshUniqueId}:${faceId}`,
+    meshUniqueId,
+    geometryId: geo?.id,
+    faceId,
+    info,
+  };
 }
 
 function buildEdgeDetail(geo, edgeIndex, meshUniqueId) {
@@ -517,6 +532,7 @@ export function usePicking(viewerRefs) {
   const hoverDirtyRef = useRef(false);
   const clearHoverRef = useRef(null); // set when setup() runs
   const vertexPreviewRef = useRef([]);
+  const applySelectionRequestRef = useRef(null);
 
   const clearAllSelections = useCallback(() => {
     for (const entry of selectionSetRef.current.values()) {
@@ -619,6 +635,84 @@ export function usePicking(viewerRefs) {
         pushToStore();
       }
 
+      function addFaceSelection(pickedMesh, geo, faceId) {
+        const key = `face:${pickedMesh.uniqueId}:${faceId}`;
+        if (selectionSetRef.current.has(key)) {
+          return key;
+        }
+
+        const disposables = createFaceHighlight(
+          viewerRefs,
+          pickedMesh,
+          geo,
+          faceId,
+          BABYLON,
+          faceTintStateRef.current,
+        );
+        const detail = buildFaceDetail(geo, faceId, pickedMesh.uniqueId);
+        selectionSetRef.current.set(key, {
+          mode: "face",
+          id: key,
+          meshUniqueId: pickedMesh.uniqueId,
+          disposables,
+          detail,
+        });
+        return key;
+      }
+
+      function applyProgrammaticSelectionRequest(request) {
+        if (!request || request.kind !== "generated-tool-legend") {
+          return;
+        }
+
+        clearHover();
+
+        if (request.mode === "clear") {
+          clearAll();
+          return;
+        }
+
+        const faceRefs = Array.isArray(request.faceRefs) ? request.faceRefs : [];
+        if (request.mode !== "toggle") {
+          clearAll();
+        }
+
+        for (const faceRef of faceRefs) {
+          if (typeof faceRef?.geometryId !== "string" || !Number.isFinite(faceRef?.faceId)) {
+            continue;
+          }
+
+          const matchingMeshes = (meshesRef.current ?? []).filter((mesh) => {
+            const geometryId = resolveGeometryIdForMesh(mesh);
+            if (geometryId === faceRef.geometryId) {
+              return true;
+            }
+            const sourceMesh = getSourceMesh(mesh);
+            return meshGeoMapRef.current.get(sourceMesh)?.id === faceRef.geometryId;
+          });
+
+          for (const pickedMesh of matchingMeshes) {
+            const sourceMesh = getSourceMesh(pickedMesh);
+            const geo = meshGeoMapRef.current.get(sourceMesh);
+            if (!geo) {
+              continue;
+            }
+
+            const key = `face:${pickedMesh.uniqueId}:${faceRef.faceId}`;
+            if (request.mode === "toggle" && selectionSetRef.current.has(key)) {
+              removeSelection(key);
+              continue;
+            }
+
+            addFaceSelection(pickedMesh, geo, faceRef.faceId);
+          }
+        }
+
+        pushToStore();
+      }
+
+      applySelectionRequestRef.current = applyProgrammaticSelectionRequest;
+
       function handleFacePick(pickResult, ctrlKey) {
         const pickedMesh = pickResult.pickedMesh;
         if (!pickedMesh) return;
@@ -636,29 +730,11 @@ export function usePicking(viewerRefs) {
           if (selectionSetRef.current.has(key)) {
             removeSelection(key);
           } else {
-            const disposables = createFaceHighlight(
-              viewerRefs,
-              pickedMesh,
-              geo,
-              faceId,
-              BABYLON,
-              faceTintStateRef.current,
-            );
-            const detail = buildFaceDetail(geo, faceId, pickedMesh.uniqueId);
-            selectionSetRef.current.set(key, { mode: "face", id: key, meshUniqueId: pickedMesh.uniqueId, disposables, detail });
+            addFaceSelection(pickedMesh, geo, faceId);
           }
         } else {
           clearAll();
-          const disposables = createFaceHighlight(
-            viewerRefs,
-            pickedMesh,
-            geo,
-            faceId,
-            BABYLON,
-            faceTintStateRef.current,
-          );
-          const detail = buildFaceDetail(geo, faceId, pickedMesh.uniqueId);
-          selectionSetRef.current.set(key, { mode: "face", id: key, meshUniqueId: pickedMesh.uniqueId, disposables, detail });
+          addFaceSelection(pickedMesh, geo, faceId);
         }
         pushToStore();
       }
@@ -940,6 +1016,14 @@ export function usePicking(viewerRefs) {
       }
     );
 
+    const unsubSelectionRequest = useViewerStore.subscribe(
+      (state) => state.selectionRequestSeq,
+      () => {
+        const request = useViewerStore.getState().selectionRequest;
+        applySelectionRequestRef.current?.(request);
+      }
+    );
+
     return () => {
       clearInterval(intervalId);
       if (observer && sceneRef.current) {
@@ -963,7 +1047,9 @@ export function usePicking(viewerRefs) {
       }
       vertexPreviewRef.current = [];
       faceTintStateRef.current = new WeakMap();
+      applySelectionRequestRef.current = null;
       unsub();
+      unsubSelectionRequest();
     };
   }, [viewerRefs, clearAllSelections]);
 

@@ -208,6 +208,17 @@ test("generated tool MVP can build a preset directly in the viewer", async ({ pa
   await expect(page.locator("[data-testid='generated-tool-legend']")).toContainText("Cutting");
   await expect(page.locator("[data-testid='generated-tool-legend']")).toContainText("Closure");
 
+  const cornerLegend = page.getByRole("button", { name: /^Corner$/i });
+  await cornerLegend.click();
+  await expect(cornerLegend).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("[data-testid='selection-panel']")).toBeVisible({ timeout: 5000 });
+
+  const canvas = page.locator("[data-testid='render-canvas']");
+  const box = await canvas.boundingBox();
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await expect(page.locator("[data-testid='selection-panel']")).toBeVisible({ timeout: 5000 });
+  await expect(page.locator("[data-testid='generated-tool-legend'] button[aria-pressed='true']")).toHaveCount(1);
+
   const modelSummary = await page.evaluate(() => {
     const scene = window.BABYLON?.EngineStore?.LastCreatedScene;
     const visibleMesh = scene?.meshes?.find((candidate) =>

@@ -24,6 +24,8 @@ export const useViewerStore = create(subscribeWithSelector((set, get) => ({
   pickMode: "face",
   selectedItems: [],
   selectedDetail: null, // { mode, items: [{ id, meshUniqueId, info: {...} }] } or null
+  selectionRequest: null,
+  selectionRequestSeq: 0,
 
   // Actions
   setModel: (model, fileName) => set({
@@ -80,6 +82,10 @@ export const useViewerStore = create(subscribeWithSelector((set, get) => ({
   toggleTheme: () => set((s) => ({ theme: s.theme === "dark" ? "light" : "dark" })),
   setSelectedItems: (items) => set({ selectedItems: items }),
   setSelectedDetail: (detail) => set({ selectedDetail: detail }),
+  requestSelection: (selectionRequest) => set((state) => ({
+    selectionRequest,
+    selectionRequestSeq: state.selectionRequestSeq + 1,
+  })),
   reset: () => set({
     model: null,
     rawModel: null,
@@ -89,5 +95,7 @@ export const useViewerStore = create(subscribeWithSelector((set, get) => ({
     loadingMessage: "",
     selectedItems: [],
     selectedDetail: null,
+    selectionRequest: null,
+    selectionRequestSeq: 0,
   }),
 })));

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildGeneratedToolLegend } from "../src/lib/generated-tool-legend.js";
+import { buildGeneratedToolLegend, resolveGeneratedToolLegendActiveKeys } from "../src/lib/generated-tool-legend.js";
 
 test("buildGeneratedToolLegend groups normalized generated-tool face bindings into semantic legend rows", () => {
   const legend = buildGeneratedToolLegend({
@@ -53,10 +53,46 @@ test("buildGeneratedToolLegend groups normalized generated-tool face bindings in
   assert.equal(legend.entries.length, 2);
   assert.equal(legend.entries[0].label, "Cutting");
   assert.equal(legend.entries[0].faceCount, 2);
+  assert.deepEqual(legend.entries[0].faceRefs, [{ geometryId: "geo_0", faceId: 1 }, { geometryId: "geo_0", faceId: 2 }]);
   assert.equal(legend.entries[1].label, "Closure");
   assert.equal(legend.entries[1].faceCount, 1);
 });
 
 test("buildGeneratedToolLegend returns null when generated-tool metadata is absent", () => {
   assert.equal(buildGeneratedToolLegend({ sourceFormat: "step" }), null);
+});
+
+test("resolveGeneratedToolLegendActiveKeys marks rows that correspond to selected faces", () => {
+  const legend = buildGeneratedToolLegend({
+    sourceFormat: "generated-revolved-tool",
+    geometries: [{
+      id: "geo_0",
+      faces: [
+        { id: 1, color: [0.14, 0.61, 0.72, 1] },
+        { id: 2, color: [0.45, 0.49, 0.54, 1] },
+      ],
+    }],
+    generatedTool: {
+      units: "mm",
+      angleDeg: 360,
+      closure: "explicit",
+      faceBindings: [
+        { geometryId: "geo_0", geometryIndex: 0, faceId: 1, systemRole: "profile", segmentTag: "cutting" },
+        { geometryId: "geo_0", geometryIndex: 0, faceId: 2, systemRole: "closure" },
+      ],
+    },
+  });
+
+  const activeKeys = resolveGeneratedToolLegendActiveKeys(legend, {
+    mode: "face",
+    items: [{
+      mode: "face",
+      geometryId: "geo_0",
+      faceId: 2,
+      info: { faceId: 2 },
+    }],
+  });
+
+  assert.equal(activeKeys.size, 1);
+  assert.equal(activeKeys.has(legend.entries[1].key), true);
 });

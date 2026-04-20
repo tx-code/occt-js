@@ -107,13 +107,6 @@ function resolveLegendEntry(binding, color) {
     };
   }
 
-  if (segmentId) {
-    detailParts.push(`id ${segmentId}`);
-  }
-  if (segmentIndex !== null) {
-    detailParts.push(`segment ${segmentIndex + 1}`);
-  }
-
   return {
     key: `${role}|${tag}|${segmentId}|${segmentIndex ?? ""}|${colorKey(color)}`,
     label: ROLE_LABEL[role] ?? titleCaseToken(role),
@@ -157,10 +150,20 @@ export function buildGeneratedToolLegend(model) {
         ...descriptor,
         color,
         faceCount: 0,
+        faceRefs: [],
       });
     }
 
-    entries.get(descriptor.key).faceCount += 1;
+    const entry = entries.get(descriptor.key);
+    entry.faceCount += 1;
+    const geometryId = geometry?.id ?? binding?.geometryId;
+    const faceKey = `${geometryId ?? ""}|${binding.faceId}`;
+    if (!entry.faceRefs.some((faceRef) => `${faceRef.geometryId ?? ""}|${faceRef.faceId}` === faceKey)) {
+      entry.faceRefs.push({
+        geometryId,
+        faceId: binding.faceId,
+      });
+    }
   }
 
   const resolvedEntries = Array.from(entries.values()).sort(compareLegendEntries);
@@ -174,4 +177,28 @@ export function buildGeneratedToolLegend(model) {
     closure: typeof metadata.closure === "string" ? titleCaseToken(metadata.closure) : null,
     entries: resolvedEntries,
   };
+}
+
+export function resolveGeneratedToolLegendActiveKeys(legend, selectedDetail) {
+  if (!legend || !Array.isArray(legend.entries) || !selectedDetail || !Array.isArray(selectedDetail.items)) {
+    return new Set();
+  }
+
+  const selectedFaceRefs = new Set(
+    selectedDetail.items
+      .filter((item) => item?.mode === "face" && typeof item?.geometryId === "string" && Number.isFinite(item?.faceId))
+      .map((item) => `${item.geometryId}|${item.faceId}`),
+  );
+
+  if (selectedFaceRefs.size === 0) {
+    return new Set();
+  }
+
+  const activeKeys = new Set();
+  for (const entry of legend.entries) {
+    if ((entry.faceRefs ?? []).some((faceRef) => selectedFaceRefs.has(`${faceRef.geometryId}|${faceRef.faceId}`))) {
+      activeKeys.add(entry.key);
+    }
+  }
+  return activeKeys;
 }
