@@ -18,6 +18,52 @@ const screenshotsDir = path.join(artifactsDir, "screenshots");
 const specsDir = path.join(artifactsDir, "specs");
 const defaultBaseUrl = process.env.OCCT_JS_ARTIFACT_BASE_URL ?? "http://127.0.0.1:4176";
 const screenshotViewport = { width: 1117, height: 768 };
+const screenshotVariants = [
+  {
+    id: "hero",
+    fileName: (presetId) => `${presetId}.png`,
+    label: "Perspective iso",
+    prepare: async (page) => {
+      await page.click("[data-testid='proj-persp']");
+      await page.click("[data-testid='fit-all']");
+      await page.click("[data-testid='view-iso']");
+      await page.waitForTimeout(900);
+    },
+  },
+  {
+    id: "front",
+    fileName: (presetId) => `${presetId}-front.png`,
+    label: "Perspective front",
+    prepare: async (page) => {
+      await page.click("[data-testid='proj-persp']");
+      await page.click("[data-testid='fit-all']");
+      await page.click("[data-testid='view-front']");
+      await page.waitForTimeout(900);
+    },
+  },
+  {
+    id: "right-ortho",
+    fileName: (presetId) => `${presetId}-right-ortho.png`,
+    label: "Orthographic right",
+    prepare: async (page) => {
+      await page.click("[data-testid='proj-ortho']");
+      await page.click("[data-testid='fit-all']");
+      await page.click("[data-testid='view-right']");
+      await page.waitForTimeout(900);
+    },
+  },
+  {
+    id: "top-ortho",
+    fileName: (presetId) => `${presetId}-top-ortho.png`,
+    label: "Orthographic top",
+    prepare: async (page) => {
+      await page.click("[data-testid='proj-ortho']");
+      await page.click("[data-testid='fit-all']");
+      await page.click("[data-testid='view-top']");
+      await page.waitForTimeout(900);
+    },
+  },
+];
 
 function isViewerHtml(html) {
   return typeof html === "string" && html.includes("<title>occt-js Viewer</title>");
@@ -117,8 +163,23 @@ async function terminateSpawnedServer(server) {
   server.child.stderr?.destroy();
 }
 
-function screenshotPathForPreset(presetId) {
-  return path.join(screenshotsDir, `${presetId}.png`);
+function screenshotPathForVariant(presetId, fileName) {
+  return path.join(screenshotsDir, fileName(presetId));
+}
+
+async function captureScreenshotVariant(page, presetId, variant) {
+  await variant.prepare(page);
+  const screenshotPath = screenshotPathForVariant(presetId, variant.fileName);
+  await page.screenshot({
+    path: screenshotPath,
+    type: "png",
+  });
+
+  return {
+    id: variant.id,
+    label: variant.label,
+    path: `screenshots/${path.basename(screenshotPath)}`,
+  };
 }
 
 async function capturePreset(page, baseUrl, preset) {
@@ -129,19 +190,24 @@ async function capturePreset(page, baseUrl, preset) {
   await page.waitForSelector("[data-testid='toolbar']", { state: "visible", timeout: 30_000 });
   await page.waitForSelector("[data-testid='generated-tool-legend']", { state: "visible", timeout: 30_000 });
   await page.waitForTimeout(1200);
+  const screenshots = [];
+  for (const variant of screenshotVariants) {
+    screenshots.push(await captureScreenshotVariant(page, preset.id, variant));
+  }
 
-  await page.screenshot({
-    path: screenshotPathForPreset(preset.id),
-    type: "png",
-  });
-
-  if (preset.id === "flat-endmill") {
-    const cornerLegend = page.getByRole("button", { name: /^Corner$/i });
-    await cornerLegend.click();
-    await page.waitForTimeout(500);
+  const firstLegendEntry = page.locator("[data-testid='generated-tool-legend-entry-0']");
+  if (await firstLegendEntry.count()) {
+    await firstLegendEntry.first().click();
+    await page.waitForTimeout(600);
+    const detailScreenshotPath = path.join(screenshotsDir, `${preset.id}-semantic-active.png`);
     await page.screenshot({
-      path: path.join(screenshotsDir, "flat-endmill-legend-active.png"),
+      path: detailScreenshotPath,
       type: "png",
+    });
+    screenshots.push({
+      id: "semantic-active",
+      label: "Semantic face highlight",
+      path: `screenshots/${path.basename(detailScreenshotPath)}`,
     });
   }
 
@@ -171,7 +237,10 @@ async function capturePreset(page, baseUrl, preset) {
         meshes: visibleMeshes,
       },
     };
-  });
+  }).then((summary) => ({
+    ...summary,
+    screenshots,
+  }));
 }
 
 async function writePresetSpecs() {
@@ -188,7 +257,8 @@ async function writeManifest(baseUrl, presets) {
     presets: presets.map((preset) => ({
       presetId: preset.id,
       fileName: preset.fileName,
-      screenshot: `screenshots/${preset.id}.png`,
+      screenshot: preset.screenshots.find((entry) => entry.id === "hero")?.path ?? `screenshots/${preset.id}.png`,
+      screenshots: preset.screenshots,
       spec: `specs/${preset.id}.json`,
       statsText: preset.statsText,
       legendText: preset.legendText,

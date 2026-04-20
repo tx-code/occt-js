@@ -1,4 +1,4 @@
-import { buildGeneratedToolDemoSpec } from "./generated-tool-spec-builder";
+import { buildGeneratedToolDemoSpec } from "./generated-tool-spec-builder.js";
 
 export const GENERATED_TOOL_PRESETS = [
   {
