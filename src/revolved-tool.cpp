@@ -763,8 +763,20 @@ bool IsAxisPoint(const std::array<double, 2>& point)
 
 std::string InferSegmentSystemRole(
     const std::array<double, 2>& start,
-    const std::array<double, 2>& end)
+    const std::array<double, 2>& end,
+    const OcctRevolvedToolSegment* segment = nullptr)
 {
+    if (segment != nullptr && segment->hasTag) {
+        const std::string tag = ToLowerAscii(segment->tag);
+        if (tag == "closure") {
+            return "closure";
+        }
+        if (tag == "axis") {
+            return "axis";
+        }
+        return "profile";
+    }
+
     const bool startOnAxis = IsAxisPoint(start);
     const bool endOnAxis = IsAxisPoint(end);
     if (startOnAxis && endOnAxis) {
@@ -893,7 +905,7 @@ bool TryBuildProfileWire(const OcctRevolvedToolSpec& spec, RevolvedProfileWireBu
                 edge,
                 currentPoint,
                 segment.end,
-                InferSegmentSystemRole(currentPoint, segment.end),
+                InferSegmentSystemRole(currentPoint, segment.end, &segment),
                 build.edgeSources,
                 &segment,
                 static_cast<int>(segmentIndex))) {
@@ -1031,13 +1043,12 @@ void AppendGeneratedFaceBindings(
     }
 }
 
-void AppendClosurePlaneFallbackBinding(
+void AppendAxisTouchingPlaneFallbackBinding(
     std::vector<OcctGeneratedToolFaceBinding>& bindings,
     const TopTools_IndexedMapOfShape& faceMap,
     const RevolvedProfileEdgeSource& source)
 {
-    if (source.systemRole != "closure"
-        || (!IsAxisPoint(source.start) && !IsAxisPoint(source.end))
+    if ((!IsAxisPoint(source.start) && !IsAxisPoint(source.end))
         || std::abs(source.start[1] - source.end[1]) > kPointTolerance
         || HasFaceBindingForSource(bindings, source)) {
         return;
@@ -1107,7 +1118,7 @@ std::vector<OcctGeneratedToolFaceBinding> BuildGeneratedToolFaceBindings(
     }
 
     for (const auto& edgeSource : wireBuild.edgeSources) {
-        AppendClosurePlaneFallbackBinding(bindings, faceMap, edgeSource);
+        AppendAxisTouchingPlaneFallbackBinding(bindings, faceMap, edgeSource);
     }
 
     if (std::abs(spec.angleDeg - 360.0) > 1e-9) {

@@ -406,6 +406,25 @@ test("BuildRevolvedTool reports runtime-owned cap bindings for partial revolves"
   assert.notEqual(startCapKey, closureKey, "partial revolve face bindings: cap appearance should stay distinct from closure appearance");
 });
 
+test("BuildRevolvedTool preserves caller-owned tip semantics for axis-touching segments", async () => {
+  const module = await createModule();
+  const result = module.BuildRevolvedTool(createEndmillLikeSpec(), {});
+
+  assertCanonicalGeneratedResult(result, "axis-touching tip semantics");
+
+  const tipBinding = result.generatedTool.faceBindings.find((binding) => binding.segmentId === "tip-axis");
+  assert.ok(tipBinding, "axis-touching tip semantics: the tip segment should still bind to a face");
+  assert.equal(tipBinding.systemRole, "profile", "axis-touching tip semantics: caller tip segments should stay in the profile lane");
+  assert.equal(tipBinding.segmentTag, "tip", "axis-touching tip semantics: the tip tag should be preserved");
+
+  const closureBindings = result.generatedTool.faceBindings.filter((binding) => binding.systemRole === "closure");
+  assert.equal(
+    closureBindings.some((binding) => binding.segmentId === "tip-axis"),
+    false,
+    "axis-touching tip semantics: tip segments must not be downgraded into closure bindings",
+  );
+});
+
 test("BuildRevolvedTool reports exact and mesh validation metadata for the partial revolve", async () => {
   const module = await createModule();
   const result = module.BuildRevolvedTool(createDrillLikePartialSpec(), {});
