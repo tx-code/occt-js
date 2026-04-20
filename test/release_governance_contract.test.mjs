@@ -78,6 +78,16 @@ test("authoritative root release command surface excludes unconditional secondar
   assert.equal(releaseCommand.includes("occt-babylon"), false);
 });
 
+test("authoritative root release command surface keeps perf and soak lanes optional", () => {
+  const packageJson = readRepoJson("package.json");
+  const releaseCommand = packageJson.scripts?.["test:release:root"] ?? "";
+
+  assert.equal(packageJson.scripts?.["test:perf:exact"], "node test/test_perf_exact_workflows.mjs");
+  assert.equal(packageJson.scripts?.["test:soak:exact"], "node test/test_exact_lifecycle_soak.mjs");
+  assert.equal(releaseCommand.includes("test:perf:exact"), false);
+  assert.equal(releaseCommand.includes("test:soak:exact"), false);
+});
+
 test("demo fallback CDN derives its semver from the root package instead of a hardcoded version", () => {
   const demoHook = readRepoText("demo/src/hooks/useOcct.js");
 
@@ -202,6 +212,43 @@ test("release docs describe the helper SDK package-first while keeping deeper fe
   assert.match(sdkGuide, /midplane-style symmetry helper/i);
   assert.match(sdkGuide, /feature discovery/i);
   assert.match(sdkGuide, /viewer policy/i);
+});
+
+test("release docs describe package-first lifecycle ownership diagnostics and stress lanes", () => {
+  const readme = readRepoText("README.md");
+  const occtCoreReadme = readRepoText("packages/occt-core/README.md");
+  const sdkGuide = readRepoText("docs/sdk/measurement.md");
+  const agents = readRepoText("AGENTS.md");
+
+  assert.match(readme, /Exact Lifecycle and Performance Workflow/);
+  assert.match(readme, /openManagedExactModel/);
+  assert.match(readme, /getExactModelDiagnostics/);
+  assert.match(readme, /dispose\(\)/);
+  assert.match(readme, /FinalizationRegistry/i);
+  assert.match(readme, /best-effort/i);
+  assert.match(readme, /test:perf:exact/);
+  assert.match(readme, /test:soak:exact/);
+
+  assert.match(occtCoreReadme, /Exact Lifecycle and Performance Guidance/);
+  assert.match(occtCoreReadme, /openManagedExactModel/);
+  assert.match(occtCoreReadme, /getExactModelDiagnostics/);
+  assert.match(occtCoreReadme, /dispose\(\)/);
+  assert.match(occtCoreReadme, /FinalizationRegistry/i);
+  assert.match(occtCoreReadme, /released-handle/i);
+  assert.match(occtCoreReadme, /test:perf:exact/);
+  assert.match(occtCoreReadme, /test:soak:exact/);
+
+  assert.match(sdkGuide, /Lifecycle and Performance Discipline/);
+  assert.match(sdkGuide, /openManagedExactModel/);
+  assert.match(sdkGuide, /getExactModelDiagnostics/);
+  assert.match(sdkGuide, /dispose\(\)/);
+  assert.match(sdkGuide, /FinalizationRegistry/i);
+  assert.match(sdkGuide, /test:perf:exact/);
+  assert.match(sdkGuide, /test:soak:exact/);
+
+  assert.match(agents, /test:perf:exact/);
+  assert.match(agents, /test:soak:exact/);
+  assert.match(agents, /outside the authoritative root release gate/i);
 });
 
 test("published typings document the finalized import appearance option shape", () => {

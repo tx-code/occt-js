@@ -138,4 +138,37 @@ If you need the raw carrier directly, the underlying root Wasm entrypoints are `
 
 For a longer package-first walkthrough, see [`docs/sdk/measurement.md`](../../docs/sdk/measurement.md).
 
+## Exact Lifecycle and Performance Guidance
+
+`@tx-code/occt-core` is the package-first lifecycle surface for retained exact models:
+
+```js
+const managed = await core.openManagedExactModel(stepBytes, {
+  fileName: "part.step",
+});
+
+try {
+  const diagnostics = await core.getExactModelDiagnostics();
+  console.log(diagnostics.liveExactModelCount);
+
+  // measure/classify/helper calls using managed.exactModel refs
+} finally {
+  await managed.dispose();
+}
+```
+
+Lifecycle ownership rules:
+
+- `dispose()` is deterministic and authoritative for cleanup in package-first code.
+- Root lower-level APIs (`RetainExactModel`, `ReleaseExactModel`, `GetExactModelDiagnostics`) remain the source-of-truth carrier contract.
+- `FinalizationRegistry` fallback is best-effort only and must not be treated as guaranteed cleanup.
+- released handles must still be expected to return typed `released-handle` failures by contract.
+
+Performance-sensitive verification lanes (from repository root):
+
+- `npm run test:perf:exact` — explicit perf visibility lane
+- `npm run test:soak:exact` — explicit long-session lifecycle/perf soak lane
+
+These lanes are optional maintainer verification and stay outside the authoritative `npm run test:release:root` gate.
+
 Richer feature discovery, overlay rendering, selection UX, label layout, and app-owned viewer policy remain downstream concerns. `@tx-code/occt-core` stays at the adapter boundary and does not require Babylon, viewer widgets, or demo-local code.

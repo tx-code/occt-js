@@ -28,6 +28,7 @@
     "test:planning:audit": "node --test test/planning_archive_contract.test.mjs",
     "test:secondary:contracts": "node --test test/secondary_surface_contract.test.mjs",
     "test:perf:exact": "node test/test_perf_exact_workflows.mjs",
+    "test:soak:exact": "node test/test_exact_lifecycle_soak.mjs",
     "test:wasm:preflight": "node --test test/wasm_build_prereqs.test.mjs test/load_occt_factory.test.mjs test/dist_contract_consumers.test.mjs",
     "test": "npm run test:wasm:preflight && node --test test/exact_model_lifecycle_contract.test.mjs test/exact_query_store_performance_contract.test.mjs test/exact_ref_mapping_contract.test.mjs test/exact_primitive_queries_contract.test.mjs test/exact_pairwise_measurement_contract.test.mjs test/exact_placement_contract.test.mjs test/exact_relation_contract.test.mjs test/import_appearance_contract.test.mjs && node test/test_multi_format_exports.mjs && node test/test_iges_degenerated_edges.mjs && node test/test_step_iges_root_mode.mjs && node test/test_brep_root_mode.mjs && node test/test_optimal_orientation_api.mjs && node test/test_optimal_orientation_reference.mjs && node test/test_mvp_acceptance.mjs"
   },

@@ -136,6 +136,37 @@ The shipped helper boundaries stay intentionally narrow:
 - `suggestExactSymmetryPlacement(refA, refB)` is a midplane-style symmetry helper for supported parallel pairs.
 - `suggestExactMidpointPlacement(...)` and `describeExactEqualDistance(...)` stay package-first compositions over the shipped placement and pairwise measurement primitives.
 
+## Lifecycle and Performance Discipline
+
+For retained exact models, package-first lifecycle management should use managed wrappers:
+
+```js
+const managed = await core.openManagedExactModel(stepBytes, {
+  fileName: "part.step",
+});
+
+try {
+  const diagnostics = await core.getExactModelDiagnostics();
+  console.log(diagnostics.liveExactModelCount);
+  // run measurement/helper calls
+} finally {
+  await managed.dispose();
+}
+```
+
+Lifecycle contract notes:
+
+- explicit `dispose()` / `ReleaseExactModel(...)` is the authoritative cleanup path
+- `FinalizationRegistry` behavior is best-effort fallback only and is not guaranteed cleanup
+- released handles should keep returning typed `released-handle` failures
+
+Performance-sensitive downstream workflows should run explicit verification lanes from the repository root:
+
+- `npm run test:perf:exact` for repeatable perf visibility
+- `npm run test:soak:exact` for long-session lifecycle/perf soak evidence
+
+These commands are maintainers' verification lanes and remain separate from the authoritative `npm run test:release:root` gate.
+
 ## Lower-Level Root Reference
 
 If you need direct access to the carrier, the root Wasm module exposes:

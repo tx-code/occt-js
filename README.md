@@ -201,6 +201,40 @@ The lower-level root surface also includes `SuggestExactAnglePlacement`, `Sugges
 
 Richer feature discovery, overlay rendering, selection UX, label layout, and app-owned viewer policy remain downstream concerns. `occt-js` and `@tx-code/occt-core` stop at the exact Wasm/kernel and package-adapter boundary.
 
+## Exact Lifecycle and Performance Workflow
+
+Lifecycle ownership is explicit. The authoritative cleanup contract is:
+
+- package-first: `openManagedExactModel(...)` / `openManagedExactStep(...)` + `dispose()` in `@tx-code/occt-core`
+- lower-level root reference: `RetainExactModel(...)`, `ReleaseExactModel(...)`, and `GetExactModelDiagnostics()` in `@tx-code/occt-js`
+
+Recommended package-first pattern:
+
+```js
+const managed = await core.openManagedExactModel(stepBytes, {
+  fileName: "part.step",
+});
+
+try {
+  const diagnostics = await core.getExactModelDiagnostics();
+  console.log(diagnostics.liveExactModelCount);
+
+  // run exact queries/placements/helpers against managed.exactModel refs
+} finally {
+  // explicit dispose is the authoritative cleanup path
+  await managed.dispose();
+}
+```
+
+`FinalizationRegistry` support in `@tx-code/occt-core` is best-effort only. It can reduce forgotten-handle leaks, but it is not a deterministic cleanup guarantee and must not replace explicit `dispose()` / `ReleaseExactModel(...)` usage.
+
+For performance-sensitive downstream workflows:
+
+- use repeatable perf checks with `npm run test:perf:exact`
+- use long-session lifecycle/perf soak checks with `npm run test:soak:exact`
+
+Both commands are explicit maintainer lanes and remain outside the unconditional root release gate.
+
 ## Prerequisites
 
 | Tool | Version |
@@ -299,6 +333,15 @@ npm run test:secondary:contracts
 ```
 
 That audit locks the conditional demo/Babylon/Tauri routing below, but it stays outside the root release gate.
+
+When you intentionally want lifecycle/performance stress evidence on top of normal root verification, run:
+
+```bash
+npm run test:perf:exact
+npm run test:soak:exact
+```
+
+These commands are explicit optional verification lanes for performance and long-session confidence. They do not replace `npm run test:release:root` and are not unconditional release blockers.
 
 Demo, Babylon, and Tauri surfaces are conditional secondary-surface verification only. Run their follow-up checks when your release changes those paths:
 
