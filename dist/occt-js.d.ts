@@ -324,6 +324,7 @@ export type OcctJSRevolvedToolPlane = "XZ";
 export type OcctJSRevolvedToolClosure = "explicit" | "auto_axis";
 export type OcctJSRevolvedToolSegmentKind = "line" | "arc_center" | "arc_3pt";
 export type OcctJSRevolvedToolDiagnosticCode =
+    | "build-failed"
     | "degenerate-segment"
     | "invalid-arc"
     | "invalid-closure"
@@ -390,6 +391,49 @@ export interface OcctJSRevolvedToolValidationResult {
     ok: boolean;
     diagnostics: OcctJSRevolvedToolDiagnostic[];
 }
+
+export interface OcctJSRevolvedToolBuildOptions {
+    linearDeflectionType?: "bounding_box_ratio" | "absolute_value";
+    linearDeflection?: number;
+    angularDeflection?: number;
+}
+
+export interface OcctJSGeneratedToolSegmentDescriptor {
+    index: number;
+    kind: OcctJSRevolvedToolSegmentKind;
+    id?: string;
+    tag?: string;
+}
+
+export interface OcctJSGeneratedToolMetadata {
+    version: 1;
+    units: OcctJSRevolvedToolUnits;
+    plane: OcctJSRevolvedToolPlane;
+    closure: OcctJSRevolvedToolClosure;
+    angleDeg: number;
+    segmentCount: number;
+    hasStableFaceBindings: false;
+    segments: OcctJSGeneratedToolSegmentDescriptor[];
+}
+
+export interface OcctJSRevolvedToolBuildFailure {
+    success: false;
+    error: string;
+    sourceFormat: "generated-revolved-tool";
+    diagnostics: OcctJSRevolvedToolDiagnostic[];
+    generatedTool?: OcctJSGeneratedToolMetadata;
+}
+
+export interface OcctJSRevolvedToolBuildSuccess extends OcctJSResult {
+    success: true;
+    sourceFormat: "generated-revolved-tool";
+    generatedTool: OcctJSGeneratedToolMetadata;
+    diagnostics?: OcctJSRevolvedToolDiagnostic[];
+}
+
+export type OcctJSRevolvedToolBuildResult =
+    | OcctJSRevolvedToolBuildFailure
+    | OcctJSRevolvedToolBuildSuccess;
 
 export interface OcctJSReadParams {
     rootMode?: "one-shape" | "multiple-shapes";
@@ -471,6 +515,7 @@ export interface OcctJSModule {
     ReadIgesFile(content: Uint8Array, params?: OcctJSReadParams): OcctJSResult;
     ReadBrepFile(content: Uint8Array, params?: OcctJSReadParams): OcctJSResult;
     ValidateRevolvedToolSpec(spec: OcctJSRevolvedToolSpec): OcctJSRevolvedToolValidationResult;
+    BuildRevolvedTool(spec: OcctJSRevolvedToolSpec, options?: OcctJSRevolvedToolBuildOptions): OcctJSRevolvedToolBuildResult;
     OpenExactModel(format: string, content: Uint8Array, params?: OcctJSReadParams): OcctJSExactOpenResult;
     OpenExactStepModel(content: Uint8Array, params?: OcctJSReadParams): OcctJSExactOpenResult;
     OpenExactIgesModel(content: Uint8Array, params?: OcctJSReadParams): OcctJSExactOpenResult;

@@ -332,6 +332,35 @@ struct OcctRevolvedToolValidationResult {
     bool hasSpec = false;
 };
 
+struct OcctGeneratedToolSegmentDescriptor {
+    int index = 0;
+    std::string kind;
+    std::string id;
+    bool hasId = false;
+    std::string tag;
+    bool hasTag = false;
+};
+
+struct OcctGeneratedToolMetadata {
+    int version = 1;
+    std::string units;
+    std::string plane = "XZ";
+    std::string closure;
+    double angleDeg = 360.0;
+    int segmentCount = 0;
+    bool hasStableFaceBindings = false;
+    std::vector<OcctGeneratedToolSegmentDescriptor> segments;
+};
+
+struct OcctRevolvedToolBuildResult {
+    bool success = false;
+    std::string error;
+    std::vector<OcctRevolvedToolDiagnostic> diagnostics;
+    OcctSceneData scene;
+    OcctGeneratedToolMetadata generatedTool;
+    bool hasGeneratedTool = false;
+};
+
 struct ImportParams {
     static constexpr double kCadGhostedOpacity = 0.35;
 

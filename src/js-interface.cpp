@@ -859,6 +859,38 @@ val RevolvedToolValidationResultToVal(const OcctRevolvedToolValidationResult& re
     return obj;
 }
 
+val GeneratedToolSegmentDescriptorToVal(const OcctGeneratedToolSegmentDescriptor& descriptor)
+{
+    val obj = val::object();
+    obj.set("index", descriptor.index);
+    obj.set("kind", descriptor.kind);
+    if (descriptor.hasId) {
+        obj.set("id", descriptor.id);
+    }
+    if (descriptor.hasTag) {
+        obj.set("tag", descriptor.tag);
+    }
+    return obj;
+}
+
+val GeneratedToolMetadataToVal(const OcctGeneratedToolMetadata& metadata)
+{
+    val obj = val::object();
+    obj.set("version", metadata.version);
+    obj.set("units", metadata.units);
+    obj.set("plane", metadata.plane);
+    obj.set("closure", metadata.closure);
+    obj.set("angleDeg", metadata.angleDeg);
+    obj.set("segmentCount", metadata.segmentCount);
+    obj.set("hasStableFaceBindings", metadata.hasStableFaceBindings);
+    val segments = val::array();
+    for (const auto& segment : metadata.segments) {
+        segments.call<void>("push", GeneratedToolSegmentDescriptorToVal(segment));
+    }
+    obj.set("segments", segments);
+    return obj;
+}
+
 val ExactGeometryBindingsToVal(size_t geometryCount)
 {
     val bindings = val::array();
@@ -1071,6 +1103,23 @@ val ReadFile(const std::string& format, const val& content, const val& jsParams)
 val ValidateRevolvedToolSpecBinding(const val& jsSpec)
 {
     return RevolvedToolValidationResultToVal(ValidateRevolvedToolSpec(jsSpec));
+}
+
+val BuildRevolvedToolBinding(const val& jsSpec, const val& jsOptions)
+{
+    const OcctRevolvedToolBuildResult buildResult = BuildRevolvedTool(jsSpec, jsOptions);
+    val result = BuildResult(buildResult.scene, "generated-revolved-tool");
+    if (!buildResult.diagnostics.empty()) {
+        val diagnostics = val::array();
+        for (const auto& diagnostic : buildResult.diagnostics) {
+            diagnostics.call<void>("push", RevolvedToolDiagnosticToVal(diagnostic));
+        }
+        result.set("diagnostics", diagnostics);
+    }
+    if (buildResult.hasGeneratedTool) {
+        result.set("generatedTool", GeneratedToolMetadataToVal(buildResult.generatedTool));
+    }
+    return result;
 }
 
 val OpenExactStepModel(const val& content, const val& jsParams)
@@ -1390,6 +1439,7 @@ EMSCRIPTEN_BINDINGS(occtjs)
     function("ReadIgesFile", &ReadIgesFile);
     function("ReadBrepFile", &ReadBrepFile);
     function("ValidateRevolvedToolSpec", &ValidateRevolvedToolSpecBinding);
+    function("BuildRevolvedTool", &BuildRevolvedToolBinding);
     function("OpenExactModel", &OpenExactModel);
     function("OpenExactStepModel", &OpenExactStepModel);
     function("OpenExactIgesModel", &OpenExactIgesModel);
