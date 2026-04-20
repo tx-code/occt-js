@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.8
 milestone_name: Wasm+JS Revolved Tool Generation
 status: planning
-stopped_at: v1.8 roadmap created
-last_updated: "2026-04-20T14:58:08.6904523+08:00"
-last_activity: 2026-04-20 -- Defined v1.8 requirements and roadmap
+stopped_at: Phase 27 context gathered
+last_updated: "2026-04-20T15:09:41.2691427+08:00"
+last_activity: 2026-04-20 -- Captured Phase 27 context and discussion defaults
 progress:
   total_phases: 3
   completed_phases: 0
@@ -28,8 +28,8 @@ Current focus: Phase 27 planning
 Milestone: v1.8 Wasm+JS Revolved Tool Generation
 Phase: 27. Revolved Tool Spec & Wasm Builder
 Plan: Not started
-Status: Roadmap defined; ready for `$gsd-discuss-phase 27`
-Last activity: 2026-04-20 -- Defined v1.8 requirements and roadmap
+Status: Context gathered; ready for planning
+Last activity: 2026-04-20 -- Captured Phase 27 context and discussion defaults
 
 Progress: [----------] 0%
 
@@ -52,11 +52,12 @@ Latest shipped milestone (`v1.7`):
 - `v1.8` shifts focus to app-neutral revolved tool generation in Wasm+JS rather than package ecosystem cleanup.
 - The generated tool input contract will be a normalized revolved profile spec; app-specific tool schemas stay upstream.
 - Default appearance for generated tools will derive from runtime tag/role semantics instead of caller-supplied colors.
+- Phase 27 defaults are now locked: strict normalized spec, separate validate/build APIs, additive top-level generated-tool metadata, and Phase 28 ownership of exact/history bindings.
 
 ### Pending Todos
 
-- Start Phase 27 planning for revolved tool spec parsing, diagnostics, and OCCT revolve construction.
-- Keep `openExactRevolvedTool` aligned with existing exact-model lifecycle and query contracts.
+- Run Phase 27 planning for revolved tool spec parsing, diagnostics, and OCCT revolve construction.
+- Keep future `openExactRevolvedTool` aligned with existing exact-model lifecycle and query contracts during Phase 28 planning.
 - Keep `demo/.codex-run/` and `demo/dist/` out of planning commits.
 
 ### Blockers/Concerns
@@ -73,6 +74,6 @@ Items acknowledged and deferred at milestone close on 2026-04-20:
 
 ## Session Continuity
 
-Last session: 2026-04-20T13:50:40.3767689+08:00
-Stopped at: v1.8 roadmap initialization complete
-Resume file: .planning/PROJECT.md
+Last session: 2026-04-20T15:09:41.2691427+08:00
+Stopped at: Phase 27 context gathered
+Resume file: .planning/phases/27-revolved-tool-spec-wasm-builder/27-CONTEXT.md
