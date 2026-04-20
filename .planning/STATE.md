@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.8
 milestone_name: Wasm+JS Revolved Tool Generation
-status: planning
-stopped_at: Phase 27 context gathered
-last_updated: "2026-04-20T15:09:41.2691427+08:00"
-last_activity: 2026-04-20 -- Captured Phase 27 context and discussion defaults
+status: ready_to_execute
+stopped_at: Phase 27 planned
+last_updated: "2026-04-20T15:21:03.8299221+08:00"
+last_activity: 2026-04-20 -- Planned Phase 27 with research, validation, and execution plans
 progress:
   total_phases: 3
   completed_phases: 0
@@ -21,15 +21,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-20)
 
 Core value: Downstream applications can reliably consume the OCCT Wasm runtime and its root API contract without build drift or packaging surprises.
-Current focus: Phase 27 planning
+Current focus: Phase 27 execution
 
 ## Current Position
 
 Milestone: v1.8 Wasm+JS Revolved Tool Generation
 Phase: 27. Revolved Tool Spec & Wasm Builder
-Plan: Not started
-Status: Context gathered; ready for planning
-Last activity: 2026-04-20 -- Captured Phase 27 context and discussion defaults
+Plan: 27-01 and 27-02 created
+Status: Planned; ready for execute
+Last activity: 2026-04-20 -- Planned Phase 27 with research, validation, and execution plans
 
 Progress: [----------] 0%
 
@@ -53,10 +53,11 @@ Latest shipped milestone (`v1.7`):
 - The generated tool input contract will be a normalized revolved profile spec; app-specific tool schemas stay upstream.
 - Default appearance for generated tools will derive from runtime tag/role semantics instead of caller-supplied colors.
 - Phase 27 defaults are now locked: strict normalized spec, separate validate/build APIs, additive top-level generated-tool metadata, and Phase 28 ownership of exact/history bindings.
+- Phase 27 planning is now split into two execution plans: `27-01` strict spec validation/binding work, then `27-02` OCCT revolve build + canonical scene export.
 
 ### Pending Todos
 
-- Run Phase 27 planning for revolved tool spec parsing, diagnostics, and OCCT revolve construction.
+- Execute Phase 27 plans for strict spec validation first, then generated revolve scene build.
 - Keep future `openExactRevolvedTool` aligned with existing exact-model lifecycle and query contracts during Phase 28 planning.
 - Keep `demo/.codex-run/` and `demo/dist/` out of planning commits.
 
@@ -74,6 +75,6 @@ Items acknowledged and deferred at milestone close on 2026-04-20:
 
 ## Session Continuity
 
-Last session: 2026-04-20T15:09:41.2691427+08:00
-Stopped at: Phase 27 context gathered
-Resume file: .planning/phases/27-revolved-tool-spec-wasm-builder/27-CONTEXT.md
+Last session: 2026-04-20T15:21:03.8299221+08:00
+Stopped at: Phase 27 planned
+Resume file: .planning/phases/27-revolved-tool-spec-wasm-builder/27-01-PLAN.md
