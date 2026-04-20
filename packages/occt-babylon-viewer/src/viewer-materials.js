@@ -74,7 +74,17 @@ export function createCadPartMaterial(scene, name, colorLike, options = {}) {
 export function createCadVertexColorMaterial(scene, name, options = {}) {
   const fallbackColor = options.fallbackColor ?? { r: 0.8, g: 0.82, b: 0.86 };
   const usePbr = options.usePbr ?? true;
-  return createCadPartMaterial(scene, name, fallbackColor, { usePbr });
+  const material = createCadPartMaterial(scene, name, fallbackColor, { usePbr });
+  if ("useVertexColors" in material) {
+    material.useVertexColors = true;
+  }
+  if ("useVertexColor" in material) {
+    material.useVertexColor = true;
+  }
+  if ("useVertexAlpha" in material) {
+    material.useVertexAlpha = false;
+  }
+  return material;
 }
 
 export function getCadMaterialKey(colorLike = CAD_DEFAULT_PART_COLOR) {

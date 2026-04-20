@@ -197,11 +197,13 @@ function ensureColorBuffer(mesh, BABYLON) {
   return colors;
 }
 
-function buildFaceVertexMap(geo) {
+function buildFaceVertexMap(geo, indicesOverride = null) {
   const map = new Map();
-  if (!geo?.faces || !geo?.indices) return map;
+  const indices = Array.isArray(indicesOverride) || ArrayBuffer.isView(indicesOverride)
+    ? Array.from(indicesOverride)
+    : geo?.indices;
+  if (!geo?.faces || !indices) return map;
 
-  const indices = geo.indices;
   for (let fi = 0; fi < geo.faces.length; fi++) {
     const face = geo.faces[fi];
     if (!face || face.indexCount <= 0) continue;
@@ -262,7 +264,7 @@ function ensureFaceTintState(pickedMesh, geo, BABYLON, faceTintStates) {
     mesh: colorMesh,
     baseColors: new Float32Array(baseColors),
     workingColors: new Float32Array(baseColors),
-    faceVertices: buildFaceVertexMap(geo),
+    faceVertices: buildFaceVertexMap(geo, colorMesh.getIndices?.()),
     selectedFaces: new Map(),
     hoverFaceId: null,
   };

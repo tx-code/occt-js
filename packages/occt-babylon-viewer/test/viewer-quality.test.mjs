@@ -32,6 +32,7 @@ test("cad material helpers default to pbr-style shading", () => {
   assert.equal("metallic" in vertexColorMaterial, true);
   assert.equal(material.backFaceCulling, false);
   assert.equal(material.twoSidedLighting, true);
+  assert.equal(vertexColorMaterial.backFaceCulling, false);
 });
 
 test("shading normals can be recomputed for stable lighting", () => {
