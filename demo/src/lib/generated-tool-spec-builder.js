@@ -260,7 +260,7 @@ function buildDrillSpec(definition, units) {
   return finalizeSpec(units, segments, point, length);
 }
 
-export function buildCamToolRevolvedSpec(definition) {
+export function buildGeneratedToolDemoSpec(definition) {
   assertObject(definition);
 
   const units = normalizeUnits(definition.units);

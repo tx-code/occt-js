@@ -24,7 +24,6 @@ import type {
   OcctJSRevolvedToolBuildOptions,
   OcctJSRevolvedToolBuildResult,
   OcctJSRevolvedToolSpec,
-  OcctJSRevolvedToolUnits,
   OcctJSRevolvedToolValidationResult,
 } from "@tx-code/occt-js";
 
@@ -457,45 +456,6 @@ export interface OcctAutoOrientationOptions {
   occt?: Pick<OcctJSModule, "AnalyzeOptimalOrientation"> | null;
 }
 
-export type OcctCamToolShape = "endmill" | "ballend" | "bullnose" | "drill";
-
-export interface OcctCamToolBaseDefinition {
-  shape: OcctCamToolShape;
-  units?: OcctJSRevolvedToolUnits;
-  diameter: number;
-  length: number;
-}
-
-export interface OcctCamEndmillDefinition extends OcctCamToolBaseDefinition {
-  shape: "endmill";
-  cuttingEdgeHeight: number;
-  shankDiameter?: number;
-}
-
-export interface OcctCamBallendDefinition extends OcctCamToolBaseDefinition {
-  shape: "ballend";
-  cuttingEdgeHeight?: number;
-  shankDiameter?: number;
-}
-
-export interface OcctCamBullnoseDefinition extends OcctCamToolBaseDefinition {
-  shape: "bullnose";
-  cuttingEdgeHeight: number;
-  cornerRadius: number;
-  shankDiameter?: number;
-}
-
-export interface OcctCamDrillDefinition extends OcctCamToolBaseDefinition {
-  shape: "drill";
-  tipAngle: number;
-}
-
-export type OcctCamToolDefinition =
-  | OcctCamEndmillDefinition
-  | OcctCamBallendDefinition
-  | OcctCamBullnoseDefinition
-  | OcctCamDrillDefinition;
-
 export declare class OcctCoreClient {
   constructor(options?: OcctCoreClientOptions);
   getSupportedFormats(): Promise<OcctFormat[]>;
@@ -540,8 +500,6 @@ export declare class OcctCoreClient {
 }
 
 export declare function createOcctCore(options?: OcctCoreClientOptions): OcctCoreClient;
-
-export declare function buildCamToolRevolvedSpec(definition: OcctCamToolDefinition): OcctJSRevolvedToolSpec;
 
 export declare function normalizeExactOpenResult(rawResult: unknown, options?: OcctNormalizeResultOptions): OcctNormalizedExactOpenResult;
 

@@ -63,6 +63,4 @@ test("occt-core published typings expose the helper SDK surface", () => {
   assert.match(typesSource, /suggestExactSymmetryPlacement/);
   assert.match(typesSource, /resolveExactElementRef/);
   assert.match(typesSource, /normalizeExactOpenResult/);
-  assert.match(typesSource, /buildCamToolRevolvedSpec/);
-  assert.match(typesSource, /OcctCamToolDefinition/);
 });

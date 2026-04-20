@@ -1,4 +1,4 @@
-import { buildCamToolRevolvedSpec } from "@tx-code/occt-core";
+import { buildGeneratedToolDemoSpec } from "./generated-tool-spec-builder";
 
 export const GENERATED_TOOL_PRESETS = [
   {
@@ -10,7 +10,7 @@ export const GENERATED_TOOL_PRESETS = [
       linearDeflection: 0.001,
       angularDeflection: 0.35,
     },
-    spec: buildCamToolRevolvedSpec({
+    spec: buildGeneratedToolDemoSpec({
       shape: "bullnose",
       units: "mm",
       diameter: 6,
@@ -29,7 +29,7 @@ export const GENERATED_TOOL_PRESETS = [
       linearDeflection: 0.0008,
       angularDeflection: 0.25,
     },
-    spec: buildCamToolRevolvedSpec({
+    spec: buildGeneratedToolDemoSpec({
       shape: "ballend",
       units: "mm",
       diameter: 10,
@@ -47,7 +47,7 @@ export const GENERATED_TOOL_PRESETS = [
       linearDeflection: 0.0012,
       angularDeflection: 0.35,
     },
-    spec: buildCamToolRevolvedSpec({
+    spec: buildGeneratedToolDemoSpec({
       shape: "drill",
       units: "inch",
       diameter: 0.25,

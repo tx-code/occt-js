@@ -85,34 +85,7 @@ Viewer overrides remain downstream concerns; the adapter does not own repaint, t
 
 ## Generated Revolved Tool SDK
 
-`@tx-code/occt-core` also exposes package-first wrappers for the generated revolved-tool Wasm surface.
-
-For app code, prefer the high-level CAM builder instead of hand-authoring low-level segment JSON:
-
-```js
-import { buildCamToolRevolvedSpec } from "@tx-code/occt-core";
-
-const spec = buildCamToolRevolvedSpec({
-  shape: "bullnose",
-  units: "mm",
-  diameter: 6,
-  cornerRadius: 0.75,
-  cuttingEdgeHeight: 14,
-  shankDiameter: 6,
-  length: 18,
-});
-```
-
-The builder's parameter semantics intentionally align with FreeCAD CAM tool shapes and OCL cutter families:
-
-- `endmill`
-- `ballend`
-- `bullnose`
-- `drill`
-
-It always emits a full `360` explicit-closure `OcctJSRevolvedToolSpec`, so callers do not need to manually stitch axis-return segments just to get a closed solid.
-
-You can still pass a manual spec when you need a custom profile:
+`@tx-code/occt-core` also exposes package-first wrappers for the generated revolved-tool Wasm surface:
 
 ```js
 const spec = {
@@ -143,7 +116,6 @@ const exact = await core.openExactRevolvedTool(spec);
 
 Generated-tool wrapper rules:
 
-- `buildCamToolRevolvedSpec(definition)` is the recommended safe path for standard rotary cutters. It converts FreeCAD-style tool parameters into a closed full-revolve profile before the Wasm runtime sees it.
 - `validateRevolvedToolSpec(spec)` forwards the typed validation lane and returns the root validation DTO unchanged.
 - `buildRevolvedTool(spec, options?)` forwards the generated-tool scene build lane and returns the root generated-tool payload, including `generatedTool.faceBindings` and semantic face colors.
 - `openExactRevolvedTool(spec, options?)` forwards the retained exact-open lane and returns the root exact payload, including `exactModelId` and `exactGeometryBindings`.
