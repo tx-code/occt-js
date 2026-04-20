@@ -204,6 +204,10 @@ test("generated tool MVP can build a preset directly in the viewer", async ({ pa
   await expect(page.locator("[data-testid='file-name']")).toContainText("Generated");
   await expect(page.locator("[data-testid='generated-tool-panel']")).toBeHidden();
   await expect(page.locator("[data-testid='stats-panel']")).toBeVisible();
+  await expect(page.locator("[data-testid='generated-tool-validation']")).toBeVisible();
+  await expect(page.locator("[data-testid='stats-panel']")).toContainText("Closed");
+  await expect(page.locator("[data-testid='stats-panel']")).toContainText("Watertight");
+  await expect(page.locator("[data-testid='stats-panel']")).toContainText("Manifold");
   await expect(page.locator("[data-testid='generated-tool-legend']")).toBeVisible();
   await expect(page.locator("[data-testid='generated-tool-legend']")).toContainText("Cutting");
   await expect(page.locator("[data-testid='generated-tool-legend']")).toContainText("Closure");

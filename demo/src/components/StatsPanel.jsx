@@ -1,5 +1,6 @@
 // demo/src/components/StatsPanel.jsx
 import { useState } from "react";
+import { buildGeneratedToolValidationRows } from "../lib/generated-tool-validation";
 import { useViewerStore } from "../store/viewerStore";
 
 export default function StatsPanel() {
@@ -28,6 +29,7 @@ export default function StatsPanel() {
     ["Topo Edges", totalEdges],
     ["Topo Vertices", totalVerts],
   ];
+  const validationRows = buildGeneratedToolValidationRows(model);
 
   return (
     <div
@@ -48,6 +50,23 @@ export default function StatsPanel() {
             <span className="text-zinc-300 tabular-nums">{value}</span>
           </div>
         ))}
+        {validationRows.length > 0 && (
+          <>
+            <div className="my-2 border-t border-zinc-800" />
+            <div
+              className="mb-1 text-[10px] uppercase tracking-[0.18em] text-cyan-400"
+              data-testid="generated-tool-validation"
+            >
+              Validation
+            </div>
+            {validationRows.map(([label, value]) => (
+              <div key={label} className="flex justify-between py-0.5">
+                <span className="text-zinc-500">{label}</span>
+                <span className="text-zinc-300 tabular-nums">{value}</span>
+              </div>
+            ))}
+          </>
+        )}
       </div>
     </div>
   );

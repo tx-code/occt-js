@@ -50,7 +50,7 @@ export default function GeneratedToolLegend() {
 
   return (
     <div
-      className={`absolute left-4 top-16 z-10 max-w-[220px] rounded-xl border border-zinc-700 bg-zinc-950/90 p-3.5 text-xs backdrop-blur-sm md:top-auto md:bottom-44 ${selectedDetail ? "hidden md:block" : ""}`}
+      className={`absolute left-4 top-16 z-10 max-w-[220px] rounded-xl border border-zinc-700 bg-zinc-950/90 p-3.5 text-xs backdrop-blur-sm ${selectedDetail ? "hidden md:block" : ""}`}
       data-testid="generated-tool-legend"
     >
       <h3
