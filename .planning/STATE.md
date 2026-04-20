@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Exact Lifecycle & Performance
 status: ready
-stopped_at: Phase 24 complete
-last_updated: "2026-04-20T04:40:58.564Z"
-last_activity: 2026-04-20 -- Phase 24 complete; ready for Phase 25 discuss
+stopped_at: Phase 25 context gathered
+last_updated: "2026-04-20T04:49:09.824Z"
+last_activity: 2026-04-20 -- Phase 25 context gathered
 progress:
   total_phases: 3
   completed_phases: 1
@@ -28,8 +28,8 @@ Current focus: Phase 25 Exact Query & Store Performance
 Milestone: v1.7 Exact Lifecycle & Performance
 Phase: 25 of 26 (Exact Query & Store Performance)
 Plan: 0 of 2 in current phase
-Status: Ready to discuss
-Last activity: 2026-04-20 -- Phase 24 complete; ready for Phase 25 discuss
+Status: Ready to plan
+Last activity: 2026-04-20 -- Phase 25 context gathered
 
 Progress: [###-------] 33%
 
@@ -68,13 +68,13 @@ Recent Trend:
 
 ### Pending Todos
 
-- Run `$gsd-discuss-phase 25` to lock retained-store/query copy-reduction scope and import-staging boundaries before planning.
+- Run `$gsd-plan-phase 25` to create executable plans for retained-store/query copy reduction and IGES staging performance hardening.
 - Keep `v1.7` focused on performance hardening and governance closeout; no new helper families or ecosystem cleanup unless strictly required by implementation.
 - Keep `demo/.codex-run/` and `demo/dist/` out of planning commits.
 
 ### Blockers/Concerns
 
-- No technical blockers remain. Phase 24 is complete and Phase 25 is ready for discussion/planning.
+- No technical blockers remain. Phase 25 context is captured and ready for planning.
 
 ## Deferred Items
 
@@ -86,6 +86,6 @@ Items acknowledged and deferred at milestone close on 2026-04-18:
 
 ## Session Continuity
 
-Last session: 2026-04-20T04:40:58.564Z
-Stopped at: Phase 24 complete
-Resume file: .planning/phases/24-exact-model-lifecycle-governance/24-VERIFICATION.md
+Last session: 2026-04-20T04:49:09.824Z
+Stopped at: Phase 25 context gathered
+Resume file: .planning/phases/25-exact-query-store-performance/25-CONTEXT.md
