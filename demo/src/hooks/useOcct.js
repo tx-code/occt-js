@@ -1,7 +1,7 @@
 import { useRef, useEffect, useCallback } from "react";
 import { convertFileSrc, isTauri } from "@tauri-apps/api/core";
 import { resolveResource } from "@tauri-apps/api/path";
-import { createOcctCore } from "@tx-code/occt-core";
+import { createOcctCore, normalizeOcctResult } from "@tx-code/occt-core";
 import packageJson from "../../../package.json";
 import { getOcctFormatFromFileName, resolveAutoOrientedResult } from "../lib/auto-orient";
 import { useViewerStore } from "../store/viewerStore";
@@ -195,10 +195,15 @@ export function useOcct() {
         throw error;
       }
 
-      setModel(result, label);
+      const normalizedResult = normalizeOcctResult(result, {
+        sourceFormat: "generated-revolved-tool",
+      });
+
+      setModel(normalizedResult, label);
       return {
         validation,
-        result,
+        rawResult: result,
+        result: normalizedResult,
       };
     } finally {
       setLoading(false);

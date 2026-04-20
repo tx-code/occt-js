@@ -206,6 +206,54 @@ describe("normalizeOcctResult", () => {
     assert.equal(result.stats.nodeCount, 2);
   });
 
+  it("preserves generated revolved tool source format and geometry bindings", () => {
+    const result = normalizeOcctResult({
+      success: true,
+      sourceFormat: "generated-revolved-tool",
+      rootNodes: [{
+        id: "tool-root",
+        name: "Generated Revolved Tool",
+        isAssembly: false,
+        transform: IDENTITY_MATRIX,
+        meshes: [0],
+        children: [],
+      }],
+      geometries: [{
+        name: "tool-body",
+        color: { r: 0.8, g: 0.8, b: 0.82 },
+        positions: new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0]),
+        normals: new Float32Array([0, 0, 1, 0, 0, 1, 0, 0, 1]),
+        indices: new Uint32Array([0, 1, 2]),
+        faces: [{
+          id: 1,
+          name: "profile.tip",
+          firstIndex: 0,
+          indexCount: 3,
+          edgeIndices: [],
+          color: { r: 0.9, g: 0.75, b: 0.25 },
+        }],
+        edges: [],
+        vertices: [],
+        triangleToFaceMap: new Int32Array([1]),
+      }],
+      materials: [
+        { r: 0.8, g: 0.8, b: 0.82 },
+        { r: 0.9, g: 0.75, b: 0.25 },
+      ],
+      warnings: [],
+      stats: { ...EMPTY_STATS, rootCount: 1, nodeCount: 1, partCount: 1, geometryCount: 1, materialCount: 2, triangleCount: 1 },
+      generatedTool: {
+        units: "mm",
+        closureMode: "explicit",
+      },
+    });
+
+    assert.equal(result.sourceFormat, "generated-revolved-tool");
+    assert.equal(result.geometries.length, 1);
+    assert.deepEqual(result.rootNodes[0].geometryIds, ["geo_0"]);
+    assert.equal(result.stats.materialCount, 2);
+  });
+
   it("keeps unit metadata absent when the raw payload omits it", () => {
     const result = normalizeOcctResult({
       success: true,

@@ -1,5 +1,6 @@
 import { normalizeOcctFormat } from "./formats.js";
 
+const GENERATED_TOOL_SOURCE_FORMAT = "generated-revolved-tool";
 const IDENTITY_MATRIX = [
   1, 0, 0, 0,
   0, 1, 0, 0,
@@ -450,6 +451,13 @@ function normalizeWarnings(rawWarnings) {
   });
 }
 
+function normalizeResultSourceFormat(sourceFormat) {
+  if (typeof sourceFormat === "string" && sourceFormat.trim().toLowerCase() === GENERATED_TOOL_SOURCE_FORMAT) {
+    return GENERATED_TOOL_SOURCE_FORMAT;
+  }
+  return normalizeOcctFormat(sourceFormat);
+}
+
 export function normalizeOcctResult(rawResult, options = {}) {
   if (!rawResult || typeof rawResult !== "object") {
     throw new Error("Invalid OCCT result object.");
@@ -479,7 +487,7 @@ export function normalizeOcctResult(rawResult, options = {}) {
   const rootNodes = rawRootNodes.map((node, index) => normalizeNode(node, context, `${index}`));
 
   const warnings = normalizeWarnings(rawResult.warnings);
-  const sourceFormat = normalizeOcctFormat(options.sourceFormat ?? rawResult.sourceFormat ?? "step");
+  const sourceFormat = normalizeResultSourceFormat(options.sourceFormat ?? rawResult.sourceFormat ?? "step");
 
   const nodeStats = countNodes(rootNodes);
   const triangleCount = geometries.reduce((count, geometry) => count + Math.floor((geometry.indices?.length ?? 0) / 3), 0);

@@ -25,6 +25,8 @@ import type {
 } from "@tx-code/occt-js";
 
 export type OcctPoint3 = [number, number, number];
+export type OcctGeneratedToolSourceFormat = "generated-revolved-tool";
+export type OcctNormalizedSourceFormat = OcctFormat | OcctGeneratedToolSourceFormat;
 
 export type OcctMatrix4 = [
   number, number, number, number,
@@ -141,7 +143,7 @@ export interface OcctNormalizedStats {
 }
 
 export interface OcctNormalizedResult {
-  sourceFormat: OcctFormat;
+  sourceFormat: OcctNormalizedSourceFormat;
   sourceFileName?: string;
   sourceUnit?: string;
   unitScaleToMeters?: number;
@@ -169,7 +171,7 @@ export interface OcctManagedExactModel {
 }
 
 export interface OcctNormalizeResultOptions {
-  sourceFormat?: OcctFormat | string;
+  sourceFormat?: OcctNormalizedSourceFormat | string;
   sourceFileName?: string;
   importParams?: OcctImportParams;
 }
