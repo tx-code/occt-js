@@ -435,6 +435,19 @@ export type OcctJSRevolvedToolBuildResult =
     | OcctJSRevolvedToolBuildFailure
     | OcctJSRevolvedToolBuildSuccess;
 
+export interface OcctJSExactRevolvedToolOpenSuccess extends OcctJSExactOpenResult {
+    success: true;
+    sourceFormat: "generated-revolved-tool";
+    exactModelId: number;
+    exactGeometryBindings: OcctJSExactGeometryBinding[];
+    generatedTool: OcctJSGeneratedToolMetadata;
+    diagnostics?: OcctJSRevolvedToolDiagnostic[];
+}
+
+export type OcctJSExactRevolvedToolOpenResult =
+    | OcctJSRevolvedToolBuildFailure
+    | OcctJSExactRevolvedToolOpenSuccess;
+
 export interface OcctJSReadParams {
     rootMode?: "one-shape" | "multiple-shapes";
     linearUnit?: "millimeter" | "centimeter" | "meter" | "inch" | "foot";
@@ -516,6 +529,7 @@ export interface OcctJSModule {
     ReadBrepFile(content: Uint8Array, params?: OcctJSReadParams): OcctJSResult;
     ValidateRevolvedToolSpec(spec: OcctJSRevolvedToolSpec): OcctJSRevolvedToolValidationResult;
     BuildRevolvedTool(spec: OcctJSRevolvedToolSpec, options?: OcctJSRevolvedToolBuildOptions): OcctJSRevolvedToolBuildResult;
+    OpenExactRevolvedTool(spec: OcctJSRevolvedToolSpec, options?: OcctJSRevolvedToolBuildOptions): OcctJSExactRevolvedToolOpenResult;
     OpenExactModel(format: string, content: Uint8Array, params?: OcctJSReadParams): OcctJSExactOpenResult;
     OpenExactStepModel(content: Uint8Array, params?: OcctJSReadParams): OcctJSExactOpenResult;
     OpenExactIgesModel(content: Uint8Array, params?: OcctJSReadParams): OcctJSExactOpenResult;

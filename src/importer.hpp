@@ -357,6 +357,8 @@ struct OcctRevolvedToolBuildResult {
     std::string error;
     std::vector<OcctRevolvedToolDiagnostic> diagnostics;
     OcctSceneData scene;
+    TopoDS_Shape exactShape;
+    std::vector<TopoDS_Shape> exactGeometryShapes;
     OcctGeneratedToolMetadata generatedTool;
     bool hasGeneratedTool = false;
 };

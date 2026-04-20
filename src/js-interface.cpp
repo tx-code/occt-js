@@ -1122,6 +1122,55 @@ val BuildRevolvedToolBinding(const val& jsSpec, const val& jsOptions)
     return result;
 }
 
+val OpenExactRevolvedToolBinding(const val& jsSpec, const val& jsOptions)
+{
+    const OcctRevolvedToolBuildResult buildResult = BuildRevolvedTool(jsSpec, jsOptions);
+    val result = BuildResult(buildResult.scene, "generated-revolved-tool");
+    if (!buildResult.diagnostics.empty()) {
+        val diagnostics = val::array();
+        for (const auto& diagnostic : buildResult.diagnostics) {
+            diagnostics.call<void>("push", RevolvedToolDiagnosticToVal(diagnostic));
+        }
+        result.set("diagnostics", diagnostics);
+    }
+    if (buildResult.hasGeneratedTool) {
+        result.set("generatedTool", GeneratedToolMetadataToVal(buildResult.generatedTool));
+    }
+    if (!buildResult.success) {
+        return result;
+    }
+
+    const int exactModelId = ExactModelStore::Instance().Register(
+        buildResult.exactShape,
+        buildResult.exactGeometryShapes,
+        "generated-revolved-tool",
+        buildResult.scene.sourceUnit,
+        buildResult.scene.unitScaleToMeters
+    );
+
+    if (exactModelId <= 0) {
+        OcctSceneData scene;
+        scene.success = false;
+        scene.error = "Failed to register retained exact generated tool state.";
+        result = BuildResult(scene, "generated-revolved-tool");
+        if (!buildResult.diagnostics.empty()) {
+            val diagnostics = val::array();
+            for (const auto& diagnostic : buildResult.diagnostics) {
+                diagnostics.call<void>("push", RevolvedToolDiagnosticToVal(diagnostic));
+            }
+            result.set("diagnostics", diagnostics);
+        }
+        if (buildResult.hasGeneratedTool) {
+            result.set("generatedTool", GeneratedToolMetadataToVal(buildResult.generatedTool));
+        }
+        return result;
+    }
+
+    result.set("exactModelId", exactModelId);
+    result.set("exactGeometryBindings", ExactGeometryBindingsToVal(buildResult.exactGeometryShapes.size()));
+    return result;
+}
+
 val OpenExactStepModel(const val& content, const val& jsParams)
 {
     return OpenExactByFormat("step", content, jsParams);
@@ -1440,6 +1489,7 @@ EMSCRIPTEN_BINDINGS(occtjs)
     function("ReadBrepFile", &ReadBrepFile);
     function("ValidateRevolvedToolSpec", &ValidateRevolvedToolSpecBinding);
     function("BuildRevolvedTool", &BuildRevolvedToolBinding);
+    function("OpenExactRevolvedTool", &OpenExactRevolvedToolBinding);
     function("OpenExactModel", &OpenExactModel);
     function("OpenExactStepModel", &OpenExactStepModel);
     function("OpenExactIgesModel", &OpenExactIgesModel);

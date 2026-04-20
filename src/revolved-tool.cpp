@@ -885,6 +885,8 @@ OcctRevolvedToolBuildResult BuildRevolvedTool(const val& jsSpec, const val& jsOp
         mesh.color = NeutralToolColor();
 
         PopulateGeneratedScene(mesh, spec, result.scene);
+        result.exactShape = revolvedShape;
+        result.exactGeometryShapes = { revolvedShape };
         result.success = true;
         result.error.clear();
         return result;
