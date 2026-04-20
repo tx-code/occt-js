@@ -22,6 +22,7 @@
     "LICENSE"
   ],
   "scripts": {
+    "artifacts:generated-tools": "node tools/export_generated_tool_artifacts.mjs",
     "build:wasm": "bash tools/build_wasm.sh",
     "build:wasm:win": "tools\\build_wasm_win_dist.bat",
     "test:release:root": "npm run build:wasm:win && node --test test/wasm_build_contract.test.mjs test/package_tarball_contract.test.mjs test/release_governance_contract.test.mjs test/revolved_tool_spec_contract.test.mjs test/generated_revolved_tool_contract.test.mjs test/exact_generated_revolved_tool_contract.test.mjs test/exact_hole_contract.test.mjs test/exact_chamfer_contract.test.mjs test/exact_pairwise_measurement_contract.test.mjs test/exact_placement_contract.test.mjs test/exact_relation_contract.test.mjs && npm --prefix packages/occt-core test && npm test",

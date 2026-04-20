@@ -680,18 +680,34 @@ bool TryMakeArcCenterEdge(
     const OcctRevolvedToolSegment& segment,
     TopoDS_Edge& edge)
 {
-    const gp_Pnt startPoint = ProfilePointToPnt(start);
-    const gp_Pnt endPoint = ProfilePointToPnt(segment.end);
-    const gp_Pnt centerPoint = ProfilePointToPnt(segment.center);
     const double radius = std::sqrt(SquaredDistance(start, segment.center));
-    gp_Circ circle(gp_Ax2(centerPoint, gp_Dir(0.0, 1.0, 0.0)), radius);
-
+    const double startAngle = std::atan2(start[1] - segment.center[1], start[0] - segment.center[0]);
+    const double endAngle = std::atan2(
+        segment.end[1] - segment.center[1],
+        segment.end[0] - segment.center[0]);
+    double delta = std::remainder(endAngle - startAngle, 2.0 * kPi);
     const double cross2d =
         (start[0] - segment.center[0]) * (segment.end[1] - segment.center[1]) -
         (start[1] - segment.center[1]) * (segment.end[0] - segment.center[0]);
-    const Standard_Boolean sense = cross2d >= 0.0 ? Standard_True : Standard_False;
 
-    GC_MakeArcOfCircle makeArc(circle, startPoint, endPoint, sense);
+    if (std::abs(std::abs(delta) - kPi) <= 1e-12) {
+        delta = cross2d >= 0.0 ? kPi : -kPi;
+    } else if (cross2d > 0.0 && delta < 0.0) {
+        delta += 2.0 * kPi;
+    } else if (cross2d < 0.0 && delta > 0.0) {
+        delta -= 2.0 * kPi;
+    }
+
+    const double throughAngle = startAngle + (delta * 0.5);
+    const std::array<double, 2> through = {
+        segment.center[0] + (radius * std::cos(throughAngle)),
+        segment.center[1] + (radius * std::sin(throughAngle))
+    };
+
+    GC_MakeArcOfCircle makeArc(
+        ProfilePointToPnt(start),
+        ProfilePointToPnt(through),
+        ProfilePointToPnt(segment.end));
     if (!makeArc.IsDone()) {
         return false;
     }

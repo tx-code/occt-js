@@ -133,6 +133,62 @@ function validateTopology(geometry, label) {
   }
 }
 
+function analyzeWeldedMeshTopology(geometry, tolerance = 1e-6) {
+  const vertexCount = Math.floor((geometry.positions?.length ?? 0) / 3);
+  const weldedIds = new Map();
+  const weldedVertices = new Array(vertexCount);
+  let weldedVertexCount = 0;
+
+  for (let vertexIndex = 0; vertexIndex < vertexCount; vertexIndex += 1) {
+    const offset = vertexIndex * 3;
+    const key = [
+      Math.round(geometry.positions[offset] / tolerance),
+      Math.round(geometry.positions[offset + 1] / tolerance),
+      Math.round(geometry.positions[offset + 2] / tolerance),
+    ].join(":");
+    if (!weldedIds.has(key)) {
+      weldedIds.set(key, weldedVertexCount);
+      weldedVertexCount += 1;
+    }
+    weldedVertices[vertexIndex] = weldedIds.get(key);
+  }
+
+  const edgeUseCount = new Map();
+  for (let indexOffset = 0; indexOffset < geometry.indices.length; indexOffset += 3) {
+    const triangle = [
+      weldedVertices[geometry.indices[indexOffset]],
+      weldedVertices[geometry.indices[indexOffset + 1]],
+      weldedVertices[geometry.indices[indexOffset + 2]],
+    ];
+    if (triangle[0] === triangle[1] || triangle[1] === triangle[2] || triangle[2] === triangle[0]) {
+      continue;
+    }
+
+    for (let edgeIndex = 0; edgeIndex < 3; edgeIndex += 1) {
+      const left = triangle[edgeIndex];
+      const right = triangle[(edgeIndex + 1) % 3];
+      const key = left < right ? `${left}:${right}` : `${right}:${left}`;
+      edgeUseCount.set(key, (edgeUseCount.get(key) ?? 0) + 1);
+    }
+  }
+
+  let boundaryEdgeCount = 0;
+  let nonManifoldEdgeCount = 0;
+  for (const count of edgeUseCount.values()) {
+    if (count === 1) {
+      boundaryEdgeCount += 1;
+    } else if (count > 2) {
+      nonManifoldEdgeCount += 1;
+    }
+  }
+
+  return {
+    weldedVertexCount,
+    boundaryEdgeCount,
+    nonManifoldEdgeCount,
+  };
+}
+
 function roundColor(color) {
   return {
     r: Number(color.r.toFixed(6)),
@@ -199,6 +255,16 @@ test("BuildRevolvedTool builds an endmill-like spec into a canonical generated s
   assert.ok(result.materials.length > 0);
   assert.ok(result.stats.triangleCount > 0);
   validateTopology(result.geometries[0], "endmill-like full revolve");
+});
+
+test("BuildRevolvedTool emits a welded-manifold mesh for the endmill-like full revolve", async () => {
+  const module = await createModule();
+  const result = module.BuildRevolvedTool(createEndmillLikeSpec(), {});
+
+  assertCanonicalGeneratedResult(result, "endmill-like welded manifold");
+  const welded = analyzeWeldedMeshTopology(result.geometries[0]);
+  assert.equal(welded.boundaryEdgeCount, 0, "endmill-like welded manifold: mesh should not expose free boundary edges");
+  assert.equal(welded.nonManifoldEdgeCount, 0, "endmill-like welded manifold: mesh should not expose non-manifold welded edges");
 });
 
 test("BuildRevolvedTool builds a drill-like partial revolve and keeps topology invariants intact", async () => {
