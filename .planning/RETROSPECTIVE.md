@@ -1,5 +1,32 @@
 # Retrospective
 
+## Milestone: v1.7 — Exact Lifecycle & Performance
+
+**Shipped:** 2026-04-20
+
+### What shipped
+
+- Root lifecycle governance now includes additive diagnostics snapshots and deterministic released-handle behavior across retained exact-query entry points.
+- `@tx-code/occt-core` now provides package-first managed exact-model wrappers with explicit idempotent disposal and best-effort finalizer fallback.
+- Phase 25 removed avoidable retained-query/store copy overhead, unified IGES staging across import/orientation, and added explicit perf visibility with `npm run test:perf:exact`.
+- Phase 26 locked lifecycle/performance docs and command routing through governance tests and added explicit long-session soak coverage via `npm run test:soak:exact`.
+
+### What worked
+
+- Keeping lifecycle ownership explicit (`retain/release` and package-level `dispose`) preserved deterministic behavior while still improving ergonomics.
+- Narrow, additive runtime changes paired with package-first wrappers kept API compatibility stable for downstream consumers.
+- Contract-first governance and optional perf/soak lanes improved confidence without bloating the authoritative `npm run test:release:root` boundary.
+
+### What to revisit
+
+- Milestone closeout is still partially manual: archive generation, roadmap collapse, project/state evolution, and tagging remain operator work.
+- Open-seed handling still needs explicit human acknowledgement during closeout, even when all milestone requirements are complete.
+
+### Carry-forward ideas
+
+- Start `v1.8` by formalizing `ECO-01` and `ECO-02` into concrete phases before expanding semantics.
+- Keep future ecosystem and secondary-surface checks manifest-first and conditional so the root runtime release gate stays focused.
+
 ## Milestone: v1.6 — Exact Semantics Helpers
 
 **Shipped:** 2026-04-18

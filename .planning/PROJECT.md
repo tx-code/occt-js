@@ -42,7 +42,7 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 
 ### Active
 
-- [ ] `v1.7` phase execution is complete; run milestone closeout/archive workflow for final handoff.
+- [ ] Start `v1.8` with `$gsd-new-milestone`, then define requirements and roadmap phases for ecosystem/secondary-surface hardening.
 
 ### Out of Scope
 
@@ -50,7 +50,7 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 - Making Tauri or desktop packaging a prerequisite for root npm publishing — root runtime must stay independently releasable.
 - Treating Babylon/demo layers as first-order release gates for the root runtime.
 - Selection sessions, overlay rendering, label layout, or measurement widgets in the runtime/package layer — those remain downstream app concerns.
-- Whole-model feature discovery, batch semantic indexing, or new helper-family expansion — `v1.7` is reserved for lifecycle/performance hardening of the shipped exact surface.
+- Whole-model feature discovery, batch semantic indexing, or new helper-family expansion — `v1.8` remains focused on ecosystem/verification hardening rather than helper-family breadth.
 
 ## Current State
 
@@ -62,15 +62,15 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 
 `v1.6 Exact Semantics Helpers` shipped on 2026-04-18 and is now archived in `.planning/milestones/`. The milestone added package-first hole/chamfer descriptors, midpoint/equal-distance/symmetry helpers, published `@tx-code/occt-core` typings, and helper-aware authoritative release-governance coverage for the shipped family.
 
-`v1.7 Exact Lifecycle & Performance` phase execution is complete. Phases 24-26 shipped lifecycle diagnostics, managed disposal helpers, retained-query/store and IGES staging performance hardening, governance-locked lifecycle/perf docs, and explicit long-session soak evidence.
+`v1.7 Exact Lifecycle & Performance` shipped on 2026-04-20 and is now archived in `.planning/milestones/`. Phases 24-26 shipped lifecycle diagnostics, managed disposal helpers, retained-query/store and IGES staging performance hardening, governance-locked lifecycle/perf docs, and explicit long-session soak evidence.
 
-## Current Milestone: v1.7 Exact Lifecycle & Performance
+## Current Milestone: v1.8 Package Ecosystem & Secondary Surfaces
 
-**Goal:** Harden retained exact-model lifecycle and performance on top of the shipped exact runtime/helper surface without expanding into viewer-owned behavior or secondary-surface sprawl.
+**Goal:** Harden package ecosystem compatibility and secondary-surface verification routing without widening the authoritative runtime-first release boundary.
 
 **Target features:**
-- Lower-cost exact-model store/query access and reduced import staging overhead for large-model exact workflows.
-- Long-session verification, docs, and release governance for lifecycle/performance expectations while keeping `npm run test:release:root` runtime-first.
+- Align Babylon package versions and peer ranges so standalone package installs/tests do not rely on repo-local hoisting.
+- Keep demo/Tauri/Babylon verification explicit, repeatable, and conditional while preserving `npm run test:release:root` as the authoritative runtime gate.
 
 ## Context
 
@@ -80,7 +80,7 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 - `SceneGraph.net` remains the best local reference for measurement behavior above the kernel layer, but `occt-js` intentionally stopped at exact-kernel foundations plus package-first placement/relation support.
 - OCCT `PrsDim` remains the local geometry reference for placement and relation behavior, but `occt-js` intentionally stops short of AIS/Prs3d interactive dimensions.
 - The current exact runtime now exposes retained exact-model lifecycle, primitive exact queries, pairwise distance/angle/thickness, placement DTOs, relation classification, narrow selected-ref hole/chamfer helper semantics, package-only midpoint/equal-distance/symmetry helpers, published package typings, helper-aware release verification, additive lifecycle diagnostics, package-first managed disposal wrappers, and explicit perf/soak verification lanes.
-- With Phase 26 complete, `v1.7` pressure is no longer implementation scope; remaining work is milestone archival/transition to the next milestone cycle.
+- `v1.7` is archived; active planning pressure has moved to defining `v1.8` requirements and phases.
 - The formal follow-on milestone sequence after `v1.7` is:
   `v1.8 Package Ecosystem & Secondary Surfaces`.
 - GSD is the primary repository workflow; superpowers remain optional support tooling for narrow tasks only.
@@ -212,4 +212,4 @@ This document evolves at phase transitions and milestone boundaries.
 </details>
 
 ---
-*Last updated: 2026-04-20 after Phase 26 completion*
+*Last updated: 2026-04-20 after v1.7 milestone closeout*

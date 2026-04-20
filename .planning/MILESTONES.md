@@ -1,5 +1,21 @@
 # Milestones
 
+## v1.7 Exact Lifecycle & Performance (Shipped: 2026-04-20)
+
+**Phases completed:** 3 phases, 6 plans, 6 tasks
+**Known deferred items at close:** 1 (see `STATE.md` Deferred Items)
+
+**Key accomplishments:**
+
+- The root runtime now exposes additive lifecycle diagnostics and deterministic released-handle behavior across representative exact-query paths.
+- `@tx-code/occt-core` now ships managed exact-model wrappers with explicit idempotent `dispose()` semantics and package-first diagnostics access.
+- Retained exact-query/store hot paths now avoid avoidable full-entry copy overhead while preserving deterministic failure semantics.
+- IGES import and orientation now share one staging implementation, and large-model visibility is exposed through `npm run test:perf:exact`.
+- Lifecycle and performance docs are now package-first across root/package/sdk/agent surfaces, with governance tests locking command and contract drift.
+- Long-session lifecycle/performance soak evidence now ships through `npm run test:soak:exact` and a committed phase report, without widening the authoritative root release gate.
+
+---
+
 ## v1.6 Exact Semantics Helpers (Shipped: 2026-04-18)
 
 **Phases completed:** 3 phases, 6 plans, 8 tasks
