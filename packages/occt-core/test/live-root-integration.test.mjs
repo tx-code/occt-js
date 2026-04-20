@@ -101,6 +101,49 @@ test("createOcctCore opens and disposes an exact STEP handle through the built r
   assert.deepEqual(await core.releaseExactModel(exact.exactModelId), { ok: true });
 });
 
+test("managed exact-model helpers release real retained handles while preserving root lifecycle failures", async () => {
+  const factory = loadOcctFactory();
+  const wasmBinary = new Uint8Array(await readFile(new URL("../../../dist/occt-js.wasm", import.meta.url)));
+  const stepBytes = new Uint8Array(await readFile(new URL("../../../test/simple_part.step", import.meta.url)));
+  const identity = [
+    1, 0, 0, 0,
+    0, 1, 0, 0,
+    0, 0, 1, 0,
+    0, 0, 0, 1,
+  ];
+
+  const core = createOcctCore({
+    factory,
+    wasmBinary,
+  });
+
+  const managed = await core.openManagedExactStep(stepBytes, {
+    fileName: "simple_part.step",
+  });
+
+  const exactShapeHandle = managed.exactModel.exactGeometryBindings?.[0]?.exactShapeHandle ?? 1;
+  const representativeFaceId = managed.exactModel.geometries?.[0]?.faces?.[0]?.id ?? 1;
+
+  assert.deepEqual(await managed.dispose(), { ok: true });
+  assert.deepEqual(await managed.dispose(), { ok: true });
+  assert.deepEqual(await core.retainExactModel(managed.exactModelId), {
+    ok: false,
+    code: "released-handle",
+    message: "Exact model handle has already been released.",
+  });
+  assert.deepEqual(await core.getExactGeometryType({
+    exactModelId: managed.exactModelId,
+    exactShapeHandle,
+    kind: "face",
+    elementId: representativeFaceId,
+    transform: identity,
+  }), {
+    ok: false,
+    code: "released-handle",
+    message: "Exact model handle has already been released.",
+  });
+});
+
 function collectGeometryOccurrences(nodes, parentTransform = [
   1, 0, 0, 0,
   0, 1, 0, 0,

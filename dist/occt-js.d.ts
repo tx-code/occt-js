@@ -106,6 +106,21 @@ export interface OcctJSLifecycleFailure {
 
 export type OcctJSLifecycleResult = OcctJSLifecycleSuccess | OcctJSLifecycleFailure;
 
+export interface OcctJSExactModelDiagnosticsEntry {
+    exactModelId: number;
+    refCount: number;
+    sourceFormat: string;
+    sourceUnit: string;
+    unitScaleToMeters: number;
+    exactGeometryCount: number;
+}
+
+export interface OcctJSExactModelDiagnostics {
+    liveExactModelCount: number;
+    releasedHandleCount: number;
+    liveExactModels: OcctJSExactModelDiagnosticsEntry[];
+}
+
 export interface OcctJSExactQueryFailure {
     ok: false;
     code: string;
@@ -389,6 +404,7 @@ export interface OcctJSModule {
     OpenExactBrepModel(content: Uint8Array, params?: OcctJSReadParams): OcctJSExactOpenResult;
     RetainExactModel(exactModelId: number): OcctJSLifecycleResult;
     ReleaseExactModel(exactModelId: number): OcctJSLifecycleResult;
+    GetExactModelDiagnostics(): OcctJSExactModelDiagnostics;
     GetExactGeometryType(exactModelId: number, exactShapeHandle: number, kind: OcctJSExactElementKind, elementId: number): OcctJSExactGeometryTypeResult;
     MeasureExactRadius(exactModelId: number, exactShapeHandle: number, kind: OcctJSExactElementKind, elementId: number): OcctJSExactRadiusResult;
     MeasureExactCenter(exactModelId: number, exactShapeHandle: number, kind: OcctJSExactElementKind, elementId: number): OcctJSExactCenterResult;

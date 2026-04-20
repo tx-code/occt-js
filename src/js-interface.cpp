@@ -504,6 +504,28 @@ val LifecycleResultToVal(const OcctLifecycleResult& result)
     return obj;
 }
 
+val ExactModelDiagnosticsToVal(const OcctExactModelDiagnostics& diagnostics)
+{
+    val obj = val::object();
+    obj.set("liveExactModelCount", diagnostics.liveExactModelCount);
+    obj.set("releasedHandleCount", diagnostics.releasedHandleCount);
+
+    val liveExactModels = val::array();
+    for (const auto& entry : diagnostics.liveExactModels) {
+        val entryVal = val::object();
+        entryVal.set("exactModelId", entry.exactModelId);
+        entryVal.set("refCount", entry.refCount);
+        entryVal.set("sourceFormat", entry.sourceFormat);
+        entryVal.set("sourceUnit", entry.sourceUnit);
+        entryVal.set("unitScaleToMeters", entry.unitScaleToMeters);
+        entryVal.set("exactGeometryCount", entry.exactGeometryCount);
+        liveExactModels.call<void>("push", entryVal);
+    }
+    obj.set("liveExactModels", liveExactModels);
+
+    return obj;
+}
+
 template <typename TResult>
 val ExactFailureToVal(const TResult& result)
 {
@@ -1048,6 +1070,11 @@ val ReleaseExactModel(int exactModelId)
     return LifecycleResultToVal(ExactModelStore::Instance().Release(exactModelId));
 }
 
+val GetExactModelDiagnostics()
+{
+    return ExactModelDiagnosticsToVal(ExactModelStore::Instance().GetDiagnostics());
+}
+
 val GetExactGeometryTypeBinding(int exactModelId, int exactShapeHandle, const std::string& kind, int elementId)
 {
     return ExactGeometryTypeResultToVal(
@@ -1335,6 +1362,7 @@ EMSCRIPTEN_BINDINGS(occtjs)
     function("OpenExactBrepModel", &OpenExactBrepModel);
     function("RetainExactModel", &RetainExactModel);
     function("ReleaseExactModel", &ReleaseExactModel);
+    function("GetExactModelDiagnostics", &GetExactModelDiagnostics);
     function("GetExactGeometryType", &GetExactGeometryTypeBinding);
     function("MeasureExactRadius", &MeasureExactRadiusBinding);
     function("MeasureExactCenter", &MeasureExactCenterBinding);

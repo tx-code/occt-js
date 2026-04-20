@@ -402,11 +402,78 @@ async function resolveFactory(options) {
   );
 }
 
+function normalizeManagedReleaseResult(result) {
+  if (result?.ok === true || result?.code === "released-handle") {
+    return { ok: true };
+  }
+  return result;
+}
+
+function createManagedExactModel(client, exactModel) {
+  const exactModelId = Number(exactModel?.exactModelId);
+  if (!Number.isInteger(exactModelId) || exactModelId <= 0) {
+    throw new Error("openManagedExactModel() requires an exact result with exactModelId.");
+  }
+
+  const unregisterToken = {};
+  let disposed = false;
+  let disposePromise = null;
+
+  const unregisterFinalizer = () => {
+    if (client._managedExactFinalizer) {
+      client._managedExactFinalizer.unregister(unregisterToken);
+    }
+  };
+
+  const managedExactModel = {
+    exactModelId,
+    exactModel,
+    async dispose() {
+      if (disposePromise) {
+        return disposePromise;
+      }
+      if (disposed) {
+        return { ok: true };
+      }
+
+      disposePromise = (async () => {
+        const releaseResult = await client.releaseExactModel(exactModelId);
+        const normalized = normalizeManagedReleaseResult(releaseResult);
+        if (normalized?.ok === true) {
+          disposed = true;
+          unregisterFinalizer();
+        }
+        return normalized;
+      })();
+      return disposePromise;
+    },
+  };
+
+  if (client._managedExactFinalizer) {
+    client._managedExactFinalizer.register(
+      managedExactModel,
+      () => {
+        void Promise.resolve(client.releaseExactModel(exactModelId)).catch(() => {});
+      },
+      unregisterToken,
+    );
+  }
+
+  return managedExactModel;
+}
+
 export class OcctCoreClient {
   constructor(options = {}) {
     this._options = options;
     this._module = null;
     this._loadPromise = null;
+    this._managedExactFinalizer = typeof FinalizationRegistry === "function"
+      ? new FinalizationRegistry((cleanup) => {
+        if (typeof cleanup === "function") {
+          cleanup();
+        }
+      })
+      : null;
   }
 
   async _ensureModule() {
@@ -523,6 +590,23 @@ export class OcctCoreClient {
     return this.openExactModel(content, { ...options, format: "brep" });
   }
 
+  async openManagedExactModel(content, options = {}) {
+    const exactModel = await this.openExactModel(content, options);
+    return createManagedExactModel(this, exactModel);
+  }
+
+  async openManagedExactStep(content, options = {}) {
+    return this.openManagedExactModel(content, { ...options, format: "step" });
+  }
+
+  async openManagedExactIges(content, options = {}) {
+    return this.openManagedExactModel(content, { ...options, format: "iges" });
+  }
+
+  async openManagedExactBrep(content, options = {}) {
+    return this.openManagedExactModel(content, { ...options, format: "brep" });
+  }
+
   async retainExactModel(exactModelId) {
     const module = await this._ensureModule();
     if (typeof module.RetainExactModel !== "function") {
@@ -537,6 +621,14 @@ export class OcctCoreClient {
       throw new Error("Loaded OCCT module does not expose ReleaseExactModel().");
     }
     return module.ReleaseExactModel(exactModelId);
+  }
+
+  async getExactModelDiagnostics() {
+    const module = await this._ensureModule();
+    if (typeof module.GetExactModelDiagnostics !== "function") {
+      throw new Error("Loaded OCCT module does not expose GetExactModelDiagnostics().");
+    }
+    return module.GetExactModelDiagnostics();
   }
 
   async getExactGeometryType(ref) {

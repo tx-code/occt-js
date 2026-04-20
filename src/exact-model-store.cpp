@@ -1,5 +1,6 @@
 #include "exact-model-store.hpp"
 
+#include <algorithm>
 #include <mutex>
 #include <unordered_map>
 #include <unordered_set>
@@ -126,4 +127,36 @@ OcctLifecycleResult ExactModelStore::GetEntry(int exactModelId, ExactModelEntry&
     }
 
     return MakeFailure("invalid-handle", "Exact model handle is unknown.");
+}
+
+OcctExactModelDiagnostics ExactModelStore::GetDiagnostics()
+{
+    auto& state = State();
+    std::lock_guard<std::mutex> lock(state.mutex);
+
+    OcctExactModelDiagnostics diagnostics;
+    diagnostics.liveExactModelCount = static_cast<int>(state.liveEntries.size());
+    diagnostics.releasedHandleCount = static_cast<int>(state.releasedEntries.size());
+    diagnostics.liveExactModels.reserve(state.liveEntries.size());
+
+    for (const auto& [exactModelId, entry] : state.liveEntries) {
+        OcctExactModelDiagnosticsEntry diagnosticEntry;
+        diagnosticEntry.exactModelId = exactModelId;
+        diagnosticEntry.refCount = entry.refCount;
+        diagnosticEntry.sourceFormat = entry.sourceFormat;
+        diagnosticEntry.sourceUnit = entry.sourceUnit;
+        diagnosticEntry.unitScaleToMeters = entry.unitScaleToMeters;
+        diagnosticEntry.exactGeometryCount = static_cast<int>(entry.exactGeometryShapes.size());
+        diagnostics.liveExactModels.push_back(std::move(diagnosticEntry));
+    }
+
+    std::sort(
+        diagnostics.liveExactModels.begin(),
+        diagnostics.liveExactModels.end(),
+        [](const OcctExactModelDiagnosticsEntry& left, const OcctExactModelDiagnosticsEntry& right) {
+            return left.exactModelId < right.exactModelId;
+        }
+    );
+
+    return diagnostics;
 }

@@ -92,6 +92,21 @@ struct OcctLifecycleResult {
     std::string message;
 };
 
+struct OcctExactModelDiagnosticsEntry {
+    int exactModelId = 0;
+    int refCount = 0;
+    std::string sourceFormat;
+    std::string sourceUnit;
+    double unitScaleToMeters = 0.0;
+    int exactGeometryCount = 0;
+};
+
+struct OcctExactModelDiagnostics {
+    int liveExactModelCount = 0;
+    int releasedHandleCount = 0;
+    std::vector<OcctExactModelDiagnosticsEntry> liveExactModels;
+};
+
 struct OcctExactGeometryTypeResult {
     bool ok = false;
     std::string code;

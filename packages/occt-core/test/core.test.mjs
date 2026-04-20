@@ -682,6 +682,129 @@ describe("createOcctCore", () => {
     assert.deepEqual(calls, [["iges", [1, 3, 5], { rootMode: "multiple-shapes" }]]);
   });
 
+  it("openManagedExactModel wraps exact open results with explicit dispose semantics", async () => {
+    const calls = [];
+    const exactResult = {
+      success: true,
+      sourceFormat: "step",
+      exactModelId: 17,
+      rootNodes: [],
+      geometries: [],
+      materials: [],
+      warnings: [],
+      stats: EMPTY_STATS,
+    };
+    const core = createOcctCore({
+      factory: async () => ({
+        OpenExactStepModel: (bytes, params) => {
+          calls.push(["OpenExactStepModel", Array.from(bytes), params]);
+          return exactResult;
+        },
+        ReleaseExactModel: (exactModelId) => {
+          calls.push(["ReleaseExactModel", exactModelId]);
+          return { ok: true };
+        },
+      }),
+    });
+
+    const managed = await core.openManagedExactModel(new Uint8Array([7, 8, 9]), {
+      format: "step",
+      importParams: { readColors: false },
+    });
+
+    assert.equal(managed.exactModelId, 17);
+    assert.equal(managed.exactModel, exactResult);
+    assert.deepEqual(await managed.dispose(), { ok: true });
+    assert.deepEqual(calls, [
+      ["OpenExactStepModel", [7, 8, 9], { readColors: false }],
+      ["ReleaseExactModel", 17],
+    ]);
+  });
+
+  it("managed exact-model helpers keep FinalizationRegistry best-effort and dispose idempotent", async () => {
+    const originalFinalizationRegistry = globalThis.FinalizationRegistry;
+    const finalizerInstances = [];
+    class MockFinalizationRegistry {
+      constructor(callback) {
+        this.callback = callback;
+        this.registrations = [];
+        this.unregistered = [];
+        finalizerInstances.push(this);
+      }
+
+      register(_target, heldValue, unregisterToken) {
+        this.registrations.push({ heldValue, unregisterToken });
+      }
+
+      unregister(unregisterToken) {
+        this.unregistered.push(unregisterToken);
+        return true;
+      }
+    }
+    globalThis.FinalizationRegistry = MockFinalizationRegistry;
+
+    try {
+      let releaseCalls = 0;
+      const core = createOcctCore({
+        factory: async () => ({
+          OpenExactStepModel: () => ({
+            success: true,
+            sourceFormat: "step",
+            exactModelId: 27,
+            rootNodes: [],
+            geometries: [],
+            materials: [],
+            warnings: [],
+            stats: EMPTY_STATS,
+          }),
+          ReleaseExactModel: () => {
+            releaseCalls += 1;
+            return { ok: true };
+          },
+        }),
+      });
+
+      const managed = await core.openManagedExactStep(new Uint8Array([1, 2, 3]));
+      assert.equal(finalizerInstances.length, 1);
+      assert.equal(finalizerInstances[0].registrations.length, 1);
+
+      assert.deepEqual(await managed.dispose(), { ok: true });
+      assert.deepEqual(await managed.dispose(), { ok: true });
+      assert.equal(releaseCalls, 1);
+      assert.equal(finalizerInstances[0].unregistered.length, 1);
+
+      await core.openManagedExactStep(new Uint8Array([4, 5, 6]));
+      assert.equal(finalizerInstances[0].registrations.length, 2);
+      finalizerInstances[0].callback(finalizerInstances[0].registrations[1].heldValue);
+      await Promise.resolve();
+      assert.equal(releaseCalls, 2);
+    } finally {
+      globalThis.FinalizationRegistry = originalFinalizationRegistry;
+    }
+  });
+
+  it("getExactModelDiagnostics surfaces root lifecycle snapshots package-first", async () => {
+    const diagnostics = {
+      liveExactModelCount: 1,
+      releasedHandleCount: 3,
+      liveExactModels: [{
+        exactModelId: 17,
+        refCount: 2,
+        sourceFormat: "step",
+        sourceUnit: "MM",
+        unitScaleToMeters: 0.001,
+        exactGeometryCount: 4,
+      }],
+    };
+    const core = createOcctCore({
+      factory: async () => ({
+        GetExactModelDiagnostics: () => diagnostics,
+      }),
+    });
+
+    assert.equal(await core.getExactModelDiagnostics(), diagnostics);
+  });
+
   it("passes through lifecycle DTOs from retainExactModel and releaseExactModel", async () => {
     const core = createOcctCore({
       factory: async () => ({

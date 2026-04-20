@@ -7,6 +7,7 @@ import type {
   OcctJSExactElementKind,
   OcctJSExactGeometryFamily,
   OcctJSExactHoleResult,
+  OcctJSExactModelDiagnostics,
   OcctJSExactOpenResult,
   OcctJSExactPairwiseFailure,
   OcctJSExactPlacementAnchor,
@@ -154,6 +155,12 @@ export interface OcctNormalizedExactGeometryBinding {
 export interface OcctNormalizedExactOpenResult extends OcctNormalizedResult {
   exactModelId: number;
   exactGeometryBindings: OcctNormalizedExactGeometryBinding[];
+}
+
+export interface OcctManagedExactModel {
+  exactModelId: number;
+  exactModel: OcctJSExactOpenResult;
+  dispose(): Promise<OcctJSLifecycleResult>;
 }
 
 export interface OcctNormalizeResultOptions {
@@ -437,8 +444,13 @@ export declare class OcctCoreClient {
   openExactStep(content: OcctBinaryInput, options?: Omit<OcctImportModelOptions, "format">): Promise<OcctJSExactOpenResult>;
   openExactIges(content: OcctBinaryInput, options?: Omit<OcctImportModelOptions, "format">): Promise<OcctJSExactOpenResult>;
   openExactBrep(content: OcctBinaryInput, options?: Omit<OcctImportModelOptions, "format">): Promise<OcctJSExactOpenResult>;
+  openManagedExactModel(content: OcctBinaryInput, options?: OcctImportModelOptions): Promise<OcctManagedExactModel>;
+  openManagedExactStep(content: OcctBinaryInput, options?: Omit<OcctImportModelOptions, "format">): Promise<OcctManagedExactModel>;
+  openManagedExactIges(content: OcctBinaryInput, options?: Omit<OcctImportModelOptions, "format">): Promise<OcctManagedExactModel>;
+  openManagedExactBrep(content: OcctBinaryInput, options?: Omit<OcctImportModelOptions, "format">): Promise<OcctManagedExactModel>;
   retainExactModel(exactModelId: number): Promise<OcctJSLifecycleResult>;
   releaseExactModel(exactModelId: number): Promise<OcctJSLifecycleResult>;
+  getExactModelDiagnostics(): Promise<OcctJSExactModelDiagnostics>;
   getExactGeometryType(ref: OcctExactRef): Promise<OcctExactGeometryTypeResult>;
   measureExactDistance(refA: OcctExactRef, refB: OcctExactRef): Promise<OcctExactDistanceResult>;
   measureExactAngle(refA: OcctExactRef, refB: OcctExactRef): Promise<OcctExactAngleResult>;
@@ -497,6 +509,7 @@ export type {
   OcctJSExactElementKind,
   OcctJSExactGeometryFamily,
   OcctJSExactHoleResult,
+  OcctJSExactModelDiagnostics,
   OcctJSExactOpenResult,
   OcctJSExactPairwiseFailure,
   OcctJSExactPlacementAnchor,
