@@ -103,26 +103,9 @@ TResult ConvertFailure(const OcctLifecycleResult& lifecycle)
 OcctLifecycleResult LookupGeometryShape(
     int exactModelId,
     int exactShapeHandle,
-    ExactModelEntry& entry,
     TopoDS_Shape& geometryShape)
 {
-    OcctLifecycleResult lifecycle = ExactModelStore::Instance().GetEntry(exactModelId, entry);
-    if (!lifecycle.ok) {
-        return lifecycle;
-    }
-
-    if (exactShapeHandle <= 0 || exactShapeHandle > static_cast<int>(entry.exactGeometryShapes.size())) {
-        return MakeFailure<OcctLifecycleResult>("invalid-id", "Exact shape handle is out of range for this model.");
-    }
-
-    geometryShape = entry.exactGeometryShapes[exactShapeHandle - 1];
-    if (geometryShape.IsNull()) {
-        return MakeFailure<OcctLifecycleResult>("invalid-id", "Exact shape handle does not reference a retained geometry definition.");
-    }
-
-    OcctLifecycleResult ok;
-    ok.ok = true;
-    return ok;
+    return ExactModelStore::Instance().GetGeometryShape(exactModelId, exactShapeHandle, geometryShape);
 }
 
 OcctLifecycleResult ResolveFace(
@@ -131,9 +114,8 @@ OcctLifecycleResult ResolveFace(
     int elementId,
     TopoDS_Face& face)
 {
-    ExactModelEntry entry;
     TopoDS_Shape geometryShape;
-    OcctLifecycleResult lifecycle = LookupGeometryShape(exactModelId, exactShapeHandle, entry, geometryShape);
+    OcctLifecycleResult lifecycle = LookupGeometryShape(exactModelId, exactShapeHandle, geometryShape);
     if (!lifecycle.ok) {
         return lifecycle;
     }
@@ -160,9 +142,8 @@ OcctLifecycleResult ResolveEdge(
     int elementId,
     TopoDS_Edge& edge)
 {
-    ExactModelEntry entry;
     TopoDS_Shape geometryShape;
-    OcctLifecycleResult lifecycle = LookupGeometryShape(exactModelId, exactShapeHandle, entry, geometryShape);
+    OcctLifecycleResult lifecycle = LookupGeometryShape(exactModelId, exactShapeHandle, geometryShape);
     if (!lifecycle.ok) {
         return lifecycle;
     }
@@ -189,9 +170,8 @@ OcctLifecycleResult ResolveVertex(
     int elementId,
     TopoDS_Vertex& vertex)
 {
-    ExactModelEntry entry;
     TopoDS_Shape geometryShape;
-    OcctLifecycleResult lifecycle = LookupGeometryShape(exactModelId, exactShapeHandle, entry, geometryShape);
+    OcctLifecycleResult lifecycle = LookupGeometryShape(exactModelId, exactShapeHandle, geometryShape);
     if (!lifecycle.ok) {
         return lifecycle;
     }
@@ -492,8 +472,7 @@ OcctLifecycleResult ResolveHoleCandidateFace(
     TopoDS_Shape& geometryShape,
     TopoDS_Face& holeFace)
 {
-    ExactModelEntry entry;
-    OcctLifecycleResult lifecycle = LookupGeometryShape(exactModelId, exactShapeHandle, entry, geometryShape);
+    OcctLifecycleResult lifecycle = LookupGeometryShape(exactModelId, exactShapeHandle, geometryShape);
     if (!lifecycle.ok) {
         return lifecycle;
     }
@@ -719,8 +698,7 @@ OcctLifecycleResult ResolveChamferCandidateFace(
     TopoDS_Shape& geometryShape,
     TopoDS_Face& chamferFace)
 {
-    ExactModelEntry entry;
-    OcctLifecycleResult lifecycle = LookupGeometryShape(exactModelId, exactShapeHandle, entry, geometryShape);
+    OcctLifecycleResult lifecycle = LookupGeometryShape(exactModelId, exactShapeHandle, geometryShape);
     if (!lifecycle.ok) {
         return lifecycle;
     }

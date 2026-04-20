@@ -129,6 +129,35 @@ OcctLifecycleResult ExactModelStore::GetEntry(int exactModelId, ExactModelEntry&
     return MakeFailure("invalid-handle", "Exact model handle is unknown.");
 }
 
+OcctLifecycleResult ExactModelStore::GetGeometryShape(
+    int exactModelId,
+    int exactShapeHandle,
+    TopoDS_Shape& geometryShape)
+{
+    auto& state = State();
+    std::lock_guard<std::mutex> lock(state.mutex);
+
+    auto liveIt = state.liveEntries.find(exactModelId);
+    if (liveIt == state.liveEntries.end()) {
+        if (state.releasedEntries.count(exactModelId) > 0) {
+            return MakeFailure("released-handle", "Exact model handle has already been released.");
+        }
+        return MakeFailure("invalid-handle", "Exact model handle is unknown.");
+    }
+
+    const auto& exactGeometryShapes = liveIt->second.exactGeometryShapes;
+    if (exactShapeHandle <= 0 || exactShapeHandle > static_cast<int>(exactGeometryShapes.size())) {
+        return MakeFailure("invalid-id", "Exact shape handle is out of range for this model.");
+    }
+
+    geometryShape = exactGeometryShapes[exactShapeHandle - 1];
+    if (geometryShape.IsNull()) {
+        return MakeFailure("invalid-id", "Exact shape handle does not reference a retained geometry definition.");
+    }
+
+    return MakeOk();
+}
+
 OcctExactModelDiagnostics ExactModelStore::GetDiagnostics()
 {
     auto& state = State();

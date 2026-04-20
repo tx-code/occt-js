@@ -1,5 +1,6 @@
 #include "orientation.hpp"
 
+#include "importer-iges-staging.hpp"
 #include "importer-utils.hpp"
 
 #include <algorithm>
@@ -8,8 +9,6 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
-#include <cstdio>
-#include <fstream>
 #include <istream>
 #include <limits>
 #include <optional>
@@ -230,27 +229,7 @@ bool ReadAndTransferXde(const uint8_t* data,
         cafReader.SetColorMode(false);
         cafReader.SetNameMode(false);
 
-        const std::string tempFileName = fileName.empty() ? "temp_input.igs" : (fileName + ".tmp.igs");
-        {
-            std::ofstream tmpFile(tempFileName, std::ios::binary);
-            if (!tmpFile.is_open()) {
-                outError = "Failed to create temporary IGES file.";
-                return false;
-            }
-            tmpFile.write(reinterpret_cast<const char*>(data), static_cast<std::streamsize>(size));
-            if (!tmpFile.good()) {
-                tmpFile.close();
-                std::remove(tempFileName.c_str());
-                outError = "Failed to write temporary IGES file.";
-                return false;
-            }
-        }
-
-        const IFSelect_ReturnStatus readStatus = cafReader.ReadFile(tempFileName.c_str());
-        std::remove(tempFileName.c_str());
-
-        if (readStatus != IFSelect_RetDone) {
-            outError = "IGES reader failed to parse the file.";
+        if (!ReadIgesFromMemoryViaTempFile(data, size, fileName, cafReader, outError)) {
             return false;
         }
         if (!cafReader.Transfer(doc)) {

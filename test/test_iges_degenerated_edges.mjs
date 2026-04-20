@@ -13,11 +13,18 @@ async function main() {
   const m = await factory();
 
   const igesFixture = new Uint8Array(readFileSync(resolve("test", "bearing.igs")));
-  const result = m.ReadIgesFile(igesFixture, {});
-  assert(result.success, "ReadIgesFile should import bearing.igs");
-  assert(result.geometries.length > 0, "bearing.igs should produce at least one geometry");
+  const firstResult = m.ReadIgesFile(igesFixture, {});
+  const secondResult = m.ReadIgesFile(igesFixture, {});
+  assert(firstResult.success, "ReadIgesFile should import bearing.igs on first pass");
+  assert(secondResult.success, "ReadIgesFile should import bearing.igs on second pass");
+  assert(firstResult.geometries.length > 0, "bearing.igs should produce at least one geometry");
+  assert(
+    secondResult.geometries.length === firstResult.geometries.length,
+    "repeat IGES import should keep geometry cardinality stable"
+  );
 
-  const geometry = result.geometries[0];
+  const geometry = firstResult.geometries[0];
+  const repeatedGeometry = secondResult.geometries[0];
   let sawDegeneratedFaceEdge = false;
 
   for (const face of geometry.faces) {
@@ -34,6 +41,11 @@ async function main() {
   }
 
   assert(sawDegeneratedFaceEdge, "bearing.igs should exercise at least one degenerated face edge");
+  assert(
+    repeatedGeometry.faces.length === geometry.faces.length
+      && repeatedGeometry.edges.length === geometry.edges.length,
+    "repeat IGES import should preserve face/edge topology counts"
+  );
 
   console.log("PASS test_iges_degenerated_edges");
 }

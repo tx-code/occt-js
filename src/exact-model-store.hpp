@@ -28,6 +28,7 @@ public:
     OcctLifecycleResult Retain(int exactModelId);
     OcctLifecycleResult Release(int exactModelId);
     OcctLifecycleResult GetEntry(int exactModelId, ExactModelEntry& entry);
+    OcctLifecycleResult GetGeometryShape(int exactModelId, int exactShapeHandle, TopoDS_Shape& geometryShape);
     OcctExactModelDiagnostics GetDiagnostics();
 
 private:

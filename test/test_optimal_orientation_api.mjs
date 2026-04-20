@@ -76,6 +76,17 @@ async function main() {
     const bytes = new Uint8Array(readFileSync(resolve("test", fixture)));
     const result = m.AnalyzeOptimalOrientation(format, bytes, { mode: "manufacturing" });
     assertOrientationContract(result, `AnalyzeOptimalOrientation(${format})`);
+
+    if (format === "iges") {
+      const repeated = m.AnalyzeOptimalOrientation(format, bytes, { mode: "manufacturing" });
+      assertOrientationContract(repeated, `AnalyzeOptimalOrientation(${format}) repeat`);
+      assert.equal(repeated.strategy, result.strategy, "repeat IGES orientation should keep strategy stable");
+      assert.equal(repeated.sourceUnit, result.sourceUnit, "repeat IGES orientation should keep source unit stable");
+      assert.equal(repeated.unitScaleToMeters, result.unitScaleToMeters, "repeat IGES orientation should keep unit scale stable");
+      assert.equal(repeated.bbox.dx, result.bbox.dx, "repeat IGES orientation should keep bbox.dx stable");
+      assert.equal(repeated.bbox.dy, result.bbox.dy, "repeat IGES orientation should keep bbox.dy stable");
+      assert.equal(repeated.bbox.dz, result.bbox.dz, "repeat IGES orientation should keep bbox.dz stable");
+    }
   }
 
   console.log("PASS test_optimal_orientation_api");
