@@ -26,7 +26,7 @@ This roadmap hardens the shipped exact runtime and helper surface before any bro
 </details>
 
 - [x] **Phase 24: Exact Model Lifecycle Governance** - Harden retained exact-model release semantics, diagnostics, and package-first disposal helpers without adding viewer-owned policy. (completed 2026-04-20)
-- [ ] **Phase 25: Exact Query & Store Performance** - Remove avoidable retained-query/store copies and import-staging overhead that penalize large-model exact workflows.
+- [x] **Phase 25: Exact Query & Store Performance** - Remove avoidable retained-query/store copies and import-staging overhead that penalize large-model exact workflows. (completed 2026-04-20)
 - [ ] **Phase 26: Import Staging & Long-Session Verification** - Lock lifecycle/performance docs, governance, and long-session verification without widening unconditional secondary-surface release gates.
 
 ## Phase Details
@@ -56,8 +56,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 25-01-PLAN.md — Reduce retained-model store and exact-query copy overhead
-- [ ] 25-02-PLAN.md — Reduce import staging cost and add large-model performance regression coverage
+- [x] 25-01-PLAN.md — Reduce retained-model store and exact-query copy overhead
+- [x] 25-02-PLAN.md — Reduce import staging cost and add large-model performance regression coverage
 
 ### Phase 26: Import Staging & Long-Session Verification
 **Goal**: Lifecycle and performance expectations are package-first, documented, and enforced by the authoritative governance path plus explicit long-session verification.
@@ -81,5 +81,5 @@ Phases execute in numeric order: 24 → 25 → 26
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 24. Exact Model Lifecycle Governance | v1.7 | 2/2 | Complete | 2026-04-20 |
-| 25. Exact Query & Store Performance | v1.7 | 0/2 | Not started | - |
+| 25. Exact Query & Store Performance | v1.7 | 2/2 | Complete | 2026-04-20 |
 | 26. Import Staging & Long-Session Verification | v1.7 | 0/2 | Not started | - |

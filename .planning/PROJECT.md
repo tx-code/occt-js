@@ -37,10 +37,10 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 - ✓ Reusable midpoint, equal-distance, and narrow midplane-style symmetry helpers now compose package-first over the shipped exact placement/relation surface without adding new root carrier APIs. — Phase 22
 - ✓ Package-first helper docs, published `@tx-code/occt-core` typings, tarball checks, and the authoritative root release gate now lock the shipped exact helper family end to end without widening secondary-surface release gates. — Phase 23
 - ✓ Phase 24 lifecycle governance now ships additive root diagnostics (`GetExactModelDiagnostics`), deterministic released-handle exact-query behavior, and package-first managed disposal wrappers in `@tx-code/occt-core`. — Phase 24
+- ✓ Phase 25 performance hardening now removes avoidable retained-query/store copy overhead, shares IGES temp-file staging across import and orientation paths, and adds an explicit perf visibility lane (`npm run test:perf:exact`). — Phase 25
 
 ### Active
 
-- [ ] Lower per-call overhead in retained exact-model access by removing avoidable store/query copies and reducing import temp-file staging cost for large-model workflows.
 - [ ] Lifecycle/performance docs, verification, and release governance for the exact runtime/package surface without widening unconditional secondary-surface release gates.
 
 ### Out of Scope
@@ -61,7 +61,7 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 
 `v1.6 Exact Semantics Helpers` shipped on 2026-04-18 and is now archived in `.planning/milestones/`. The milestone added package-first hole/chamfer descriptors, midpoint/equal-distance/symmetry helpers, published `@tx-code/occt-core` typings, and helper-aware authoritative release-governance coverage for the shipped family.
 
-`v1.7 Exact Lifecycle & Performance` is now the active milestone. Phase 24 is complete with shipped lifecycle diagnostics and package-first managed disposal helpers. Remaining work is performance hardening (Phase 25) and lifecycle/performance docs/governance closeout (Phase 26).
+`v1.7 Exact Lifecycle & Performance` is now the active milestone. Phases 24-25 are complete with shipped lifecycle diagnostics, managed disposal helpers, retained-query/store copy reduction, shared IGES staging, and explicit perf visibility. Remaining work is lifecycle/performance docs + governance closeout (Phase 26).
 
 ## Current Milestone: v1.7 Exact Lifecycle & Performance
 
@@ -79,7 +79,7 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 - `SceneGraph.net` remains the best local reference for measurement behavior above the kernel layer, but `occt-js` intentionally stopped at exact-kernel foundations plus package-first placement/relation support.
 - OCCT `PrsDim` remains the local geometry reference for placement and relation behavior, but `occt-js` intentionally stops short of AIS/Prs3d interactive dimensions.
 - The current exact runtime now exposes retained exact-model lifecycle, primitive exact queries, pairwise distance/angle/thickness, placement DTOs, relation classification, narrow selected-ref hole/chamfer helper semantics, package-only midpoint/equal-distance/symmetry helpers, published package typings, helper-aware release verification, additive lifecycle diagnostics, and package-first managed disposal wrappers; `v1.7` now focuses on the remaining performance and governance closeout work.
-- Known `v1.7` pressure points already visible in the current codebase include retained-model release discipline, lack of caller-facing diagnostics for unreleased handles, avoidable `ExactModelStore` copy costs, and temp-file staging overhead in import paths such as IGES.
+- Known `v1.7` pressure points now center on docs/governance closeout and long-session verification discipline; lifecycle diagnostics and core performance hotspots from Phases 24-25 are already shipped.
 - The formal follow-on milestone sequence after `v1.7` is:
   `v1.8 Package Ecosystem & Secondary Surfaces`.
 - GSD is the primary repository workflow; superpowers remain optional support tooling for narrow tasks only.
@@ -211,4 +211,4 @@ This document evolves at phase transitions and milestone boundaries.
 </details>
 
 ---
-*Last updated: 2026-04-20 after Phase 24 completion*
+*Last updated: 2026-04-20 after Phase 25 completion*

@@ -12,8 +12,8 @@
 
 ### Performance
 
-- [ ] **PERF-01**: Exact-query and retained-model access avoid avoidable per-call copies or redundant temp-file staging that penalize large-model workflows.
-- [ ] **PERF-02**: Large-model exact workflows have repeatable regression coverage or benchmarks that catch retained-store/query and import-staging regressions before release.
+- [x] **PERF-01**: Exact-query and retained-model access avoid avoidable per-call copies or redundant temp-file staging that penalize large-model workflows.
+- [x] **PERF-02**: Large-model exact workflows have repeatable regression coverage or benchmarks that catch retained-store/query and import-staging regressions before release.
 
 ### Adapter Boundary
 
@@ -52,8 +52,8 @@
 |-------------|-------|--------|
 | LIFE-01 | Phase 24 | Complete (2026-04-20) |
 | LIFE-02 | Phase 24 | Complete (2026-04-20) |
-| PERF-01 | Phase 25 | Pending |
-| PERF-02 | Phase 25 | Pending |
+| PERF-01 | Phase 25 | Complete (2026-04-20) |
+| PERF-02 | Phase 25 | Complete (2026-04-20) |
 | ADAPT-10 | Phase 24 | Complete (2026-04-20) |
 | DOCS-04 | Phase 26 | Pending |
 | GOV-05 | Phase 26 | Pending |
@@ -65,4 +65,4 @@
 
 ---
 *Requirements defined: 2026-04-18*
-*Last updated: 2026-04-20 after Phase 24 completion*
+*Last updated: 2026-04-20 after Phase 25 completion*
