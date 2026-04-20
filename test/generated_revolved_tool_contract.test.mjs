@@ -133,6 +133,23 @@ function validateTopology(geometry, label) {
   }
 }
 
+function roundColor(color) {
+  return {
+    r: Number(color.r.toFixed(6)),
+    g: Number(color.g.toFixed(6)),
+    b: Number(color.b.toFixed(6)),
+  };
+}
+
+function colorKey(color) {
+  const rounded = roundColor(color);
+  return JSON.stringify([rounded.r, rounded.g, rounded.b]);
+}
+
+function faceColorKeyMap(geometry) {
+  return new Map((geometry.faces ?? []).map((face) => [face.id, face.color ? colorKey(face.color) : null]));
+}
+
 function assertStableFaceBindings(result, spec, label) {
   const geometry = result.geometries[0];
   const faceIds = new Set((geometry.faces ?? []).map((face) => face.id));
@@ -141,6 +158,10 @@ function assertStableFaceBindings(result, spec, label) {
   assert.equal(result.generatedTool.hasStableFaceBindings, true, `${label}: stable face bindings should be enabled`);
   assert.ok(Array.isArray(faceBindings), `${label}: faceBindings should be an array`);
   assert.ok(faceBindings.length > 0, `${label}: faceBindings should not be empty`);
+  assert.ok(
+    geometry.faces.every((face) => face.color && typeof face.color.r === "number"),
+    `${label}: generated faces should expose deterministic default colors`,
+  );
 
   for (const binding of faceBindings) {
     assert.equal(binding.geometryIndex, 0, `${label}: generated tools currently bind against geometry 0`);
@@ -216,6 +237,33 @@ test("BuildRevolvedTool emits stable generatedTool face bindings with runtime ro
     result.generatedTool.faceBindings.some((binding) => binding.segmentId === "flank"),
     "generatedTool metadata: segment bindings should preserve caller segment ids",
   );
+
+  const faceColors = faceColorKeyMap(result.geometries[0]);
+  const closureKeys = new Set(
+    result.generatedTool.faceBindings
+      .filter((binding) => binding.systemRole === "closure")
+      .map((binding) => faceColors.get(binding.faceId)),
+  );
+  const cuttingKeys = new Set(
+    result.generatedTool.faceBindings
+      .filter((binding) => binding.systemRole === "profile" && binding.segmentTag === "cutting")
+      .map((binding) => faceColors.get(binding.faceId)),
+  );
+  const profileKeys = new Set(
+    result.generatedTool.faceBindings
+      .filter((binding) => binding.systemRole === "profile")
+      .map((binding) => faceColors.get(binding.faceId)),
+  );
+
+  assert.equal(closureKeys.size, 1, "generatedTool metadata: closure faces should collapse to one runtime-owned appearance");
+  assert.equal(cuttingKeys.size, 1, "generatedTool metadata: matching cutting tags should collapse to one appearance group");
+  assert.ok(profileKeys.size >= 2, "generatedTool metadata: different profile semantics should produce multiple appearances");
+  assert.notEqual(
+    [...closureKeys][0],
+    [...cuttingKeys][0],
+    "generatedTool metadata: closure appearance should stay distinct from cutting profile appearance",
+  );
+  assert.ok(result.materials.length >= 4, "generatedTool metadata: materials should reflect grouped face appearances plus fallback geometry color");
 });
 
 test("BuildRevolvedTool reports runtime-owned cap bindings for partial revolves", async () => {
@@ -237,6 +285,22 @@ test("BuildRevolvedTool reports runtime-owned cap bindings for partial revolves"
     ),
     "partial revolve face bindings: system-owned caps should not claim caller segment indices",
   );
+
+  const faceColors = faceColorKeyMap(result.geometries[0]);
+  const startCapKey = faceColors.get(
+    result.generatedTool.faceBindings.find((binding) => binding.systemRole === "start_cap").faceId,
+  );
+  const endCapKey = faceColors.get(
+    result.generatedTool.faceBindings.find((binding) => binding.systemRole === "end_cap").faceId,
+  );
+  const closureKey = faceColors.get(
+    result.generatedTool.faceBindings.find((binding) => binding.systemRole === "closure").faceId,
+  );
+
+  assert.ok(startCapKey, "partial revolve face bindings: start cap should carry a deterministic color");
+  assert.ok(endCapKey, "partial revolve face bindings: end cap should carry a deterministic color");
+  assert.notEqual(startCapKey, endCapKey, "partial revolve face bindings: start/end caps should remain visually distinguishable");
+  assert.notEqual(startCapKey, closureKey, "partial revolve face bindings: cap appearance should stay distinct from closure appearance");
 });
 
 test("BuildRevolvedTool preserves explicit diagnostics for validation-passing specs that OCCT cannot build", async () => {

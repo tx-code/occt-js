@@ -30,6 +30,8 @@
 
 #include <algorithm>
 #include <array>
+#include <cctype>
+#include <cstdint>
 #include <cmath>
 #include <string>
 #include <vector>
@@ -519,6 +521,103 @@ OcctColor NeutralToolColor()
     return OcctColor(0.78, 0.80, 0.84);
 }
 
+OcctColor MakeSemanticColor(double r, double g, double b)
+{
+    return OcctColor(r, g, b);
+}
+
+std::string ToLowerAscii(std::string value)
+{
+    std::transform(
+        value.begin(),
+        value.end(),
+        value.begin(),
+        [](unsigned char ch) {
+            return static_cast<char>(std::tolower(ch));
+        });
+    return value;
+}
+
+uint32_t StableHash32(const std::string& text)
+{
+    uint32_t hash = 2166136261u;
+    for (unsigned char ch : text) {
+        hash ^= static_cast<uint32_t>(ch);
+        hash *= 16777619u;
+    }
+    return hash;
+}
+
+OcctColor HashedProfileColor(const std::string& semanticKey)
+{
+    static const std::array<OcctColor, 6> kProfilePalette = {
+        MakeSemanticColor(0.86, 0.55, 0.22),
+        MakeSemanticColor(0.14, 0.61, 0.72),
+        MakeSemanticColor(0.79, 0.42, 0.24),
+        MakeSemanticColor(0.39, 0.58, 0.49),
+        MakeSemanticColor(0.50, 0.58, 0.70),
+        MakeSemanticColor(0.61, 0.44, 0.69),
+    };
+
+    const uint32_t hash = StableHash32(semanticKey.empty() ? "profile" : semanticKey);
+    return kProfilePalette[hash % kProfilePalette.size()];
+}
+
+OcctColor ResolveProfileAppearanceColor(const OcctGeneratedToolFaceBinding& binding)
+{
+    if (binding.hasSegmentTag) {
+        const std::string tag = ToLowerAscii(binding.segmentTag);
+        if (tag == "tip") {
+            return MakeSemanticColor(0.86, 0.55, 0.22);
+        }
+        if (tag == "cutting") {
+            return MakeSemanticColor(0.14, 0.61, 0.72);
+        }
+        if (tag == "corner") {
+            return MakeSemanticColor(0.79, 0.42, 0.24);
+        }
+        if (tag == "neck") {
+            return MakeSemanticColor(0.39, 0.58, 0.49);
+        }
+        if (tag == "shank") {
+            return MakeSemanticColor(0.50, 0.58, 0.70);
+        }
+        return HashedProfileColor(tag);
+    }
+
+    if (binding.hasSegmentId) {
+        return HashedProfileColor(ToLowerAscii(binding.segmentId));
+    }
+
+    if (binding.hasSegmentIndex) {
+        return HashedProfileColor("segment:" + std::to_string(binding.segmentIndex));
+    }
+
+    return HashedProfileColor("profile");
+}
+
+OcctColor ResolveGeneratedFaceColor(const OcctGeneratedToolFaceBinding& binding)
+{
+    const std::string role = ToLowerAscii(binding.systemRole);
+    if (role == "closure") {
+        return MakeSemanticColor(0.45, 0.49, 0.54);
+    }
+    if (role == "axis") {
+        return MakeSemanticColor(0.29, 0.32, 0.37);
+    }
+    if (role == "start_cap") {
+        return MakeSemanticColor(0.89, 0.67, 0.25);
+    }
+    if (role == "end_cap") {
+        return MakeSemanticColor(0.69, 0.39, 0.24);
+    }
+    if (role == "degenerated") {
+        return MakeSemanticColor(0.65, 0.27, 0.58);
+    }
+
+    return ResolveProfileAppearanceColor(binding);
+}
+
 ImportParams ParseBuildParams(const val& jsOptions, const OcctRevolvedToolSpec& spec)
 {
     ImportParams params;
@@ -998,6 +1097,32 @@ std::vector<OcctGeneratedToolFaceBinding> BuildGeneratedToolFaceBindings(
     return bindings;
 }
 
+void ApplyGeneratedToolFaceColors(
+    OcctMeshData& mesh,
+    const std::vector<OcctGeneratedToolFaceBinding>& faceBindings)
+{
+    std::vector<bool> assigned(mesh.faces.size(), false);
+    for (const auto& binding : faceBindings) {
+        if (binding.faceId <= 0 || binding.faceId > static_cast<int>(mesh.faces.size())) {
+            continue;
+        }
+
+        const size_t faceIndex = static_cast<size_t>(binding.faceId - 1);
+        if (assigned[faceIndex]) {
+            continue;
+        }
+
+        mesh.faces[faceIndex].color = ResolveGeneratedFaceColor(binding);
+        assigned[faceIndex] = mesh.faces[faceIndex].color.isValid;
+    }
+
+    for (size_t faceIndex = 0; faceIndex < mesh.faces.size(); ++faceIndex) {
+        if (!assigned[faceIndex]) {
+            mesh.faces[faceIndex].color = NeutralToolColor();
+        }
+    }
+}
+
 OcctGeneratedToolMetadata BuildGeneratedToolMetadata(const OcctRevolvedToolSpec& spec)
 {
     OcctGeneratedToolMetadata metadata;
@@ -1178,6 +1303,7 @@ OcctRevolvedToolBuildResult BuildRevolvedTool(const val& jsSpec, const val& jsOp
 
         mesh.name = "Generated Revolved Tool";
         mesh.color = NeutralToolColor();
+        ApplyGeneratedToolFaceColors(mesh, faceBindings);
 
         PopulateGeneratedScene(mesh, spec, result.scene);
         result.exactShape = revolvedShape;
