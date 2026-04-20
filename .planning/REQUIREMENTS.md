@@ -7,8 +7,8 @@
 
 ### Lifecycle Governance
 
-- [ ] **LIFE-01**: Downstream JS consumers get safer exact-model lifetime management, including JS-side disposal helpers and diagnostics for unreleased exact handles.
-- [ ] **LIFE-02**: Released, missing, or stale exact-model handles fail deterministically with typed failures across the root Wasm carrier and `@tx-code/occt-core`.
+- [x] **LIFE-01**: Downstream JS consumers get safer exact-model lifetime management, including JS-side disposal helpers and diagnostics for unreleased exact handles.
+- [x] **LIFE-02**: Released, missing, or stale exact-model handles fail deterministically with typed failures across the root Wasm carrier and `@tx-code/occt-core`.
 
 ### Performance
 
@@ -17,7 +17,7 @@
 
 ### Adapter Boundary
 
-- [ ] **ADAPT-10**: `@tx-code/occt-core` exposes lifecycle helpers and diagnostics without adding viewer-owned session state, implicit global disposal policy, or breaking existing exact helper APIs.
+- [x] **ADAPT-10**: `@tx-code/occt-core` exposes lifecycle helpers and diagnostics without adding viewer-owned session state, implicit global disposal policy, or breaking existing exact helper APIs.
 
 ### Governance
 
@@ -50,11 +50,11 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| LIFE-01 | Phase 24 | Pending |
-| LIFE-02 | Phase 24 | Pending |
+| LIFE-01 | Phase 24 | Complete (2026-04-20) |
+| LIFE-02 | Phase 24 | Complete (2026-04-20) |
 | PERF-01 | Phase 25 | Pending |
 | PERF-02 | Phase 25 | Pending |
-| ADAPT-10 | Phase 24 | Pending |
+| ADAPT-10 | Phase 24 | Complete (2026-04-20) |
 | DOCS-04 | Phase 26 | Pending |
 | GOV-05 | Phase 26 | Pending |
 
@@ -65,4 +65,4 @@
 
 ---
 *Requirements defined: 2026-04-18*
-*Last updated: 2026-04-18 after v1.7 roadmap creation*
+*Last updated: 2026-04-20 after Phase 24 completion*

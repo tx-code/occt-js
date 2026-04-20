@@ -25,7 +25,7 @@ This roadmap hardens the shipped exact runtime and helper surface before any bro
 
 </details>
 
-- [ ] **Phase 24: Exact Model Lifecycle Governance** - Harden retained exact-model release semantics, diagnostics, and package-first disposal helpers without adding viewer-owned policy.
+- [x] **Phase 24: Exact Model Lifecycle Governance** - Harden retained exact-model release semantics, diagnostics, and package-first disposal helpers without adding viewer-owned policy. (completed 2026-04-20)
 - [ ] **Phase 25: Exact Query & Store Performance** - Remove avoidable retained-query/store copies and import-staging overhead that penalize large-model exact workflows.
 - [ ] **Phase 26: Import Staging & Long-Session Verification** - Lock lifecycle/performance docs, governance, and long-session verification without widening unconditional secondary-surface release gates.
 
@@ -42,8 +42,8 @@ This roadmap hardens the shipped exact runtime and helper surface before any bro
 **Plans**: 2 plans
 
 Plans:
-- [ ] 24-01-PLAN.md — Tighten exact-model lifetime semantics and diagnostics in the root/runtime layer
-- [ ] 24-02-PLAN.md — Add package-first disposal helpers and lifecycle contract coverage
+- [x] 24-01-PLAN.md — Tighten exact-model lifetime semantics and diagnostics in the root/runtime layer
+- [x] 24-02-PLAN.md — Add package-first disposal helpers and lifecycle contract coverage
 
 ### Phase 25: Exact Query & Store Performance
 **Goal**: Large-model exact workflows pay less avoidable overhead in retained-model access, exact-query execution, and import staging.
@@ -80,6 +80,6 @@ Phases execute in numeric order: 24 → 25 → 26
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 24. Exact Model Lifecycle Governance | v1.7 | 0/2 | Not started | - |
+| 24. Exact Model Lifecycle Governance | v1.7 | 2/2 | Complete | 2026-04-20 |
 | 25. Exact Query & Store Performance | v1.7 | 0/2 | Not started | - |
 | 26. Import Staging & Long-Session Verification | v1.7 | 0/2 | Not started | - |

@@ -36,10 +36,10 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 - ✓ Package-first exact helper semantics now include supported cylindrical hole and planar chamfer descriptors through `@tx-code/occt-core`, with the root carrier growing only by narrow selected-ref queries where package composition genuinely needed them. — Phases 21-22
 - ✓ Reusable midpoint, equal-distance, and narrow midplane-style symmetry helpers now compose package-first over the shipped exact placement/relation surface without adding new root carrier APIs. — Phase 22
 - ✓ Package-first helper docs, published `@tx-code/occt-core` typings, tarball checks, and the authoritative root release gate now lock the shipped exact helper family end to end without widening secondary-surface release gates. — Phase 23
+- ✓ Phase 24 lifecycle governance now ships additive root diagnostics (`GetExactModelDiagnostics`), deterministic released-handle exact-query behavior, and package-first managed disposal wrappers in `@tx-code/occt-core`. — Phase 24
 
 ### Active
 
-- [ ] Safer exact-model lifetime management through explicit JS-side disposal helpers, deterministic invalid-after-release behavior, and diagnostics for unreleased retained handles.
 - [ ] Lower per-call overhead in retained exact-model access by removing avoidable store/query copies and reducing import temp-file staging cost for large-model workflows.
 - [ ] Lifecycle/performance docs, verification, and release governance for the exact runtime/package surface without widening unconditional secondary-surface release gates.
 
@@ -61,14 +61,13 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 
 `v1.6 Exact Semantics Helpers` shipped on 2026-04-18 and is now archived in `.planning/milestones/`. The milestone added package-first hole/chamfer descriptors, midpoint/equal-distance/symmetry helpers, published `@tx-code/occt-core` typings, and helper-aware authoritative release-governance coverage for the shipped family.
 
-`v1.7 Exact Lifecycle & Performance` is now the active milestone. The goal is to harden retained exact-model lifetime management, remove known retained-query and import-staging cost hotspots, and lock long-session lifecycle/performance governance before widening helper breadth or package ecosystem scope.
+`v1.7 Exact Lifecycle & Performance` is now the active milestone. Phase 24 is complete with shipped lifecycle diagnostics and package-first managed disposal helpers. Remaining work is performance hardening (Phase 25) and lifecycle/performance docs/governance closeout (Phase 26).
 
 ## Current Milestone: v1.7 Exact Lifecycle & Performance
 
 **Goal:** Harden retained exact-model lifecycle and performance on top of the shipped exact runtime/helper surface without expanding into viewer-owned behavior or secondary-surface sprawl.
 
 **Target features:**
-- Safer exact-model lifetime management, disposal helpers, and diagnostics for retained-handle workflows.
 - Lower-cost exact-model store/query access and reduced import staging overhead for large-model exact workflows.
 - Long-session verification, docs, and release governance for lifecycle/performance expectations while keeping `npm run test:release:root` runtime-first.
 
@@ -79,7 +78,7 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 - `imos-app` remains the key downstream consumer signal: it vendors `@tx-code/occt-js` and consumes the Wasm/runtime surface directly, while viewer semantics live on the app side.
 - `SceneGraph.net` remains the best local reference for measurement behavior above the kernel layer, but `occt-js` intentionally stopped at exact-kernel foundations plus package-first placement/relation support.
 - OCCT `PrsDim` remains the local geometry reference for placement and relation behavior, but `occt-js` intentionally stops short of AIS/Prs3d interactive dimensions.
-- The current exact runtime now exposes retained exact-model lifecycle, primitive exact queries, pairwise distance/angle/thickness, placement DTOs, relation classification, narrow selected-ref hole/chamfer helper semantics, package-only midpoint/equal-distance/symmetry helpers, published package typings, and helper-aware release verification; `v1.7` now focuses on lifecycle safety and runtime cost hotspots inside that shipped surface.
+- The current exact runtime now exposes retained exact-model lifecycle, primitive exact queries, pairwise distance/angle/thickness, placement DTOs, relation classification, narrow selected-ref hole/chamfer helper semantics, package-only midpoint/equal-distance/symmetry helpers, published package typings, helper-aware release verification, additive lifecycle diagnostics, and package-first managed disposal wrappers; `v1.7` now focuses on the remaining performance and governance closeout work.
 - Known `v1.7` pressure points already visible in the current codebase include retained-model release discipline, lack of caller-facing diagnostics for unreleased handles, avoidable `ExactModelStore` copy costs, and temp-file staging overhead in import paths such as IGES.
 - The formal follow-on milestone sequence after `v1.7` is:
   `v1.8 Package Ecosystem & Secondary Surfaces`.
@@ -122,6 +121,7 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 | Keep midpoint, equal-distance, and symmetry helpers package-only where shipped placement/relation DTOs already suffice | The existing occurrence-space geometry surface is rich enough to derive these helpers without reopening the root runtime boundary; symmetry stays intentionally limited to a midplane helper over supported parallel pairs | ✓ Good |
 | Lock the helper SDK package-first through package-local typings plus root governance/tarball coverage | Phase 23 needed the helper family to be releasable without blurring the root/package boundary or widening secondary-surface gates | ✓ Good |
 | Sequence lifecycle/performance hardening before broader semantics or ecosystem cleanup | The exact helper surface is now shipped; stabilizing retained-handle safety and large-model cost hotspots reduces downstream risk before adding more breadth | ✓ Good |
+| Keep lifecycle diagnostics explicit and managed disposal package-first | Phase 24 needed safer lifecycle ergonomics while preserving root numeric handle ownership and avoiding viewer/global disposal policy | ✓ Good |
 
 ## Evolution
 
@@ -211,4 +211,4 @@ This document evolves at phase transitions and milestone boundaries.
 </details>
 
 ---
-*Last updated: 2026-04-18 after starting milestone v1.7 Exact Lifecycle & Performance*
+*Last updated: 2026-04-20 after Phase 24 completion*
