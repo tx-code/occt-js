@@ -319,6 +319,78 @@ export interface OcctJSExactChamferSuccess {
 
 export type OcctJSExactChamferResult = OcctJSExactChamferSuccess | OcctJSExactQueryFailure;
 
+export type OcctJSRevolvedToolUnits = "mm" | "inch";
+export type OcctJSRevolvedToolPlane = "XZ";
+export type OcctJSRevolvedToolClosure = "explicit" | "auto_axis";
+export type OcctJSRevolvedToolSegmentKind = "line" | "arc_center" | "arc_3pt";
+export type OcctJSRevolvedToolDiagnosticCode =
+    | "degenerate-segment"
+    | "invalid-arc"
+    | "invalid-closure"
+    | "invalid-revolve-angle"
+    | "invalid-spec"
+    | "invalid-type"
+    | "missing-field"
+    | "negative-radius"
+    | "non-finite-coordinate"
+    | "profile-not-closed"
+    | "unsupported-plane"
+    | "unsupported-segment-kind"
+    | "unsupported-unit"
+    | "unsupported-version";
+
+export interface OcctJSRevolvedToolSegmentBase {
+    id?: string;
+    tag?: string;
+    end: [number, number];
+}
+
+export interface OcctJSRevolvedToolLineSegment extends OcctJSRevolvedToolSegmentBase {
+    kind: "line";
+}
+
+export interface OcctJSRevolvedToolArcCenterSegment extends OcctJSRevolvedToolSegmentBase {
+    kind: "arc_center";
+    center: [number, number];
+}
+
+export interface OcctJSRevolvedToolArc3PointSegment extends OcctJSRevolvedToolSegmentBase {
+    kind: "arc_3pt";
+    through: [number, number];
+}
+
+export type OcctJSRevolvedToolSegment =
+    | OcctJSRevolvedToolLineSegment
+    | OcctJSRevolvedToolArcCenterSegment
+    | OcctJSRevolvedToolArc3PointSegment;
+
+export interface OcctJSRevolvedToolSpec {
+    version?: 1;
+    units: OcctJSRevolvedToolUnits;
+    profile: {
+        plane?: OcctJSRevolvedToolPlane;
+        start: [number, number];
+        closure: OcctJSRevolvedToolClosure;
+        segments: OcctJSRevolvedToolSegment[];
+    };
+    revolve?: {
+        angleDeg?: number;
+    };
+}
+
+export interface OcctJSRevolvedToolDiagnostic {
+    code: OcctJSRevolvedToolDiagnosticCode;
+    message: string;
+    severity: "error";
+    path?: string;
+    segmentIndex?: number;
+}
+
+export interface OcctJSRevolvedToolValidationResult {
+    ok: boolean;
+    diagnostics: OcctJSRevolvedToolDiagnostic[];
+}
+
 export interface OcctJSReadParams {
     rootMode?: "one-shape" | "multiple-shapes";
     linearUnit?: "millimeter" | "centimeter" | "meter" | "inch" | "foot";
@@ -398,6 +470,7 @@ export interface OcctJSModule {
     ReadStepFile(content: Uint8Array, params?: OcctJSReadParams): OcctJSResult;
     ReadIgesFile(content: Uint8Array, params?: OcctJSReadParams): OcctJSResult;
     ReadBrepFile(content: Uint8Array, params?: OcctJSReadParams): OcctJSResult;
+    ValidateRevolvedToolSpec(spec: OcctJSRevolvedToolSpec): OcctJSRevolvedToolValidationResult;
     OpenExactModel(format: string, content: Uint8Array, params?: OcctJSReadParams): OcctJSExactOpenResult;
     OpenExactStepModel(content: Uint8Array, params?: OcctJSReadParams): OcctJSExactOpenResult;
     OpenExactIgesModel(content: Uint8Array, params?: OcctJSReadParams): OcctJSExactOpenResult;

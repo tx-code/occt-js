@@ -14,6 +14,7 @@
 #include "exact-model-store.hpp"
 #include "exact-query.hpp"
 #include "orientation.hpp"
+#include "revolved-tool.hpp"
 
 using namespace emscripten;
 
@@ -831,6 +832,33 @@ val ExactChamferResultToVal(const OcctExactChamferResult& result)
     return obj;
 }
 
+val RevolvedToolDiagnosticToVal(const OcctRevolvedToolDiagnostic& diagnostic)
+{
+    val obj = val::object();
+    obj.set("code", diagnostic.code);
+    obj.set("message", diagnostic.message);
+    obj.set("severity", diagnostic.severity);
+    if (diagnostic.hasPath) {
+        obj.set("path", diagnostic.path);
+    }
+    if (diagnostic.hasSegmentIndex) {
+        obj.set("segmentIndex", diagnostic.segmentIndex);
+    }
+    return obj;
+}
+
+val RevolvedToolValidationResultToVal(const OcctRevolvedToolValidationResult& result)
+{
+    val obj = val::object();
+    obj.set("ok", result.ok);
+    val diagnostics = val::array();
+    for (const auto& diagnostic : result.diagnostics) {
+        diagnostics.call<void>("push", RevolvedToolDiagnosticToVal(diagnostic));
+    }
+    obj.set("diagnostics", diagnostics);
+    return obj;
+}
+
 val ExactGeometryBindingsToVal(size_t geometryCount)
 {
     val bindings = val::array();
@@ -1038,6 +1066,11 @@ val ReadBrepFile(const val& content, const val& jsParams)
 val ReadFile(const std::string& format, const val& content, const val& jsParams)
 {
     return ReadByFormat(format, content, jsParams);
+}
+
+val ValidateRevolvedToolSpecBinding(const val& jsSpec)
+{
+    return RevolvedToolValidationResultToVal(ValidateRevolvedToolSpec(jsSpec));
 }
 
 val OpenExactStepModel(const val& content, const val& jsParams)
@@ -1356,6 +1389,7 @@ EMSCRIPTEN_BINDINGS(occtjs)
     function("ReadStepFile", &ReadStepFile);
     function("ReadIgesFile", &ReadIgesFile);
     function("ReadBrepFile", &ReadBrepFile);
+    function("ValidateRevolvedToolSpec", &ValidateRevolvedToolSpecBinding);
     function("OpenExactModel", &OpenExactModel);
     function("OpenExactStepModel", &OpenExactStepModel);
     function("OpenExactIgesModel", &OpenExactIgesModel);

@@ -285,6 +285,53 @@ struct OcctExactChamferResult {
     bool hasSupportNormalB = false;
 };
 
+struct OcctRevolvedToolDiagnostic {
+    std::string code;
+    std::string message;
+    std::string severity = "error";
+    std::string path;
+    bool hasPath = false;
+    int segmentIndex = -1;
+    bool hasSegmentIndex = false;
+};
+
+struct OcctRevolvedToolSegment {
+    std::string kind;
+    std::string id;
+    bool hasId = false;
+    std::string tag;
+    bool hasTag = false;
+    std::array<double, 2> end = { 0.0, 0.0 };
+    bool hasEnd = false;
+    std::array<double, 2> center = { 0.0, 0.0 };
+    bool hasCenter = false;
+    std::array<double, 2> through = { 0.0, 0.0 };
+    bool hasThrough = false;
+};
+
+struct OcctRevolvedToolProfile {
+    std::string plane = "XZ";
+    std::array<double, 2> start = { 0.0, 0.0 };
+    bool hasStart = false;
+    std::vector<OcctRevolvedToolSegment> segments;
+    std::string closure;
+    bool hasClosure = false;
+};
+
+struct OcctRevolvedToolSpec {
+    int version = 1;
+    std::string units;
+    OcctRevolvedToolProfile profile;
+    double angleDeg = 360.0;
+};
+
+struct OcctRevolvedToolValidationResult {
+    bool ok = false;
+    std::vector<OcctRevolvedToolDiagnostic> diagnostics;
+    OcctRevolvedToolSpec spec;
+    bool hasSpec = false;
+};
+
 struct ImportParams {
     static constexpr double kCadGhostedOpacity = 0.35;
 
