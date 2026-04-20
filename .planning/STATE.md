@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.8
 milestone_name: Wasm+JS Revolved Tool Generation
 status: planning
-stopped_at: defining milestone requirements
-last_updated: "2026-04-20T14:55:15.1494998+08:00"
-last_activity: 2026-04-20 -- Started v1.8 milestone for revolved tool generation
+stopped_at: v1.8 roadmap created
+last_updated: "2026-04-20T14:58:08.6904523+08:00"
+last_activity: 2026-04-20 -- Defined v1.8 requirements and roadmap
 progress:
-  total_phases: 0
+  total_phases: 3
   completed_phases: 0
-  total_plans: 0
+  total_plans: 6
   completed_plans: 0
   percent: 0
 ---
@@ -21,15 +21,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-20)
 
 Core value: Downstream applications can reliably consume the OCCT Wasm runtime and its root API contract without build drift or packaging surprises.
-Current focus: v1.8 requirements definition
+Current focus: Phase 27 planning
 
 ## Current Position
 
 Milestone: v1.8 Wasm+JS Revolved Tool Generation
-Phase: Not started
+Phase: 27. Revolved Tool Spec & Wasm Builder
 Plan: Not started
-Status: Defining requirements
-Last activity: 2026-04-20 -- Milestone v1.8 started
+Status: Roadmap defined; ready for `$gsd-discuss-phase 27`
+Last activity: 2026-04-20 -- Defined v1.8 requirements and roadmap
 
 Progress: [----------] 0%
 
@@ -55,8 +55,8 @@ Latest shipped milestone (`v1.7`):
 
 ### Pending Todos
 
-- Define `v1.8` requirements for the revolved tool spec, generated exact model flow, mapping semantics, and package-first SDK surface.
-- Create the `v1.8` roadmap and phase breakdown.
+- Start Phase 27 planning for revolved tool spec parsing, diagnostics, and OCCT revolve construction.
+- Keep `openExactRevolvedTool` aligned with existing exact-model lifecycle and query contracts.
 - Keep `demo/.codex-run/` and `demo/dist/` out of planning commits.
 
 ### Blockers/Concerns
@@ -74,5 +74,5 @@ Items acknowledged and deferred at milestone close on 2026-04-20:
 ## Session Continuity
 
 Last session: 2026-04-20T13:50:40.3767689+08:00
-Stopped at: v1.7 closeout complete
+Stopped at: v1.8 roadmap initialization complete
 Resume file: .planning/PROJECT.md
