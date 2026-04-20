@@ -66,6 +66,25 @@ function createColorlessRawResult() {
   };
 }
 
+function createRevolvedToolSpec() {
+  return {
+    version: 1,
+    units: "mm",
+    profile: {
+      plane: "XZ",
+      start: [0, 0],
+      closure: "explicit",
+      segments: [
+        { kind: "line", id: "tip", tag: "tip", end: [3, 0] },
+        { kind: "line", id: "flute", tag: "cutting", end: [3, 12] },
+        { kind: "line", id: "axis-top", tag: "closure", end: [0, 12] },
+        { kind: "line", id: "axis-bottom", tag: "closure", end: [0, 0] },
+      ],
+    },
+    revolve: { angleDeg: 360 },
+  };
+}
+
 describe("normalizeOcctFormat", () => {
   it("maps known extensions to canonical formats", () => {
     assert.equal(normalizeOcctFormat("step"), "step");
@@ -2321,6 +2340,105 @@ describe("createOcctCore", () => {
       ["iges", [2]],
       ["brep", [3]],
     ]);
+  });
+
+  it("wraps generated revolved tool validate/build/openExact entrypoints without forcing raw Wasm access", async () => {
+    const calls = [];
+    const spec = createRevolvedToolSpec();
+    const buildOptions = {
+      linearDeflectionType: "bounding_box_ratio",
+      linearDeflection: 0.001,
+      angularDeflection: 0.5,
+    };
+    const core = createOcctCore({
+      factory: async () => ({
+        ValidateRevolvedToolSpec: (incomingSpec) => {
+          calls.push(["validate", incomingSpec]);
+          return { ok: true, diagnostics: [] };
+        },
+        BuildRevolvedTool: (incomingSpec, incomingOptions) => {
+          calls.push(["build", incomingSpec, incomingOptions]);
+          return {
+            success: true,
+            sourceFormat: "generated-revolved-tool",
+            rootNodes: [],
+            geometries: [],
+            materials: [],
+            warnings: [],
+            stats: EMPTY_STATS,
+            generatedTool: {
+              version: 1,
+              units: "mm",
+              plane: "XZ",
+              closure: "explicit",
+              angleDeg: 360,
+              segmentCount: 4,
+              hasStableFaceBindings: true,
+              segments: [],
+              faceBindings: [],
+            },
+          };
+        },
+        OpenExactRevolvedTool: (incomingSpec, incomingOptions) => {
+          calls.push(["openExact", incomingSpec, incomingOptions]);
+          return {
+            success: true,
+            sourceFormat: "generated-revolved-tool",
+            exactModelId: 42,
+            exactGeometryBindings: [{ exactShapeHandle: 1 }],
+            rootNodes: [],
+            geometries: [],
+            materials: [],
+            warnings: [],
+            stats: EMPTY_STATS,
+            generatedTool: {
+              version: 1,
+              units: "mm",
+              plane: "XZ",
+              closure: "explicit",
+              angleDeg: 360,
+              segmentCount: 4,
+              hasStableFaceBindings: true,
+              segments: [],
+              faceBindings: [],
+            },
+          };
+        },
+      }),
+    });
+
+    const validation = await core.validateRevolvedToolSpec(spec);
+    const built = await core.buildRevolvedTool(spec, buildOptions);
+    const exact = await core.openExactRevolvedTool(spec, buildOptions);
+
+    assert.deepEqual(validation, { ok: true, diagnostics: [] });
+    assert.equal(built.sourceFormat, "generated-revolved-tool");
+    assert.equal(built.generatedTool.hasStableFaceBindings, true);
+    assert.equal(exact.exactModelId, 42);
+    assert.deepEqual(calls, [
+      ["validate", spec],
+      ["build", spec, buildOptions],
+      ["openExact", spec, buildOptions],
+    ]);
+  });
+
+  it("fails explicitly when the loaded module does not expose generated revolved tool entrypoints", async () => {
+    const core = createOcctCore({
+      factory: async () => ({}),
+    });
+
+    await assert.rejects(
+      core.validateRevolvedToolSpec(createRevolvedToolSpec()),
+      /Loaded OCCT module does not expose ValidateRevolvedToolSpec\(\)\./,
+    );
+    await assert.rejects(
+      core.buildRevolvedTool(createRevolvedToolSpec()),
+      /Loaded OCCT module does not expose BuildRevolvedTool\(\)\./,
+    );
+    await assert.rejects(
+      core.openExactRevolvedTool(createRevolvedToolSpec()),
+      /Loaded OCCT module does not expose OpenExactRevolvedTool\(\)\./,
+    );
   });
 });
 

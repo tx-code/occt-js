@@ -5,6 +5,7 @@ import type {
   OcctJSColor,
   OcctJSExactChamferResult,
   OcctJSExactElementKind,
+  OcctJSExactRevolvedToolOpenResult,
   OcctJSExactGeometryFamily,
   OcctJSExactHoleResult,
   OcctJSExactModelDiagnostics,
@@ -17,6 +18,10 @@ import type {
   OcctJSLifecycleResult,
   OcctJSModule,
   OcctJSOrientationResult,
+  OcctJSRevolvedToolBuildOptions,
+  OcctJSRevolvedToolBuildResult,
+  OcctJSRevolvedToolSpec,
+  OcctJSRevolvedToolValidationResult,
 } from "@tx-code/occt-js";
 
 export type OcctPoint3 = [number, number, number];
@@ -448,6 +453,9 @@ export declare class OcctCoreClient {
   openManagedExactStep(content: OcctBinaryInput, options?: Omit<OcctImportModelOptions, "format">): Promise<OcctManagedExactModel>;
   openManagedExactIges(content: OcctBinaryInput, options?: Omit<OcctImportModelOptions, "format">): Promise<OcctManagedExactModel>;
   openManagedExactBrep(content: OcctBinaryInput, options?: Omit<OcctImportModelOptions, "format">): Promise<OcctManagedExactModel>;
+  validateRevolvedToolSpec(spec: OcctJSRevolvedToolSpec): Promise<OcctJSRevolvedToolValidationResult>;
+  buildRevolvedTool(spec: OcctJSRevolvedToolSpec, options?: OcctJSRevolvedToolBuildOptions): Promise<OcctJSRevolvedToolBuildResult>;
+  openExactRevolvedTool(spec: OcctJSRevolvedToolSpec, options?: OcctJSRevolvedToolBuildOptions): Promise<OcctJSExactRevolvedToolOpenResult>;
   retainExactModel(exactModelId: number): Promise<OcctJSLifecycleResult>;
   releaseExactModel(exactModelId: number): Promise<OcctJSLifecycleResult>;
   getExactModelDiagnostics(): Promise<OcctJSExactModelDiagnostics>;

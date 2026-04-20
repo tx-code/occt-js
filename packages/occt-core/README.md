@@ -83,6 +83,44 @@ Contract rules:
 Apps own settings persistence, and `@tx-code/occt-core` only consumes the chosen import-time appearance options.
 Viewer overrides remain downstream concerns; the adapter does not own repaint, theme switching, or post-import display policy.
 
+## Generated Revolved Tool SDK
+
+`@tx-code/occt-core` also exposes package-first wrappers for the generated revolved-tool Wasm surface:
+
+```js
+const spec = {
+  version: 1,
+  units: "mm",
+  profile: {
+    plane: "XZ",
+    start: [0, 0],
+    closure: "explicit",
+    segments: [
+      { kind: "line", id: "tip", tag: "tip", end: [3, 0] },
+      { kind: "line", id: "flute", tag: "cutting", end: [3, 12] },
+      { kind: "line", id: "axis-top", tag: "closure", end: [0, 12] },
+      { kind: "line", id: "axis-bottom", tag: "closure", end: [0, 0] },
+    ],
+  },
+  revolve: { angleDeg: 360 },
+};
+
+const validation = await core.validateRevolvedToolSpec(spec);
+const built = await core.buildRevolvedTool(spec, {
+  linearDeflectionType: "bounding_box_ratio",
+  linearDeflection: 0.001,
+  angularDeflection: 0.5,
+});
+const exact = await core.openExactRevolvedTool(spec);
+```
+
+Generated-tool wrapper rules:
+
+- `validateRevolvedToolSpec(spec)` forwards the typed validation lane and returns the root validation DTO unchanged.
+- `buildRevolvedTool(spec, options?)` forwards the generated-tool scene build lane and returns the root generated-tool payload, including `generatedTool.faceBindings` and semantic face colors.
+- `openExactRevolvedTool(spec, options?)` forwards the retained exact-open lane and returns the root exact payload, including `exactModelId` and `exactGeometryBindings`.
+- These wrappers stay package-first but intentionally do not invent a second generated-tool DTO layer on top of the root runtime contract.
+
 ## Exact Measurement and Helper SDK
 
 `@tx-code/occt-core` keeps exact measurement and helper semantics package-first by wrapping the root Wasm carrier's retained exact-model APIs and occurrence transforms:

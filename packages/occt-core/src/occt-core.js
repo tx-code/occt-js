@@ -607,6 +607,30 @@ export class OcctCoreClient {
     return this.openManagedExactModel(content, { ...options, format: "brep" });
   }
 
+  async validateRevolvedToolSpec(spec) {
+    const module = await this._ensureModule();
+    if (typeof module.ValidateRevolvedToolSpec !== "function") {
+      throw new Error("Loaded OCCT module does not expose ValidateRevolvedToolSpec().");
+    }
+    return module.ValidateRevolvedToolSpec(spec);
+  }
+
+  async buildRevolvedTool(spec, options = {}) {
+    const module = await this._ensureModule();
+    if (typeof module.BuildRevolvedTool !== "function") {
+      throw new Error("Loaded OCCT module does not expose BuildRevolvedTool().");
+    }
+    return module.BuildRevolvedTool(spec, options);
+  }
+
+  async openExactRevolvedTool(spec, options = {}) {
+    const module = await this._ensureModule();
+    if (typeof module.OpenExactRevolvedTool !== "function") {
+      throw new Error("Loaded OCCT module does not expose OpenExactRevolvedTool().");
+    }
+    return module.OpenExactRevolvedTool(spec, options);
+  }
+
   async retainExactModel(exactModelId) {
     const module = await this._ensureModule();
     if (typeof module.RetainExactModel !== "function") {
