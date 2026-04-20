@@ -1,5 +1,8 @@
 import type {
   OcctFormat,
+  OcctJSGeneratedToolFaceBinding,
+  OcctJSGeneratedToolMetadata,
+  OcctJSGeneratedToolSegmentDescriptor,
   OcctJSImportAppearancePreset,
   OcctJSImportColorMode,
   OcctJSColor,
@@ -142,6 +145,15 @@ export interface OcctNormalizedStats {
   reusedInstanceCount: number;
 }
 
+export interface OcctNormalizedGeneratedToolFaceBinding extends OcctJSGeneratedToolFaceBinding {
+  geometryId?: string;
+}
+
+export interface OcctNormalizedGeneratedToolMetadata extends Omit<OcctJSGeneratedToolMetadata, "segments" | "faceBindings"> {
+  segments: OcctJSGeneratedToolSegmentDescriptor[];
+  faceBindings?: OcctNormalizedGeneratedToolFaceBinding[];
+}
+
 export interface OcctNormalizedResult {
   sourceFormat: OcctNormalizedSourceFormat;
   sourceFileName?: string;
@@ -152,6 +164,7 @@ export interface OcctNormalizedResult {
   materials: OcctNormalizedMaterial[];
   warnings: OcctNormalizedWarning[];
   stats: OcctNormalizedStats;
+  generatedTool?: OcctNormalizedGeneratedToolMetadata;
 }
 
 export interface OcctNormalizedExactGeometryBinding {

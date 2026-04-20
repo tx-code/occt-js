@@ -6,6 +6,7 @@ import { useViewer } from "./hooks/useViewer";
 import { useViewerActions } from "./hooks/useViewerActions";
 import { usePicking } from "./hooks/usePicking";
 import DropZone from "./components/DropZone";
+import GeneratedToolLegend from "./components/GeneratedToolLegend";
 import LoadingOverlay from "./components/LoadingOverlay";
 import StatsPanel from "./components/StatsPanel";
 import SelectionPanel from "./components/SelectionPanel";
@@ -114,6 +115,7 @@ export default function App() {
             onSetProjection={setProjectionAction}
             onSnapshot={takeSnapshot}
           />
+          <GeneratedToolLegend />
           <StatsPanel />
           <SelectionPanel />
           <ModelTreeDrawer />

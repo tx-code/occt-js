@@ -244,7 +244,22 @@ describe("normalizeOcctResult", () => {
       stats: { ...EMPTY_STATS, rootCount: 1, nodeCount: 1, partCount: 1, geometryCount: 1, materialCount: 2, triangleCount: 1 },
       generatedTool: {
         units: "mm",
+        plane: "XZ",
+        version: 1,
+        angleDeg: 360,
+        segmentCount: 1,
+        hasStableFaceBindings: true,
         closureMode: "explicit",
+        closure: "explicit",
+        segments: [{ index: 0, kind: "line", id: "tool-body", tag: "cutting" }],
+        faceBindings: [{
+          geometryIndex: 0,
+          faceId: 1,
+          systemRole: "profile",
+          segmentIndex: 0,
+          segmentId: "tool-body",
+          segmentTag: "cutting",
+        }],
       },
     });
 
@@ -252,6 +267,10 @@ describe("normalizeOcctResult", () => {
     assert.equal(result.geometries.length, 1);
     assert.deepEqual(result.rootNodes[0].geometryIds, ["geo_0"]);
     assert.equal(result.stats.materialCount, 2);
+    assert.equal(result.generatedTool.units, "mm");
+    assert.equal(result.generatedTool.segments[0].tag, "cutting");
+    assert.equal(result.generatedTool.faceBindings[0].geometryId, "geo_0");
+    assert.equal(result.generatedTool.faceBindings[0].segmentId, "tool-body");
   });
 
   it("keeps unit metadata absent when the raw payload omits it", () => {

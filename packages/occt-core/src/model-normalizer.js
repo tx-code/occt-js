@@ -451,6 +451,52 @@ function normalizeWarnings(rawWarnings) {
   });
 }
 
+function normalizeGeneratedToolMetadata(rawGeneratedTool, geometries) {
+  if (!rawGeneratedTool || typeof rawGeneratedTool !== "object") {
+    return undefined;
+  }
+
+  const segments = Array.isArray(rawGeneratedTool.segments)
+    ? rawGeneratedTool.segments.map((segment, index) => ({
+      index: Number.isFinite(segment?.index) ? segment.index : index,
+      kind: typeof segment?.kind === "string" ? segment.kind : "line",
+      ...(typeof segment?.id === "string" ? { id: segment.id } : {}),
+      ...(typeof segment?.tag === "string" ? { tag: segment.tag } : {}),
+    }))
+    : [];
+
+  const metadata = {
+    version: rawGeneratedTool.version === 1 ? 1 : 1,
+    units: rawGeneratedTool.units,
+    plane: rawGeneratedTool.plane,
+    closure: rawGeneratedTool.closure,
+    angleDeg: Number(rawGeneratedTool.angleDeg ?? 0),
+    segmentCount: Number.isFinite(rawGeneratedTool.segmentCount)
+      ? rawGeneratedTool.segmentCount
+      : segments.length,
+    hasStableFaceBindings: rawGeneratedTool.hasStableFaceBindings === true,
+    segments,
+  };
+
+  if (Array.isArray(rawGeneratedTool.faceBindings)) {
+    metadata.faceBindings = rawGeneratedTool.faceBindings.map((binding) => {
+      const geometryIndex = Number.isFinite(binding?.geometryIndex) ? binding.geometryIndex : -1;
+      const geometry = geometryIndex >= 0 ? geometries[geometryIndex] : undefined;
+      return {
+        geometryIndex,
+        faceId: Number.isFinite(binding?.faceId) ? binding.faceId : 0,
+        systemRole: typeof binding?.systemRole === "string" ? binding.systemRole : "profile",
+        ...(typeof geometry?.id === "string" ? { geometryId: geometry.id } : {}),
+        ...(Number.isFinite(binding?.segmentIndex) ? { segmentIndex: binding.segmentIndex } : {}),
+        ...(typeof binding?.segmentId === "string" ? { segmentId: binding.segmentId } : {}),
+        ...(typeof binding?.segmentTag === "string" ? { segmentTag: binding.segmentTag } : {}),
+      };
+    });
+  }
+
+  return metadata;
+}
+
 function normalizeResultSourceFormat(sourceFormat) {
   if (typeof sourceFormat === "string" && sourceFormat.trim().toLowerCase() === GENERATED_TOOL_SOURCE_FORMAT) {
     return GENERATED_TOOL_SOURCE_FORMAT;
@@ -523,6 +569,10 @@ export function normalizeOcctResult(rawResult, options = {}) {
   }
   if (Number.isFinite(rawResult.unitScaleToMeters) && rawResult.unitScaleToMeters > 0) {
     result.unitScaleToMeters = rawResult.unitScaleToMeters;
+  }
+  const generatedTool = normalizeGeneratedToolMetadata(rawResult.generatedTool, geometries);
+  if (generatedTool) {
+    result.generatedTool = generatedTool;
   }
 
   return result;
