@@ -341,6 +341,18 @@ struct OcctGeneratedToolSegmentDescriptor {
     bool hasTag = false;
 };
 
+struct OcctGeneratedToolFaceBinding {
+    int geometryIndex = 0;
+    int faceId = 0;
+    std::string systemRole;
+    int segmentIndex = -1;
+    bool hasSegmentIndex = false;
+    std::string segmentId;
+    bool hasSegmentId = false;
+    std::string segmentTag;
+    bool hasSegmentTag = false;
+};
+
 struct OcctGeneratedToolMetadata {
     int version = 1;
     std::string units;
@@ -350,6 +362,7 @@ struct OcctGeneratedToolMetadata {
     int segmentCount = 0;
     bool hasStableFaceBindings = false;
     std::vector<OcctGeneratedToolSegmentDescriptor> segments;
+    std::vector<OcctGeneratedToolFaceBinding> faceBindings;
 };
 
 struct OcctRevolvedToolBuildResult {

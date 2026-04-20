@@ -133,6 +133,42 @@ function validateTopology(geometry, label) {
   }
 }
 
+function assertStableFaceBindings(result, spec, label) {
+  const geometry = result.geometries[0];
+  const faceIds = new Set((geometry.faces ?? []).map((face) => face.id));
+  const faceBindings = result.generatedTool?.faceBindings;
+
+  assert.equal(result.generatedTool.hasStableFaceBindings, true, `${label}: stable face bindings should be enabled`);
+  assert.ok(Array.isArray(faceBindings), `${label}: faceBindings should be an array`);
+  assert.ok(faceBindings.length > 0, `${label}: faceBindings should not be empty`);
+
+  for (const binding of faceBindings) {
+    assert.equal(binding.geometryIndex, 0, `${label}: generated tools currently bind against geometry 0`);
+    assert.ok(faceIds.has(binding.faceId), `${label}: faceId should exist in emitted geometry`);
+    assert.ok(
+      ["profile", "closure", "axis", "start_cap", "end_cap", "degenerated"].includes(binding.systemRole),
+      `${label}: systemRole should be a supported runtime role`,
+    );
+
+    if (binding.segmentIndex !== undefined) {
+      assert.ok(
+        binding.segmentIndex >= 0 && binding.segmentIndex < spec.profile.segments.length,
+        `${label}: segmentIndex should be in range`,
+      );
+      const segment = spec.profile.segments[binding.segmentIndex];
+      if (segment.id !== undefined) {
+        assert.equal(binding.segmentId, segment.id, `${label}: segmentId should echo the originating segment id`);
+      }
+      if (segment.tag !== undefined) {
+        assert.equal(binding.segmentTag, segment.tag, `${label}: segmentTag should echo the originating segment tag`);
+      }
+    } else {
+      assert.equal(binding.segmentId, undefined, `${label}: system-owned bindings should not claim a segmentId`);
+      assert.equal(binding.segmentTag, undefined, `${label}: system-owned bindings should not claim a segmentTag`);
+    }
+  }
+}
+
 test("BuildRevolvedTool builds an endmill-like spec into a canonical generated scene payload", async () => {
   const module = await createModule();
   const result = module.BuildRevolvedTool(createEndmillLikeSpec(), {});
@@ -156,7 +192,7 @@ test("BuildRevolvedTool builds a drill-like partial revolve and keeps topology i
   validateTopology(result.geometries[0], "drill-like partial revolve");
 });
 
-test("BuildRevolvedTool emits additive generatedTool metadata without claiming stable face bindings yet", async () => {
+test("BuildRevolvedTool emits stable generatedTool face bindings with runtime roles", async () => {
   const module = await createModule();
   const spec = createEndmillLikeSpec();
   const result = module.BuildRevolvedTool(spec, {});
@@ -169,10 +205,38 @@ test("BuildRevolvedTool emits additive generatedTool metadata without claiming s
   assert.equal(result.generatedTool.closure, spec.profile.closure);
   assert.equal(result.generatedTool.angleDeg, 360);
   assert.equal(result.generatedTool.segmentCount, spec.profile.segments.length);
-  assert.equal(result.generatedTool.hasStableFaceBindings, false);
   assert.ok(Array.isArray(result.generatedTool.segments));
   assert.equal(result.generatedTool.segments.length, spec.profile.segments.length);
-  assert.equal(result.generatedTool.faceBindings, undefined);
+  assertStableFaceBindings(result, spec, "generatedTool metadata");
+
+  const roleSet = new Set(result.generatedTool.faceBindings.map((binding) => binding.systemRole));
+  assert.ok(roleSet.has("profile"), "generatedTool metadata: full revolve should expose profile bindings");
+  assert.ok(roleSet.has("closure"), "generatedTool metadata: full revolve should expose closure bindings");
+  assert.ok(
+    result.generatedTool.faceBindings.some((binding) => binding.segmentId === "flank"),
+    "generatedTool metadata: segment bindings should preserve caller segment ids",
+  );
+});
+
+test("BuildRevolvedTool reports runtime-owned cap bindings for partial revolves", async () => {
+  const module = await createModule();
+  const spec = createDrillLikePartialSpec();
+  const result = module.BuildRevolvedTool(spec, {});
+
+  assertCanonicalGeneratedResult(result, "partial revolve face bindings");
+  assertStableFaceBindings(result, spec, "partial revolve face bindings");
+
+  const roleSet = new Set(result.generatedTool.faceBindings.map((binding) => binding.systemRole));
+  assert.ok(roleSet.has("profile"), "partial revolve face bindings: partial revolve should expose profile bindings");
+  assert.ok(roleSet.has("closure"), "partial revolve face bindings: partial revolve should expose closure bindings");
+  assert.ok(roleSet.has("start_cap"), "partial revolve face bindings: partial revolve should expose a start cap");
+  assert.ok(roleSet.has("end_cap"), "partial revolve face bindings: partial revolve should expose an end cap");
+  assert.ok(
+    result.generatedTool.faceBindings.some(
+      (binding) => binding.systemRole === "start_cap" && binding.segmentIndex === undefined,
+    ),
+    "partial revolve face bindings: system-owned caps should not claim caller segment indices",
+  );
 });
 
 test("BuildRevolvedTool preserves explicit diagnostics for validation-passing specs that OCCT cannot build", async () => {

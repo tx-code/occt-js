@@ -5,11 +5,20 @@
 #include <BRepBuilderAPI_MakeEdge.hxx>
 #include <BRepBuilderAPI_MakeFace.hxx>
 #include <BRepBuilderAPI_MakeWire.hxx>
+#include <BRepAdaptor_Surface.hxx>
 #include <BRepPrimAPI_MakeRevol.hxx>
+#include <BRepTools.hxx>
 #include <GC_MakeArcOfCircle.hxx>
 #include <GC_MakeSegment.hxx>
 #include <Geom_TrimmedCurve.hxx>
+#include <GeomAbs_SurfaceType.hxx>
 #include <Standard_Failure.hxx>
+#include <TopAbs.hxx>
+#include <TopExp.hxx>
+#include <TopTools_IndexedMapOfShape.hxx>
+#include <TopTools_ListIteratorOfListOfShape.hxx>
+#include <TopoDS.hxx>
+#include <TopoDS_Edge.hxx>
 #include <TopoDS_Face.hxx>
 #include <TopoDS_Shape.hxx>
 #include <TopoDS_Wire.hxx>
@@ -31,6 +40,24 @@ namespace {
 
 constexpr double kPointTolerance = 1e-9;
 constexpr double kPi = 3.14159265358979323846;
+
+struct RevolvedProfileEdgeSource {
+    TopoDS_Edge edge;
+    std::string systemRole;
+    std::array<double, 2> start = { 0.0, 0.0 };
+    std::array<double, 2> end = { 0.0, 0.0 };
+    int segmentIndex = -1;
+    bool hasSegmentIndex = false;
+    std::string segmentId;
+    bool hasSegmentId = false;
+    std::string segmentTag;
+    bool hasSegmentTag = false;
+};
+
+struct RevolvedProfileWireBuild {
+    TopoDS_Wire wire;
+    std::vector<RevolvedProfileEdgeSource> edgeSources;
+};
 
 bool IsObject(const val& jsValue)
 {
@@ -609,10 +636,68 @@ bool TryAppendEdge(
     return wireBuilder.IsDone();
 }
 
+bool IsAxisPoint(const std::array<double, 2>& point)
+{
+    return std::abs(point[0]) <= kPointTolerance;
+}
+
+std::string InferSegmentSystemRole(
+    const std::array<double, 2>& start,
+    const std::array<double, 2>& end)
+{
+    const bool startOnAxis = IsAxisPoint(start);
+    const bool endOnAxis = IsAxisPoint(end);
+    if (startOnAxis && endOnAxis) {
+        return "axis";
+    }
+    if (startOnAxis || endOnAxis) {
+        return "closure";
+    }
+    return "profile";
+}
+
+bool TryAppendTrackedEdge(
+    BRepBuilderAPI_MakeWire& wireBuilder,
+    const TopoDS_Edge& edge,
+    const std::array<double, 2>& start,
+    const std::array<double, 2>& end,
+    const std::string& systemRole,
+    std::vector<RevolvedProfileEdgeSource>& edgeSources,
+    const OcctRevolvedToolSegment* segment = nullptr,
+    int segmentIndex = -1)
+{
+    if (!TryAppendEdge(wireBuilder, edge)) {
+        return false;
+    }
+
+    RevolvedProfileEdgeSource source;
+    source.edge = edge;
+    source.systemRole = systemRole;
+    source.start = start;
+    source.end = end;
+    if (segment != nullptr && segmentIndex >= 0) {
+        source.segmentIndex = segmentIndex;
+        source.hasSegmentIndex = true;
+        if (segment->hasId) {
+            source.segmentId = segment->id;
+            source.hasSegmentId = true;
+        }
+        if (segment->hasTag) {
+            source.segmentTag = segment->tag;
+            source.hasSegmentTag = true;
+        }
+    }
+
+    edgeSources.push_back(std::move(source));
+    return true;
+}
+
 bool TryAppendLineIfNeeded(
     BRepBuilderAPI_MakeWire& wireBuilder,
     const std::array<double, 2>& start,
-    const std::array<double, 2>& end)
+    const std::array<double, 2>& end,
+    const std::string& systemRole,
+    std::vector<RevolvedProfileEdgeSource>& edgeSources)
 {
     if (PointsCoincident(start, end)) {
         return true;
@@ -622,7 +707,7 @@ bool TryAppendLineIfNeeded(
     if (!TryMakeLineEdge(ProfilePointToPnt(start), ProfilePointToPnt(end), edge)) {
         return false;
     }
-    return TryAppendEdge(wireBuilder, edge);
+    return TryAppendTrackedEdge(wireBuilder, edge, start, end, systemRole, edgeSources);
 }
 
 double ComputeApproximateProfileArea(const OcctRevolvedToolSpec& spec)
@@ -664,12 +749,13 @@ double ComputeApproximateProfileArea(const OcctRevolvedToolSpec& spec)
     return 0.5 * twiceArea;
 }
 
-bool TryBuildProfileWire(const OcctRevolvedToolSpec& spec, TopoDS_Wire& wire)
+bool TryBuildProfileWire(const OcctRevolvedToolSpec& spec, RevolvedProfileWireBuild& build)
 {
     BRepBuilderAPI_MakeWire wireBuilder;
     std::array<double, 2> currentPoint = spec.profile.start;
 
-    for (const auto& segment : spec.profile.segments) {
+    for (size_t segmentIndex = 0; segmentIndex < spec.profile.segments.size(); ++segmentIndex) {
+        const auto& segment = spec.profile.segments[segmentIndex];
         TopoDS_Edge edge;
         bool edgeBuilt = false;
 
@@ -681,7 +767,16 @@ bool TryBuildProfileWire(const OcctRevolvedToolSpec& spec, TopoDS_Wire& wire)
             edgeBuilt = TryMakeArc3PointEdge(currentPoint, segment, edge);
         }
 
-        if (!edgeBuilt || !TryAppendEdge(wireBuilder, edge)) {
+        if (!edgeBuilt
+            || !TryAppendTrackedEdge(
+                wireBuilder,
+                edge,
+                currentPoint,
+                segment.end,
+                InferSegmentSystemRole(currentPoint, segment.end),
+                build.edgeSources,
+                &segment,
+                static_cast<int>(segmentIndex))) {
             return false;
         }
 
@@ -691,9 +786,9 @@ bool TryBuildProfileWire(const OcctRevolvedToolSpec& spec, TopoDS_Wire& wire)
     if (spec.profile.closure == "auto_axis") {
         const std::array<double, 2> axisCurrent = { 0.0, currentPoint[1] };
         const std::array<double, 2> axisStart = { 0.0, spec.profile.start[1] };
-        if (!TryAppendLineIfNeeded(wireBuilder, currentPoint, axisCurrent)
-            || !TryAppendLineIfNeeded(wireBuilder, axisCurrent, axisStart)
-            || !TryAppendLineIfNeeded(wireBuilder, axisStart, spec.profile.start)) {
+        if (!TryAppendLineIfNeeded(wireBuilder, currentPoint, axisCurrent, "closure", build.edgeSources)
+            || !TryAppendLineIfNeeded(wireBuilder, axisCurrent, axisStart, "axis", build.edgeSources)
+            || !TryAppendLineIfNeeded(wireBuilder, axisStart, spec.profile.start, "closure", build.edgeSources)) {
             return false;
         }
     }
@@ -702,8 +797,205 @@ bool TryBuildProfileWire(const OcctRevolvedToolSpec& spec, TopoDS_Wire& wire)
         return false;
     }
 
-    wire = wireBuilder.Wire();
-    return !wire.IsNull();
+    build.wire = wireBuilder.Wire();
+    return !build.wire.IsNull();
+}
+
+int FindFaceId(const TopoDS_Shape& shape, const TopTools_IndexedMapOfShape& faceMap)
+{
+    if (shape.IsNull() || shape.ShapeType() != TopAbs_FACE) {
+        return 0;
+    }
+
+    int faceId = faceMap.FindIndex(shape);
+    if (faceId > 0) {
+        return faceId;
+    }
+
+    faceId = faceMap.FindIndex(shape.Oriented(TopAbs_FORWARD));
+    if (faceId > 0) {
+        return faceId;
+    }
+
+    return faceMap.FindIndex(shape.Oriented(TopAbs_REVERSED));
+}
+
+bool FaceBindingMatches(
+    const OcctGeneratedToolFaceBinding& binding,
+    const OcctGeneratedToolFaceBinding& candidate)
+{
+    return binding.geometryIndex == candidate.geometryIndex
+        && binding.faceId == candidate.faceId
+        && binding.systemRole == candidate.systemRole
+        && binding.hasSegmentIndex == candidate.hasSegmentIndex
+        && binding.segmentIndex == candidate.segmentIndex
+        && binding.hasSegmentId == candidate.hasSegmentId
+        && binding.segmentId == candidate.segmentId
+        && binding.hasSegmentTag == candidate.hasSegmentTag
+        && binding.segmentTag == candidate.segmentTag;
+}
+
+bool FaceBindingMatchesSource(
+    const OcctGeneratedToolFaceBinding& binding,
+    const RevolvedProfileEdgeSource& source)
+{
+    return binding.systemRole == source.systemRole
+        && binding.hasSegmentIndex == source.hasSegmentIndex
+        && binding.segmentIndex == source.segmentIndex
+        && binding.hasSegmentId == source.hasSegmentId
+        && binding.segmentId == source.segmentId
+        && binding.hasSegmentTag == source.hasSegmentTag
+        && binding.segmentTag == source.segmentTag;
+}
+
+bool HasFaceBindingForSource(
+    const std::vector<OcctGeneratedToolFaceBinding>& bindings,
+    const RevolvedProfileEdgeSource& source)
+{
+    return std::any_of(
+        bindings.begin(),
+        bindings.end(),
+        [&](const OcctGeneratedToolFaceBinding& binding) {
+            return FaceBindingMatchesSource(binding, source);
+        });
+}
+
+void TryAppendFaceBinding(
+    std::vector<OcctGeneratedToolFaceBinding>& bindings,
+    int geometryIndex,
+    int faceId,
+    const std::string& systemRole,
+    const RevolvedProfileEdgeSource* source = nullptr)
+{
+    if (faceId <= 0) {
+        return;
+    }
+
+    OcctGeneratedToolFaceBinding binding;
+    binding.geometryIndex = geometryIndex;
+    binding.faceId = faceId;
+    binding.systemRole = systemRole;
+    if (source != nullptr && source->hasSegmentIndex) {
+        binding.segmentIndex = source->segmentIndex;
+        binding.hasSegmentIndex = true;
+    }
+    if (source != nullptr && source->hasSegmentId) {
+        binding.segmentId = source->segmentId;
+        binding.hasSegmentId = true;
+    }
+    if (source != nullptr && source->hasSegmentTag) {
+        binding.segmentTag = source->segmentTag;
+        binding.hasSegmentTag = true;
+    }
+
+    const auto duplicate = std::find_if(
+        bindings.begin(),
+        bindings.end(),
+        [&](const OcctGeneratedToolFaceBinding& existing) {
+            return FaceBindingMatches(existing, binding);
+        });
+    if (duplicate == bindings.end()) {
+        bindings.push_back(std::move(binding));
+    }
+}
+
+void AppendGeneratedFaceBindings(
+    std::vector<OcctGeneratedToolFaceBinding>& bindings,
+    const TopTools_ListOfShape& generatedShapes,
+    const TopTools_IndexedMapOfShape& faceMap,
+    const std::string& systemRole,
+    const RevolvedProfileEdgeSource* source = nullptr)
+{
+    for (TopTools_ListIteratorOfListOfShape it(generatedShapes); it.More(); it.Next()) {
+        TryAppendFaceBinding(bindings, 0, FindFaceId(it.Value(), faceMap), systemRole, source);
+    }
+}
+
+void AppendClosurePlaneFallbackBinding(
+    std::vector<OcctGeneratedToolFaceBinding>& bindings,
+    const TopTools_IndexedMapOfShape& faceMap,
+    const RevolvedProfileEdgeSource& source)
+{
+    if (source.systemRole != "closure"
+        || (!IsAxisPoint(source.start) && !IsAxisPoint(source.end))
+        || std::abs(source.start[1] - source.end[1]) > kPointTolerance
+        || HasFaceBindingForSource(bindings, source)) {
+        return;
+    }
+
+    const double targetZ = source.start[1];
+    for (int faceId = 1; faceId <= faceMap.Extent(); ++faceId) {
+        const TopoDS_Face candidateFace = TopoDS::Face(faceMap(faceId));
+        BRepAdaptor_Surface surface(candidateFace, false);
+        if (surface.GetType() != GeomAbs_Plane) {
+            continue;
+        }
+
+        const gp_Pln plane = surface.Plane();
+        const gp_Dir normal = plane.Axis().Direction();
+        if (std::abs(std::abs(normal.Z()) - 1.0) > 1e-6) {
+            continue;
+        }
+
+        double uFirst = 0.0;
+        double uLast = 0.0;
+        double vFirst = 0.0;
+        double vLast = 0.0;
+        BRepTools::UVBounds(candidateFace, uFirst, uLast, vFirst, vLast);
+        const gp_Pnt samplePoint = surface.Value(0.5 * (uFirst + uLast), 0.5 * (vFirst + vLast));
+        if (std::abs(samplePoint.Z() - targetZ) > 1e-6) {
+            continue;
+        }
+
+        TryAppendFaceBinding(bindings, 0, faceId, source.systemRole, &source);
+        return;
+    }
+}
+
+std::vector<OcctGeneratedToolFaceBinding> BuildGeneratedToolFaceBindings(
+    const TopoDS_Shape& revolvedShape,
+    const TopoDS_Face& profileFace,
+    BRepPrimAPI_MakeRevol& makeRevol,
+    const RevolvedProfileWireBuild& wireBuild,
+    const OcctRevolvedToolSpec& spec)
+{
+    std::vector<OcctGeneratedToolFaceBinding> bindings;
+    TopTools_IndexedMapOfShape faceMap;
+    TopTools_IndexedMapOfShape profileEdgeMap;
+    TopExp::MapShapes(revolvedShape, TopAbs_FACE, faceMap);
+    TopExp::MapShapes(profileFace, TopAbs_EDGE, profileEdgeMap);
+
+    const int mappedEdgeCount = std::min(profileEdgeMap.Extent(), static_cast<int>(wireBuild.edgeSources.size()));
+    for (int index = 0; index < mappedEdgeCount; ++index) {
+        const auto& edgeSource = wireBuild.edgeSources[static_cast<size_t>(index)];
+        AppendGeneratedFaceBindings(
+            bindings,
+            makeRevol.Generated(profileEdgeMap(index + 1)),
+            faceMap,
+            edgeSource.systemRole,
+            &edgeSource);
+    }
+
+    for (size_t index = static_cast<size_t>(mappedEdgeCount); index < wireBuild.edgeSources.size(); ++index) {
+        const auto& edgeSource = wireBuild.edgeSources[index];
+        AppendGeneratedFaceBindings(
+            bindings,
+            makeRevol.Generated(edgeSource.edge),
+            faceMap,
+            edgeSource.systemRole,
+            &edgeSource);
+    }
+
+    for (const auto& edgeSource : wireBuild.edgeSources) {
+        AppendClosurePlaneFallbackBinding(bindings, faceMap, edgeSource);
+    }
+
+    if (std::abs(spec.angleDeg - 360.0) > 1e-9) {
+        TryAppendFaceBinding(bindings, 0, FindFaceId(makeRevol.FirstShape(profileFace), faceMap), "start_cap");
+        TryAppendFaceBinding(bindings, 0, FindFaceId(makeRevol.LastShape(profileFace), faceMap), "end_cap");
+    }
+
+    return bindings;
 }
 
 OcctGeneratedToolMetadata BuildGeneratedToolMetadata(const OcctRevolvedToolSpec& spec)
@@ -822,14 +1114,14 @@ OcctRevolvedToolBuildResult BuildRevolvedTool(const val& jsSpec, const val& jsOp
             return result;
         }
 
-        TopoDS_Wire wire;
-        if (!TryBuildProfileWire(spec, wire)) {
+        RevolvedProfileWireBuild wireBuild;
+        if (!TryBuildProfileWire(spec, wireBuild)) {
             AddDiagnostic(result, "build-failed", "Failed to build a connected revolved tool profile wire.", "profile");
             FinalizeBuildFailure(result, "Failed to build a connected revolved tool profile wire.");
             return result;
         }
 
-        BRepBuilderAPI_MakeFace faceBuilder(wire, Standard_True);
+        BRepBuilderAPI_MakeFace faceBuilder(wireBuild.wire, Standard_True);
         if (!faceBuilder.IsDone()) {
             AddDiagnostic(result, "build-failed", "Failed to create a planar profile face from the revolved tool wire.", "profile");
             FinalizeBuildFailure(result, "Failed to create a planar profile face from the revolved tool wire.");
@@ -841,8 +1133,9 @@ OcctRevolvedToolBuildResult BuildRevolvedTool(const val& jsSpec, const val& jsOp
         const double angleRad = spec.angleDeg * kPi / 180.0;
 
         TopoDS_Shape revolvedShape;
+        std::vector<OcctGeneratedToolFaceBinding> faceBindings;
         if (std::abs(spec.angleDeg - 360.0) <= 1e-9) {
-            BRepPrimAPI_MakeRevol makeRevol(face, axis);
+            BRepPrimAPI_MakeRevol makeRevol(face, axis, 2.0 * kPi);
             makeRevol.Build();
             if (!makeRevol.IsDone()) {
                 AddDiagnostic(result, "build-failed", "OCCT failed to revolve the generated profile.", "revolve");
@@ -850,6 +1143,7 @@ OcctRevolvedToolBuildResult BuildRevolvedTool(const val& jsSpec, const val& jsOp
                 return result;
             }
             revolvedShape = makeRevol.Shape();
+            faceBindings = BuildGeneratedToolFaceBindings(revolvedShape, face, makeRevol, wireBuild, spec);
         } else {
             BRepPrimAPI_MakeRevol makeRevol(face, axis, angleRad);
             makeRevol.Build();
@@ -859,6 +1153,7 @@ OcctRevolvedToolBuildResult BuildRevolvedTool(const val& jsSpec, const val& jsOp
                 return result;
             }
             revolvedShape = makeRevol.Shape();
+            faceBindings = BuildGeneratedToolFaceBindings(revolvedShape, face, makeRevol, wireBuild, spec);
         }
 
         if (revolvedShape.IsNull()) {
@@ -887,6 +1182,8 @@ OcctRevolvedToolBuildResult BuildRevolvedTool(const val& jsSpec, const val& jsOp
         PopulateGeneratedScene(mesh, spec, result.scene);
         result.exactShape = revolvedShape;
         result.exactGeometryShapes = { revolvedShape };
+        result.generatedTool.faceBindings = std::move(faceBindings);
+        result.generatedTool.hasStableFaceBindings = true;
         result.success = true;
         result.error.clear();
         return result;

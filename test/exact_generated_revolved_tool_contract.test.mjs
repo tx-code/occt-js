@@ -60,7 +60,9 @@ function assertCanonicalExactGeneratedPayload(result, label) {
   assert.ok(Array.isArray(result?.materials), `${label}: materials should be an array`);
   assert.ok(Array.isArray(result?.exactGeometryBindings), `${label}: exactGeometryBindings should be an array`);
   assert.equal(result.exactGeometryBindings.length, result.geometries.length, `${label}: exactGeometryBindings should align with geometries`);
-  assert.equal(result?.generatedTool?.hasStableFaceBindings, false, `${label}: stable bindings should still be deferred`);
+  assert.equal(result?.generatedTool?.hasStableFaceBindings, true, `${label}: stable bindings should be available`);
+  assert.ok(Array.isArray(result?.generatedTool?.faceBindings), `${label}: faceBindings should be an array`);
+  assert.ok(result.generatedTool.faceBindings.length > 0, `${label}: faceBindings should not be empty`);
 }
 
 function findRepresentativeFace(module, result, expectedFamily) {

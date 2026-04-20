@@ -873,6 +873,24 @@ val GeneratedToolSegmentDescriptorToVal(const OcctGeneratedToolSegmentDescriptor
     return obj;
 }
 
+val GeneratedToolFaceBindingToVal(const OcctGeneratedToolFaceBinding& binding)
+{
+    val obj = val::object();
+    obj.set("geometryIndex", binding.geometryIndex);
+    obj.set("faceId", binding.faceId);
+    obj.set("systemRole", binding.systemRole);
+    if (binding.hasSegmentIndex) {
+        obj.set("segmentIndex", binding.segmentIndex);
+    }
+    if (binding.hasSegmentId) {
+        obj.set("segmentId", binding.segmentId);
+    }
+    if (binding.hasSegmentTag) {
+        obj.set("segmentTag", binding.segmentTag);
+    }
+    return obj;
+}
+
 val GeneratedToolMetadataToVal(const OcctGeneratedToolMetadata& metadata)
 {
     val obj = val::object();
@@ -888,6 +906,13 @@ val GeneratedToolMetadataToVal(const OcctGeneratedToolMetadata& metadata)
         segments.call<void>("push", GeneratedToolSegmentDescriptorToVal(segment));
     }
     obj.set("segments", segments);
+    if (!metadata.faceBindings.empty()) {
+        val faceBindings = val::array();
+        for (const auto& faceBinding : metadata.faceBindings) {
+            faceBindings.call<void>("push", GeneratedToolFaceBindingToVal(faceBinding));
+        }
+        obj.set("faceBindings", faceBindings);
+    }
     return obj;
 }
 

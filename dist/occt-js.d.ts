@@ -405,6 +405,23 @@ export interface OcctJSGeneratedToolSegmentDescriptor {
     tag?: string;
 }
 
+export type OcctJSGeneratedToolSystemRole =
+    | "profile"
+    | "closure"
+    | "axis"
+    | "start_cap"
+    | "end_cap"
+    | "degenerated";
+
+export interface OcctJSGeneratedToolFaceBinding {
+    geometryIndex: number;
+    faceId: number;
+    systemRole: OcctJSGeneratedToolSystemRole;
+    segmentIndex?: number;
+    segmentId?: string;
+    segmentTag?: string;
+}
+
 export interface OcctJSGeneratedToolMetadata {
     version: 1;
     units: OcctJSRevolvedToolUnits;
@@ -412,8 +429,9 @@ export interface OcctJSGeneratedToolMetadata {
     closure: OcctJSRevolvedToolClosure;
     angleDeg: number;
     segmentCount: number;
-    hasStableFaceBindings: false;
+    hasStableFaceBindings: boolean;
     segments: OcctJSGeneratedToolSegmentDescriptor[];
+    faceBindings?: OcctJSGeneratedToolFaceBinding[];
 }
 
 export interface OcctJSRevolvedToolBuildFailure {
