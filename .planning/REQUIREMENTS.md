@@ -21,8 +21,8 @@
 
 ### Governance
 
-- [ ] **DOCS-04**: Root and package docs explain exact-model lifetime, disposal expectations, and performance-sensitive usage patterns package-first through `@tx-code/occt-core`.
-- [ ] **GOV-05**: Release verification and governance lock the lifecycle/performance contract without making demo, Babylon, or Tauri checks unconditional root-release blockers.
+- [x] **DOCS-04**: Root and package docs explain exact-model lifetime, disposal expectations, and performance-sensitive usage patterns package-first through `@tx-code/occt-core`.
+- [x] **GOV-05**: Release verification and governance lock the lifecycle/performance contract without making demo, Babylon, or Tauri checks unconditional root-release blockers.
 
 ## Future Requirements
 
@@ -55,8 +55,8 @@
 | PERF-01 | Phase 25 | Complete (2026-04-20) |
 | PERF-02 | Phase 25 | Complete (2026-04-20) |
 | ADAPT-10 | Phase 24 | Complete (2026-04-20) |
-| DOCS-04 | Phase 26 | Pending |
-| GOV-05 | Phase 26 | Pending |
+| DOCS-04 | Phase 26 | Complete (2026-04-20) |
+| GOV-05 | Phase 26 | Complete (2026-04-20) |
 
 **Coverage:**
 - v1.7 requirements: 7 total
@@ -65,4 +65,4 @@
 
 ---
 *Requirements defined: 2026-04-18*
-*Last updated: 2026-04-20 after Phase 25 completion*
+*Last updated: 2026-04-20 after Phase 26 completion*

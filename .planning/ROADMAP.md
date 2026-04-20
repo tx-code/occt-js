@@ -27,7 +27,7 @@ This roadmap hardens the shipped exact runtime and helper surface before any bro
 
 - [x] **Phase 24: Exact Model Lifecycle Governance** - Harden retained exact-model release semantics, diagnostics, and package-first disposal helpers without adding viewer-owned policy. (completed 2026-04-20)
 - [x] **Phase 25: Exact Query & Store Performance** - Remove avoidable retained-query/store copies and import-staging overhead that penalize large-model exact workflows. (completed 2026-04-20)
-- [ ] **Phase 26: Import Staging & Long-Session Verification** - Lock lifecycle/performance docs, governance, and long-session verification without widening unconditional secondary-surface release gates.
+- [x] **Phase 26: Import Staging & Long-Session Verification** - Lock lifecycle/performance docs, governance, and long-session verification without widening unconditional secondary-surface release gates. (completed 2026-04-20)
 
 ## Phase Details
 
@@ -70,8 +70,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 26-01-PLAN.md — Publish exact lifecycle and performance guidance package-first
-- [ ] 26-02-PLAN.md — Extend release governance and long-session verification for lifecycle/performance
+- [x] 26-01-PLAN.md — Publish exact lifecycle and performance guidance package-first
+- [x] 26-02-PLAN.md — Extend release governance and long-session verification for lifecycle/performance
 
 ## Progress
 
@@ -82,4 +82,4 @@ Phases execute in numeric order: 24 → 25 → 26
 |-------|-----------|----------------|--------|-----------|
 | 24. Exact Model Lifecycle Governance | v1.7 | 2/2 | Complete | 2026-04-20 |
 | 25. Exact Query & Store Performance | v1.7 | 2/2 | Complete | 2026-04-20 |
-| 26. Import Staging & Long-Session Verification | v1.7 | 0/2 | Not started | - |
+| 26. Import Staging & Long-Session Verification | v1.7 | 2/2 | Complete | 2026-04-20 |
