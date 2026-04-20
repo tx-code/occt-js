@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Exact Lifecycle & Performance
 status: ready
-stopped_at: Phase 25 completed
-last_updated: "2026-04-20T05:19:38.689Z"
-last_activity: 2026-04-20 -- Phase 25 completed
+stopped_at: Phase 26 context gathered
+last_updated: "2026-04-20T05:27:28.761Z"
+last_activity: 2026-04-20 -- Phase 26 context gathered
 progress:
   total_phases: 3
   completed_phases: 2
@@ -28,8 +28,8 @@ Current focus: Phase 26 Import Staging & Long-Session Verification
 Milestone: v1.7 Exact Lifecycle & Performance
 Phase: 26 of 26 (Import Staging & Long-Session Verification)
 Plan: 0 of 2 in current phase
-Status: Ready to discuss
-Last activity: 2026-04-20 -- Phase 25 completed
+Status: Ready to plan
+Last activity: 2026-04-20 -- Phase 26 context gathered
 
 Progress: [######----] 67%
 
@@ -68,16 +68,17 @@ Recent Trend:
 - Phase 24 shipped additive root lifecycle diagnostics (`GetExactModelDiagnostics`), deterministic released-handle retained-query behavior, package-first managed disposal wrappers, and helper/package typings + tests that keep explicit release authoritative.
 - Phase 25 discussion and planning locked non-copy retained-query/store access, shared IGES temp-file staging across importer/orientation, and a repeatable perf lane that remains outside unconditional release gates.
 - Phase 25 execution shipped non-copy retained geometry lookup, shared IGES staging helper integration, deterministic IGES parity checks, and explicit perf visibility via `npm run test:perf:exact`.
+- Phase 26 discussion locked package-first lifecycle/performance documentation scope, governance drift-lock expansion, and explicit long-session verification routing outside unconditional release gates.
 
 ### Pending Todos
 
-- Run `$gsd-discuss-phase 26` to lock docs/governance and long-session verification decisions for milestone closeout.
+- Run `$gsd-plan-phase 26` to produce executable docs/governance and long-session verification plans.
 - Keep `v1.7` focused on lifecycle/performance docs + governance closeout; no new helper families or ecosystem cleanup unless strictly required by implementation.
 - Keep `demo/.codex-run/` and `demo/dist/` out of planning commits.
 
 ### Blockers/Concerns
 
-- No technical blockers remain. Phase 25 is complete and verified; Phase 26 can start discussion/planning.
+- No technical blockers remain. Phase 26 context is captured and ready for planning.
 
 ## Deferred Items
 
@@ -89,6 +90,6 @@ Items acknowledged and deferred at milestone close on 2026-04-18:
 
 ## Session Continuity
 
-Last session: 2026-04-20T05:19:38.689Z
-Stopped at: Phase 25 completed
-Resume file: .planning/phases/25-exact-query-store-performance/25-VERIFICATION.md
+Last session: 2026-04-20T05:27:28.761Z
+Stopped at: Phase 26 context gathered
+Resume file: .planning/phases/26-import-staging-and-long-session-verification/26-CONTEXT.md
