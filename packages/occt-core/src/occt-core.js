@@ -607,12 +607,28 @@ export class OcctCoreClient {
     return this.openManagedExactModel(content, { ...options, format: "brep" });
   }
 
+  async validateProfile2DSpec(spec) {
+    const module = await this._ensureModule();
+    if (typeof module.ValidateProfile2DSpec !== "function") {
+      throw new Error("Loaded OCCT module does not expose ValidateProfile2DSpec().");
+    }
+    return module.ValidateProfile2DSpec(spec);
+  }
+
   async validateRevolvedShapeSpec(spec) {
     const module = await this._ensureModule();
     if (typeof module.ValidateRevolvedShapeSpec !== "function") {
       throw new Error("Loaded OCCT module does not expose ValidateRevolvedShapeSpec().");
     }
     return module.ValidateRevolvedShapeSpec(spec);
+  }
+
+  async validateExtrudedShapeSpec(spec) {
+    const module = await this._ensureModule();
+    if (typeof module.ValidateExtrudedShapeSpec !== "function") {
+      throw new Error("Loaded OCCT module does not expose ValidateExtrudedShapeSpec().");
+    }
+    return module.ValidateExtrudedShapeSpec(spec);
   }
 
   async buildRevolvedShape(spec, options = {}) {
@@ -629,6 +645,22 @@ export class OcctCoreClient {
       throw new Error("Loaded OCCT module does not expose OpenExactRevolvedShape().");
     }
     return module.OpenExactRevolvedShape(spec, options);
+  }
+
+  async buildExtrudedShape(spec, options = {}) {
+    const module = await this._ensureModule();
+    if (typeof module.BuildExtrudedShape !== "function") {
+      throw new Error("Loaded OCCT module does not expose BuildExtrudedShape().");
+    }
+    return module.BuildExtrudedShape(spec, options);
+  }
+
+  async openExactExtrudedShape(spec, options = {}) {
+    const module = await this._ensureModule();
+    if (typeof module.OpenExactExtrudedShape !== "function") {
+      throw new Error("Loaded OCCT module does not expose OpenExactExtrudedShape().");
+    }
+    return module.OpenExactExtrudedShape(spec, options);
   }
 
   async retainExactModel(exactModelId) {

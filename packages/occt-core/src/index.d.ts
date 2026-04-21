@@ -1,6 +1,10 @@
 import type {
   OcctFormat,
+  OcctJSExactExtrudedShapeOpenResult,
   OcctJSGeneratedRevolvedShapeFaceBinding,
+  OcctJSGeneratedExtrudedShapeFaceBinding,
+  OcctJSGeneratedExtrudedShapeMetadata,
+  OcctJSGeneratedExtrudedShapeSegmentDescriptor,
   OcctJSGeneratedRevolvedShapeMetadata,
   OcctJSGeneratedRevolvedShapeSegmentDescriptor,
   OcctJSImportAppearancePreset,
@@ -18,9 +22,15 @@ import type {
   OcctJSExactPlacementFrame,
   OcctJSExactQueryFailure,
   OcctJSExactRelationKind,
+  OcctJSExtrudedShapeBuildOptions,
+  OcctJSExtrudedShapeBuildResult,
+  OcctJSExtrudedShapeSpec,
+  OcctJSExtrudedShapeValidationResult,
   OcctJSLifecycleResult,
   OcctJSModule,
   OcctJSOrientationResult,
+  OcctJSProfile2DSpec,
+  OcctJSProfile2DValidationResult,
   OcctJSRevolvedShapeBuildOptions,
   OcctJSRevolvedShapeBuildResult,
   OcctJSRevolvedShapeSpec,
@@ -29,7 +39,11 @@ import type {
 
 export type OcctPoint3 = [number, number, number];
 export type OcctGeneratedRevolvedShapeSourceFormat = "generated-revolved-shape";
-export type OcctNormalizedSourceFormat = OcctFormat | OcctGeneratedRevolvedShapeSourceFormat;
+export type OcctGeneratedExtrudedShapeSourceFormat = "generated-extruded-shape";
+export type OcctNormalizedSourceFormat =
+  | OcctFormat
+  | OcctGeneratedRevolvedShapeSourceFormat
+  | OcctGeneratedExtrudedShapeSourceFormat;
 
 export type OcctMatrix4 = [
   number, number, number, number,
@@ -154,6 +168,15 @@ export interface OcctNormalizedRevolvedShapeMetadata extends Omit<OcctJSGenerate
   faceBindings?: OcctNormalizedRevolvedShapeFaceBinding[];
 }
 
+export interface OcctNormalizedExtrudedShapeFaceBinding extends OcctJSGeneratedExtrudedShapeFaceBinding {
+  geometryId?: string;
+}
+
+export interface OcctNormalizedExtrudedShapeMetadata extends Omit<OcctJSGeneratedExtrudedShapeMetadata, "segments" | "faceBindings"> {
+  segments: OcctJSGeneratedExtrudedShapeSegmentDescriptor[];
+  faceBindings?: OcctNormalizedExtrudedShapeFaceBinding[];
+}
+
 export interface OcctNormalizedResult {
   sourceFormat: OcctNormalizedSourceFormat;
   sourceFileName?: string;
@@ -165,6 +188,7 @@ export interface OcctNormalizedResult {
   warnings: OcctNormalizedWarning[];
   stats: OcctNormalizedStats;
   revolvedShape?: OcctNormalizedRevolvedShapeMetadata;
+  extrudedShape?: OcctNormalizedExtrudedShapeMetadata;
 }
 
 export interface OcctNormalizedExactGeometryBinding {
@@ -468,9 +492,13 @@ export declare class OcctCoreClient {
   openManagedExactStep(content: OcctBinaryInput, options?: Omit<OcctImportModelOptions, "format">): Promise<OcctManagedExactModel>;
   openManagedExactIges(content: OcctBinaryInput, options?: Omit<OcctImportModelOptions, "format">): Promise<OcctManagedExactModel>;
   openManagedExactBrep(content: OcctBinaryInput, options?: Omit<OcctImportModelOptions, "format">): Promise<OcctManagedExactModel>;
+  validateProfile2DSpec(spec: OcctJSProfile2DSpec): Promise<OcctJSProfile2DValidationResult>;
   validateRevolvedShapeSpec(spec: OcctJSRevolvedShapeSpec): Promise<OcctJSRevolvedShapeValidationResult>;
+  validateExtrudedShapeSpec(spec: OcctJSExtrudedShapeSpec): Promise<OcctJSExtrudedShapeValidationResult>;
   buildRevolvedShape(spec: OcctJSRevolvedShapeSpec, options?: OcctJSRevolvedShapeBuildOptions): Promise<OcctJSRevolvedShapeBuildResult>;
   openExactRevolvedShape(spec: OcctJSRevolvedShapeSpec, options?: OcctJSRevolvedShapeBuildOptions): Promise<OcctJSExactRevolvedShapeOpenResult>;
+  buildExtrudedShape(spec: OcctJSExtrudedShapeSpec, options?: OcctJSExtrudedShapeBuildOptions): Promise<OcctJSExtrudedShapeBuildResult>;
+  openExactExtrudedShape(spec: OcctJSExtrudedShapeSpec, options?: OcctJSExtrudedShapeBuildOptions): Promise<OcctJSExactExtrudedShapeOpenResult>;
   retainExactModel(exactModelId: number): Promise<OcctJSLifecycleResult>;
   releaseExactModel(exactModelId: number): Promise<OcctJSLifecycleResult>;
   getExactModelDiagnostics(): Promise<OcctJSExactModelDiagnostics>;
@@ -530,6 +558,7 @@ export type {
   OcctJSColor,
   OcctJSExactChamferResult,
   OcctJSExactElementKind,
+  OcctJSExactExtrudedShapeOpenResult,
   OcctJSExactGeometryFamily,
   OcctJSExactHoleResult,
   OcctJSExactModelDiagnostics,
@@ -539,14 +568,23 @@ export type {
   OcctJSExactPlacementFrame,
   OcctJSExactQueryFailure,
   OcctJSExactRelationKind,
+  OcctJSExtrudedShapeBuildOptions,
+  OcctJSExtrudedShapeBuildResult,
+  OcctJSExtrudedShapeSpec,
+  OcctJSExtrudedShapeValidationResult,
   OcctJSLifecycleResult,
   OcctJSModule,
   OcctJSOrientationResult,
+  OcctJSProfile2DSpec,
+  OcctJSProfile2DValidationResult,
   OcctJSRevolvedShapeBuildOptions,
   OcctJSRevolvedShapeBuildResult,
   OcctJSRevolvedShapeSpec,
   OcctJSRevolvedShapeValidationResult,
   OcctJSExactRevolvedShapeOpenResult,
+  OcctJSGeneratedExtrudedShapeMetadata,
+  OcctJSGeneratedExtrudedShapeFaceBinding,
+  OcctJSGeneratedExtrudedShapeSegmentDescriptor,
   OcctJSGeneratedRevolvedShapeMetadata,
   OcctJSGeneratedRevolvedShapeFaceBinding,
   OcctJSGeneratedRevolvedShapeSegmentDescriptor,

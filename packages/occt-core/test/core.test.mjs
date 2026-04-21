@@ -2,6 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
   createOcctCore,
+  normalizeExactOpenResult,
   normalizeOcctFormat,
   normalizeOcctResult,
   resolveAutoOrientedModel,
@@ -82,6 +83,28 @@ function createRevolvedShapeSpec() {
       ],
     },
     revolve: { angleDeg: 360 },
+  };
+}
+
+function createProfile2DSpec() {
+  return {
+    version: 1,
+    start: [0, 0],
+    segments: [
+      { kind: "line", id: "base", tag: "base", end: [6, 0] },
+      { kind: "line", id: "right-wall", tag: "wall", end: [6, 10] },
+      { kind: "line", id: "top", tag: "cap", end: [0, 10] },
+      { kind: "line", id: "left-wall", tag: "wall", end: [0, 0] },
+    ],
+  };
+}
+
+function createExtrudedShapeSpec() {
+  return {
+    version: 1,
+    units: "mm",
+    profile: createProfile2DSpec(),
+    extrusion: { depth: 24 },
   };
 }
 
@@ -311,6 +334,150 @@ describe("normalizeOcctResult", () => {
     assert.equal(result.revolvedShape.faceBindings[0].segmentId, "tool-body");
     assert.equal(result.revolvedShape.shapeValidation.exact.isClosed, true);
     assert.equal(result.revolvedShape.shapeValidation.mesh.isWatertight, true);
+  });
+
+  it("preserves generated extruded shape source format and geometry bindings", () => {
+    const result = normalizeOcctResult({
+      success: true,
+      sourceFormat: "generated-extruded-shape",
+      rootNodes: [{
+        id: "shape-root",
+        name: "Generated Extruded Shape",
+        isAssembly: false,
+        transform: IDENTITY_MATRIX,
+        meshes: [0],
+        children: [],
+      }],
+      geometries: [{
+        name: "shape-body",
+        color: { r: 0.8, g: 0.8, b: 0.82 },
+        positions: new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0]),
+        normals: new Float32Array([0, 0, 1, 0, 0, 1, 0, 0, 1]),
+        indices: new Uint32Array([0, 1, 2]),
+        faces: [{
+          id: 1,
+          name: "wall.base",
+          firstIndex: 0,
+          indexCount: 3,
+          edgeIndices: [],
+          color: { r: 0.85, g: 0.7, b: 0.25 },
+        }],
+        edges: [],
+        vertices: [],
+        triangleToFaceMap: new Int32Array([1]),
+      }],
+      materials: [
+        { r: 0.8, g: 0.8, b: 0.82 },
+        { r: 0.85, g: 0.7, b: 0.25 },
+      ],
+      warnings: [],
+      stats: { ...EMPTY_STATS, rootCount: 1, nodeCount: 1, partCount: 1, geometryCount: 1, materialCount: 2, triangleCount: 1 },
+      extrudedShape: {
+        version: 1,
+        units: "mm",
+        depth: 24,
+        segmentCount: 1,
+        hasStableFaceBindings: true,
+        shapeValidation: {
+          exact: {
+            isValid: true,
+            isClosed: true,
+            isSolid: true,
+            shapeType: "solid",
+            solidCount: 1,
+            shellCount: 1,
+            faceCount: 1,
+            edgeCount: 0,
+            vertexCount: 0,
+          },
+          mesh: {
+            isWatertight: true,
+            isManifold: true,
+            weldedVertexCount: 3,
+            boundaryEdgeCount: 0,
+            nonManifoldEdgeCount: 0,
+          },
+        },
+        segments: [{ index: 0, kind: "line", id: "shape-wall", tag: "wall" }],
+        faceBindings: [{
+          geometryIndex: 0,
+          faceId: 1,
+          systemRole: "wall",
+          segmentIndex: 0,
+          segmentId: "shape-wall",
+          segmentTag: "wall",
+        }],
+      },
+    });
+
+    assert.equal(result.sourceFormat, "generated-extruded-shape");
+    assert.equal(result.extrudedShape.units, "mm");
+    assert.equal(result.extrudedShape.depth, 24);
+    assert.equal(result.extrudedShape.faceBindings[0].geometryId, "geo_0");
+    assert.equal(result.extrudedShape.faceBindings[0].segmentId, "shape-wall");
+    assert.equal(result.extrudedShape.shapeValidation.mesh.isWatertight, true);
+  });
+
+  it("normalizeExactOpenResult preserves generated extruded metadata and exact geometry bindings", () => {
+    const exact = normalizeExactOpenResult({
+      success: true,
+      sourceFormat: "generated-extruded-shape",
+      exactModelId: 41,
+      exactGeometryBindings: [{ exactShapeHandle: 9 }],
+      rootNodes: [{
+        id: "shape-root",
+        name: "Generated Extruded Shape",
+        isAssembly: false,
+        transform: IDENTITY_MATRIX,
+        meshes: [0],
+        children: [],
+      }],
+      geometries: [{
+        name: "shape-body",
+        color: { r: 0.8, g: 0.8, b: 0.82 },
+        positions: new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0]),
+        normals: new Float32Array([0, 0, 1, 0, 0, 1, 0, 0, 1]),
+        indices: new Uint32Array([0, 1, 2]),
+        faces: [{
+          id: 1,
+          name: "wall.base",
+          firstIndex: 0,
+          indexCount: 3,
+          edgeIndices: [],
+          color: { r: 0.85, g: 0.7, b: 0.25 },
+        }],
+        edges: [],
+        vertices: [],
+        triangleToFaceMap: new Int32Array([1]),
+      }],
+      materials: [
+        { r: 0.8, g: 0.8, b: 0.82 },
+        { r: 0.85, g: 0.7, b: 0.25 },
+      ],
+      warnings: [],
+      stats: { ...EMPTY_STATS, rootCount: 1, nodeCount: 1, partCount: 1, geometryCount: 1, materialCount: 2, triangleCount: 1 },
+      extrudedShape: {
+        version: 1,
+        units: "mm",
+        depth: 24,
+        segmentCount: 1,
+        hasStableFaceBindings: true,
+        segments: [{ index: 0, kind: "line", id: "shape-wall", tag: "wall" }],
+        faceBindings: [{
+          geometryIndex: 0,
+          faceId: 1,
+          systemRole: "wall",
+          segmentIndex: 0,
+          segmentId: "shape-wall",
+          segmentTag: "wall",
+        }],
+      },
+    });
+
+    assert.equal(exact.exactModelId, 41);
+    assert.equal(exact.geometries[0].geometryId, "geo_0");
+    assert.equal(exact.exactGeometryBindings[0].geometryId, "geo_0");
+    assert.equal(exact.extrudedShape.faceBindings[0].geometryId, "geo_0");
   });
 
   it("keeps unit metadata absent when the raw payload omits it", () => {
@@ -2529,6 +2696,90 @@ describe("createOcctCore", () => {
     ]);
   });
 
+  it("wraps shared profile and generated extruded shape entrypoints without forcing raw Wasm access", async () => {
+    const calls = [];
+    const profile = createProfile2DSpec();
+    const spec = createExtrudedShapeSpec();
+    const buildOptions = {
+      linearDeflectionType: "bounding_box_ratio",
+      linearDeflection: 0.001,
+      angularDeflection: 0.5,
+    };
+    const core = createOcctCore({
+      factory: async () => ({
+        ValidateProfile2DSpec: (incomingSpec) => {
+          calls.push(["validateProfile", incomingSpec]);
+          return { ok: true, diagnostics: [] };
+        },
+        ValidateExtrudedShapeSpec: (incomingSpec) => {
+          calls.push(["validateExtruded", incomingSpec]);
+          return { ok: true, diagnostics: [] };
+        },
+        BuildExtrudedShape: (incomingSpec, incomingOptions) => {
+          calls.push(["buildExtruded", incomingSpec, incomingOptions]);
+          return {
+            success: true,
+            sourceFormat: "generated-extruded-shape",
+            rootNodes: [],
+            geometries: [],
+            materials: [],
+            warnings: [],
+            stats: EMPTY_STATS,
+            extrudedShape: {
+              version: 1,
+              units: "mm",
+              depth: 24,
+              segmentCount: 4,
+              hasStableFaceBindings: true,
+              segments: [],
+              faceBindings: [],
+            },
+          };
+        },
+        OpenExactExtrudedShape: (incomingSpec, incomingOptions) => {
+          calls.push(["openExactExtruded", incomingSpec, incomingOptions]);
+          return {
+            success: true,
+            sourceFormat: "generated-extruded-shape",
+            exactModelId: 52,
+            exactGeometryBindings: [{ exactShapeHandle: 1 }],
+            rootNodes: [],
+            geometries: [],
+            materials: [],
+            warnings: [],
+            stats: EMPTY_STATS,
+            extrudedShape: {
+              version: 1,
+              units: "mm",
+              depth: 24,
+              segmentCount: 4,
+              hasStableFaceBindings: true,
+              segments: [],
+              faceBindings: [],
+            },
+          };
+        },
+      }),
+    });
+
+    const profileValidation = await core.validateProfile2DSpec(profile);
+    const extrudedValidation = await core.validateExtrudedShapeSpec(spec);
+    const built = await core.buildExtrudedShape(spec, buildOptions);
+    const exact = await core.openExactExtrudedShape(spec, buildOptions);
+
+    assert.deepEqual(profileValidation, { ok: true, diagnostics: [] });
+    assert.deepEqual(extrudedValidation, { ok: true, diagnostics: [] });
+    assert.equal(built.sourceFormat, "generated-extruded-shape");
+    assert.equal(built.extrudedShape.hasStableFaceBindings, true);
+    assert.equal(exact.exactModelId, 52);
+    assert.deepEqual(calls, [
+      ["validateProfile", profile],
+      ["validateExtruded", spec],
+      ["buildExtruded", spec, buildOptions],
+      ["openExactExtruded", spec, buildOptions],
+    ]);
+  });
+
   it("keeps auto_axis shared-kernel revolved specs intact through the package wrapper", async () => {
     const calls = [];
     const spec = createAutoAxisRevolvedShapeSpec();
@@ -2618,6 +2869,29 @@ describe("createOcctCore", () => {
     await assert.rejects(
       core.openExactRevolvedShape(createRevolvedShapeSpec()),
       /Loaded OCCT module does not expose OpenExactRevolvedShape\(\)\./,
+    );
+  });
+
+  it("fails explicitly when the loaded module does not expose shared profile or generated extruded shape entrypoints", async () => {
+    const core = createOcctCore({
+      factory: async () => ({}),
+    });
+
+    await assert.rejects(
+      core.validateProfile2DSpec(createProfile2DSpec()),
+      /Loaded OCCT module does not expose ValidateProfile2DSpec\(\)\./,
+    );
+    await assert.rejects(
+      core.validateExtrudedShapeSpec(createExtrudedShapeSpec()),
+      /Loaded OCCT module does not expose ValidateExtrudedShapeSpec\(\)\./,
+    );
+    await assert.rejects(
+      core.buildExtrudedShape(createExtrudedShapeSpec()),
+      /Loaded OCCT module does not expose BuildExtrudedShape\(\)\./,
+    );
+    await assert.rejects(
+      core.openExactExtrudedShape(createExtrudedShapeSpec()),
+      /Loaded OCCT module does not expose OpenExactExtrudedShape\(\)\./,
     );
   });
 });

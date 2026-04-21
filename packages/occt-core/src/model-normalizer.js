@@ -1,6 +1,7 @@
 import { normalizeOcctFormat } from "./formats.js";
 
 const GENERATED_REVOLVED_SHAPE_SOURCE_FORMAT = "generated-revolved-shape";
+const GENERATED_EXTRUDED_SHAPE_SOURCE_FORMAT = "generated-extruded-shape";
 const IDENTITY_MATRIX = [
   1, 0, 0, 0,
   0, 1, 0, 0,
@@ -451,19 +452,70 @@ function normalizeWarnings(rawWarnings) {
   });
 }
 
-function normalizeRevolvedShapeMetadata(rawRevolvedShape, geometries) {
-  if (!rawRevolvedShape || typeof rawRevolvedShape !== "object") {
-    return undefined;
-  }
-
-  const segments = Array.isArray(rawRevolvedShape.segments)
-    ? rawRevolvedShape.segments.map((segment, index) => ({
+function normalizeGeneratedShapeSegments(rawSegments) {
+  return Array.isArray(rawSegments)
+    ? rawSegments.map((segment, index) => ({
       index: Number.isFinite(segment?.index) ? segment.index : index,
       kind: typeof segment?.kind === "string" ? segment.kind : "line",
       ...(typeof segment?.id === "string" ? { id: segment.id } : {}),
       ...(typeof segment?.tag === "string" ? { tag: segment.tag } : {}),
     }))
     : [];
+}
+
+function normalizeGeneratedShapeValidation(rawValidation) {
+  if (!rawValidation || typeof rawValidation !== "object") {
+    return undefined;
+  }
+
+  return {
+    exact: {
+      isValid: rawValidation?.exact?.isValid === true,
+      isClosed: rawValidation?.exact?.isClosed === true,
+      isSolid: rawValidation?.exact?.isSolid === true,
+      shapeType: typeof rawValidation?.exact?.shapeType === "string" ? rawValidation.exact.shapeType : "unknown",
+      solidCount: Number.isFinite(rawValidation?.exact?.solidCount) ? rawValidation.exact.solidCount : 0,
+      shellCount: Number.isFinite(rawValidation?.exact?.shellCount) ? rawValidation.exact.shellCount : 0,
+      faceCount: Number.isFinite(rawValidation?.exact?.faceCount) ? rawValidation.exact.faceCount : 0,
+      edgeCount: Number.isFinite(rawValidation?.exact?.edgeCount) ? rawValidation.exact.edgeCount : 0,
+      vertexCount: Number.isFinite(rawValidation?.exact?.vertexCount) ? rawValidation.exact.vertexCount : 0,
+    },
+    mesh: {
+      isWatertight: rawValidation?.mesh?.isWatertight === true,
+      isManifold: rawValidation?.mesh?.isManifold === true,
+      weldedVertexCount: Number.isFinite(rawValidation?.mesh?.weldedVertexCount) ? rawValidation.mesh.weldedVertexCount : 0,
+      boundaryEdgeCount: Number.isFinite(rawValidation?.mesh?.boundaryEdgeCount) ? rawValidation.mesh.boundaryEdgeCount : 0,
+      nonManifoldEdgeCount: Number.isFinite(rawValidation?.mesh?.nonManifoldEdgeCount) ? rawValidation.mesh.nonManifoldEdgeCount : 0,
+    },
+  };
+}
+
+function normalizeGeneratedFaceBindings(rawBindings, geometries, fallbackSystemRole) {
+  if (!Array.isArray(rawBindings)) {
+    return undefined;
+  }
+
+  return rawBindings.map((binding) => {
+    const geometryIndex = Number.isFinite(binding?.geometryIndex) ? binding.geometryIndex : -1;
+    const geometry = geometryIndex >= 0 ? geometries[geometryIndex] : undefined;
+    return {
+      geometryIndex,
+      faceId: Number.isFinite(binding?.faceId) ? binding.faceId : 0,
+      systemRole: typeof binding?.systemRole === "string" ? binding.systemRole : fallbackSystemRole,
+      ...(typeof geometry?.id === "string" ? { geometryId: geometry.id } : {}),
+      ...(Number.isFinite(binding?.segmentIndex) ? { segmentIndex: binding.segmentIndex } : {}),
+      ...(typeof binding?.segmentId === "string" ? { segmentId: binding.segmentId } : {}),
+      ...(typeof binding?.segmentTag === "string" ? { segmentTag: binding.segmentTag } : {}),
+    };
+  });
+}
+
+function normalizeRevolvedShapeMetadata(rawRevolvedShape, geometries) {
+  if (!rawRevolvedShape || typeof rawRevolvedShape !== "object") {
+    return undefined;
+  }
+
+  const segments = normalizeGeneratedShapeSegments(rawRevolvedShape.segments);
 
   const metadata = {
     version: rawRevolvedShape.version === 1 ? 1 : 1,
@@ -478,44 +530,44 @@ function normalizeRevolvedShapeMetadata(rawRevolvedShape, geometries) {
     segments,
   };
 
-  if (rawRevolvedShape.shapeValidation && typeof rawRevolvedShape.shapeValidation === "object") {
-    const rawValidation = rawRevolvedShape.shapeValidation;
-    metadata.shapeValidation = {
-      exact: {
-        isValid: rawValidation?.exact?.isValid === true,
-        isClosed: rawValidation?.exact?.isClosed === true,
-        isSolid: rawValidation?.exact?.isSolid === true,
-        shapeType: typeof rawValidation?.exact?.shapeType === "string" ? rawValidation.exact.shapeType : "unknown",
-        solidCount: Number.isFinite(rawValidation?.exact?.solidCount) ? rawValidation.exact.solidCount : 0,
-        shellCount: Number.isFinite(rawValidation?.exact?.shellCount) ? rawValidation.exact.shellCount : 0,
-        faceCount: Number.isFinite(rawValidation?.exact?.faceCount) ? rawValidation.exact.faceCount : 0,
-        edgeCount: Number.isFinite(rawValidation?.exact?.edgeCount) ? rawValidation.exact.edgeCount : 0,
-        vertexCount: Number.isFinite(rawValidation?.exact?.vertexCount) ? rawValidation.exact.vertexCount : 0,
-      },
-      mesh: {
-        isWatertight: rawValidation?.mesh?.isWatertight === true,
-        isManifold: rawValidation?.mesh?.isManifold === true,
-        weldedVertexCount: Number.isFinite(rawValidation?.mesh?.weldedVertexCount) ? rawValidation.mesh.weldedVertexCount : 0,
-        boundaryEdgeCount: Number.isFinite(rawValidation?.mesh?.boundaryEdgeCount) ? rawValidation.mesh.boundaryEdgeCount : 0,
-        nonManifoldEdgeCount: Number.isFinite(rawValidation?.mesh?.nonManifoldEdgeCount) ? rawValidation.mesh.nonManifoldEdgeCount : 0,
-      },
-    };
+  const shapeValidation = normalizeGeneratedShapeValidation(rawRevolvedShape.shapeValidation);
+  if (shapeValidation) {
+    metadata.shapeValidation = shapeValidation;
   }
 
-  if (Array.isArray(rawRevolvedShape.faceBindings)) {
-    metadata.faceBindings = rawRevolvedShape.faceBindings.map((binding) => {
-      const geometryIndex = Number.isFinite(binding?.geometryIndex) ? binding.geometryIndex : -1;
-      const geometry = geometryIndex >= 0 ? geometries[geometryIndex] : undefined;
-      return {
-        geometryIndex,
-        faceId: Number.isFinite(binding?.faceId) ? binding.faceId : 0,
-        systemRole: typeof binding?.systemRole === "string" ? binding.systemRole : "profile",
-        ...(typeof geometry?.id === "string" ? { geometryId: geometry.id } : {}),
-        ...(Number.isFinite(binding?.segmentIndex) ? { segmentIndex: binding.segmentIndex } : {}),
-        ...(typeof binding?.segmentId === "string" ? { segmentId: binding.segmentId } : {}),
-        ...(typeof binding?.segmentTag === "string" ? { segmentTag: binding.segmentTag } : {}),
-      };
-    });
+  const faceBindings = normalizeGeneratedFaceBindings(rawRevolvedShape.faceBindings, geometries, "profile");
+  if (faceBindings) {
+    metadata.faceBindings = faceBindings;
+  }
+
+  return metadata;
+}
+
+function normalizeExtrudedShapeMetadata(rawExtrudedShape, geometries) {
+  if (!rawExtrudedShape || typeof rawExtrudedShape !== "object") {
+    return undefined;
+  }
+
+  const segments = normalizeGeneratedShapeSegments(rawExtrudedShape.segments);
+  const metadata = {
+    version: rawExtrudedShape.version === 1 ? 1 : 1,
+    units: rawExtrudedShape.units,
+    depth: Number(rawExtrudedShape.depth ?? 0),
+    segmentCount: Number.isFinite(rawExtrudedShape.segmentCount)
+      ? rawExtrudedShape.segmentCount
+      : segments.length,
+    hasStableFaceBindings: rawExtrudedShape.hasStableFaceBindings === true,
+    segments,
+  };
+
+  const shapeValidation = normalizeGeneratedShapeValidation(rawExtrudedShape.shapeValidation);
+  if (shapeValidation) {
+    metadata.shapeValidation = shapeValidation;
+  }
+
+  const faceBindings = normalizeGeneratedFaceBindings(rawExtrudedShape.faceBindings, geometries, "wall");
+  if (faceBindings) {
+    metadata.faceBindings = faceBindings;
   }
 
   return metadata;
@@ -524,6 +576,9 @@ function normalizeRevolvedShapeMetadata(rawRevolvedShape, geometries) {
 function normalizeResultSourceFormat(sourceFormat) {
   if (typeof sourceFormat === "string" && sourceFormat.trim().toLowerCase() === GENERATED_REVOLVED_SHAPE_SOURCE_FORMAT) {
     return GENERATED_REVOLVED_SHAPE_SOURCE_FORMAT;
+  }
+  if (typeof sourceFormat === "string" && sourceFormat.trim().toLowerCase() === GENERATED_EXTRUDED_SHAPE_SOURCE_FORMAT) {
+    return GENERATED_EXTRUDED_SHAPE_SOURCE_FORMAT;
   }
   return normalizeOcctFormat(sourceFormat);
 }
@@ -597,6 +652,10 @@ export function normalizeOcctResult(rawResult, options = {}) {
   const revolvedShape = normalizeRevolvedShapeMetadata(rawResult.revolvedShape, geometries);
   if (revolvedShape) {
     result.revolvedShape = revolvedShape;
+  }
+  const extrudedShape = normalizeExtrudedShapeMetadata(rawResult.extrudedShape, geometries);
+  if (extrudedShape) {
+    result.extrudedShape = extrudedShape;
   }
 
   return result;
