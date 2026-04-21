@@ -113,7 +113,20 @@ test("completed active-milestone phases keep their planning artifacts", () => {
 
   const roadmap = readRepoText(".planning/ROADMAP.md");
   const completedPhaseNumbers = [...roadmap.matchAll(/- \[x\] \*\*Phase (\d+):/g)].map((match) => match[1]);
-  assert.equal(completedPhaseNumbers.length > 0, true);
+
+  if (completedPhaseNumbers.length === 0) {
+    const phasesRoot = resolve(repoRoot, ".planning", "phases");
+    const phaseDirs = existsSync(phasesRoot)
+      ? readdirSync(phasesRoot, { withFileTypes: true }).filter((entry) => entry.isDirectory())
+      : [];
+
+    assert.equal(
+      phaseDirs.length,
+      0,
+      "newly initialized milestones should not need active phase directories before the first phase is discussed/planned",
+    );
+    return;
+  }
 
   for (const phaseNumber of completedPhaseNumbers) {
     const phaseDir = findPhaseDir(phaseNumber);
