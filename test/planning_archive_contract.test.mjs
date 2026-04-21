@@ -120,11 +120,25 @@ test("completed active-milestone phases keep their planning artifacts", () => {
       ? readdirSync(phasesRoot, { withFileTypes: true }).filter((entry) => entry.isDirectory())
       : [];
 
-    assert.equal(
-      phaseDirs.length,
-      0,
-      "newly initialized milestones should not need active phase directories before the first phase is discussed/planned",
-    );
+    for (const phaseDir of phaseDirs) {
+      const phaseFiles = readdirSync(resolve(phasesRoot, phaseDir.name));
+      const hasContext = phaseFiles.some((name) => name.endsWith("-CONTEXT.md"));
+      const hasDiscussionLog = phaseFiles.some((name) => name.endsWith("-DISCUSSION-LOG.md"));
+      const hasPlanArtifacts = phaseFiles.some((name) => name.endsWith("-PLAN.md"));
+
+      assert.equal(
+        hasContext || hasPlanArtifacts,
+        true,
+        `expected early active phase directory ${phaseDir.name} to contain context or plan artifacts`,
+      );
+      if (hasDiscussionLog) {
+        assert.equal(
+          hasContext,
+          true,
+          `expected discussion logs in ${phaseDir.name} to be paired with a context file`,
+        );
+      }
+    }
     return;
   }
 
