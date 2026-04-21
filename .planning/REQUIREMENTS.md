@@ -7,7 +7,7 @@
 
 ### Demo Exact Bridge
 
-- [ ] **DEMO-01**: Demo users can import a CAD model or load a generated shape and retain a managed exact model alongside the rendered scene until the model is replaced or explicitly cleared.
+- [x] **DEMO-01**: Demo users can import a CAD model or load a generated shape and retain a managed exact model alongside the rendered scene until the model is replaced or explicitly cleared.
 - [ ] **DEMO-02**: Demo users can select a rendered face, edge, or vertex and the app resolves that pick into an occurrence-safe `OcctExactRef` suitable for existing exact queries and measurement commands.
 
 ### Measurement Workflows
@@ -44,7 +44,7 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DEMO-01 | Phase 33 | Planned |
+| DEMO-01 | Phase 33 | Complete |
 | DEMO-02 | Phase 33 | Planned |
 | MEAS-01 | Phase 34 | Planned |
 | MEAS-02 | Phase 34 | Planned |

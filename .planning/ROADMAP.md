@@ -45,7 +45,7 @@
 **Plans**: 2 plans
 
 Plans:
-- [ ] 33-01-PLAN.md — Retain managed exact models across demo import and reset lifecycle
+- [x] 33-01-PLAN.md — Retain managed exact models across demo import and reset lifecycle
 - [ ] 33-02-PLAN.md — Resolve viewer selections into occurrence-safe exact refs and measurement-ready state
 
 ### Phase 34: Measurement Commands & Overlay MVP
@@ -97,7 +97,7 @@ Phases execute in numeric order: 33 → 34 → 35
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 33. Demo Exact Bridge | v1.10 | 0/2 | Planned | — |
+| 33. Demo Exact Bridge | v1.10 | 1/2 | In Progress | — |
 | 34. Measurement Commands & Overlay MVP | v1.10 | 0/2 | Planned | — |
 | 35. Demo Docs & Verification | v1.10 | 0/2 | Planned | — |
 | 30. Shared Profile Kernel | v1.9 | 2/2 | Complete | 2026-04-21 |
