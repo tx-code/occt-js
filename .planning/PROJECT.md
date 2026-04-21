@@ -48,7 +48,7 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 
 ### Active
 
-None — `v1.9` implementation scope is complete and the repository is ready for milestone closeout.
+None — no active milestone is currently defined. Start the next one with `$gsd-new-milestone`.
 
 ### Out of Scope
 
@@ -74,18 +74,11 @@ None — `v1.9` implementation scope is complete and the repository is ready for
 
 `v1.8 Wasm+JS Revolved Shape Generation` shipped on 2026-04-21 and is now archived in `.planning/milestones/`. The repo now exposes a generic revolved-shape runtime/package surface with retained exact-open support, stable face-binding semantics, and governance-locked package/docs coverage while keeping tool-library ownership downstream.
 
-`v1.9 Generic Profile Solids` is now fully implemented. Phases 30-32 shipped the shared `Profile2D` kernel, additive linear extruded runtime, and package-first `occt-core`/docs/governance coverage while keeping app-specific schema ownership, CAM semantics, and viewer behavior outside the root runtime. The milestone is ready for closeout.
+`v1.9 Generic Profile Solids` shipped on 2026-04-21 and is now archived in `.planning/milestones/`. Phases 30-32 delivered the shared `Profile2D` kernel, additive linear extruded runtime, and package-first `occt-core`/docs/governance coverage while keeping app-specific schema ownership, CAM semantics, and viewer behavior outside the root runtime.
 
-## Current Milestone: v1.9 Generic Profile Solids
+## No Active Milestone
 
-**Goal:** Extend the generic geometry contract from revolved shapes to shared 2D profiles and linear extruded solids without turning `occt-js` into a CAD feature framework.
-
-**Status:** All planned features shipped; awaiting milestone closeout.
-
-**Target features:**
-- Reuse one normalized 2D profile kernel across profile-driven shape families instead of duplicating spec seams per solid type.
-- Add linear extruded shape validate/build/exact-open flows with deterministic face-binding and appearance semantics.
-- Publish package-first wrappers, typings, docs, and governance for generic profile solids through the existing root release boundary.
+`v1.9 Generic Profile Solids` is closed and archived. Start the next milestone with `$gsd-new-milestone` once the next runtime/package target is explicit.
 
 ## Context
 
@@ -95,7 +88,7 @@ None — `v1.9` implementation scope is complete and the repository is ready for
 - `SceneGraph.net` remains the best local reference for measurement behavior above the kernel layer, but `occt-js` intentionally stopped at exact-kernel foundations plus package-first placement/relation support.
 - OCCT `PrsDim` remains the local geometry reference for placement and relation behavior, but `occt-js` intentionally stops short of AIS/Prs3d interactive dimensions.
 - The current exact runtime now exposes retained exact-model lifecycle, primitive exact queries, pairwise distance/angle/thickness, placement DTOs, relation classification, narrow selected-ref hole/chamfer helper semantics, package-only midpoint/equal-distance/symmetry helpers, published package typings, helper-aware release verification, additive lifecycle diagnostics, package-first managed disposal wrappers, and explicit perf/soak verification lanes.
-- `v1.7` and `v1.8` are archived; `v1.9` implementation is complete and ready for milestone closeout.
+- `v1.7`, `v1.8`, and `v1.9` are archived; no active milestone is currently defined.
 - The shipped revolved-shape surface assumes upstream apps define their own tool metadata and only hand `occt-js` a normalized revolved profile plus optional semantic tags.
 - Generated revolved-shape colors are not caller-owned in `v1.8`; deterministic default appearance should derive from runtime-side tag and role semantics.
 - Segment-to-face bindings must be captured at build time from OCCT history rather than inferred later from final face order.
@@ -234,4 +227,4 @@ This document evolves at phase transitions and milestone boundaries.
 </details>
 
 ---
-*Last updated: 2026-04-21 after starting v1.9 milestone*
+*Last updated: 2026-04-21 after v1.9 milestone closeout*

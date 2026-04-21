@@ -1,5 +1,33 @@
 # Retrospective
 
+## Milestone: v1.9 — Generic Profile Solids
+
+**Shipped:** 2026-04-21
+
+### What shipped
+
+- The root Wasm carrier now exposes one shared `Profile2D` validation kernel reused across revolved and extruded generated-solid families.
+- The runtime now supports additive linear extruded-shape validate/build/exact-open flows with canonical scene payloads and retained exact handles.
+- Extruded generated output now preserves stable wall/cap semantics plus deterministic runtime-owned appearance grouping derived from segment tags and roles.
+- `@tx-code/occt-core` now ships package-first wrappers, typings, and normalized additive metadata for the shared-profile and extruded-shape surface.
+- Root/package docs, tarball checks, planning audit, and the authoritative root release gate now lock the shipped profile-solid contract end to end.
+
+### What worked
+
+- Keeping the geometry contract generic-first and explicitly downstreaming tool-library ownership prevented the runtime from slipping back into app-coupled semantics.
+- Splitting the milestone into kernel, generated-family runtime, and package/governance phases made it straightforward to isolate regressions and prove additive behavior.
+- Root contract tests plus package/governance checks provided strong coverage without widening unconditional demo, Babylon, or Tauri gates.
+
+### What to revisit
+
+- Milestone closeout still needed explicit backfill of `VERIFICATION.md` and summary frontmatter before the archive was fully GSD-complete.
+- The dormant seed `SEED-001-web-exact-brep-measurement` remains open and still requires an explicit future milestone decision instead of implicit carry-over.
+
+### Carry-forward ideas
+
+- If the next geometry milestone expands beyond linear extrusion, keep one shared profile kernel and add family-specific constraints only where the math genuinely differs.
+- Promote sweep, loft, or richer exact-measurement work only through a fresh milestone definition so the runtime boundary stays explicit.
+
 ## Milestone: v1.8 — Wasm+JS Revolved Shape Generation
 
 **Shipped:** 2026-04-21

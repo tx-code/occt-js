@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Generic Profile Solids
-status: ready_for_closeout
-stopped_at: Phase 32 completed
-last_updated: "2026-04-21T22:30:00+08:00"
-last_activity: 2026-04-21 -- Phase 32 completed
+status: milestone_archived
+stopped_at: v1.9 closeout complete
+last_updated: "2026-04-21T12:20:00+08:00"
+last_activity: 2026-04-21 -- v1.9 archived
 progress:
   total_phases: 3
   completed_phases: 3
@@ -21,21 +21,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-21)
 
 Core value: Downstream applications can reliably consume the OCCT Wasm runtime and its root API contract without build drift or packaging surprises.
-Current focus: Milestone v1.9 closeout
+Current focus: Planning next milestone
 
 ## Current Position
 
 Milestone: v1.9 Generic Profile Solids
-Phase: 32
-Plan: complete
-Status: Ready for milestone closeout
-Last activity: 2026-04-21 -- Phase 32 completed
+Phase: archived
+Plan: closeout complete
+Status: Planning next milestone
+Last activity: 2026-04-21 -- v1.9 archived
 
 Progress: [##########] 100%
 
 ## Performance Metrics
 
-Current milestone (`v1.9`) planned scope:
+Current milestone (`v1.9`) shipped scope:
 
 - Phases: 3 (30-32)
 - Plans: 6/6 complete
@@ -56,8 +56,8 @@ Current milestone (`v1.9`) planned scope:
 
 ### Pending Todos
 
-- Close out `v1.9` with `$gsd-complete-milestone`.
-- Keep `v1.9` scoped to shared profiles plus straight linear extrusion before entertaining sweep/loft expansion.
+- Start the next milestone with `$gsd-new-milestone`.
+- Re-evaluate `SEED-001-web-exact-brep-measurement` only if it fits the next milestone boundary.
 
 ### Blockers/Concerns
 
@@ -65,7 +65,7 @@ Current milestone (`v1.9`) planned scope:
 
 ## Deferred Items
 
-Items acknowledged and deferred at milestone close on 2026-04-20:
+Items acknowledged and deferred at milestone close on 2026-04-21:
 
 | Category | Item | Status |
 |----------|------|--------|
@@ -73,6 +73,6 @@ Items acknowledged and deferred at milestone close on 2026-04-20:
 
 ## Session Continuity
 
-Last session: 2026-04-21T22:30:00+08:00
-Stopped at: Phase 32 completed
-Resume file: .planning/ROADMAP.md
+Last session: 2026-04-21T12:20:00+08:00
+Stopped at: v1.9 closeout complete
+Resume file: .planning/PROJECT.md

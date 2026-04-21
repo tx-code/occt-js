@@ -1,5 +1,20 @@
 # Milestones
 
+## v1.9 Generic Profile Solids (Shipped: 2026-04-21)
+
+**Phases completed:** 3 phases, 6 plans, 6 tasks
+**Known deferred items at close:** 1 (see `STATE.md` Deferred Items)
+
+**Key accomplishments:**
+
+- The root Wasm carrier now ships one shared `Profile2D` validation kernel reused across generated-solid families instead of duplicating family-local line/arc seams.
+- Generated linear extruded solids now support additive validate, build, and exact-open flows in canonical local `XY + Z-depth` space.
+- Extruded output now preserves stable profile-provenance wall bindings, explicit `start_cap` / `end_cap` semantics, and deterministic runtime-owned appearance grouping.
+- `@tx-code/occt-core` now mirrors the shared-profile and extruded-shape surface package-first, including normalized additive metadata preservation.
+- Root/package docs, tarball checks, planning audit, and the authoritative root release gate now lock the shared-profile and extruded-shape contract without widening unconditional secondary-surface checks.
+
+---
+
 ## v1.8 Wasm+JS Revolved Shape Generation (Shipped: 2026-04-21)
 
 **Phases completed:** 3 phases, 6 plans, 6 tasks
