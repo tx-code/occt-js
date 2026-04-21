@@ -351,7 +351,7 @@ struct OcctRevolvedToolValidationResult {
     bool hasSpec = false;
 };
 
-struct OcctGeneratedToolSegmentDescriptor {
+struct OcctGeneratedShapeSegmentDescriptor {
     int index = 0;
     std::string kind;
     std::string id;
@@ -360,7 +360,9 @@ struct OcctGeneratedToolSegmentDescriptor {
     bool hasTag = false;
 };
 
-struct OcctGeneratedToolFaceBinding {
+using OcctGeneratedToolSegmentDescriptor = OcctGeneratedShapeSegmentDescriptor;
+
+struct OcctGeneratedShapeFaceBinding {
     int geometryIndex = 0;
     int faceId = 0;
     std::string systemRole;
@@ -372,7 +374,9 @@ struct OcctGeneratedToolFaceBinding {
     bool hasSegmentTag = false;
 };
 
-struct OcctGeneratedToolExactShapeValidation {
+using OcctGeneratedToolFaceBinding = OcctGeneratedShapeFaceBinding;
+
+struct OcctGeneratedShapeExactShapeValidation {
     bool isValid = false;
     bool isClosed = false;
     bool isSolid = false;
@@ -384,7 +388,9 @@ struct OcctGeneratedToolExactShapeValidation {
     int vertexCount = 0;
 };
 
-struct OcctGeneratedToolMeshValidation {
+using OcctGeneratedToolExactShapeValidation = OcctGeneratedShapeExactShapeValidation;
+
+struct OcctGeneratedShapeMeshValidation {
     bool isWatertight = false;
     bool isManifold = false;
     int weldedVertexCount = 0;
@@ -392,12 +398,16 @@ struct OcctGeneratedToolMeshValidation {
     int nonManifoldEdgeCount = 0;
 };
 
-struct OcctGeneratedToolShapeValidation {
-    OcctGeneratedToolExactShapeValidation exact;
-    OcctGeneratedToolMeshValidation mesh;
+using OcctGeneratedToolMeshValidation = OcctGeneratedShapeMeshValidation;
+
+struct OcctGeneratedShapeShapeValidation {
+    OcctGeneratedShapeExactShapeValidation exact;
+    OcctGeneratedShapeMeshValidation mesh;
 };
 
-struct OcctGeneratedToolMetadata {
+using OcctGeneratedToolShapeValidation = OcctGeneratedShapeShapeValidation;
+
+struct OcctGeneratedRevolvedShapeMetadata {
     int version = 1;
     std::string units;
     std::string plane = "XZ";
@@ -406,9 +416,23 @@ struct OcctGeneratedToolMetadata {
     int segmentCount = 0;
     bool hasStableFaceBindings = false;
     bool hasShapeValidation = false;
-    std::vector<OcctGeneratedToolSegmentDescriptor> segments;
-    std::vector<OcctGeneratedToolFaceBinding> faceBindings;
-    OcctGeneratedToolShapeValidation shapeValidation;
+    std::vector<OcctGeneratedShapeSegmentDescriptor> segments;
+    std::vector<OcctGeneratedShapeFaceBinding> faceBindings;
+    OcctGeneratedShapeShapeValidation shapeValidation;
+};
+
+using OcctGeneratedToolMetadata = OcctGeneratedRevolvedShapeMetadata;
+
+struct OcctGeneratedExtrudedShapeMetadata {
+    int version = 1;
+    std::string units;
+    double depth = 0.0;
+    int segmentCount = 0;
+    bool hasStableFaceBindings = false;
+    bool hasShapeValidation = false;
+    std::vector<OcctGeneratedShapeSegmentDescriptor> segments;
+    std::vector<OcctGeneratedShapeFaceBinding> faceBindings;
+    OcctGeneratedShapeShapeValidation shapeValidation;
 };
 
 struct OcctRevolvedToolBuildResult {
@@ -418,8 +442,36 @@ struct OcctRevolvedToolBuildResult {
     OcctSceneData scene;
     TopoDS_Shape exactShape;
     std::vector<TopoDS_Shape> exactGeometryShapes;
-    OcctGeneratedToolMetadata revolvedShape;
+    OcctGeneratedRevolvedShapeMetadata revolvedShape;
     bool hasRevolvedShape = false;
+};
+
+using OcctExtrudedShapeDiagnostic = OcctProfile2DDiagnostic;
+using OcctExtrudedShapeSegment = OcctProfile2DSegment;
+
+struct OcctExtrudedShapeSpec {
+    int version = 1;
+    std::string units;
+    OcctProfile2DSpec profile;
+    double depth = 0.0;
+};
+
+struct OcctExtrudedShapeValidationResult {
+    bool ok = false;
+    std::vector<OcctExtrudedShapeDiagnostic> diagnostics;
+    OcctExtrudedShapeSpec spec;
+    bool hasSpec = false;
+};
+
+struct OcctExtrudedShapeBuildResult {
+    bool success = false;
+    std::string error;
+    std::vector<OcctExtrudedShapeDiagnostic> diagnostics;
+    OcctSceneData scene;
+    TopoDS_Shape exactShape;
+    std::vector<TopoDS_Shape> exactGeometryShapes;
+    OcctGeneratedExtrudedShapeMetadata extrudedShape;
+    bool hasExtrudedShape = false;
 };
 
 struct ImportParams {

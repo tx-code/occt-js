@@ -418,13 +418,39 @@ export interface OcctJSRevolvedShapeBuildOptions {
     angularDeflection?: number;
 }
 
-export interface OcctJSGeneratedRevolvedShapeSegmentDescriptor {
+export interface OcctJSGeneratedShapeSegmentDescriptor {
     index: number;
-    kind: OcctJSRevolvedShapeSegmentKind;
+    kind: OcctJSProfile2DSegmentKind;
     id?: string;
     tag?: string;
 }
 
+export interface OcctJSGeneratedShapeExactShapeValidation {
+    isValid: boolean;
+    isClosed: boolean;
+    isSolid: boolean;
+    shapeType: string;
+    solidCount: number;
+    shellCount: number;
+    faceCount: number;
+    edgeCount: number;
+    vertexCount: number;
+}
+
+export interface OcctJSGeneratedShapeMeshValidation {
+    isWatertight: boolean;
+    isManifold: boolean;
+    weldedVertexCount: number;
+    boundaryEdgeCount: number;
+    nonManifoldEdgeCount: number;
+}
+
+export interface OcctJSGeneratedShapeShapeValidation {
+    exact: OcctJSGeneratedShapeExactShapeValidation;
+    mesh: OcctJSGeneratedShapeMeshValidation;
+}
+
+export type OcctJSGeneratedRevolvedShapeSegmentDescriptor = OcctJSGeneratedShapeSegmentDescriptor;
 export type OcctJSGeneratedRevolvedShapeSystemRole =
     | "profile"
     | "closure"
@@ -442,30 +468,9 @@ export interface OcctJSGeneratedRevolvedShapeFaceBinding {
     segmentTag?: string;
 }
 
-export interface OcctJSGeneratedRevolvedShapeExactShapeValidation {
-    isValid: boolean;
-    isClosed: boolean;
-    isSolid: boolean;
-    shapeType: string;
-    solidCount: number;
-    shellCount: number;
-    faceCount: number;
-    edgeCount: number;
-    vertexCount: number;
-}
-
-export interface OcctJSGeneratedRevolvedShapeMeshValidation {
-    isWatertight: boolean;
-    isManifold: boolean;
-    weldedVertexCount: number;
-    boundaryEdgeCount: number;
-    nonManifoldEdgeCount: number;
-}
-
-export interface OcctJSGeneratedRevolvedShapeShapeValidation {
-    exact: OcctJSGeneratedRevolvedShapeExactShapeValidation;
-    mesh: OcctJSGeneratedRevolvedShapeMeshValidation;
-}
+export type OcctJSGeneratedRevolvedShapeExactShapeValidation = OcctJSGeneratedShapeExactShapeValidation;
+export type OcctJSGeneratedRevolvedShapeMeshValidation = OcctJSGeneratedShapeMeshValidation;
+export type OcctJSGeneratedRevolvedShapeShapeValidation = OcctJSGeneratedShapeShapeValidation;
 
 export interface OcctJSGeneratedRevolvedShapeMetadata {
     version: 1;
@@ -511,6 +516,95 @@ export interface OcctJSExactRevolvedShapeOpenSuccess extends OcctJSExactOpenResu
 export type OcctJSExactRevolvedShapeOpenResult =
     | OcctJSRevolvedShapeBuildFailure
     | OcctJSExactRevolvedShapeOpenSuccess;
+
+export type OcctJSExtrudedShapeUnits = "mm" | "inch";
+export type OcctJSExtrudedShapeSegmentKind = OcctJSProfile2DSegmentKind;
+export type OcctJSExtrudedShapeDiagnosticCode =
+    | OcctJSProfile2DDiagnosticCode
+    | "invalid-extrusion-depth"
+    | "unsupported-unit";
+
+export interface OcctJSExtrudedShapeSpec {
+    version?: 1;
+    units: OcctJSExtrudedShapeUnits;
+    profile: OcctJSProfile2DSpec;
+    extrusion?: {
+        depth: number;
+    };
+}
+
+export type OcctJSExtrudedShapeDiagnostic = Omit<OcctJSProfile2DDiagnostic, "code"> & {
+    code: OcctJSExtrudedShapeDiagnosticCode;
+};
+
+export interface OcctJSExtrudedShapeValidationResult {
+    ok: boolean;
+    diagnostics: OcctJSExtrudedShapeDiagnostic[];
+}
+
+export interface OcctJSExtrudedShapeBuildOptions {
+    linearDeflectionType?: "bounding_box_ratio" | "absolute_value";
+    linearDeflection?: number;
+    angularDeflection?: number;
+}
+
+export type OcctJSGeneratedExtrudedShapeSegmentDescriptor = OcctJSGeneratedShapeSegmentDescriptor;
+export type OcctJSGeneratedExtrudedShapeSystemRole =
+    | "wall"
+    | "start_cap"
+    | "end_cap";
+
+export interface OcctJSGeneratedExtrudedShapeFaceBinding {
+    geometryIndex: number;
+    faceId: number;
+    systemRole: OcctJSGeneratedExtrudedShapeSystemRole;
+    segmentIndex?: number;
+    segmentId?: string;
+    segmentTag?: string;
+}
+
+export interface OcctJSGeneratedExtrudedShapeMetadata {
+    version: 1;
+    units: OcctJSExtrudedShapeUnits;
+    depth: number;
+    segmentCount: number;
+    hasStableFaceBindings: boolean;
+    segments: OcctJSGeneratedExtrudedShapeSegmentDescriptor[];
+    shapeValidation?: OcctJSGeneratedShapeShapeValidation;
+    faceBindings?: OcctJSGeneratedExtrudedShapeFaceBinding[];
+}
+
+export interface OcctJSExtrudedShapeBuildFailure {
+    success: false;
+    error: string;
+    sourceFormat: "generated-extruded-shape";
+    diagnostics: OcctJSExtrudedShapeDiagnostic[];
+    extrudedShape?: OcctJSGeneratedExtrudedShapeMetadata;
+}
+
+export interface OcctJSExtrudedShapeBuildSuccess extends OcctJSResult {
+    success: true;
+    sourceFormat: "generated-extruded-shape";
+    extrudedShape: OcctJSGeneratedExtrudedShapeMetadata;
+    diagnostics?: OcctJSExtrudedShapeDiagnostic[];
+}
+
+export type OcctJSExtrudedShapeBuildResult =
+    | OcctJSExtrudedShapeBuildFailure
+    | OcctJSExtrudedShapeBuildSuccess;
+
+export interface OcctJSExactExtrudedShapeOpenSuccess extends OcctJSExactOpenResult {
+    success: true;
+    sourceFormat: "generated-extruded-shape";
+    exactModelId: number;
+    exactGeometryBindings: OcctJSExactGeometryBinding[];
+    extrudedShape: OcctJSGeneratedExtrudedShapeMetadata;
+    diagnostics?: OcctJSExtrudedShapeDiagnostic[];
+}
+
+export type OcctJSExactExtrudedShapeOpenResult =
+    | OcctJSExtrudedShapeBuildFailure
+    | OcctJSExactExtrudedShapeOpenSuccess;
 
 export interface OcctJSReadParams {
     rootMode?: "one-shape" | "multiple-shapes";
@@ -593,8 +687,11 @@ export interface OcctJSModule {
     ReadBrepFile(content: Uint8Array, params?: OcctJSReadParams): OcctJSResult;
     ValidateProfile2DSpec(spec: OcctJSProfile2DSpec): OcctJSProfile2DValidationResult;
     ValidateRevolvedShapeSpec(spec: OcctJSRevolvedShapeSpec): OcctJSRevolvedShapeValidationResult;
+    ValidateExtrudedShapeSpec(spec: OcctJSExtrudedShapeSpec): OcctJSExtrudedShapeValidationResult;
     BuildRevolvedShape(spec: OcctJSRevolvedShapeSpec, options?: OcctJSRevolvedShapeBuildOptions): OcctJSRevolvedShapeBuildResult;
+    BuildExtrudedShape(spec: OcctJSExtrudedShapeSpec, options?: OcctJSExtrudedShapeBuildOptions): OcctJSExtrudedShapeBuildResult;
     OpenExactRevolvedShape(spec: OcctJSRevolvedShapeSpec, options?: OcctJSRevolvedShapeBuildOptions): OcctJSExactRevolvedShapeOpenResult;
+    OpenExactExtrudedShape(spec: OcctJSExtrudedShapeSpec, options?: OcctJSExtrudedShapeBuildOptions): OcctJSExactExtrudedShapeOpenResult;
     OpenExactModel(format: string, content: Uint8Array, params?: OcctJSReadParams): OcctJSExactOpenResult;
     OpenExactStepModel(content: Uint8Array, params?: OcctJSReadParams): OcctJSExactOpenResult;
     OpenExactIgesModel(content: Uint8Array, params?: OcctJSReadParams): OcctJSExactOpenResult;

@@ -13,6 +13,7 @@
 #include "importer-brep.hpp"
 #include "exact-model-store.hpp"
 #include "exact-query.hpp"
+#include "extruded-shape.hpp"
 #include "orientation.hpp"
 #include "profile-2d.hpp"
 #include "revolved-tool.hpp"
@@ -877,6 +878,23 @@ val RevolvedToolValidationResultToVal(const OcctRevolvedToolValidationResult& re
     return obj;
 }
 
+val ExtrudedShapeDiagnosticToVal(const OcctExtrudedShapeDiagnostic& diagnostic)
+{
+    return Profile2DDiagnosticToVal(diagnostic);
+}
+
+val ExtrudedShapeValidationResultToVal(const OcctExtrudedShapeValidationResult& result)
+{
+    val obj = val::object();
+    obj.set("ok", result.ok);
+    val diagnostics = val::array();
+    for (const auto& diagnostic : result.diagnostics) {
+        diagnostics.call<void>("push", ExtrudedShapeDiagnosticToVal(diagnostic));
+    }
+    obj.set("diagnostics", diagnostics);
+    return obj;
+}
+
 val GeneratedToolSegmentDescriptorToVal(const OcctGeneratedToolSegmentDescriptor& descriptor)
 {
     val obj = val::object();
@@ -951,6 +969,32 @@ val RevolvedShapeMetadataToVal(const OcctGeneratedToolMetadata& metadata)
     obj.set("plane", metadata.plane);
     obj.set("closure", metadata.closure);
     obj.set("angleDeg", metadata.angleDeg);
+    obj.set("segmentCount", metadata.segmentCount);
+    obj.set("hasStableFaceBindings", metadata.hasStableFaceBindings);
+    val segments = val::array();
+    for (const auto& segment : metadata.segments) {
+        segments.call<void>("push", GeneratedToolSegmentDescriptorToVal(segment));
+    }
+    obj.set("segments", segments);
+    if (metadata.hasShapeValidation) {
+        obj.set("shapeValidation", GeneratedToolShapeValidationToVal(metadata.shapeValidation));
+    }
+    if (!metadata.faceBindings.empty()) {
+        val faceBindings = val::array();
+        for (const auto& faceBinding : metadata.faceBindings) {
+            faceBindings.call<void>("push", GeneratedToolFaceBindingToVal(faceBinding));
+        }
+        obj.set("faceBindings", faceBindings);
+    }
+    return obj;
+}
+
+val ExtrudedShapeMetadataToVal(const OcctGeneratedExtrudedShapeMetadata& metadata)
+{
+    val obj = val::object();
+    obj.set("version", metadata.version);
+    obj.set("units", metadata.units);
+    obj.set("depth", metadata.depth);
     obj.set("segmentCount", metadata.segmentCount);
     obj.set("hasStableFaceBindings", metadata.hasStableFaceBindings);
     val segments = val::array();
@@ -1190,6 +1234,11 @@ val ValidateRevolvedShapeSpecBinding(const val& jsSpec)
     return RevolvedToolValidationResultToVal(ValidateRevolvedShapeSpec(jsSpec));
 }
 
+val ValidateExtrudedShapeSpecBinding(const val& jsSpec)
+{
+    return ExtrudedShapeValidationResultToVal(ValidateExtrudedShapeSpec(jsSpec));
+}
+
 val BuildRevolvedShapeBinding(const val& jsSpec, const val& jsOptions)
 {
     const OcctRevolvedToolBuildResult buildResult = BuildRevolvedShape(jsSpec, jsOptions);
@@ -1203,6 +1252,23 @@ val BuildRevolvedShapeBinding(const val& jsSpec, const val& jsOptions)
     }
     if (buildResult.hasRevolvedShape) {
         result.set("revolvedShape", RevolvedShapeMetadataToVal(buildResult.revolvedShape));
+    }
+    return result;
+}
+
+val BuildExtrudedShapeBinding(const val& jsSpec, const val& jsOptions)
+{
+    const OcctExtrudedShapeBuildResult buildResult = BuildExtrudedShape(jsSpec, jsOptions);
+    val result = BuildResult(buildResult.scene, "generated-extruded-shape");
+    if (!buildResult.diagnostics.empty()) {
+        val diagnostics = val::array();
+        for (const auto& diagnostic : buildResult.diagnostics) {
+            diagnostics.call<void>("push", ExtrudedShapeDiagnosticToVal(diagnostic));
+        }
+        result.set("diagnostics", diagnostics);
+    }
+    if (buildResult.hasExtrudedShape) {
+        result.set("extrudedShape", ExtrudedShapeMetadataToVal(buildResult.extrudedShape));
     }
     return result;
 }
@@ -1247,6 +1313,55 @@ val OpenExactRevolvedShapeBinding(const val& jsSpec, const val& jsOptions)
         }
         if (buildResult.hasRevolvedShape) {
             result.set("revolvedShape", RevolvedShapeMetadataToVal(buildResult.revolvedShape));
+        }
+        return result;
+    }
+
+    result.set("exactModelId", exactModelId);
+    result.set("exactGeometryBindings", ExactGeometryBindingsToVal(buildResult.exactGeometryShapes.size()));
+    return result;
+}
+
+val OpenExactExtrudedShapeBinding(const val& jsSpec, const val& jsOptions)
+{
+    const OcctExtrudedShapeBuildResult buildResult = BuildExtrudedShape(jsSpec, jsOptions);
+    val result = BuildResult(buildResult.scene, "generated-extruded-shape");
+    if (!buildResult.diagnostics.empty()) {
+        val diagnostics = val::array();
+        for (const auto& diagnostic : buildResult.diagnostics) {
+            diagnostics.call<void>("push", ExtrudedShapeDiagnosticToVal(diagnostic));
+        }
+        result.set("diagnostics", diagnostics);
+    }
+    if (buildResult.hasExtrudedShape) {
+        result.set("extrudedShape", ExtrudedShapeMetadataToVal(buildResult.extrudedShape));
+    }
+    if (!buildResult.success) {
+        return result;
+    }
+
+    const int exactModelId = ExactModelStore::Instance().Register(
+        buildResult.exactShape,
+        buildResult.exactGeometryShapes,
+        "generated-extruded-shape",
+        buildResult.scene.sourceUnit,
+        buildResult.scene.unitScaleToMeters
+    );
+
+    if (exactModelId <= 0) {
+        OcctSceneData scene;
+        scene.success = false;
+        scene.error = "Failed to register retained exact generated extruded shape state.";
+        result = BuildResult(scene, "generated-extruded-shape");
+        if (!buildResult.diagnostics.empty()) {
+            val diagnostics = val::array();
+            for (const auto& diagnostic : buildResult.diagnostics) {
+                diagnostics.call<void>("push", ExtrudedShapeDiagnosticToVal(diagnostic));
+            }
+            result.set("diagnostics", diagnostics);
+        }
+        if (buildResult.hasExtrudedShape) {
+            result.set("extrudedShape", ExtrudedShapeMetadataToVal(buildResult.extrudedShape));
         }
         return result;
     }
@@ -1574,8 +1689,11 @@ EMSCRIPTEN_BINDINGS(occtjs)
     function("ReadBrepFile", &ReadBrepFile);
     function("ValidateProfile2DSpec", &ValidateProfile2DSpecBinding);
     function("ValidateRevolvedShapeSpec", &ValidateRevolvedShapeSpecBinding);
+    function("ValidateExtrudedShapeSpec", &ValidateExtrudedShapeSpecBinding);
     function("BuildRevolvedShape", &BuildRevolvedShapeBinding);
+    function("BuildExtrudedShape", &BuildExtrudedShapeBinding);
     function("OpenExactRevolvedShape", &OpenExactRevolvedShapeBinding);
+    function("OpenExactExtrudedShape", &OpenExactExtrudedShapeBinding);
     function("OpenExactModel", &OpenExactModel);
     function("OpenExactStepModel", &OpenExactStepModel);
     function("OpenExactIgesModel", &OpenExactIgesModel);
