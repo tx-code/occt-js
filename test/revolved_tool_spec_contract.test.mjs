@@ -163,3 +163,19 @@ test("ValidateRevolvedShapeSpec rejects invalid partial revolve ranges without t
     assert.equal(result.rootNodes, undefined);
   }
 });
+
+test("ValidateRevolvedShapeSpec still rejects negative radius and invalid revolve settings after shared-profile extraction", async () => {
+  const module = await createModule();
+  const spec = createValidSpec();
+  spec.profile.start = [-2, 0];
+  spec.profile.segments[3].end = [-2, 0];
+  spec.revolve.angleDeg = 540;
+
+  const result = module.ValidateRevolvedShapeSpec(spec);
+
+  assert.equal(result?.ok, false);
+  assertTypedDiagnostics(result);
+  assert.ok(findDiagnostic(result, "negative-radius"));
+  assert.ok(findDiagnostic(result, "invalid-revolve-angle"));
+  assert.equal(findDiagnostic(result, "profile-not-closed"), undefined);
+});

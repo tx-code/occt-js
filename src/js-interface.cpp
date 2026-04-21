@@ -14,6 +14,7 @@
 #include "exact-model-store.hpp"
 #include "exact-query.hpp"
 #include "orientation.hpp"
+#include "profile-2d.hpp"
 #include "revolved-tool.hpp"
 
 using namespace emscripten;
@@ -832,7 +833,7 @@ val ExactChamferResultToVal(const OcctExactChamferResult& result)
     return obj;
 }
 
-val RevolvedToolDiagnosticToVal(const OcctRevolvedToolDiagnostic& diagnostic)
+val Profile2DDiagnosticToVal(const OcctProfile2DDiagnostic& diagnostic)
 {
     val obj = val::object();
     obj.set("code", diagnostic.code);
@@ -845,6 +846,23 @@ val RevolvedToolDiagnosticToVal(const OcctRevolvedToolDiagnostic& diagnostic)
         obj.set("segmentIndex", diagnostic.segmentIndex);
     }
     return obj;
+}
+
+val Profile2DValidationResultToVal(const OcctProfile2DValidationResult& result)
+{
+    val obj = val::object();
+    obj.set("ok", result.ok);
+    val diagnostics = val::array();
+    for (const auto& diagnostic : result.diagnostics) {
+        diagnostics.call<void>("push", Profile2DDiagnosticToVal(diagnostic));
+    }
+    obj.set("diagnostics", diagnostics);
+    return obj;
+}
+
+val RevolvedToolDiagnosticToVal(const OcctRevolvedToolDiagnostic& diagnostic)
+{
+    return Profile2DDiagnosticToVal(diagnostic);
 }
 
 val RevolvedToolValidationResultToVal(const OcctRevolvedToolValidationResult& result)
@@ -1160,6 +1178,11 @@ val ReadBrepFile(const val& content, const val& jsParams)
 val ReadFile(const std::string& format, const val& content, const val& jsParams)
 {
     return ReadByFormat(format, content, jsParams);
+}
+
+val ValidateProfile2DSpecBinding(const val& jsSpec)
+{
+    return Profile2DValidationResultToVal(ValidateProfile2DSpec(jsSpec));
 }
 
 val ValidateRevolvedShapeSpecBinding(const val& jsSpec)
@@ -1549,6 +1572,7 @@ EMSCRIPTEN_BINDINGS(occtjs)
     function("ReadStepFile", &ReadStepFile);
     function("ReadIgesFile", &ReadIgesFile);
     function("ReadBrepFile", &ReadBrepFile);
+    function("ValidateProfile2DSpec", &ValidateProfile2DSpecBinding);
     function("ValidateRevolvedShapeSpec", &ValidateRevolvedShapeSpecBinding);
     function("BuildRevolvedShape", &BuildRevolvedShapeBinding);
     function("OpenExactRevolvedShape", &OpenExactRevolvedShapeBinding);

@@ -319,73 +319,93 @@ export interface OcctJSExactChamferSuccess {
 
 export type OcctJSExactChamferResult = OcctJSExactChamferSuccess | OcctJSExactQueryFailure;
 
-export type OcctJSRevolvedShapeUnits = "mm" | "inch";
-export type OcctJSRevolvedShapePlane = "XZ";
-export type OcctJSRevolvedShapeClosure = "explicit" | "auto_axis";
-export type OcctJSRevolvedShapeSegmentKind = "line" | "arc_center" | "arc_3pt";
-export type OcctJSRevolvedShapeDiagnosticCode =
+export type OcctJSProfile2DSegmentKind = "line" | "arc_center" | "arc_3pt";
+export type OcctJSProfile2DDiagnosticCode =
     | "build-failed"
     | "degenerate-segment"
     | "invalid-arc"
-    | "invalid-closure"
-    | "invalid-revolve-angle"
     | "invalid-spec"
     | "invalid-type"
     | "missing-field"
-    | "negative-radius"
     | "non-finite-coordinate"
+    | "profile-discontinuous"
     | "profile-not-closed"
-    | "unsupported-plane"
     | "unsupported-segment-kind"
-    | "unsupported-unit"
     | "unsupported-version";
 
-export interface OcctJSRevolvedShapeSegmentBase {
+export interface OcctJSProfile2DSegmentBase {
     id?: string;
     tag?: string;
     end: [number, number];
 }
 
-export interface OcctJSRevolvedShapeLineSegment extends OcctJSRevolvedShapeSegmentBase {
+export interface OcctJSProfile2DLineSegment extends OcctJSProfile2DSegmentBase {
     kind: "line";
 }
 
-export interface OcctJSRevolvedShapeArcCenterSegment extends OcctJSRevolvedShapeSegmentBase {
+export interface OcctJSProfile2DArcCenterSegment extends OcctJSProfile2DSegmentBase {
     kind: "arc_center";
     center: [number, number];
 }
 
-export interface OcctJSRevolvedShapeArc3PointSegment extends OcctJSRevolvedShapeSegmentBase {
+export interface OcctJSProfile2DArc3PointSegment extends OcctJSProfile2DSegmentBase {
     kind: "arc_3pt";
     through: [number, number];
 }
 
-export type OcctJSRevolvedShapeSegment =
-    | OcctJSRevolvedShapeLineSegment
-    | OcctJSRevolvedShapeArcCenterSegment
-    | OcctJSRevolvedShapeArc3PointSegment;
+export type OcctJSProfile2DSegment =
+    | OcctJSProfile2DLineSegment
+    | OcctJSProfile2DArcCenterSegment
+    | OcctJSProfile2DArc3PointSegment;
+
+export interface OcctJSProfile2DSpec {
+    version?: 1;
+    start: [number, number];
+    segments: OcctJSProfile2DSegment[];
+}
+
+export interface OcctJSProfile2DDiagnostic {
+    code: OcctJSProfile2DDiagnosticCode;
+    message: string;
+    severity: "error";
+    path?: string;
+    segmentIndex?: number;
+}
+
+export interface OcctJSProfile2DValidationResult {
+    ok: boolean;
+    diagnostics: OcctJSProfile2DDiagnostic[];
+}
+
+export type OcctJSRevolvedShapeUnits = "mm" | "inch";
+export type OcctJSRevolvedShapePlane = "XZ";
+export type OcctJSRevolvedShapeClosure = "explicit" | "auto_axis";
+export type OcctJSRevolvedShapeSegmentKind = OcctJSProfile2DSegmentKind;
+export type OcctJSRevolvedShapeDiagnosticCode =
+    | OcctJSProfile2DDiagnosticCode
+    | "invalid-closure"
+    | "invalid-revolve-angle"
+    | "negative-radius"
+    | "unsupported-plane"
+    | "unsupported-unit";
+
+export type OcctJSRevolvedShapeSegment = OcctJSProfile2DSegment;
 
 export interface OcctJSRevolvedShapeSpec {
     version?: 1;
     units: OcctJSRevolvedShapeUnits;
-    profile: {
+    profile: OcctJSProfile2DSpec & {
         plane?: OcctJSRevolvedShapePlane;
-        start: [number, number];
         closure: OcctJSRevolvedShapeClosure;
-        segments: OcctJSRevolvedShapeSegment[];
     };
     revolve?: {
         angleDeg?: number;
     };
 }
 
-export interface OcctJSRevolvedShapeDiagnostic {
+export type OcctJSRevolvedShapeDiagnostic = Omit<OcctJSProfile2DDiagnostic, "code"> & {
     code: OcctJSRevolvedShapeDiagnosticCode;
-    message: string;
-    severity: "error";
-    path?: string;
-    segmentIndex?: number;
-}
+};
 
 export interface OcctJSRevolvedShapeValidationResult {
     ok: boolean;
@@ -571,6 +591,7 @@ export interface OcctJSModule {
     ReadStepFile(content: Uint8Array, params?: OcctJSReadParams): OcctJSResult;
     ReadIgesFile(content: Uint8Array, params?: OcctJSReadParams): OcctJSResult;
     ReadBrepFile(content: Uint8Array, params?: OcctJSReadParams): OcctJSResult;
+    ValidateProfile2DSpec(spec: OcctJSProfile2DSpec): OcctJSProfile2DValidationResult;
     ValidateRevolvedShapeSpec(spec: OcctJSRevolvedShapeSpec): OcctJSRevolvedShapeValidationResult;
     BuildRevolvedShape(spec: OcctJSRevolvedShapeSpec, options?: OcctJSRevolvedShapeBuildOptions): OcctJSRevolvedShapeBuildResult;
     OpenExactRevolvedShape(spec: OcctJSRevolvedShapeSpec, options?: OcctJSRevolvedShapeBuildOptions): OcctJSExactRevolvedShapeOpenResult;

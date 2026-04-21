@@ -285,7 +285,7 @@ struct OcctExactChamferResult {
     bool hasSupportNormalB = false;
 };
 
-struct OcctRevolvedToolDiagnostic {
+struct OcctProfile2DDiagnostic {
     std::string code;
     std::string message;
     std::string severity = "error";
@@ -295,12 +295,14 @@ struct OcctRevolvedToolDiagnostic {
     bool hasSegmentIndex = false;
 };
 
-struct OcctRevolvedToolSegment {
+struct OcctProfile2DSegment {
     std::string kind;
     std::string id;
     bool hasId = false;
     std::string tag;
     bool hasTag = false;
+    std::array<double, 2> start = { 0.0, 0.0 };
+    bool hasStart = false;
     std::array<double, 2> end = { 0.0, 0.0 };
     bool hasEnd = false;
     std::array<double, 2> center = { 0.0, 0.0 };
@@ -309,11 +311,28 @@ struct OcctRevolvedToolSegment {
     bool hasThrough = false;
 };
 
+struct OcctProfile2DSpec {
+    int version = 1;
+    std::array<double, 2> start = { 0.0, 0.0 };
+    bool hasStart = false;
+    std::vector<OcctProfile2DSegment> segments;
+};
+
+struct OcctProfile2DValidationResult {
+    bool ok = false;
+    std::vector<OcctProfile2DDiagnostic> diagnostics;
+    OcctProfile2DSpec spec;
+    bool hasSpec = false;
+};
+
+using OcctRevolvedToolDiagnostic = OcctProfile2DDiagnostic;
+using OcctRevolvedToolSegment = OcctProfile2DSegment;
+
 struct OcctRevolvedToolProfile {
     std::string plane = "XZ";
     std::array<double, 2> start = { 0.0, 0.0 };
     bool hasStart = false;
-    std::vector<OcctRevolvedToolSegment> segments;
+    std::vector<OcctProfile2DSegment> segments;
     std::string closure;
     bool hasClosure = false;
 };

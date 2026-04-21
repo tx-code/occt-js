@@ -1,6 +1,7 @@
 #include "revolved-tool.hpp"
 
 #include "importer-utils.hpp"
+#include "profile-2d.hpp"
 
 #include <BRepCheck_Analyzer.hxx>
 #include <BRepBuilderAPI_MakeEdge.hxx>
@@ -428,13 +429,6 @@ void ParseProfile(const val& jsProfile, OcctRevolvedToolValidationResult& result
     }
     result.spec.profile.plane = plane;
 
-    val jsStart = val::undefined();
-    if (!TryGetOwnProperty(jsProfile, "start", jsStart)) {
-        AddDiagnostic(result, "missing-field", "Spec.profile.start is required.", "profile.start");
-    } else {
-        result.spec.profile.hasStart = TryParsePoint2(jsStart, result.spec.profile.start, result, "profile.start");
-    }
-
     val jsClosure = val::undefined();
     if (!TryGetOwnProperty(jsProfile, "closure", jsClosure)) {
         AddDiagnostic(result, "missing-field", "Spec.profile.closure is required.", "profile.closure");
@@ -448,44 +442,33 @@ void ParseProfile(const val& jsProfile, OcctRevolvedToolValidationResult& result
         }
     }
 
-    val jsSegments = val::undefined();
-    if (!TryGetOwnProperty(jsProfile, "segments", jsSegments)) {
-        AddDiagnostic(result, "missing-field", "Spec.profile.segments is required.", "profile.segments");
-        return;
-    }
-    if (!IsArrayLike(jsSegments)) {
-        AddDiagnostic(result, "invalid-type", "Spec.profile.segments must be an array.", "profile.segments");
-        return;
-    }
+    OcctProfile2DValidationOptions profileOptions;
+    profileOptions.rootPath = "profile";
+    profileOptions.requireClosed = result.spec.profile.closure != "auto_axis";
+    const OcctProfile2DValidationResult profileResult = ParseAndValidateProfile2DSpec(jsProfile, profileOptions);
 
-    const unsigned segmentCount = jsSegments["length"].as<unsigned>();
-    if (segmentCount == 0) {
-        AddDiagnostic(result, "degenerate-segment", "Spec.profile.segments must contain at least one segment.", "profile.segments");
-        return;
+    result.spec.profile.hasStart = profileResult.spec.hasStart;
+    result.spec.profile.start = profileResult.spec.start;
+    result.spec.profile.segments = profileResult.spec.segments;
+
+    for (const auto& diagnostic : profileResult.diagnostics) {
+        result.diagnostics.push_back(diagnostic);
     }
 
-    std::array<double, 2> currentPoint = result.spec.profile.start;
-    bool hasCurrentPoint = result.spec.profile.hasStart;
-    for (unsigned segmentIndex = 0; segmentIndex < segmentCount; ++segmentIndex) {
-        ParseSegment(jsSegments[segmentIndex], static_cast<int>(segmentIndex), currentPoint, hasCurrentPoint, result);
-
-        const OcctRevolvedToolSegment& parsedSegment = result.spec.profile.segments.back();
-        if (parsedSegment.hasEnd) {
-            currentPoint = parsedSegment.end;
-            hasCurrentPoint = true;
+    if (result.spec.profile.hasStart && result.spec.profile.start[0] < 0.0) {
+        AddDiagnostic(result, "negative-radius", "Radius coordinates must be >= 0.", "profile.start[0]");
+    }
+    for (size_t segmentIndex = 0; segmentIndex < result.spec.profile.segments.size(); ++segmentIndex) {
+        const OcctRevolvedToolSegment& segment = result.spec.profile.segments[segmentIndex];
+        const std::string segmentPath = "profile.segments[" + std::to_string(segmentIndex) + "]";
+        if (segment.hasEnd && segment.end[0] < 0.0) {
+            AddDiagnostic(result, "negative-radius", "Radius coordinates must be >= 0.", segmentPath + ".end[0]", static_cast<int>(segmentIndex));
         }
-    }
-
-    if (result.spec.profile.closure == "explicit"
-        && result.spec.profile.hasStart
-        && !result.spec.profile.segments.empty()) {
-        const OcctRevolvedToolSegment& lastSegment = result.spec.profile.segments.back();
-        if (lastSegment.hasEnd && !PointsCoincident(result.spec.profile.start, lastSegment.end)) {
-            AddDiagnostic(
-                result,
-                "profile-not-closed",
-                "Explicit profiles must end at the same point as profile.start.",
-                "profile.segments");
+        if (segment.hasCenter && segment.center[0] < 0.0) {
+            AddDiagnostic(result, "negative-radius", "Radius coordinates must be >= 0.", segmentPath + ".center[0]", static_cast<int>(segmentIndex));
+        }
+        if (segment.hasThrough && segment.through[0] < 0.0) {
+            AddDiagnostic(result, "negative-radius", "Radius coordinates must be >= 0.", segmentPath + ".through[0]", static_cast<int>(segmentIndex));
         }
     }
 }
