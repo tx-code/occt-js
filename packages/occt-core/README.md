@@ -8,6 +8,7 @@ Engine-agnostic adapter layer on top of `@tx-code/occt-js`.
 - Works with both format-specific exports (`ReadStepFile`/`ReadIgesFile`/`ReadBrepFile`) and generic `ReadFile(format, ...)`
 - Result normalization for both `occt-js` and `occt-import-js` style payloads
 - Canonical scene graph with deduplicated geometry/material data
+- Shared `Profile2D` validation and generated profile-solid wrappers above the shipped root runtime contract
 
 ## Install
 
@@ -83,9 +84,52 @@ Contract rules:
 Apps own settings persistence, and `@tx-code/occt-core` only consumes the chosen import-time appearance options.
 Viewer overrides remain downstream concerns; the adapter does not own repaint, theme switching, or post-import display policy.
 
+## Shared Profile and Extruded Shape SDK
+
+`@tx-code/occt-core` exposes package-first wrappers for the shared `Profile2D` validator and additive generated-extruded-shape runtime surface:
+
+```js
+const profile = {
+  version: 1,
+  start: [0, 0],
+  segments: [
+    { kind: "line", id: "base", tag: "base", end: [6, 0] },
+    { kind: "line", id: "right-wall", tag: "wall", end: [6, 10] },
+    { kind: "line", id: "top", tag: "cap", end: [0, 10] },
+    { kind: "line", id: "left-wall", tag: "wall", end: [0, 0] },
+  ],
+};
+
+const profileValidation = await core.validateProfile2DSpec(profile);
+
+const extrudedSpec = {
+  version: 1,
+  units: "mm",
+  profile,
+  extrusion: { depth: 24 },
+};
+
+const extrudedValidation = await core.validateExtrudedShapeSpec(extrudedSpec);
+const built = await core.buildExtrudedShape(extrudedSpec, {
+  linearDeflectionType: "bounding_box_ratio",
+  linearDeflection: 0.001,
+  angularDeflection: 0.5,
+});
+const exact = await core.openExactExtrudedShape(extrudedSpec);
+```
+
+Profile-solid wrapper rules:
+
+- `validateProfile2DSpec(profile)` forwards the typed shared-profile validation lane unchanged.
+- `validateExtrudedShapeSpec(spec)` forwards the strict extruded validation lane unchanged.
+- `buildExtrudedShape(spec, options?)` returns the root `generated-extruded-shape` payload, including `extrudedShape.faceBindings` and runtime-owned wall/cap appearance grouping.
+- `openExactExtrudedShape(spec, options?)` returns the retained exact payload for the same generated solid.
+- `normalizeOcctResult(...)` and `normalizeExactOpenResult(...)` preserve additive `generated-extruded-shape` metadata when callers want canonical `geometryId` / `nodeId` attachment on top of raw root payloads.
+- Upstream apps still own tool-library schemas, vendor adapters, and any translation into shared `Profile2D` or extruded-shape specs.
+
 ## Generated Revolved Shape SDK
 
-`@tx-code/occt-core` also exposes package-first wrappers for the generated revolved-tool Wasm surface:
+`@tx-code/occt-core` also exposes package-first wrappers for the generated revolved-shape Wasm surface:
 
 ```js
 const spec = {

@@ -127,6 +127,28 @@ test("packed root package helper docs and typings stay aligned with the shipped 
   assert.match(typesSource, /ClassifyExactRelation/);
 });
 
+test("packed root package profile-solid docs and typings stay aligned with the shipped shared-profile and extruded surface", () => {
+  const manifest = getDryRunPackManifest();
+  const packedPaths = new Set(manifest.files.map((entry) => entry.path));
+  const typesSource = readRepoText("dist/occt-js.d.ts");
+  const readme = readRepoText("README.md");
+
+  assert.equal(packedPaths.has("README.md"), true);
+  assert.equal(packedPaths.has("dist/occt-js.d.ts"), true);
+  assert.match(readme, /Profile2D/i);
+  assert.match(readme, /ValidateProfile2DSpec/);
+  assert.match(readme, /BuildExtrudedShape/);
+  assert.match(readme, /OpenExactExtrudedShape/);
+  assert.match(readme, /tool-library schemas/i);
+  assert.match(typesSource, /export interface OcctJSProfile2DSpec/);
+  assert.match(typesSource, /export interface OcctJSExtrudedShapeSpec/);
+  assert.match(typesSource, /export interface OcctJSGeneratedExtrudedShapeMetadata/);
+  assert.match(typesSource, /ValidateProfile2DSpec/);
+  assert.match(typesSource, /ValidateExtrudedShapeSpec/);
+  assert.match(typesSource, /BuildExtrudedShape/);
+  assert.match(typesSource, /OpenExactExtrudedShape/);
+});
+
 test("package contract keeps import appearance package-first and independent of viewer surfaces", () => {
   const manifest = getDryRunPackManifest();
   const packageJson = readRepoJson("package.json");

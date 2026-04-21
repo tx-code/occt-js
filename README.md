@@ -29,6 +29,48 @@ The generated revolved-shape surface in `occt-js` is intentionally narrow. The r
 
 The boundary contract is documented in [docs/specs/2026-04-21-revolved-shape-runtime-boundary-design.md](./docs/specs/2026-04-21-revolved-shape-runtime-boundary-design.md).
 
+## Shared Profile and Extruded Shape Contract
+
+The profile-solid runtime now also exposes one shared `Profile2D` validator plus additive linear extruded-shape entrypoints. The ownership boundary stays the same as the revolved family: upstream apps own tool-library schemas, vendor adapters, and viewer policy; `occt-js` only consumes normalized geometry specs.
+
+```js
+const profile = {
+  version: 1,
+  start: [0, 0],
+  segments: [
+    { kind: "line", id: "base", tag: "base", end: [6, 0] },
+    { kind: "line", id: "right-wall", tag: "wall", end: [6, 10] },
+    { kind: "line", id: "top", tag: "cap", end: [0, 10] },
+    { kind: "line", id: "left-wall", tag: "wall", end: [0, 0] },
+  ],
+};
+
+const profileValidation = occt.ValidateProfile2DSpec(profile);
+
+const extrudedSpec = {
+  version: 1,
+  units: "mm",
+  profile,
+  extrusion: { depth: 24 },
+};
+
+const extrudedValidation = occt.ValidateExtrudedShapeSpec(extrudedSpec);
+const built = occt.BuildExtrudedShape(extrudedSpec, {
+  linearDeflectionType: "bounding_box_ratio",
+  linearDeflection: 0.001,
+  angularDeflection: 0.5,
+});
+const exact = occt.OpenExactExtrudedShape(extrudedSpec);
+```
+
+Contract rules:
+
+- `ValidateProfile2DSpec(spec)` is the generic geometry-only validation lane reused by profile-driven solid families.
+- `ValidateExtrudedShapeSpec(spec)` applies strict extrusion-family checks on top of the shared `Profile2D` contract.
+- `BuildExtrudedShape(...)` returns `sourceFormat: "generated-extruded-shape"` with additive `extrudedShape` metadata, stable wall/cap face bindings, and deterministic runtime-owned appearance grouping.
+- `OpenExactExtrudedShape(...)` reuses the same generated solid and returns retained exact handles for downstream exact queries.
+- `@tx-code/occt-core` mirrors this surface package-first through `validateProfile2DSpec`, `validateExtrudedShapeSpec`, `buildExtrudedShape`, and `openExactExtrudedShape`.
+
 ## Package Usage
 
 Install the packaged Wasm carrier:

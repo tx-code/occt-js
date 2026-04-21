@@ -26,6 +26,18 @@ test("occt-core package docs describe the shipped helper family package-first", 
   assert.match(readme, /package-first/i);
 });
 
+test("occt-core package docs describe the shared profile and extruded shape SDK package-first", () => {
+  const readme = readPackageText("README.md");
+
+  assert.match(readme, /validateProfile2DSpec/);
+  assert.match(readme, /validateExtrudedShapeSpec/);
+  assert.match(readme, /buildExtrudedShape/);
+  assert.match(readme, /openExactExtrudedShape/);
+  assert.match(readme, /Profile2D/i);
+  assert.match(readme, /upstream apps/i);
+  assert.match(readme, /tool-library schemas/i);
+});
+
 test("occt-core package docs describe narrow helper support boundaries and downstream limits", () => {
   const readme = readPackageText("README.md");
 
@@ -63,4 +75,19 @@ test("occt-core published typings expose the helper SDK surface", () => {
   assert.match(typesSource, /suggestExactSymmetryPlacement/);
   assert.match(typesSource, /resolveExactElementRef/);
   assert.match(typesSource, /normalizeExactOpenResult/);
+});
+
+test("occt-core published typings expose the profile-solid SDK surface", () => {
+  const typesSource = readPackageText("src/index.d.ts");
+
+  assert.match(typesSource, /OcctGeneratedExtrudedShapeSourceFormat/);
+  assert.match(typesSource, /OcctNormalizedExtrudedShapeMetadata/);
+  assert.match(typesSource, /extrudedShape\?: OcctNormalizedExtrudedShapeMetadata;/);
+  assert.match(typesSource, /validateProfile2DSpec/);
+  assert.match(typesSource, /validateExtrudedShapeSpec/);
+  assert.match(typesSource, /buildExtrudedShape/);
+  assert.match(typesSource, /openExactExtrudedShape/);
+  assert.match(typesSource, /OcctJSProfile2DSpec/);
+  assert.match(typesSource, /OcctJSExtrudedShapeSpec/);
+  assert.match(typesSource, /OcctJSExactExtrudedShapeOpenResult/);
 });

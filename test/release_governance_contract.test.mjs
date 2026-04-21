@@ -74,6 +74,30 @@ test("authoritative root release and test surfaces include generated revolved-sh
   assert.match(occtCoreReadme, /openExactRevolvedShape/);
 });
 
+test("authoritative root release and docs include shared profile and extruded-shape coverage", () => {
+  const packageJson = readRepoJson("package.json");
+  const releaseCommand = packageJson.scripts?.["test:release:root"] ?? "";
+  const testCommand = packageJson.scripts?.test ?? "";
+  const readme = readRepoText("README.md");
+  const occtCoreReadme = readRepoText("packages/occt-core/README.md");
+
+  assert.match(releaseCommand, /test\/profile_2d_spec_contract\.test\.mjs/);
+  assert.match(releaseCommand, /test\/extruded_shape_spec_contract\.test\.mjs/);
+  assert.match(releaseCommand, /test\/generated_extruded_shape_contract\.test\.mjs/);
+  assert.match(releaseCommand, /test\/exact_generated_extruded_shape_contract\.test\.mjs/);
+  assert.match(testCommand, /test\/profile_2d_spec_contract\.test\.mjs/);
+  assert.match(testCommand, /test\/extruded_shape_spec_contract\.test\.mjs/);
+  assert.match(testCommand, /test\/generated_extruded_shape_contract\.test\.mjs/);
+  assert.match(testCommand, /test\/exact_generated_extruded_shape_contract\.test\.mjs/);
+  assert.match(readme, /ValidateProfile2DSpec/);
+  assert.match(readme, /BuildExtrudedShape/);
+  assert.match(readme, /OpenExactExtrudedShape/);
+  assert.match(occtCoreReadme, /validateProfile2DSpec/);
+  assert.match(occtCoreReadme, /validateExtrudedShapeSpec/);
+  assert.match(occtCoreReadme, /buildExtrudedShape/);
+  assert.match(occtCoreReadme, /openExactExtrudedShape/);
+});
+
 test("release governance keeps packaged appearance contract coverage on the authoritative root gate", () => {
   const packageJson = readRepoJson("package.json");
   const releaseCommand = packageJson.scripts?.["test:release:root"] ?? "";
