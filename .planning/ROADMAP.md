@@ -27,7 +27,7 @@
 
 </details>
 
-- [ ] **Phase 30: Shared Profile Kernel** - Define one reusable 2D profile contract and validation seam that multiple generated-solid families can share.
+- [x] **Phase 30: Shared Profile Kernel** - Define one reusable 2D profile contract and validation seam that multiple generated-solid families can share.
 - [ ] **Phase 31: Linear Extruded Shape Runtime** - Add additive root Wasm APIs for validating, building, and exact-opening linear extruded solids with stable semantic face bindings.
 - [ ] **Phase 32: occt-core SDK & Governance for Profile Solids** - Publish package-first wrappers, typings, docs, and release coverage for the shared-profile and extruded-shape contract.
 
@@ -44,8 +44,8 @@
 **Plans**: 2 plans
 
 Plans:
-- [ ] 30-01-PLAN.md — Define shared 2D profile DTOs, diagnostics, and root/runtime validation seam
-- [ ] 30-02-PLAN.md — Refactor revolved-shape runtime to consume the shared profile kernel without public API regressions
+- [x] 30-01-PLAN.md — Define shared 2D profile DTOs, diagnostics, and root/runtime validation seam
+- [x] 30-02-PLAN.md — Refactor revolved-shape runtime to consume the shared profile kernel without public API regressions
 
 ### Phase 31: Linear Extruded Shape Runtime
 **Goal**: Downstream JS can validate, build, and exact-open linear extruded solids from shared profiles with stable semantic face bindings.
@@ -82,7 +82,7 @@ Phases execute in numeric order: 30 → 31 → 32
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 30. Shared Profile Kernel | v1.9 | 0/2 | Not started | — |
+| 30. Shared Profile Kernel | v1.9 | 2/2 | Complete | 2026-04-21 |
 | 31. Linear Extruded Shape Runtime | v1.9 | 0/2 | Not started | — |
 | 32. occt-core SDK & Governance for Profile Solids | v1.9 | 0/2 | Not started | — |
 | 27. Revolved Shape Spec & Wasm Builder | v1.8 | 2/2 | Complete | 2026-04-20 |
