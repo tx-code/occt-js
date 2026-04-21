@@ -6,6 +6,7 @@ import { getDesktopShortcutAction } from "../lib/desktop-shortcuts";
 import { createDesktopActionMap, isEditableTarget } from "../lib/viewer-actions";
 
 export function useViewerActions({
+  clearExactSession,
   desktopEnabled,
   fileInputRef,
   importFile,
@@ -70,8 +71,18 @@ export function useViewerActions({
   }, [desktopEnabled, fileInputRef, importModelFile]);
 
   const closeModel = useCallback(() => {
-    resetViewer();
-  }, [resetViewer]);
+    void (async () => {
+      try {
+        if (typeof clearExactSession === "function") {
+          await clearExactSession();
+        }
+      } catch (error) {
+        console.warn("Failed to clear demo exact session during close.", error);
+      } finally {
+        resetViewer();
+      }
+    })();
+  }, [clearExactSession, resetViewer]);
 
   const fitAll = useCallback(() => {
     viewerRuntimeRef?.current?.fitAll();

@@ -149,7 +149,7 @@ export default function GeneratedToolPanel({
             <p className="text-[11px] uppercase tracking-[0.26em] text-cyan-400">Generated Tool MVP</p>
             <h2 className="text-xl font-semibold">Revolved Tool Builder</h2>
             <p className={cn("text-sm leading-6", isLight ? "text-zinc-600" : "text-zinc-400")}>
-              This demo calls the root Wasm runtime directly through <code>ValidateRevolvedShapeSpec</code> and <code>BuildRevolvedShape</code>.
+              This demo calls the root Wasm runtime directly through <code>ValidateRevolvedShapeSpec</code> and the retained exact-open lane for generated revolved shapes.
             </p>
             <p className={cn("text-[11px] leading-5", isLight ? "text-zinc-500" : "text-zinc-500")}>
               Preset catalog is split between FreeCAD-aligned samples and common demo-only families.

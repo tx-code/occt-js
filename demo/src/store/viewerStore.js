@@ -7,6 +7,7 @@ export const useViewerStore = create(subscribeWithSelector((set, get) => ({
   rawModel: null,
   autoOrientModel: null,
   fileName: "",
+  exactSession: null,
   loading: false,
   loadingMessage: "",  // "Loading engine...", "Parsing model...", etc.
 
@@ -28,14 +29,19 @@ export const useViewerStore = create(subscribeWithSelector((set, get) => ({
   selectionRequestSeq: 0,
 
   // Actions
-  setModel: (model, fileName) => set({
+  setModel: (model, fileName, exactSession = null) => set({
     model,
     rawModel: model,
     autoOrientModel: null,
     fileName,
+    exactSession,
     orientationMode: "raw",
+    selectedItems: [],
+    selectedDetail: null,
+    selectionRequest: null,
+    selectionRequestSeq: 0,
   }),
-  setImportedModels: (rawModel, autoOrientModel, fileName) => set((state) => {
+  setImportedModels: (rawModel, autoOrientModel, fileName, exactSession = null) => set((state) => {
     const nextMode = state.orientationMode === "auto-orient" && autoOrientModel
       ? "auto-orient"
       : "raw";
@@ -45,8 +51,20 @@ export const useViewerStore = create(subscribeWithSelector((set, get) => ({
       autoOrientModel,
       model: nextMode === "auto-orient" ? autoOrientModel : rawModel,
       fileName,
+      exactSession,
       orientationMode: nextMode,
+      selectedItems: [],
+      selectedDetail: null,
+      selectionRequest: null,
+      selectionRequestSeq: 0,
     };
+  }),
+  setExactSession: (exactSession) => set({
+    exactSession,
+    selectedItems: [],
+    selectedDetail: null,
+    selectionRequest: null,
+    selectionRequestSeq: 0,
   }),
   setOrientationMode: (orientationMode) => set((state) => {
     const nextMode = orientationMode === "raw" ? "raw" : "auto-orient";
@@ -91,6 +109,7 @@ export const useViewerStore = create(subscribeWithSelector((set, get) => ({
     rawModel: null,
     autoOrientModel: null,
     fileName: "",
+    exactSession: null,
     loading: false,
     loadingMessage: "",
     selectedItems: [],

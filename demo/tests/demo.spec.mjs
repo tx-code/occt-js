@@ -44,6 +44,22 @@ async function getLinePassLayerStats(page, layer) {
   }, layer);
 }
 
+async function getExactSessionSnapshot(page) {
+  return page.evaluate(async () => {
+    const { useViewerStore } = await import("/src/store/viewerStore.js");
+    const exactSession = useViewerStore.getState().exactSession;
+    if (!exactSession) {
+      return null;
+    }
+
+    return {
+      exactModelId: exactSession.exactModelId ?? null,
+      sourceFormat: exactSession.sourceFormat ?? null,
+      label: exactSession.label ?? "",
+    };
+  });
+}
+
 async function getProjectedModelCornerPoint(page) {
   const canvas = page.locator("[data-testid='render-canvas']");
   const box = await canvas.boundingBox();
@@ -253,19 +269,41 @@ test("raw and auto-orient modes can be switched after import", async ({ page }) 
 
   const rawButton = page.locator("[data-testid='orientation-mode-raw-toolbar']");
   const autoButton = page.locator("[data-testid='orientation-mode-auto-toolbar']");
+  const initialExactSession = await getExactSessionSnapshot(page);
 
   await expect(rawButton).toBeVisible();
   await expect(autoButton).toBeVisible();
   await expect(autoButton).toHaveClass(/cyan/);
   await expect(rawButton).not.toHaveClass(/cyan/);
+  expect(initialExactSession?.exactModelId ?? 0).toBeGreaterThan(0);
+  expect(initialExactSession?.sourceFormat).toBe("step");
 
   await rawButton.click();
   await expect(rawButton).toHaveClass(/cyan/);
   await expect(autoButton).not.toHaveClass(/cyan/);
+  expect(await getExactSessionSnapshot(page)).toEqual(initialExactSession);
 
   await autoButton.click();
   await expect(autoButton).toHaveClass(/cyan/);
   await expect(rawButton).not.toHaveClass(/cyan/);
+  expect(await getExactSessionSnapshot(page)).toEqual(initialExactSession);
+});
+
+test("replacing an imported model with a generated tool replaces the authoritative exact session", async ({ page }) => {
+  await loadFixture(page);
+  const importedSession = await getExactSessionSnapshot(page);
+  expect(importedSession?.exactModelId ?? 0).toBeGreaterThan(0);
+  expect(importedSession?.sourceFormat).toBe("step");
+
+  await page.click("[data-testid='open-generated-tool-panel-toolbar']");
+  await page.click("[data-testid='generated-tool-preset-bullnose']");
+  await page.click("[data-testid='generated-tool-build']");
+  await expect(page.locator("[data-testid='generated-tool-panel']")).toBeHidden({ timeout: 30_000 });
+
+  const generatedSession = await getExactSessionSnapshot(page);
+  expect(generatedSession?.exactModelId ?? 0).toBeGreaterThan(0);
+  expect(generatedSession?.exactModelId).not.toBe(importedSession?.exactModelId);
+  expect(generatedSession?.sourceFormat).toBe("generated-revolved-shape");
 });
 
 test("raw and auto-orient keep CAD edge line-pass meshes alive", async ({ page }) => {

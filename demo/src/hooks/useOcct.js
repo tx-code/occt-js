@@ -4,6 +4,7 @@ import { resolveResource } from "@tauri-apps/api/path";
 import { createOcctCore, normalizeOcctResult } from "@tx-code/occt-core";
 import packageJson from "../../../package.json";
 import { getOcctFormatFromFileName, resolveAutoOrientedResult } from "../lib/auto-orient";
+import { createDemoExactSession } from "../lib/exact-session";
 import { useViewerStore } from "../store/viewerStore";
 
 const CDN = `https://unpkg.com/@tx-code/occt-js@${packageJson.version}/dist/`;
@@ -35,6 +36,7 @@ export function useOcct() {
   const runtimePromiseRef = useRef(null);
   const setImportedModels = useViewerStore((s) => s.setImportedModels);
   const setModel = useViewerStore((s) => s.setModel);
+  const setExactSession = useViewerStore((s) => s.setExactSession);
   const setLoading = useViewerStore((s) => s.setLoading);
   const setLoadingMessage = useViewerStore((s) => s.setLoadingMessage);
 
@@ -117,8 +119,37 @@ export function useOcct() {
     ensureModule().catch(() => {});
   }, [ensureModule]);
 
+  const disposeExactSession = useCallback(async (exactSession) => {
+    if (!exactSession) {
+      return { ok: true };
+    }
+
+    const result = await exactSession.dispose();
+    if (result?.ok === false) {
+      throw new Error(result.message || `Failed to dispose exact model ${exactSession.exactModelId}.`);
+    }
+    return result ?? { ok: true };
+  }, []);
+
+  const clearExactSession = useCallback(async () => {
+    const exactSession = useViewerStore.getState().exactSession;
+    setExactSession(null);
+    return disposeExactSession(exactSession);
+  }, [disposeExactSession, setExactSession]);
+
+  const replaceExactSession = useCallback(async (nextExactSession, applyState) => {
+    await clearExactSession();
+    applyState(nextExactSession);
+    return nextExactSession;
+  }, [clearExactSession]);
+
+  useEffect(() => () => {
+    clearExactSession().catch(() => {});
+  }, [clearExactSession]);
+
   const importFile = useCallback(async (file) => {
     setLoading(true, "Loading engine...");
+    let nextExactSession = null;
     try {
       const occt = await ensureModule();
       const format = getOcctFormatFromFileName(file.name);
@@ -130,10 +161,21 @@ export function useOcct() {
         factory: async () => occt,
       });
 
-      setLoadingMessage("Parsing model...");
-      const result = await core.importModel(bytes, {
+      setLoadingMessage("Opening exact model...");
+      const managedExactModel = await core.openManagedExactModel(bytes, {
         fileName: file.name,
         format,
+        importParams: DEFAULT_IMPORT_PARAMS,
+      });
+      nextExactSession = createDemoExactSession({
+        exactModel: managedExactModel.exactModel,
+        dispose: () => managedExactModel.dispose(),
+        sourceFormat: format,
+        label: file.name,
+      });
+      const result = normalizeOcctResult(managedExactModel.exactModel, {
+        sourceFormat: format,
+        sourceFileName: file.name,
         importParams: DEFAULT_IMPORT_PARAMS,
       });
 
@@ -153,16 +195,27 @@ export function useOcct() {
         console.warn("Auto orient failed for", file.name, error);
       }
 
-      setImportedModels(result, autoOrientResult, file.name);
+      await replaceExactSession(nextExactSession, (exactSession) => {
+        setImportedModels(result, autoOrientResult, file.name, exactSession);
+      });
       const { orientationMode } = useViewerStore.getState();
       if (orientationMode === "auto-orient" && autoOrientResult) {
         return autoOrientResult;
       }
       return result;
+    } catch (error) {
+      if (nextExactSession) {
+        try {
+          await nextExactSession.dispose();
+        } catch {
+          // Ignore cleanup failures while preserving the original import error.
+        }
+      }
+      throw error;
     } finally {
       setLoading(false);
     }
-  }, [ensureModule, setImportedModels, setLoading, setLoadingMessage]);
+  }, [ensureModule, replaceExactSession, setImportedModels, setLoading, setLoadingMessage]);
 
   const validateGeneratedToolSpec = useCallback(async (spec) => {
     const occt = await ensureModule();
@@ -175,8 +228,12 @@ export function useOcct() {
     label = "Generated Tool",
   }) => {
     setLoading(true, "Loading engine...");
+    let nextExactSession = null;
     try {
       const occt = await ensureModule();
+      const core = createOcctCore({
+        factory: async () => occt,
+      });
 
       setLoadingMessage("Validating revolved shape...");
       const validation = occt.ValidateRevolvedShapeSpec(spec);
@@ -186,31 +243,49 @@ export function useOcct() {
         throw error;
       }
 
-      setLoadingMessage("Generating revolved shape...");
-      const result = occt.BuildRevolvedShape(spec, options);
-      if (!result?.success) {
-        const error = new Error(result?.error || result?.diagnostics?.[0]?.message || "Generated revolved shape build failed.");
-        error.diagnostics = result?.diagnostics ?? [];
-        error.result = result;
+      setLoadingMessage("Opening exact revolved shape...");
+      const rawResult = await core.openExactRevolvedShape(spec, options);
+      if (!rawResult?.success) {
+        const error = new Error(rawResult?.error || rawResult?.diagnostics?.[0]?.message || "Generated revolved shape build failed.");
+        error.diagnostics = rawResult?.diagnostics ?? [];
+        error.result = rawResult;
         throw error;
       }
+      nextExactSession = createDemoExactSession({
+        exactModel: rawResult,
+        dispose: () => core.releaseExactModel(rawResult.exactModelId),
+        sourceFormat: "generated-revolved-shape",
+        label,
+      });
 
-      const normalizedResult = normalizeOcctResult(result, {
+      const normalizedResult = normalizeOcctResult(rawResult, {
         sourceFormat: "generated-revolved-shape",
       });
 
-      setModel(normalizedResult, label);
+      await replaceExactSession(nextExactSession, (exactSession) => {
+        setModel(normalizedResult, label, exactSession);
+      });
       return {
         validation,
-        rawResult: result,
+        rawResult,
         result: normalizedResult,
       };
+    } catch (error) {
+      if (nextExactSession) {
+        try {
+          await nextExactSession.dispose();
+        } catch {
+          // Ignore cleanup failures while preserving the original generation error.
+        }
+      }
+      throw error;
     } finally {
       setLoading(false);
     }
-  }, [ensureModule, setLoading, setLoadingMessage, setModel]);
+  }, [ensureModule, replaceExactSession, setLoading, setLoadingMessage, setModel]);
 
   return {
+    clearExactSession,
     importFile,
     ensureModule,
     validateGeneratedToolSpec,

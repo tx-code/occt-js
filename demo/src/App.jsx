@@ -29,7 +29,7 @@ export default function App() {
   const canvasRef = useRef(null);
   const model = useViewerStore((s) => s.model);
   const loading = useViewerStore((s) => s.loading);
-  const { importFile, validateGeneratedToolSpec, buildGeneratedTool } = useOcct();
+  const { importFile, clearExactSession, validateGeneratedToolSpec, buildGeneratedTool } = useOcct();
   const viewerRefs = useViewer(canvasRef);
   const { buildScene, clearScene, fitAll, setCameraView, takeSnapshot } = viewerRefs;
   usePicking(viewerRefs);
@@ -47,6 +47,7 @@ export default function App() {
     setProjectionAction,
     toggleThemeAction,
   } = useViewerActions({
+    clearExactSession,
     desktopEnabled: windowsDesktopChrome,
     fileInputRef,
     importFile,
