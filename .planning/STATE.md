@@ -4,7 +4,7 @@ milestone: v1.9
 milestone_name: Generic Profile Solids
 status: planning
 stopped_at: Phase 30 context gathered
-last_updated: "2026-04-21T02:04:44.497Z"
+last_updated: "2026-04-21T02:05:49.199Z"
 last_activity: 2026-04-21 -- Created the v1.9 roadmap; Phase 30 discussion/planning is next
 progress:
   total_phases: 3
@@ -69,6 +69,6 @@ Items acknowledged and deferred at milestone close on 2026-04-20:
 
 ## Session Continuity
 
-Last session: --stopped-at
+Last session: 2026-04-21T02:05:49.191Z
 Stopped at: Phase 30 context gathered
-Resume file: --resume-file
+Resume file: .planning/phases/30-shared-profile-kernel/30-CONTEXT.md
