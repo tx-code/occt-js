@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.10
 milestone_name: Exact Measurement Demo Loop
-status: ready_to_plan
-stopped_at: Inserted Phase 33.1 to capture the multi-actor workspace gap
-last_updated: "2026-04-21T19:20:00+08:00"
-last_activity: 2026-04-21 -- Inserted Phase 33.1 Multi-Actor Exact Workspace after confirming workpiece-plus-tool measurement target
+status: ready_to_execute
+stopped_at: Phase 33.1 planned
+last_updated: "2026-04-21T20:10:00+08:00"
+last_activity: 2026-04-21 -- Planned Phase 33.1 Multi-Actor Exact Workspace
 progress:
   total_phases: 4
   completed_phases: 1
@@ -21,15 +21,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-21)
 
 Core value: Downstream applications can reliably consume the OCCT Wasm runtime and its root API contract without build drift or packaging surprises.
-Current focus: Phase 33.1 planning
+Current focus: Phase 33.1 execution
 
 ## Current Position
 
 Milestone: v1.10 Exact Measurement Demo Loop
 Phase: 33 complete; 33.1 next
-Plan: 33.1 discuss/plan next
-Status: Ready to plan
-Last activity: 2026-04-21 -- Inserted Phase 33.1 Multi-Actor Exact Workspace
+Plan: 2 plans ready
+Status: Ready to execute
+Last activity: 2026-04-21 -- Planned Phase 33.1 Multi-Actor Exact Workspace
 
 Progress: [#---------] 14%
 
@@ -54,9 +54,9 @@ Current milestone (`v1.10`) planned scope:
 
 ### Pending Todos
 
-- Capture Phase 33.1 context and plan the multi-actor workspace before resuming selection-bridge implementation.
-- Define the actor-scoped workspace contract for imported workpiece plus generated tool, including movable tool pose and retained exact lifecycle.
-- Design the narrow additive cross-model exact pairwise seam needed for workpiece-tool measurements, then re-scope the old single-actor `33-02` bridge draft around that contract.
+- Execute `33.1-01` to introduce the multi-actor workpiece-plus-tool workspace and authoritative tool-pose contract.
+- Execute `33.1-02` to add additive cross-model pairwise support and actor-aware exact-ref selection bridging.
+- Keep Phase 34 focused on measurement actions and overlay output rather than reopening workspace or cross-model kernel design.
 
 ### Blockers/Concerns
 
@@ -77,6 +77,6 @@ Items intentionally deferred while `v1.10` starts on 2026-04-21:
 
 ## Session Continuity
 
-Last session: 2026-04-21T19:20:00+08:00
-Stopped at: Inserted Phase 33.1 to capture the multi-actor workspace gap
-Resume file: .planning/phases/33.1-multi-actor-exact-workspace/33.1-CONTEXT.md
+Last session: 2026-04-21T20:10:00+08:00
+Stopped at: Phase 33.1 planned
+Resume file: .planning/phases/33.1-multi-actor-exact-workspace/33.1-01-PLAN.md
