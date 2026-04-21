@@ -238,6 +238,24 @@ Important details:
 - Use superpowers only for narrow supporting tasks that GSD does not cover well enough on its own, such as structured debugging, strict TDD, explicit code review, worktree isolation, or final verification discipline.
 - Do not route normal milestone-definition work through superpowers brainstorming when the milestone direction and repository workflow have already been decided; capture those decisions in `.planning/` via GSD instead.
 
+## Instruction Precedence
+
+- Repo-local `AGENTS.md` rules and this repository's GSD workflow requirements take priority over generic superpowers habits or helper skills.
+- Choose the correct GSD entrypoint first, then use superpowers only as helpers inside that path.
+- If a superpowers skill suggests a conflicting planning flow, direct-edit shortcut, or different isolation model, follow this file and the active GSD workflow unless the user explicitly asks to bypass them.
+
+## GSD + Superpowers Coordination
+
+- Treat `GSD` as the outer workflow owner for milestone/phase tracking, `.planning/` artifacts, plan state, execution state, and closeout.
+- Treat `Superpowers` as an inner execution-method helper set, not a second planning system.
+- Keep one source of truth:
+  - GSD artifacts own plan, status, progress, and milestone truth.
+  - Code, tests, debugging method, verification evidence, and review discipline may use superpowers workflows inside that boundary.
+- Start with the correct GSD entrypoint, then layer superpowers skills inside that run when they improve execution quality:
+  - `gsd-discuss-phase`, `gsd-plan-phase`, and `gsd-execute-phase` remain the canonical workflow for normal milestone delivery.
+  - Superpowers is appropriate inside execution for strict TDD, systematic debugging, explicit verification-before-completion, code review discipline, or worktree isolation.
+- Do not let GSD and superpowers create competing plans for the same slice of work. If both are relevant, GSD owns the canonical plan and superpowers only refines execution method.
+
 ## Working Norms
 
 - Prefer isolated git worktrees over modifying `master` directly when feature work is in flight.
