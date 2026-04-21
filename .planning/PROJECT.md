@@ -48,19 +48,24 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 
 ### Active
 
-None — no active milestone is currently defined. Start the next one with `$gsd-new-milestone`.
+- `v1.10 Exact Measurement Demo Loop` is now active.
+- The current delivery target is a browser demo workflow that retains a managed exact model beside rendered scene data, resolves viewer picks to occurrence-safe exact refs, and proves the shipped exact measurement kernel through direct interaction.
+- Demo-owned overlays, result presentation, and interaction state are in scope only as downstream `demo/` behavior; the authoritative root runtime/package release boundary remains unchanged.
 
 ### Out of Scope
 
 - Evolving this repo into a full viewer framework as the primary goal — the main value is the OCCT Wasm runtime.
 - Making Tauri or desktop packaging a prerequisite for root npm publishing — root runtime must stay independently releasable.
 - Treating Babylon/demo layers as first-order release gates for the root runtime.
-- Selection sessions, overlay rendering, label layout, or measurement widgets in the runtime/package layer — those remain downstream app concerns.
-- Owning app-specific tool-library schemas or adapter registries in the root runtime — callers must provide a normalized revolved profile spec.
-- Non-axisymmetric bodies, flute-level solids, or decorative detail generation — `v1.8` is limited to axisymmetric revolved shapes.
-- Tool libraries, feeds/speeds, machine metadata, or CAM process semantics — those remain app-side concerns above the geometry runtime.
+- Moving selection sessions, overlay rendering, label layout, or measurement widgets into the runtime/package layer — those remain downstream app concerns even if `v1.10` adds a demo-owned MVP.
+- Automatic whole-model measurement candidate discovery or semantic feature mining — `v1.10` is proving the manual selection-to-measure loop first.
+- Full AIS/Prs3d-style dimension authoring, annotation editing, or label-layout systems — the milestone needs inspection-grade demo behavior, not a full dimension product surface.
+- New broad exact-runtime APIs before the demo loop proves a concrete missing primitive — the current kernel/package surface is already broad and the immediate risk is integration correctness.
+- Persistent measurement history, reporting, tolerance analysis, or collaboration workflows — those are app/product features above the geometry/runtime layer.
 
 ## Current State
+
+`v1.10 Exact Measurement Demo Loop` is now active on 2026-04-21. The milestone is aimed at proving the shipped exact measurement kernel through one browser demo workflow: retain a managed exact model beside the rendered scene, resolve Babylon picks into occurrence-safe exact refs, run supported measurements, and expose minimal placement-backed inspection or overlay behavior without turning `occt-js` into a viewer framework.
 
 `v1.3 Appearance Expansion` shipped on 2026-04-15 and is now archived in `.planning/milestones/`. The root runtime now exposes `appearancePreset`, `colorMode`, `defaultColor`, and `defaultOpacity`; `occt-core` forwards and normalizes that full contract without inventing viewer-side repaint behavior; and root/package docs plus `npm run test:release:root` now lock the shipped semantics in place.
 
@@ -76,9 +81,15 @@ None — no active milestone is currently defined. Start the next one with `$gsd
 
 `v1.9 Generic Profile Solids` shipped on 2026-04-21 and is now archived in `.planning/milestones/`. Phases 30-32 delivered the shared `Profile2D` kernel, additive linear extruded runtime, and package-first `occt-core`/docs/governance coverage while keeping app-specific schema ownership, CAM semantics, and viewer behavior outside the root runtime.
 
-## No Active Milestone
+## Current Milestone: v1.10 Exact Measurement Demo Loop
 
-`v1.9 Generic Profile Solids` is closed and archived. Start the next milestone with `$gsd-new-milestone` once the next runtime/package target is explicit.
+**Goal:** Prove the shipped exact measurement kernel through one browser demo workflow without widening the authoritative root Wasm release boundary or turning `occt-js` into a viewer framework.
+
+**Target features:**
+- Managed exact-model retention in the demo import lane plus clean disposal and reset behavior.
+- Selection-to-exact-ref bridging from rendered face, edge, and vertex picks.
+- Demo-owned exact measurement commands, typed results, and minimal placement-backed overlay or inspection output.
+- Docs, tests, and conditional secondary-surface verification for the measurement demo loop.
 
 ## Context
 
@@ -88,13 +99,10 @@ None — no active milestone is currently defined. Start the next one with `$gsd
 - `SceneGraph.net` remains the best local reference for measurement behavior above the kernel layer, but `occt-js` intentionally stopped at exact-kernel foundations plus package-first placement/relation support.
 - OCCT `PrsDim` remains the local geometry reference for placement and relation behavior, but `occt-js` intentionally stops short of AIS/Prs3d interactive dimensions.
 - The current exact runtime now exposes retained exact-model lifecycle, primitive exact queries, pairwise distance/angle/thickness, placement DTOs, relation classification, narrow selected-ref hole/chamfer helper semantics, package-only midpoint/equal-distance/symmetry helpers, published package typings, helper-aware release verification, additive lifecycle diagnostics, package-first managed disposal wrappers, and explicit perf/soak verification lanes.
-- `v1.7`, `v1.8`, and `v1.9` are archived; no active milestone is currently defined.
-- The shipped revolved-shape surface assumes upstream apps define their own tool metadata and only hand `occt-js` a normalized revolved profile plus optional semantic tags.
-- Generated revolved-shape colors are not caller-owned in `v1.8`; deterministic default appearance should derive from runtime-side tag and role semantics.
-- Segment-to-face bindings must be captured at build time from OCCT history rather than inferred later from final face order.
-- The next step after `v1.8` was a shared profile kernel plus linear extrusion so the generic geometry contract covered more than revolve; that package-first profile-solid line is now shipped in `v1.9`.
+- `v1.7`, `v1.8`, and `v1.9` are archived; `v1.10 Exact Measurement Demo Loop` is now the active milestone.
+- The demo already has Babylon picking and highlight infrastructure, but it does not yet retain managed exact models or bridge picks to occurrence-safe exact refs for measurement execution.
+- The dormant `SEED-001-web-exact-brep-measurement` direction is now being resumed as a demo-first integration milestone rather than a new runtime-first kernel expansion.
 - GSD is the primary repository workflow; superpowers remain optional support tooling for narrow tasks only.
-- Deferred seed `SEED-001-web-exact-brep-measurement` remains dormant and does not match this milestone, because the current focus is profile-driven solid generation rather than broader exact-measurement expansion.
 
 ## Constraints
 
@@ -138,6 +146,8 @@ None — no active milestone is currently defined. Start the next one with `$gsd
 | Reuse one shared 2D profile kernel across revolved and extruded families | Avoid duplicated validation/spec seams and keep profile-driven geometry generic-first | ✓ Good |
 | Keep `v1.9` limited to linear extrusion over planar closed profiles | Shared profile abstractions need one more proven family before loft/sweep or richer feature stacks | ✓ Good |
 | Lock shared-profile and extruded-shape coverage package-first without inventing a second schema | Downstream JS needs one stable contract across root/runtime/package/docs, while app-owned tool adapters stay upstream | ✓ Good |
+| Prove exact measurement usability through a demo-owned integration loop before adding more kernel surface | The runtime and `occt-core` already ship a broad measurement kernel; the highest remaining risk is integration correctness, lifecycle safety, and demo ergonomics | ✓ Good |
+| Keep selection-to-exact-ref mapping inside the demo bridge instead of pushing viewer ids into root APIs | Exact refs must stay occurrence-safe and retained-handle-aware, while Babylon entity ids are app-local and disposable | ✓ Good |
 
 ## Evolution
 
@@ -227,4 +237,4 @@ This document evolves at phase transitions and milestone boundaries.
 </details>
 
 ---
-*Last updated: 2026-04-21 after v1.9 milestone closeout*
+*Last updated: 2026-04-21 starting v1.10 Exact Measurement Demo Loop*

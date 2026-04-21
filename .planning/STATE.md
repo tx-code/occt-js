@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.9
-milestone_name: Generic Profile Solids
-status: milestone_archived
-stopped_at: v1.9 closeout complete
-last_updated: "2026-04-21T12:20:00+08:00"
-last_activity: 2026-04-21 -- v1.9 archived
+milestone: v1.10
+milestone_name: Exact Measurement Demo Loop
+status: ready_for_discussion
+stopped_at: phase 33 ready to discuss
+last_updated: "2026-04-21T13:00:00+08:00"
+last_activity: 2026-04-21 -- Started milestone v1.10 Exact Measurement Demo Loop
 progress:
   total_phases: 3
-  completed_phases: 3
+  completed_phases: 0
   total_plans: 6
-  completed_plans: 6
-  percent: 100
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -21,58 +21,57 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-21)
 
 Core value: Downstream applications can reliably consume the OCCT Wasm runtime and its root API contract without build drift or packaging surprises.
-Current focus: Planning next milestone
+Current focus: Phase 33 discussion
 
 ## Current Position
 
-Milestone: v1.9 Generic Profile Solids
-Phase: archived
-Plan: closeout complete
-Status: Planning next milestone
-Last activity: 2026-04-21 -- v1.9 archived
+Milestone: v1.10 Exact Measurement Demo Loop
+Phase: 33 next
+Plan: not started
+Status: Ready to discuss
+Last activity: 2026-04-21 -- Started milestone v1.10 Exact Measurement Demo Loop
 
-Progress: [##########] 100%
+Progress: [----------] 0%
 
 ## Performance Metrics
 
-Current milestone (`v1.9`) shipped scope:
+Current milestone (`v1.10`) planned scope:
 
-- Phases: 3 (30-32)
-- Plans: 6/6 complete
-- Primary outcome target: shared profile kernel plus generic linear extruded solids with package-first SDK/governance parity
+- Phases: 3 (33-35)
+- Plans: 0/6 complete
+- Primary outcome target: browser demo exact-model bridge plus measurement workflow and verification
 
 ## Accumulated Context
 
 ### Decisions
 
-- The root Wasm surface is now generic `revolved shape`; demo-only tool presets stay downstream and do not define the runtime contract.
-- Exact generated shapes reuse the retained exact-model lifecycle and now expose `revolvedShape.faceBindings`, `shapeValidation`, and runtime-owned `systemRole` semantics.
-- `@tx-code/occt-core` plus `npm run test:release:root` are the authoritative package-first and governance surfaces for `v1.8`.
-- `v1.9` extends the generic geometry line through one shared 2D profile kernel and additive `generated-extruded-shape` APIs rather than reintroducing tool-coupled abstractions.
-- Phase `30` shipped a generic `Profile2D` validator plus an internal resolved-loop adapter that keeps revolved `auto_axis` closure family-owned while build/openExact paths reuse the shared kernel.
-- Phase `31` shipped additive `ValidateExtrudedShapeSpec`, `BuildExtrudedShape`, and `OpenExactExtrudedShape` APIs in canonical local `XY + Z-depth` space.
-- Generated extruded shapes now expose stable `wall`, `start_cap`, and `end_cap` bindings plus deterministic runtime-owned wall/cap appearance grouping based on prism history instead of face-order assumptions.
-- Phase `32` shipped package-first `occt-core` wrappers, normalized extruded metadata preservation, generic profile-solid docs, and release-governance/tarball coverage for the shared-profile plus extruded contract.
+- `v1.10` should prove the existing exact measurement kernel through demo integration before any broader runtime expansion.
+- The demo must retain managed exact models and resolve picks to occurrence-safe refs instead of coupling measurements to viewer-only entity ids.
+- Measurement overlay and inspection output remain demo-owned; the root runtime stays focused on exact geometry, DTOs, and lifecycle-safe handles.
+- `npm run test:release:root` remains the authoritative root release gate; measurement demo verification must stay a conditional secondary-surface flow.
 
 ### Pending Todos
 
-- Start the next milestone with `$gsd-new-milestone`.
-- Re-evaluate `SEED-001-web-exact-brep-measurement` only if it fits the next milestone boundary.
+- Start Phase 33 with `$gsd-discuss-phase 33`.
+- Keep this milestone scoped to browser demo integration and avoid widening the root runtime unless a concrete primitive is missing.
+- Decide the minimal Phase 34 overlay contract needed for usable inspection without inventing a full dimension-widget system.
 
 ### Blockers/Concerns
 
-- No technical blockers are currently open.
+- Babylon selection entities must map back to stable `OcctExactRef` occurrence paths without stale-handle drift.
+- Exact placement DTOs already exist, but the demo render path must avoid inventing app-coupled semantics beyond an MVP inspection or overlay layer.
 
 ## Deferred Items
 
-Items acknowledged and deferred at milestone close on 2026-04-21:
+Items intentionally deferred while `v1.10` starts on 2026-04-21:
 
 | Category | Item | Status |
 |----------|------|--------|
-| seed | 001-web-exact-brep-measurement | dormant |
+| future | batch measurement candidate discovery and suggestion flows | deferred |
+| future | persistent measurement history, export, or reporting UX | deferred |
 
 ## Session Continuity
 
-Last session: 2026-04-21T12:20:00+08:00
-Stopped at: v1.9 closeout complete
+Last session: 2026-04-21T13:00:00+08:00
+Stopped at: phase 33 ready to discuss
 Resume file: .planning/PROJECT.md
