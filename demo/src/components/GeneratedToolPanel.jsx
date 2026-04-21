@@ -3,11 +3,13 @@ import { Button } from "./ui/button";
 import { cn } from "../lib/utils";
 import { useViewerStore } from "../store/viewerStore";
 import {
-  GENERATED_TOOL_PRESETS,
   cloneGeneratedToolPresetOptions,
   cloneGeneratedToolPresetSpec,
   formatGeneratedToolJson,
+  GENERATED_TOOL_PRESETS,
+  getGeneratedToolPresetCatalog,
   getGeneratedToolPreset,
+  getGeneratedToolPresetGroup,
 } from "../lib/generated-tool-presets";
 
 function getDiagnosticLabel(diagnostic) {
@@ -19,6 +21,24 @@ function getDiagnosticLabel(diagnostic) {
     parts.push(`segment ${diagnostic.segmentIndex}`);
   }
   return parts.join(" · ");
+}
+
+function renderPresetParameter(parameter, isLight) {
+  return (
+    <span
+      key={`${parameter.label}-${parameter.value}`}
+      className={cn(
+        "rounded-full border px-2 py-1 text-[10px] tracking-[0.02em]",
+        isLight
+          ? "border-zinc-200 bg-white text-zinc-700"
+          : "border-zinc-700/80 bg-zinc-950/60 text-zinc-300",
+      )}
+    >
+      <span className={cn("font-mono", isLight ? "text-zinc-500" : "text-zinc-500")}>{parameter.label}</span>
+      {" "}
+      {parameter.value}
+    </span>
+  );
 }
 
 export default function GeneratedToolPanel({
@@ -36,7 +56,9 @@ export default function GeneratedToolPanel({
   const [localError, setLocalError] = useState("");
   const [busyMode, setBusyMode] = useState("");
 
+  const presetCatalog = useMemo(() => getGeneratedToolPresetCatalog(), []);
   const preset = useMemo(() => getGeneratedToolPreset(presetId), [presetId]);
+  const presetGroup = useMemo(() => getGeneratedToolPresetGroup(preset.groupId), [preset.groupId]);
 
   if (!open) return null;
 
@@ -111,7 +133,7 @@ export default function GeneratedToolPanel({
     >
       <div
         className={cn(
-          "grid w-[min(96vw,72rem)] gap-4 overflow-hidden rounded-[2rem] border shadow-2xl md:grid-cols-[17rem,minmax(0,1fr)]",
+          "grid max-h-[min(90vh,54rem)] w-[min(96vw,72rem)] gap-4 overflow-hidden rounded-[2rem] border shadow-2xl md:grid-cols-[17rem,minmax(0,1fr)]",
           isLight
             ? "border-zinc-300 bg-white text-zinc-900 shadow-zinc-300/40"
             : "border-zinc-800 bg-zinc-950 text-zinc-100 shadow-black/40",
@@ -119,7 +141,7 @@ export default function GeneratedToolPanel({
       >
         <aside
           className={cn(
-            "border-b p-5 md:border-b-0 md:border-r",
+            "flex min-h-0 flex-col border-b p-5 md:border-b-0 md:border-r",
             isLight ? "border-zinc-200 bg-zinc-50/80" : "border-zinc-800 bg-zinc-900/60",
           )}
         >
@@ -127,34 +149,54 @@ export default function GeneratedToolPanel({
             <p className="text-[11px] uppercase tracking-[0.26em] text-cyan-400">Generated Tool MVP</p>
             <h2 className="text-xl font-semibold">Revolved Tool Builder</h2>
             <p className={cn("text-sm leading-6", isLight ? "text-zinc-600" : "text-zinc-400")}>
-              This demo calls the root Wasm runtime directly through <code>ValidateRevolvedToolSpec</code> and <code>BuildRevolvedTool</code>.
+              This demo calls the root Wasm runtime directly through <code>ValidateRevolvedShapeSpec</code> and <code>BuildRevolvedShape</code>.
+            </p>
+            <p className={cn("text-[11px] leading-5", isLight ? "text-zinc-500" : "text-zinc-500")}>
+              Preset catalog is split between FreeCAD-aligned samples and common demo-only families.
             </p>
           </div>
 
-          <div className="mt-5 space-y-2">
-            {GENERATED_TOOL_PRESETS.map((entry) => (
-              <button
-                key={entry.id}
-                type="button"
-                className={cn(
-                  "w-full rounded-2xl border p-3 text-left transition-colors",
-                  entry.id === presetId
-                    ? (isLight ? "border-cyan-500 bg-cyan-50" : "border-cyan-500/60 bg-cyan-500/10")
-                    : (isLight ? "border-zinc-200 bg-white hover:border-zinc-300" : "border-zinc-800 bg-zinc-950/70 hover:border-zinc-700"),
-                )}
-                onClick={() => applyPreset(entry.id)}
-                data-testid={`generated-tool-preset-${entry.id}`}
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <span className="font-medium">{entry.label}</span>
-                  <span className={cn("text-[10px] uppercase tracking-[0.18em]", isLight ? "text-zinc-500" : "text-zinc-500")}>
-                    {entry.spec.revolve?.angleDeg === 360 ? "full" : "partial"}
-                  </span>
+          <div className="mt-5 flex-1 space-y-4 overflow-y-auto pr-1">
+            {presetCatalog.map((group) => (
+              <section key={group.id} className="space-y-2" data-testid={`generated-tool-group-${group.id}`}>
+                <div className="px-1">
+                  <div className={cn("text-[10px] font-medium uppercase tracking-[0.22em]", isLight ? "text-zinc-500" : "text-zinc-500")}>
+                    {group.label}
+                  </div>
+                  <p className={cn("mt-1 text-[11px] leading-5", isLight ? "text-zinc-500" : "text-zinc-500")}>
+                    {group.description}
+                  </p>
                 </div>
-                <p className={cn("mt-1 text-xs leading-5", isLight ? "text-zinc-600" : "text-zinc-400")}>
-                  {entry.description}
-                </p>
-              </button>
+                <div className="space-y-2">
+                  {group.presets.map((entry) => (
+                    <button
+                      key={entry.id}
+                      type="button"
+                      className={cn(
+                        "w-full rounded-2xl border p-3 text-left transition-colors",
+                        entry.id === presetId
+                          ? (isLight ? "border-cyan-500 bg-cyan-50" : "border-cyan-500/60 bg-cyan-500/10")
+                          : (isLight ? "border-zinc-200 bg-white hover:border-zinc-300" : "border-zinc-800 bg-zinc-950/70 hover:border-zinc-700"),
+                      )}
+                      onClick={() => applyPreset(entry.id)}
+                      data-testid={`generated-tool-preset-${entry.id}`}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="font-medium">{entry.label}</span>
+                        <span className={cn("text-[10px] uppercase tracking-[0.18em]", isLight ? "text-zinc-500" : "text-zinc-500")}>
+                          {entry.spec.revolve?.angleDeg === 360 ? "full" : "partial"}
+                        </span>
+                      </div>
+                      <p className={cn("mt-1 text-xs leading-5", isLight ? "text-zinc-600" : "text-zinc-400")}>
+                        {entry.description}
+                      </p>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {(entry.parameters ?? []).map((parameter) => renderPresetParameter(parameter, isLight))}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </section>
             ))}
           </div>
 
@@ -168,22 +210,40 @@ export default function GeneratedToolPanel({
           </div>
         </aside>
 
-        <section className="flex min-h-[34rem] flex-col">
+        <section className="flex min-h-0 min-w-0 flex-col overflow-hidden">
           <div className={cn("flex items-start justify-between gap-4 border-b px-5 py-4", isLight ? "border-zinc-200" : "border-zinc-800")}>
             <div>
               <div className="text-sm font-medium">{preset.label}</div>
+              <div className="mt-2">
+                <span
+                  className={cn(
+                    "inline-flex rounded-full border px-2 py-1 text-[10px] uppercase tracking-[0.18em]",
+                    isLight
+                      ? "border-zinc-200 bg-zinc-50 text-zinc-600"
+                      : "border-zinc-700/80 bg-zinc-900 text-zinc-300",
+                  )}
+                >
+                  {presetGroup.label}
+                </span>
+              </div>
               <p className={cn("mt-1 text-xs leading-5", isLight ? "text-zinc-600" : "text-zinc-400")}>
-                Edit the normalized revolved-tool spec directly. Presets are just starter payloads.
+                {preset.description}
               </p>
+              <p className={cn("mt-2 text-[11px] leading-5", isLight ? "text-zinc-500" : "text-zinc-500")}>
+                Edit the normalized revolved-shape spec directly. Presets are starter payloads, not runtime-owned tool types.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {(preset.parameters ?? []).map((parameter) => renderPresetParameter(parameter, isLight))}
+              </div>
             </div>
             <Button variant="ghost" onClick={onClose} data-testid="generated-tool-close">
               Close
             </Button>
           </div>
 
-          <div className="flex-1 p-5">
+          <div className="flex-1 overflow-y-auto p-5">
             <label className="mb-2 block text-[11px] uppercase tracking-[0.22em] text-zinc-500" htmlFor="generated-tool-json">
-              RevolvedToolSpec JSON
+              RevolvedShapeSpec JSON
             </label>
             <textarea
               id="generated-tool-json"
@@ -224,7 +284,7 @@ export default function GeneratedToolPanel({
                 Reset Preset
               </Button>
               <span className={cn("text-xs", isLight ? "text-zinc-500" : "text-zinc-500")}>
-                Output sourceFormat: <code>generated-revolved-tool</code>
+                Output sourceFormat: <code>generated-revolved-shape</code>
               </span>
             </div>
 

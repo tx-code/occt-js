@@ -5,6 +5,10 @@ import { readFile } from "node:fs/promises";
 import { createOcctCore } from "@tx-code/occt-core";
 import { loadOcctFactory } from "../../test/load_occt_factory.mjs";
 import { buildGeneratedToolDemoSpec } from "../src/lib/generated-tool-spec-builder.js";
+import {
+  GENERATED_TOOL_PRESETS,
+  getGeneratedToolPresetCatalog,
+} from "../src/lib/generated-tool-presets.js";
 
 test("buildGeneratedToolDemoSpec emits a closed bullnose profile with stable semantic tags", () => {
   const spec = buildGeneratedToolDemoSpec({
@@ -45,6 +49,49 @@ test("buildGeneratedToolDemoSpec defaults ballend cuttingEdgeHeight to the tool 
   ]);
 });
 
+test("buildGeneratedToolDemoSpec emits a tapered flat profile with a smaller tip diameter", () => {
+  const spec = buildGeneratedToolDemoSpec({
+    shape: "taper-flat",
+    units: "mm",
+    diameter: 10,
+    tipDiameter: 4,
+    cuttingEdgeHeight: 18,
+    shankDiameter: 10,
+    length: 24,
+  });
+
+  assert.deepEqual(spec.profile.segments, [
+    { kind: "line", id: "tip-flat", tag: "tip", end: [2, 0] },
+    { kind: "line", id: "taper-flank", tag: "cutting", end: [5, 18] },
+    { kind: "line", id: "shank", tag: "shank", end: [5, 24] },
+    { kind: "line", id: "axis-top", tag: "closure", end: [0, 24] },
+    { kind: "line", id: "axis-bottom", tag: "closure", end: [0, 0] },
+  ]);
+});
+
+test("buildGeneratedToolDemoSpec emits a barrel profile with symmetric cutting arcs", () => {
+  const spec = buildGeneratedToolDemoSpec({
+    shape: "barrel",
+    units: "mm",
+    diameter: 10,
+    neckDiameter: 6,
+    cuttingEdgeHeight: 14,
+    shankDiameter: 8,
+    length: 22,
+  });
+
+  assert.deepEqual(spec.profile.segments, [
+    { kind: "line", id: "tip-flat", tag: "tip", end: [3, 0] },
+    { kind: "arc_center", id: "barrel-lower", tag: "cutting", center: [3, 2], end: [5, 2] },
+    { kind: "line", id: "barrel-mid", tag: "cutting", end: [5, 12] },
+    { kind: "arc_center", id: "barrel-upper", tag: "cutting", center: [3, 12], end: [3, 14] },
+    { kind: "line", id: "shoulder", tag: "shank", end: [4, 14] },
+    { kind: "line", id: "shank", tag: "shank", end: [4, 22] },
+    { kind: "line", id: "axis-top", tag: "closure", end: [0, 22] },
+    { kind: "line", id: "axis-bottom", tag: "closure", end: [0, 0] },
+  ]);
+});
+
 test("buildGeneratedToolDemoSpec rejects invalid bullnose corner radii before runtime build", () => {
   assert.throws(
     () => buildGeneratedToolDemoSpec({
@@ -71,7 +118,100 @@ test("buildGeneratedToolDemoSpec rejects drill tips that do not fit inside the r
   );
 });
 
-test("demo-local tool builder families build watertight closed solids through the root runtime", async () => {
+test("buildGeneratedToolDemoSpec rejects lollipop heads that do not fit inside the requested tool length", () => {
+  assert.throws(
+    () => buildGeneratedToolDemoSpec({
+      shape: "lollipop",
+      units: "mm",
+      diameter: 8,
+      neckDiameter: 4,
+      length: 6,
+    }),
+    /length must be at least the head diameter/i,
+  );
+});
+
+test("generated tool presets expose stable group ids, labels, and parameter summaries", () => {
+  assert.deepEqual(
+    GENERATED_TOOL_PRESETS.map((preset) => ({
+      id: preset.id,
+      groupId: preset.groupId,
+      label: preset.label,
+      parameterLabels: preset.parameters.map((parameter) => parameter.label),
+    })),
+    [
+      {
+        id: "endmill",
+        groupId: "freecad-aligned",
+        label: "Endmill D6",
+        parameterLabels: ["Diameter", "CuttingEdgeHeight", "ShankDiameter", "Length"],
+      },
+      {
+        id: "bullnose",
+        groupId: "freecad-aligned",
+        label: "Bullnose D8 R0.8",
+        parameterLabels: ["Diameter", "CornerRadius", "CuttingEdgeHeight", "ShankDiameter", "Length"],
+      },
+      {
+        id: "ballend",
+        groupId: "freecad-aligned",
+        label: "Ballend D8",
+        parameterLabels: ["Diameter", "CuttingEdgeHeight", "ShankDiameter", "Length"],
+      },
+      {
+        id: "taper-flat",
+        groupId: "common-derived",
+        label: "Taper Flat D1-D6",
+        parameterLabels: ["TipDiameter", "Diameter", "CuttingEdgeHeight", "ShankDiameter", "Length"],
+      },
+      {
+        id: "taper-ball",
+        groupId: "freecad-aligned",
+        label: "Tapered Ball Nose D2 TD6",
+        parameterLabels: ["Diameter", "TaperDiameter", "CuttingEdgeHeight", "ShankDiameter", "Length"],
+      },
+      {
+        id: "barrel",
+        groupId: "common-derived",
+        label: "Barrel D8 Neck4",
+        parameterLabels: ["Diameter", "NeckDiameter", "CuttingEdgeHeight", "ShankDiameter", "Length"],
+      },
+      {
+        id: "lollipop",
+        groupId: "common-derived",
+        label: "Lollipop D6 Neck4",
+        parameterLabels: ["Diameter", "NeckDiameter", "Length"],
+      },
+      {
+        id: "drill",
+        groupId: "freecad-aligned",
+        label: "Drill D6 118deg",
+        parameterLabels: ["Diameter", "TipAngle", "Length"],
+      },
+    ],
+  );
+});
+
+test("generated tool preset catalog groups presets into FreeCAD-aligned and common demo-only sections", () => {
+  assert.deepEqual(
+    getGeneratedToolPresetCatalog().map((group) => ({
+      id: group.id,
+      presetIds: group.presets.map((preset) => preset.id),
+    })),
+    [
+      {
+        id: "freecad-aligned",
+        presetIds: ["endmill", "bullnose", "ballend", "taper-ball", "drill"],
+      },
+      {
+        id: "common-derived",
+        presetIds: ["taper-flat", "barrel", "lollipop"],
+      },
+    ],
+  );
+});
+
+test("demo preset catalog builds watertight closed solids through the root runtime", async () => {
   const factory = loadOcctFactory();
   const wasmBinary = new Uint8Array(await readFile(new URL("../../dist/occt-js.wasm", import.meta.url)));
   const core = createOcctCore({
@@ -79,72 +219,19 @@ test("demo-local tool builder families build watertight closed solids through th
     wasmBinary,
   });
 
-  const buildOptions = {
-    linearDeflectionType: "bounding_box_ratio",
-    linearDeflection: 0.001,
-    angularDeflection: 0.35,
-  };
-  const cases = [
-    {
-      label: "endmill",
-      definition: {
-        shape: "endmill",
-        units: "mm",
-        diameter: 6,
-        cuttingEdgeHeight: 14,
-        shankDiameter: 6,
-        length: 18,
-      },
-    },
-    {
-      label: "ballend",
-      definition: {
-        shape: "ballend",
-        units: "mm",
-        diameter: 10,
-        cuttingEdgeHeight: 16,
-        shankDiameter: 10,
-        length: 22,
-      },
-    },
-    {
-      label: "bullnose",
-      definition: {
-        shape: "bullnose",
-        units: "mm",
-        diameter: 8,
-        cornerRadius: 1,
-        cuttingEdgeHeight: 12,
-        shankDiameter: 8,
-        length: 18,
-      },
-    },
-    {
-      label: "drill",
-      definition: {
-        shape: "drill",
-        units: "inch",
-        diameter: 0.25,
-        tipAngle: 118,
-        length: 1.5,
-      },
-    },
-  ];
+  for (const preset of GENERATED_TOOL_PRESETS) {
+    const validation = await core.validateRevolvedShapeSpec(preset.spec);
+    assert.equal(validation.ok, true, `${preset.id}: spec should validate`);
 
-  for (const entry of cases) {
-    const spec = buildGeneratedToolDemoSpec(entry.definition);
-    const validation = await core.validateRevolvedToolSpec(spec);
-    assert.equal(validation.ok, true, `${entry.label}: spec should validate`);
+    const result = await core.buildRevolvedShape(preset.spec, preset.buildOptions);
+    assert.equal(result.success, true, `${preset.id}: build should succeed`);
 
-    const result = await core.buildRevolvedTool(spec, buildOptions);
-    assert.equal(result.success, true, `${entry.label}: build should succeed`);
-
-    const shapeValidation = result.generatedTool?.shapeValidation;
-    assert.ok(shapeValidation, `${entry.label}: shapeValidation should be present`);
-    assert.equal(shapeValidation.exact.isValid, true, `${entry.label}: exact shape should be valid`);
-    assert.equal(shapeValidation.exact.isClosed, true, `${entry.label}: exact shape should be closed`);
-    assert.equal(shapeValidation.exact.isSolid, true, `${entry.label}: exact shape should contain a solid`);
-    assert.equal(shapeValidation.mesh.isWatertight, true, `${entry.label}: mesh should be watertight`);
-    assert.equal(shapeValidation.mesh.isManifold, true, `${entry.label}: mesh should be manifold`);
+    const shapeValidation = result.revolvedShape?.shapeValidation;
+    assert.ok(shapeValidation, `${preset.id}: shapeValidation should be present`);
+    assert.equal(shapeValidation.exact.isValid, true, `${preset.id}: exact shape should be valid`);
+    assert.equal(shapeValidation.exact.isClosed, true, `${preset.id}: exact shape should be closed`);
+    assert.equal(shapeValidation.exact.isSolid, true, `${preset.id}: exact shape should contain a solid`);
+    assert.equal(shapeValidation.mesh.isWatertight, true, `${preset.id}: mesh should be watertight`);
+    assert.equal(shapeValidation.mesh.isManifold, true, `${preset.id}: mesh should be manifold`);
   }
 });

@@ -1,13 +1,15 @@
 import { chromium } from "@playwright/test";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readdir, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
+  GENERATED_TOOL_PRESET_GROUPS,
   GENERATED_TOOL_PRESETS,
   formatGeneratedToolJson,
+  getGeneratedToolPresetGroup,
 } from "../demo/src/lib/generated-tool-presets.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -143,6 +145,39 @@ async function ensureArtifactDirectories() {
   await mkdir(specsDir, { recursive: true });
 }
 
+function expectedScreenshotNames() {
+  const names = new Set();
+  for (const preset of GENERATED_TOOL_PRESETS) {
+    for (const variant of screenshotVariants) {
+      names.add(variant.fileName(preset.id));
+    }
+    names.add(`${preset.id}-semantic-active.png`);
+  }
+  return names;
+}
+
+function expectedSpecNames() {
+  return new Set(GENERATED_TOOL_PRESETS.map((preset) => `${preset.id}.json`));
+}
+
+async function pruneDirectoryFiles(directoryPath, allowedNames) {
+  const entries = await readdir(directoryPath, { withFileTypes: true });
+  for (const entry of entries) {
+    if (!entry.isFile()) {
+      continue;
+    }
+    if (allowedNames.has(entry.name)) {
+      continue;
+    }
+    await unlink(path.join(directoryPath, entry.name));
+  }
+}
+
+async function pruneGeneratedArtifacts() {
+  await pruneDirectoryFiles(screenshotsDir, expectedScreenshotNames());
+  await pruneDirectoryFiles(specsDir, expectedSpecNames());
+}
+
 async function terminateSpawnedServer(server) {
   if (!server?.child?.pid) {
     return;
@@ -254,16 +289,27 @@ async function writeManifest(baseUrl, presets) {
   const manifest = {
     generatedAt: new Date().toISOString(),
     baseUrl,
-    presets: presets.map((preset) => ({
-      presetId: preset.id,
-      fileName: preset.fileName,
-      screenshot: preset.screenshots.find((entry) => entry.id === "hero")?.path ?? `screenshots/${preset.id}.png`,
-      screenshots: preset.screenshots,
-      spec: `specs/${preset.id}.json`,
-      statsText: preset.statsText,
-      legendText: preset.legendText,
-      sceneSummary: preset.sceneSummary,
-    })),
+    groups: GENERATED_TOOL_PRESET_GROUPS,
+    presets: presets.map((preset) => {
+      const presetDefinition = GENERATED_TOOL_PRESETS.find((entry) => entry.id === preset.id);
+      const presetGroup = getGeneratedToolPresetGroup(presetDefinition?.groupId);
+      return {
+        groupId: presetDefinition?.groupId ?? presetGroup.id,
+        groupLabel: presetGroup.label,
+        groupDescription: presetGroup.description,
+        label: presetDefinition?.label ?? preset.id,
+        description: presetDefinition?.description ?? null,
+        parameters: presetDefinition?.parameters ?? [],
+        presetId: preset.id,
+        fileName: preset.fileName,
+        screenshot: preset.screenshots.find((entry) => entry.id === "hero")?.path ?? `screenshots/${preset.id}.png`,
+        screenshots: preset.screenshots,
+        spec: `specs/${preset.id}.json`,
+        statsText: preset.statsText,
+        legendText: preset.legendText,
+        sceneSummary: preset.sceneSummary,
+      };
+    }),
   };
 
   await writeFile(
@@ -275,6 +321,7 @@ async function writeManifest(baseUrl, presets) {
 
 async function main() {
   await ensureArtifactDirectories();
+  await pruneGeneratedArtifacts();
 
   let launchedServer = null;
   let baseUrl = defaultBaseUrl;

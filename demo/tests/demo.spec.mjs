@@ -196,8 +196,10 @@ test("shows drop zone on initial load", async ({ page }) => {
 test("generated tool MVP can build a preset directly in the viewer", async ({ page }) => {
   await page.click("[data-testid='open-generated-tool-panel-empty']");
   await expect(page.locator("[data-testid='generated-tool-panel']")).toBeVisible();
+  await expect(page.locator("[data-testid='generated-tool-group-freecad-aligned']")).toContainText("FreeCAD-aligned");
+  await expect(page.locator("[data-testid='generated-tool-group-common-derived']")).toContainText("Common / demo-only");
 
-  await page.click("[data-testid='generated-tool-preset-flat-endmill']");
+  await page.click("[data-testid='generated-tool-preset-bullnose']");
   await page.click("[data-testid='generated-tool-build']");
 
   await expect(page.locator("[data-testid='toolbar']")).toBeVisible({ timeout: 30_000 });

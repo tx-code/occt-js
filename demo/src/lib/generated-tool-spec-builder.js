@@ -1,6 +1,15 @@
 const EPSILON = 1e-9;
 const FULL_REVOLVE_DEGREES = 360;
-const SUPPORTED_SHAPES = new Set(["endmill", "ballend", "bullnose", "drill"]);
+const SUPPORTED_SHAPES = new Set([
+  "endmill",
+  "ballend",
+  "bullnose",
+  "drill",
+  "taper-flat",
+  "taper-ball",
+  "barrel",
+  "lollipop",
+]);
 
 function assertObject(definition) {
   if (!definition || typeof definition !== "object" || Array.isArray(definition)) {
@@ -13,9 +22,15 @@ function normalizeShape(shape) {
     throw new Error("Tool definition requires a shape string.");
   }
 
-  const normalized = shape.trim().toLowerCase();
+  const normalized = shape.trim().toLowerCase().replace(/[_\s]+/g, "-");
   if (normalized === "ballnose") {
     return "ballend";
+  }
+  if (normalized === "taperflat") {
+    return "taper-flat";
+  }
+  if (normalized === "taperball") {
+    return "taper-ball";
   }
   if (!SUPPORTED_SHAPES.has(normalized)) {
     throw new Error(`Unsupported tool shape: ${shape}. Supported shapes: ${[...SUPPORTED_SHAPES].join(", ")}.`);
@@ -53,6 +68,14 @@ function requireNonNegative(name, value) {
   const normalized = requireFiniteNumber(name, value);
   if (normalized < 0) {
     throw new Error(`${name} must be zero or greater.`);
+  }
+  return normalized;
+}
+
+function requireStrictlySmaller(name, value, upperBoundName, upperBound) {
+  const normalized = requirePositive(name, value);
+  if (normalized + EPSILON >= upperBound) {
+    throw new Error(`${name} must be smaller than ${upperBoundName}.`);
   }
   return normalized;
 }
@@ -260,6 +283,126 @@ function buildDrillSpec(definition, units) {
   return finalizeSpec(units, segments, point, length);
 }
 
+function buildTaperFlatSpec(definition, units) {
+  const diameter = requirePositive("diameter", definition.diameter);
+  const tipDiameter = requireStrictlySmaller("tipDiameter", definition.tipDiameter, "diameter", diameter);
+  const length = requirePositive("length", definition.length);
+  const cuttingEdgeHeight = requirePositive("cuttingEdgeHeight", definition.cuttingEdgeHeight);
+  const shankDiameter = definition.shankDiameter == null
+    ? diameter
+    : requirePositive("shankDiameter", definition.shankDiameter);
+
+  if (cuttingEdgeHeight - length > EPSILON) {
+    throw new Error("cuttingEdgeHeight cannot exceed length.");
+  }
+
+  const tipRadius = tipDiameter / 2;
+  const outerRadius = diameter / 2;
+  const shankRadius = shankDiameter / 2;
+  const segments = [];
+  let point = [0, 0];
+
+  point = appendLine(segments, point, [tipRadius, 0], "tip-flat", "tip");
+  point = appendLine(segments, point, [outerRadius, cuttingEdgeHeight], "taper-flank", "cutting");
+  point = appendLine(segments, point, [shankRadius, cuttingEdgeHeight], "shoulder", "shank");
+  point = appendLine(segments, point, [shankRadius, length], "shank", "shank");
+
+  return finalizeSpec(units, segments, point, length);
+}
+
+function buildTaperBallSpec(definition, units) {
+  const diameter = requirePositive("diameter", definition.diameter);
+  const tipDiameter = requireStrictlySmaller("tipDiameter", definition.tipDiameter, "diameter", diameter);
+  const length = requirePositive("length", definition.length);
+  const cuttingEdgeHeight = requirePositive("cuttingEdgeHeight", definition.cuttingEdgeHeight);
+  const shankDiameter = definition.shankDiameter == null
+    ? diameter
+    : requirePositive("shankDiameter", definition.shankDiameter);
+
+  const tipRadius = tipDiameter / 2;
+  if (cuttingEdgeHeight + EPSILON < tipRadius) {
+    throw new Error("cuttingEdgeHeight must be at least half the tipDiameter.");
+  }
+  if (cuttingEdgeHeight - length > EPSILON) {
+    throw new Error("cuttingEdgeHeight cannot exceed length.");
+  }
+
+  const outerRadius = diameter / 2;
+  const shankRadius = shankDiameter / 2;
+  const segments = [];
+  let point = [0, 0];
+
+  point = appendArcCenter(segments, point, [0, tipRadius], [tipRadius, tipRadius], "ball-tip", "tip");
+  point = appendLine(segments, point, [outerRadius, cuttingEdgeHeight], "taper-flank", "cutting");
+  point = appendLine(segments, point, [shankRadius, cuttingEdgeHeight], "shoulder", "shank");
+  point = appendLine(segments, point, [shankRadius, length], "shank", "shank");
+
+  return finalizeSpec(units, segments, point, length);
+}
+
+function buildBarrelSpec(definition, units) {
+  const diameter = requirePositive("diameter", definition.diameter);
+  const neckDiameter = requireStrictlySmaller("neckDiameter", definition.neckDiameter, "diameter", diameter);
+  const length = requirePositive("length", definition.length);
+  const cuttingEdgeHeight = requirePositive("cuttingEdgeHeight", definition.cuttingEdgeHeight);
+  const shankDiameter = definition.shankDiameter == null
+    ? neckDiameter
+    : requirePositive("shankDiameter", definition.shankDiameter);
+
+  const outerRadius = diameter / 2;
+  const neckRadius = neckDiameter / 2;
+  const barrelBulge = outerRadius - neckRadius;
+  if (cuttingEdgeHeight + EPSILON < barrelBulge * 2) {
+    throw new Error("cuttingEdgeHeight must be at least twice the barrel bulge.");
+  }
+  if (cuttingEdgeHeight - length > EPSILON) {
+    throw new Error("cuttingEdgeHeight cannot exceed length.");
+  }
+
+  const shankRadius = shankDiameter / 2;
+  const upperArcStartZ = cuttingEdgeHeight - barrelBulge;
+  const segments = [];
+  let point = [0, 0];
+
+  point = appendLine(segments, point, [neckRadius, 0], "tip-flat", "tip");
+  point = appendArcCenter(segments, point, [neckRadius, barrelBulge], [outerRadius, barrelBulge], "barrel-lower", "cutting");
+  point = appendLine(segments, point, [outerRadius, upperArcStartZ], "barrel-mid", "cutting");
+  point = appendArcCenter(
+    segments,
+    point,
+    [neckRadius, upperArcStartZ],
+    [neckRadius, cuttingEdgeHeight],
+    "barrel-upper",
+    "cutting",
+  );
+  point = appendLine(segments, point, [shankRadius, cuttingEdgeHeight], "shoulder", "shank");
+  point = appendLine(segments, point, [shankRadius, length], "shank", "shank");
+
+  return finalizeSpec(units, segments, point, length);
+}
+
+function buildLollipopSpec(definition, units) {
+  const diameter = requirePositive("diameter", definition.diameter);
+  const neckDiameter = requireStrictlySmaller("neckDiameter", definition.neckDiameter, "diameter", diameter);
+  const length = requirePositive("length", definition.length);
+
+  const headRadius = diameter / 2;
+  const transitionHeight = diameter;
+  if (transitionHeight - length > EPSILON) {
+    throw new Error("length must be at least the head diameter.");
+  }
+
+  const neckRadius = neckDiameter / 2;
+  const segments = [];
+  let point = [0, 0];
+
+  point = appendArcCenter(segments, point, [0, headRadius], [headRadius, headRadius], "head", "tip");
+  point = appendLine(segments, point, [neckRadius, transitionHeight], "neck-transition", "neck");
+  point = appendLine(segments, point, [neckRadius, length], "neck", "neck");
+
+  return finalizeSpec(units, segments, point, length);
+}
+
 export function buildGeneratedToolDemoSpec(definition) {
   assertObject(definition);
 
@@ -275,6 +418,14 @@ export function buildGeneratedToolDemoSpec(definition) {
       return buildBullnoseSpec(definition, units);
     case "drill":
       return buildDrillSpec(definition, units);
+    case "taper-flat":
+      return buildTaperFlatSpec(definition, units);
+    case "taper-ball":
+      return buildTaperBallSpec(definition, units);
+    case "barrel":
+      return buildBarrelSpec(definition, units);
+    case "lollipop":
+      return buildLollipopSpec(definition, units);
     default:
       throw new Error(`Unsupported tool shape: ${shape}.`);
   }
