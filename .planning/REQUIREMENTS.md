@@ -52,21 +52,21 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PROF-01 | — | Pending |
-| PROF-02 | — | Pending |
-| PROF-03 | — | Pending |
-| EXTR-01 | — | Pending |
-| EXTR-02 | — | Pending |
-| MAP-03 | — | Pending |
-| MAP-04 | — | Pending |
-| SDK-02 | — | Pending |
-| GOV-02 | — | Pending |
+| PROF-01 | Phase 30 | Pending |
+| PROF-02 | Phase 30 | Pending |
+| PROF-03 | Phase 30 | Pending |
+| EXTR-01 | Phase 31 | Pending |
+| EXTR-02 | Phase 31 | Pending |
+| MAP-03 | Phase 31 | Pending |
+| MAP-04 | Phase 31 | Pending |
+| SDK-02 | Phase 32 | Pending |
+| GOV-02 | Phase 32 | Pending |
 
 **Coverage:**
 - v1 requirements: 9 total
-- Mapped to phases: 0
-- Unmapped: 9 ⚠️
+- Mapped to phases: 9
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-04-21*
-*Last updated: 2026-04-21 after initial v1.9 requirement definition*
+*Last updated: 2026-04-21 after v1.9 roadmap creation*

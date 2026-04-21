@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Generic Profile Solids
-status: defining_requirements
-stopped_at: Milestone v1.9 started
-last_updated: "2026-04-21T10:00:00+08:00"
-last_activity: 2026-04-21 -- Started milestone v1.9 Generic Profile Solids and reset active planning for shared profiles plus linear extrusions
+status: planning
+stopped_at: Milestone v1.9 initialized
+last_updated: "2026-04-21T10:05:00+08:00"
+last_activity: 2026-04-21 -- Created v1.9 requirements and roadmap for shared profiles, linear extrusions, and profile-solid governance
 progress:
   total_phases: 3
   completed_phases: 0
@@ -28,8 +28,8 @@ Current focus: Phase 30 planning
 Milestone: v1.9 Generic Profile Solids
 Phase: 30 next
 Plan: none
-Status: Defining requirements
-Last activity: 2026-04-21 -- Started v1.9 around a shared 2D profile kernel and linear extruded solids
+Status: Ready to plan
+Last activity: 2026-04-21 -- Created the v1.9 roadmap; Phase 30 discussion/planning is next
 
 Progress: [----------] 0%
 
@@ -52,8 +52,8 @@ Current milestone (`v1.9`) planned scope:
 
 ### Pending Todos
 
-- Define `v1.9` requirements for shared profile reuse, extruded runtime APIs, binding semantics, and governance.
-- Create the `v1.9` roadmap and start Phase 30 discussion/planning.
+- Start Phase 30 with `$gsd-discuss-phase 30` or `$gsd-plan-phase 30`.
+- Keep `v1.9` scoped to shared profiles plus straight linear extrusion before entertaining sweep/loft expansion.
 
 ### Blockers/Concerns
 
@@ -69,6 +69,6 @@ Items acknowledged and deferred at milestone close on 2026-04-20:
 
 ## Session Continuity
 
-Last session: 2026-04-21T10:00:00+08:00
-Stopped at: milestone kickoff; requirements and roadmap are the next artifacts
-Resume file: .planning/REQUIREMENTS.md
+Last session: 2026-04-21T10:05:00+08:00
+Stopped at: milestone initialization complete; Phase 30 planning is next
+Resume file: .planning/ROADMAP.md
