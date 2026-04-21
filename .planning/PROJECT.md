@@ -45,7 +45,9 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 
 ### Active
 
-- None yet. Define the next milestone with `$gsd-new-milestone`.
+- [ ] Shared 2D profile kernel for reusable line/arc/closure validation across profile-driven shape families.
+- [ ] Linear extruded shape runtime with canonical scene export, exact-open, and stable semantic face bindings.
+- [ ] Package-first `@tx-code/occt-core`, typings, docs, and governance for generic profile solids.
 
 ### Out of Scope
 
@@ -71,16 +73,16 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 
 `v1.8 Wasm+JS Revolved Shape Generation` shipped on 2026-04-21 and is now archived in `.planning/milestones/`. The repo now exposes a generic revolved-shape runtime/package surface with retained exact-open support, stable face-binding semantics, and governance-locked package/docs coverage while keeping tool-library ownership downstream.
 
-## No Active Milestone
+`v1.9 Generic Profile Solids` is now the active milestone. It extends the generic geometry line from revolved shapes into a shared 2D profile kernel plus linear extruded solids, while keeping app-specific schema ownership, CAM semantics, and viewer behavior outside the root runtime.
 
-The repository is between milestones.
+## Current Milestone: v1.9 Generic Profile Solids
 
-**Next step:** start the next cycle with `$gsd-new-milestone`.
+**Goal:** Extend the generic geometry contract from revolved shapes to shared 2D profiles and linear extruded solids without turning `occt-js` into a CAD feature framework.
 
-**Current shipped baseline:**
-- Generic revolved-shape validation/build/exact-open now ships through the root Wasm carrier.
-- `@tx-code/occt-core` exposes package-first wrappers for the same surface.
-- Demo-local tool presets remain downstream-only and do not define the root contract.
+**Target features:**
+- Reuse one normalized 2D profile kernel across profile-driven shape families instead of duplicating spec seams per solid type.
+- Add linear extruded shape validate/build/exact-open flows with deterministic face-binding and appearance semantics.
+- Publish package-first wrappers, typings, docs, and governance for generic profile solids through the existing root release boundary.
 
 ## Context
 
@@ -90,12 +92,13 @@ The repository is between milestones.
 - `SceneGraph.net` remains the best local reference for measurement behavior above the kernel layer, but `occt-js` intentionally stopped at exact-kernel foundations plus package-first placement/relation support.
 - OCCT `PrsDim` remains the local geometry reference for placement and relation behavior, but `occt-js` intentionally stops short of AIS/Prs3d interactive dimensions.
 - The current exact runtime now exposes retained exact-model lifecycle, primitive exact queries, pairwise distance/angle/thickness, placement DTOs, relation classification, narrow selected-ref hole/chamfer helper semantics, package-only midpoint/equal-distance/symmetry helpers, published package typings, helper-aware release verification, additive lifecycle diagnostics, package-first managed disposal wrappers, and explicit perf/soak verification lanes.
-- `v1.7` and `v1.8` are archived; the next GSD step is defining the next milestone rather than extending the current one in place.
+- `v1.7` and `v1.8` are archived; `v1.9` now reopens active planning around generic profile-driven solids.
 - The shipped revolved-shape surface assumes upstream apps define their own tool metadata and only hand `occt-js` a normalized revolved profile plus optional semantic tags.
 - Generated revolved-shape colors are not caller-owned in `v1.8`; deterministic default appearance should derive from runtime-side tag and role semantics.
 - Segment-to-face bindings must be captured at build time from OCCT history rather than inferred later from final face order.
+- The next step after `v1.8` is not richer tool semantics; it is a shared profile kernel plus linear extrusion so the generic geometry contract covers more than revolve.
 - GSD is the primary repository workflow; superpowers remain optional support tooling for narrow tasks only.
-- Deferred seed `SEED-001-web-exact-brep-measurement` remains dormant and does not match this milestone, because the current focus is generated revolved-shape geometry rather than broader exact-measurement expansion.
+- Deferred seed `SEED-001-web-exact-brep-measurement` remains dormant and does not match this milestone, because the current focus is profile-driven solid generation rather than broader exact-measurement expansion.
 
 ## Constraints
 
@@ -136,6 +139,8 @@ The repository is between milestones.
 | Keep lifecycle diagnostics explicit and managed disposal package-first | Phase 24 needed safer lifecycle ergonomics while preserving root numeric handle ownership and avoiding viewer/global disposal policy | ✓ Good |
 | Model generated shapes as app-neutral revolved profile specs instead of importing third-party tool schemas into the root runtime | Different tool-definition apps need one stable geometry contract, while schema ownership and adapter logic stay upstream | ✓ Good |
 | Derive generated-shape appearance from runtime tag and role semantics rather than caller-supplied colors | The generated-shape surface should stay easy to consume in downstream apps without forcing every caller to own material policy | ✓ Good |
+| Reuse one shared 2D profile kernel across revolved and extruded families | Avoid duplicated validation/spec seams and keep profile-driven geometry generic-first | — Pending |
+| Keep `v1.9` limited to linear extrusion over planar closed profiles | Shared profile abstractions need one more proven family before loft/sweep or richer feature stacks | — Pending |
 
 ## Evolution
 
@@ -225,4 +230,4 @@ This document evolves at phase transitions and milestone boundaries.
 </details>
 
 ---
-*Last updated: 2026-04-21 after v1.8 milestone closeout*
+*Last updated: 2026-04-21 after starting v1.9 milestone*

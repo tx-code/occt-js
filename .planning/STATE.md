@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.8
-milestone_name: Wasm+JS Revolved Shape Generation
-status: between_milestones
-stopped_at: Milestone v1.8 archived
-last_updated: "2026-04-21T09:43:54.1019781+08:00"
-last_activity: 2026-04-21 -- Archived v1.8 milestone, moved phase history to milestones/v1.8-phases, and prepared the repo for the next milestone
+milestone: v1.9
+milestone_name: Generic Profile Solids
+status: defining_requirements
+stopped_at: Milestone v1.9 started
+last_updated: "2026-04-21T10:00:00+08:00"
+last_activity: 2026-04-21 -- Started milestone v1.9 Generic Profile Solids and reset active planning for shared profiles plus linear extrusions
 progress:
   total_phases: 3
-  completed_phases: 3
+  completed_phases: 0
   total_plans: 6
-  completed_plans: 6
-  percent: 100
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -21,25 +21,25 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-21)
 
 Core value: Downstream applications can reliably consume the OCCT Wasm runtime and its root API contract without build drift or packaging surprises.
-Current focus: Planning next milestone
+Current focus: Phase 30 planning
 
 ## Current Position
 
-Milestone: v1.8 shipped; no active milestone planned
-Phase: none
+Milestone: v1.9 Generic Profile Solids
+Phase: 30 next
 Plan: none
-Status: Ready to plan
-Last activity: 2026-04-21 -- Archived v1.8 and cleared the active planning surface for the next milestone
+Status: Defining requirements
+Last activity: 2026-04-21 -- Started v1.9 around a shared 2D profile kernel and linear extruded solids
 
-Progress: [##########] 100%
+Progress: [----------] 0%
 
 ## Performance Metrics
 
-Current milestone (`v1.8`) execution:
+Current milestone (`v1.9`) planned scope:
 
-- Phases: 3 (27-29)
-- Plans: 6/6 complete
-- Primary outcome: generic revolved-shape build, exact-open, binding, SDK, and governance surfaces are now shipped and archived
+- Phases: 3 (30-32)
+- Plans: 0/6 complete
+- Primary outcome target: shared profile kernel plus generic linear extruded solids with package-first SDK/governance parity
 
 ## Accumulated Context
 
@@ -48,11 +48,12 @@ Current milestone (`v1.8`) execution:
 - The root Wasm surface is now generic `revolved shape`; demo-only tool presets stay downstream and do not define the runtime contract.
 - Exact generated shapes reuse the retained exact-model lifecycle and now expose `revolvedShape.faceBindings`, `shapeValidation`, and runtime-owned `systemRole` semantics.
 - `@tx-code/occt-core` plus `npm run test:release:root` are the authoritative package-first and governance surfaces for `v1.8`.
+- `v1.9` will extend that generic geometry line through a shared 2D profile kernel and linear extruded solids instead of reintroducing tool-coupled abstractions.
 
 ### Pending Todos
 
-- Start the next milestone with `$gsd-new-milestone`.
-- Refresh requirements and roadmap only after the next milestone scope is agreed.
+- Define `v1.9` requirements for shared profile reuse, extruded runtime APIs, binding semantics, and governance.
+- Create the `v1.9` roadmap and start Phase 30 discussion/planning.
 
 ### Blockers/Concerns
 
@@ -68,6 +69,6 @@ Items acknowledged and deferred at milestone close on 2026-04-20:
 
 ## Session Continuity
 
-Last session: 2026-04-21T09:43:54.1019781+08:00
-Stopped at: `v1.8` archived; next step is milestone creation
-Resume file: .planning/PROJECT.md
+Last session: 2026-04-21T10:00:00+08:00
+Stopped at: milestone kickoff; requirements and roadmap are the next artifacts
+Resume file: .planning/REQUIREMENTS.md
