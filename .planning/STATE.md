@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.10
 milestone_name: Exact Measurement Demo Loop
-status: ready_for_discussion
-stopped_at: phase 33 ready to discuss
-last_updated: "2026-04-21T13:00:00+08:00"
-last_activity: 2026-04-21 -- Started milestone v1.10 Exact Measurement Demo Loop
+status: ready_for_planning
+stopped_at: Phase 33 context gathered
+last_updated: "2026-04-21T14:10:00+08:00"
+last_activity: 2026-04-21 -- Captured Phase 33 demo exact bridge context
 progress:
   total_phases: 3
   completed_phases: 0
@@ -21,15 +21,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-21)
 
 Core value: Downstream applications can reliably consume the OCCT Wasm runtime and its root API contract without build drift or packaging surprises.
-Current focus: Phase 33 discussion
+Current focus: Phase 33 planning
 
 ## Current Position
 
 Milestone: v1.10 Exact Measurement Demo Loop
 Phase: 33 next
-Plan: not started
-Status: Ready to discuss
-Last activity: 2026-04-21 -- Started milestone v1.10 Exact Measurement Demo Loop
+Plan: context captured
+Status: Ready for planning
+Last activity: 2026-04-21 -- Captured Phase 33 demo exact bridge context
 
 Progress: [----------] 0%
 
@@ -52,9 +52,9 @@ Current milestone (`v1.10`) planned scope:
 
 ### Pending Todos
 
-- Start Phase 33 with `$gsd-discuss-phase 33`.
+- Start Phase 33 planning with `$gsd-plan-phase 33 --skip-research`.
 - Keep this milestone scoped to browser demo integration and avoid widening the root runtime unless a concrete primitive is missing.
-- Decide the minimal Phase 34 overlay contract needed for usable inspection without inventing a full dimension-widget system.
+- Carry the exact-session and selection-to-ref bridge forward into Phase 34 measurement commands without leaking Babylon ids into measurement actions.
 
 ### Blockers/Concerns
 
@@ -72,6 +72,6 @@ Items intentionally deferred while `v1.10` starts on 2026-04-21:
 
 ## Session Continuity
 
-Last session: 2026-04-21T13:00:00+08:00
-Stopped at: phase 33 ready to discuss
-Resume file: .planning/PROJECT.md
+Last session: 2026-04-21T14:10:00+08:00
+Stopped at: Phase 33 context gathered
+Resume file: .planning/phases/33-demo-exact-bridge/33-CONTEXT.md
