@@ -66,7 +66,7 @@ function createColorlessRawResult() {
   };
 }
 
-function createRevolvedToolSpec() {
+function createRevolvedShapeSpec() {
   return {
     version: 1,
     units: "mm",
@@ -206,13 +206,13 @@ describe("normalizeOcctResult", () => {
     assert.equal(result.stats.nodeCount, 2);
   });
 
-  it("preserves generated revolved tool source format and geometry bindings", () => {
+  it("preserves generated revolved shape source format and geometry bindings", () => {
     const result = normalizeOcctResult({
       success: true,
-      sourceFormat: "generated-revolved-tool",
+      sourceFormat: "generated-revolved-shape",
       rootNodes: [{
         id: "tool-root",
-        name: "Generated Revolved Tool",
+        name: "Generated Revolved Shape",
         isAssembly: false,
         transform: IDENTITY_MATRIX,
         meshes: [0],
@@ -242,7 +242,7 @@ describe("normalizeOcctResult", () => {
       ],
       warnings: [],
       stats: { ...EMPTY_STATS, rootCount: 1, nodeCount: 1, partCount: 1, geometryCount: 1, materialCount: 2, triangleCount: 1 },
-      generatedTool: {
+      revolvedShape: {
         units: "mm",
         plane: "XZ",
         version: 1,
@@ -283,16 +283,16 @@ describe("normalizeOcctResult", () => {
       },
     });
 
-    assert.equal(result.sourceFormat, "generated-revolved-tool");
+    assert.equal(result.sourceFormat, "generated-revolved-shape");
     assert.equal(result.geometries.length, 1);
     assert.deepEqual(result.rootNodes[0].geometryIds, ["geo_0"]);
     assert.equal(result.stats.materialCount, 2);
-    assert.equal(result.generatedTool.units, "mm");
-    assert.equal(result.generatedTool.segments[0].tag, "cutting");
-    assert.equal(result.generatedTool.faceBindings[0].geometryId, "geo_0");
-    assert.equal(result.generatedTool.faceBindings[0].segmentId, "tool-body");
-    assert.equal(result.generatedTool.shapeValidation.exact.isClosed, true);
-    assert.equal(result.generatedTool.shapeValidation.mesh.isWatertight, true);
+    assert.equal(result.revolvedShape.units, "mm");
+    assert.equal(result.revolvedShape.segments[0].tag, "cutting");
+    assert.equal(result.revolvedShape.faceBindings[0].geometryId, "geo_0");
+    assert.equal(result.revolvedShape.faceBindings[0].segmentId, "tool-body");
+    assert.equal(result.revolvedShape.shapeValidation.exact.isClosed, true);
+    assert.equal(result.revolvedShape.shapeValidation.mesh.isWatertight, true);
   });
 
   it("keeps unit metadata absent when the raw payload omits it", () => {
@@ -2431,9 +2431,9 @@ describe("createOcctCore", () => {
     ]);
   });
 
-  it("wraps generated revolved tool validate/build/openExact entrypoints without forcing raw Wasm access", async () => {
+  it("wraps generated revolved shape validate/build/openExact entrypoints without forcing raw Wasm access", async () => {
     const calls = [];
-    const spec = createRevolvedToolSpec();
+    const spec = createRevolvedShapeSpec();
     const buildOptions = {
       linearDeflectionType: "bounding_box_ratio",
       linearDeflection: 0.001,
@@ -2441,21 +2441,21 @@ describe("createOcctCore", () => {
     };
     const core = createOcctCore({
       factory: async () => ({
-        ValidateRevolvedToolSpec: (incomingSpec) => {
+        ValidateRevolvedShapeSpec: (incomingSpec) => {
           calls.push(["validate", incomingSpec]);
           return { ok: true, diagnostics: [] };
         },
-        BuildRevolvedTool: (incomingSpec, incomingOptions) => {
+        BuildRevolvedShape: (incomingSpec, incomingOptions) => {
           calls.push(["build", incomingSpec, incomingOptions]);
           return {
             success: true,
-            sourceFormat: "generated-revolved-tool",
+            sourceFormat: "generated-revolved-shape",
             rootNodes: [],
             geometries: [],
             materials: [],
             warnings: [],
             stats: EMPTY_STATS,
-            generatedTool: {
+            revolvedShape: {
               version: 1,
               units: "mm",
               plane: "XZ",
@@ -2468,11 +2468,11 @@ describe("createOcctCore", () => {
             },
           };
         },
-        OpenExactRevolvedTool: (incomingSpec, incomingOptions) => {
+        OpenExactRevolvedShape: (incomingSpec, incomingOptions) => {
           calls.push(["openExact", incomingSpec, incomingOptions]);
           return {
             success: true,
-            sourceFormat: "generated-revolved-tool",
+            sourceFormat: "generated-revolved-shape",
             exactModelId: 42,
             exactGeometryBindings: [{ exactShapeHandle: 1 }],
             rootNodes: [],
@@ -2480,7 +2480,7 @@ describe("createOcctCore", () => {
             materials: [],
             warnings: [],
             stats: EMPTY_STATS,
-            generatedTool: {
+            revolvedShape: {
               version: 1,
               units: "mm",
               plane: "XZ",
@@ -2496,13 +2496,13 @@ describe("createOcctCore", () => {
       }),
     });
 
-    const validation = await core.validateRevolvedToolSpec(spec);
-    const built = await core.buildRevolvedTool(spec, buildOptions);
-    const exact = await core.openExactRevolvedTool(spec, buildOptions);
+    const validation = await core.validateRevolvedShapeSpec(spec);
+    const built = await core.buildRevolvedShape(spec, buildOptions);
+    const exact = await core.openExactRevolvedShape(spec, buildOptions);
 
     assert.deepEqual(validation, { ok: true, diagnostics: [] });
-    assert.equal(built.sourceFormat, "generated-revolved-tool");
-    assert.equal(built.generatedTool.hasStableFaceBindings, true);
+    assert.equal(built.sourceFormat, "generated-revolved-shape");
+    assert.equal(built.revolvedShape.hasStableFaceBindings, true);
     assert.equal(exact.exactModelId, 42);
     assert.deepEqual(calls, [
       ["validate", spec],
@@ -2511,22 +2511,22 @@ describe("createOcctCore", () => {
     ]);
   });
 
-  it("fails explicitly when the loaded module does not expose generated revolved tool entrypoints", async () => {
+  it("fails explicitly when the loaded module does not expose generated revolved shape entrypoints", async () => {
     const core = createOcctCore({
       factory: async () => ({}),
     });
 
     await assert.rejects(
-      core.validateRevolvedToolSpec(createRevolvedToolSpec()),
-      /Loaded OCCT module does not expose ValidateRevolvedToolSpec\(\)\./,
+      core.validateRevolvedShapeSpec(createRevolvedShapeSpec()),
+      /Loaded OCCT module does not expose ValidateRevolvedShapeSpec\(\)\./,
     );
     await assert.rejects(
-      core.buildRevolvedTool(createRevolvedToolSpec()),
-      /Loaded OCCT module does not expose BuildRevolvedTool\(\)\./,
+      core.buildRevolvedShape(createRevolvedShapeSpec()),
+      /Loaded OCCT module does not expose BuildRevolvedShape\(\)\./,
     );
     await assert.rejects(
-      core.openExactRevolvedTool(createRevolvedToolSpec()),
-      /Loaded OCCT module does not expose OpenExactRevolvedTool\(\)\./,
+      core.openExactRevolvedShape(createRevolvedShapeSpec()),
+      /Loaded OCCT module does not expose OpenExactRevolvedShape\(\)\./,
     );
   });
 });

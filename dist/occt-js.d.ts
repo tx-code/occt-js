@@ -319,11 +319,11 @@ export interface OcctJSExactChamferSuccess {
 
 export type OcctJSExactChamferResult = OcctJSExactChamferSuccess | OcctJSExactQueryFailure;
 
-export type OcctJSRevolvedToolUnits = "mm" | "inch";
-export type OcctJSRevolvedToolPlane = "XZ";
-export type OcctJSRevolvedToolClosure = "explicit" | "auto_axis";
-export type OcctJSRevolvedToolSegmentKind = "line" | "arc_center" | "arc_3pt";
-export type OcctJSRevolvedToolDiagnosticCode =
+export type OcctJSRevolvedShapeUnits = "mm" | "inch";
+export type OcctJSRevolvedShapePlane = "XZ";
+export type OcctJSRevolvedShapeClosure = "explicit" | "auto_axis";
+export type OcctJSRevolvedShapeSegmentKind = "line" | "arc_center" | "arc_3pt";
+export type OcctJSRevolvedShapeDiagnosticCode =
     | "build-failed"
     | "degenerate-segment"
     | "invalid-arc"
@@ -340,72 +340,72 @@ export type OcctJSRevolvedToolDiagnosticCode =
     | "unsupported-unit"
     | "unsupported-version";
 
-export interface OcctJSRevolvedToolSegmentBase {
+export interface OcctJSRevolvedShapeSegmentBase {
     id?: string;
     tag?: string;
     end: [number, number];
 }
 
-export interface OcctJSRevolvedToolLineSegment extends OcctJSRevolvedToolSegmentBase {
+export interface OcctJSRevolvedShapeLineSegment extends OcctJSRevolvedShapeSegmentBase {
     kind: "line";
 }
 
-export interface OcctJSRevolvedToolArcCenterSegment extends OcctJSRevolvedToolSegmentBase {
+export interface OcctJSRevolvedShapeArcCenterSegment extends OcctJSRevolvedShapeSegmentBase {
     kind: "arc_center";
     center: [number, number];
 }
 
-export interface OcctJSRevolvedToolArc3PointSegment extends OcctJSRevolvedToolSegmentBase {
+export interface OcctJSRevolvedShapeArc3PointSegment extends OcctJSRevolvedShapeSegmentBase {
     kind: "arc_3pt";
     through: [number, number];
 }
 
-export type OcctJSRevolvedToolSegment =
-    | OcctJSRevolvedToolLineSegment
-    | OcctJSRevolvedToolArcCenterSegment
-    | OcctJSRevolvedToolArc3PointSegment;
+export type OcctJSRevolvedShapeSegment =
+    | OcctJSRevolvedShapeLineSegment
+    | OcctJSRevolvedShapeArcCenterSegment
+    | OcctJSRevolvedShapeArc3PointSegment;
 
-export interface OcctJSRevolvedToolSpec {
+export interface OcctJSRevolvedShapeSpec {
     version?: 1;
-    units: OcctJSRevolvedToolUnits;
+    units: OcctJSRevolvedShapeUnits;
     profile: {
-        plane?: OcctJSRevolvedToolPlane;
+        plane?: OcctJSRevolvedShapePlane;
         start: [number, number];
-        closure: OcctJSRevolvedToolClosure;
-        segments: OcctJSRevolvedToolSegment[];
+        closure: OcctJSRevolvedShapeClosure;
+        segments: OcctJSRevolvedShapeSegment[];
     };
     revolve?: {
         angleDeg?: number;
     };
 }
 
-export interface OcctJSRevolvedToolDiagnostic {
-    code: OcctJSRevolvedToolDiagnosticCode;
+export interface OcctJSRevolvedShapeDiagnostic {
+    code: OcctJSRevolvedShapeDiagnosticCode;
     message: string;
     severity: "error";
     path?: string;
     segmentIndex?: number;
 }
 
-export interface OcctJSRevolvedToolValidationResult {
+export interface OcctJSRevolvedShapeValidationResult {
     ok: boolean;
-    diagnostics: OcctJSRevolvedToolDiagnostic[];
+    diagnostics: OcctJSRevolvedShapeDiagnostic[];
 }
 
-export interface OcctJSRevolvedToolBuildOptions {
+export interface OcctJSRevolvedShapeBuildOptions {
     linearDeflectionType?: "bounding_box_ratio" | "absolute_value";
     linearDeflection?: number;
     angularDeflection?: number;
 }
 
-export interface OcctJSGeneratedToolSegmentDescriptor {
+export interface OcctJSGeneratedRevolvedShapeSegmentDescriptor {
     index: number;
-    kind: OcctJSRevolvedToolSegmentKind;
+    kind: OcctJSRevolvedShapeSegmentKind;
     id?: string;
     tag?: string;
 }
 
-export type OcctJSGeneratedToolSystemRole =
+export type OcctJSGeneratedRevolvedShapeSystemRole =
     | "profile"
     | "closure"
     | "axis"
@@ -413,16 +413,16 @@ export type OcctJSGeneratedToolSystemRole =
     | "end_cap"
     | "degenerated";
 
-export interface OcctJSGeneratedToolFaceBinding {
+export interface OcctJSGeneratedRevolvedShapeFaceBinding {
     geometryIndex: number;
     faceId: number;
-    systemRole: OcctJSGeneratedToolSystemRole;
+    systemRole: OcctJSGeneratedRevolvedShapeSystemRole;
     segmentIndex?: number;
     segmentId?: string;
     segmentTag?: string;
 }
 
-export interface OcctJSGeneratedToolExactShapeValidation {
+export interface OcctJSGeneratedRevolvedShapeExactShapeValidation {
     isValid: boolean;
     isClosed: boolean;
     isSolid: boolean;
@@ -434,7 +434,7 @@ export interface OcctJSGeneratedToolExactShapeValidation {
     vertexCount: number;
 }
 
-export interface OcctJSGeneratedToolMeshValidation {
+export interface OcctJSGeneratedRevolvedShapeMeshValidation {
     isWatertight: boolean;
     isManifold: boolean;
     weldedVertexCount: number;
@@ -442,55 +442,55 @@ export interface OcctJSGeneratedToolMeshValidation {
     nonManifoldEdgeCount: number;
 }
 
-export interface OcctJSGeneratedToolShapeValidation {
-    exact: OcctJSGeneratedToolExactShapeValidation;
-    mesh: OcctJSGeneratedToolMeshValidation;
+export interface OcctJSGeneratedRevolvedShapeShapeValidation {
+    exact: OcctJSGeneratedRevolvedShapeExactShapeValidation;
+    mesh: OcctJSGeneratedRevolvedShapeMeshValidation;
 }
 
-export interface OcctJSGeneratedToolMetadata {
+export interface OcctJSGeneratedRevolvedShapeMetadata {
     version: 1;
-    units: OcctJSRevolvedToolUnits;
-    plane: OcctJSRevolvedToolPlane;
-    closure: OcctJSRevolvedToolClosure;
+    units: OcctJSRevolvedShapeUnits;
+    plane: OcctJSRevolvedShapePlane;
+    closure: OcctJSRevolvedShapeClosure;
     angleDeg: number;
     segmentCount: number;
     hasStableFaceBindings: boolean;
-    segments: OcctJSGeneratedToolSegmentDescriptor[];
-    shapeValidation?: OcctJSGeneratedToolShapeValidation;
-    faceBindings?: OcctJSGeneratedToolFaceBinding[];
+    segments: OcctJSGeneratedRevolvedShapeSegmentDescriptor[];
+    shapeValidation?: OcctJSGeneratedRevolvedShapeShapeValidation;
+    faceBindings?: OcctJSGeneratedRevolvedShapeFaceBinding[];
 }
 
-export interface OcctJSRevolvedToolBuildFailure {
+export interface OcctJSRevolvedShapeBuildFailure {
     success: false;
     error: string;
-    sourceFormat: "generated-revolved-tool";
-    diagnostics: OcctJSRevolvedToolDiagnostic[];
-    generatedTool?: OcctJSGeneratedToolMetadata;
+    sourceFormat: "generated-revolved-shape";
+    diagnostics: OcctJSRevolvedShapeDiagnostic[];
+    revolvedShape?: OcctJSGeneratedRevolvedShapeMetadata;
 }
 
-export interface OcctJSRevolvedToolBuildSuccess extends OcctJSResult {
+export interface OcctJSRevolvedShapeBuildSuccess extends OcctJSResult {
     success: true;
-    sourceFormat: "generated-revolved-tool";
-    generatedTool: OcctJSGeneratedToolMetadata;
-    diagnostics?: OcctJSRevolvedToolDiagnostic[];
+    sourceFormat: "generated-revolved-shape";
+    revolvedShape: OcctJSGeneratedRevolvedShapeMetadata;
+    diagnostics?: OcctJSRevolvedShapeDiagnostic[];
 }
 
-export type OcctJSRevolvedToolBuildResult =
-    | OcctJSRevolvedToolBuildFailure
-    | OcctJSRevolvedToolBuildSuccess;
+export type OcctJSRevolvedShapeBuildResult =
+    | OcctJSRevolvedShapeBuildFailure
+    | OcctJSRevolvedShapeBuildSuccess;
 
-export interface OcctJSExactRevolvedToolOpenSuccess extends OcctJSExactOpenResult {
+export interface OcctJSExactRevolvedShapeOpenSuccess extends OcctJSExactOpenResult {
     success: true;
-    sourceFormat: "generated-revolved-tool";
+    sourceFormat: "generated-revolved-shape";
     exactModelId: number;
     exactGeometryBindings: OcctJSExactGeometryBinding[];
-    generatedTool: OcctJSGeneratedToolMetadata;
-    diagnostics?: OcctJSRevolvedToolDiagnostic[];
+    revolvedShape: OcctJSGeneratedRevolvedShapeMetadata;
+    diagnostics?: OcctJSRevolvedShapeDiagnostic[];
 }
 
-export type OcctJSExactRevolvedToolOpenResult =
-    | OcctJSRevolvedToolBuildFailure
-    | OcctJSExactRevolvedToolOpenSuccess;
+export type OcctJSExactRevolvedShapeOpenResult =
+    | OcctJSRevolvedShapeBuildFailure
+    | OcctJSExactRevolvedShapeOpenSuccess;
 
 export interface OcctJSReadParams {
     rootMode?: "one-shape" | "multiple-shapes";
@@ -571,9 +571,9 @@ export interface OcctJSModule {
     ReadStepFile(content: Uint8Array, params?: OcctJSReadParams): OcctJSResult;
     ReadIgesFile(content: Uint8Array, params?: OcctJSReadParams): OcctJSResult;
     ReadBrepFile(content: Uint8Array, params?: OcctJSReadParams): OcctJSResult;
-    ValidateRevolvedToolSpec(spec: OcctJSRevolvedToolSpec): OcctJSRevolvedToolValidationResult;
-    BuildRevolvedTool(spec: OcctJSRevolvedToolSpec, options?: OcctJSRevolvedToolBuildOptions): OcctJSRevolvedToolBuildResult;
-    OpenExactRevolvedTool(spec: OcctJSRevolvedToolSpec, options?: OcctJSRevolvedToolBuildOptions): OcctJSExactRevolvedToolOpenResult;
+    ValidateRevolvedShapeSpec(spec: OcctJSRevolvedShapeSpec): OcctJSRevolvedShapeValidationResult;
+    BuildRevolvedShape(spec: OcctJSRevolvedShapeSpec, options?: OcctJSRevolvedShapeBuildOptions): OcctJSRevolvedShapeBuildResult;
+    OpenExactRevolvedShape(spec: OcctJSRevolvedShapeSpec, options?: OcctJSRevolvedShapeBuildOptions): OcctJSExactRevolvedShapeOpenResult;
     OpenExactModel(format: string, content: Uint8Array, params?: OcctJSReadParams): OcctJSExactOpenResult;
     OpenExactStepModel(content: Uint8Array, params?: OcctJSReadParams): OcctJSExactOpenResult;
     OpenExactIgesModel(content: Uint8Array, params?: OcctJSReadParams): OcctJSExactOpenResult;

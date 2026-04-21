@@ -166,7 +166,7 @@ export function useOcct() {
 
   const validateGeneratedToolSpec = useCallback(async (spec) => {
     const occt = await ensureModule();
-    return occt.ValidateRevolvedToolSpec(spec);
+    return occt.ValidateRevolvedShapeSpec(spec);
   }, [ensureModule]);
 
   const buildGeneratedTool = useCallback(async ({
@@ -178,25 +178,25 @@ export function useOcct() {
     try {
       const occt = await ensureModule();
 
-      setLoadingMessage("Validating revolved tool...");
-      const validation = occt.ValidateRevolvedToolSpec(spec);
+      setLoadingMessage("Validating revolved shape...");
+      const validation = occt.ValidateRevolvedShapeSpec(spec);
       if (!validation?.ok) {
-        const error = new Error(validation?.diagnostics?.[0]?.message || "Revolved tool spec validation failed.");
+        const error = new Error(validation?.diagnostics?.[0]?.message || "Revolved shape spec validation failed.");
         error.diagnostics = validation?.diagnostics ?? [];
         throw error;
       }
 
-      setLoadingMessage("Generating revolved tool...");
-      const result = occt.BuildRevolvedTool(spec, options);
+      setLoadingMessage("Generating revolved shape...");
+      const result = occt.BuildRevolvedShape(spec, options);
       if (!result?.success) {
-        const error = new Error(result?.error || result?.diagnostics?.[0]?.message || "Generated tool build failed.");
+        const error = new Error(result?.error || result?.diagnostics?.[0]?.message || "Generated revolved shape build failed.");
         error.diagnostics = result?.diagnostics ?? [];
         error.result = result;
         throw error;
       }
 
       const normalizedResult = normalizeOcctResult(result, {
-        sourceFormat: "generated-revolved-tool",
+        sourceFormat: "generated-revolved-shape",
       });
 
       setModel(normalizedResult, label);

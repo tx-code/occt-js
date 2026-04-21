@@ -23,6 +23,12 @@ WebAssembly build of [OpenCASCADE Technology (OCCT)](https://dev.opencascade.org
 - `@tx-code/occt-babylon-*`, `demo/`, and `demo/src-tauri/`
   Optional secondary surfaces for Babylon and local app development. They are not required to consume the root Wasm runtime.
 
+## Revolved Shape Boundary
+
+The generated revolved-shape surface in `occt-js` is intentionally narrow. The root Wasm carrier accepts one normalized `RevolvedShapeSpec` and returns validation, build, or exact-open results. It does not own tool-library schemas, vendor adapters, or app-level tool semantics.
+
+The boundary contract is documented in [docs/specs/2026-04-21-revolved-shape-runtime-boundary-design.md](./docs/specs/2026-04-21-revolved-shape-runtime-boundary-design.md).
+
 ## Package Usage
 
 Install the packaged Wasm carrier:

@@ -131,7 +131,7 @@ function formatAngle(angleDeg) {
 }
 
 export function buildGeneratedToolLegend(model) {
-  const metadata = model?.generatedTool;
+  const metadata = model?.revolvedShape;
   if (!metadata || !Array.isArray(metadata.faceBindings) || metadata.faceBindings.length === 0) {
     return null;
   }

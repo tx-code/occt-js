@@ -71,6 +71,50 @@ function createCollinearFailureSpec() {
   };
 }
 
+function createCoplanarSplitTipSpec() {
+  return {
+    version: 1,
+    units: "mm",
+    profile: {
+      plane: "XZ",
+      start: [0, 0],
+      closure: "explicit",
+      segments: [
+        { kind: "line", id: "tip-a", tag: "tip", end: [2, 0] },
+        { kind: "line", id: "tip-b", tag: "tip", end: [4, 0] },
+        { kind: "line", id: "body", tag: "cutting", end: [4, 6] },
+        { kind: "line", id: "axis-top", tag: "closure", end: [0, 6] },
+        { kind: "line", id: "axis-bottom", tag: "closure", end: [0, 0] },
+      ],
+    },
+    revolve: {
+      angleDeg: 360,
+    },
+  };
+}
+
+function createCoplanarSplitSemanticSpec() {
+  return {
+    version: 1,
+    units: "mm",
+    profile: {
+      plane: "XZ",
+      start: [0, 0],
+      closure: "explicit",
+      segments: [
+        { kind: "line", id: "tip-flat", tag: "tip", end: [2, 0] },
+        { kind: "line", id: "corner-flat", tag: "corner", end: [4, 0] },
+        { kind: "line", id: "body", tag: "cutting", end: [4, 6] },
+        { kind: "line", id: "axis-top", tag: "closure", end: [0, 6] },
+        { kind: "line", id: "axis-bottom", tag: "closure", end: [0, 0] },
+      ],
+    },
+    revolve: {
+      angleDeg: 360,
+    },
+  };
+}
+
 function assertTypedDiagnostics(result) {
   assert.ok(Array.isArray(result?.diagnostics), "diagnostics should be an array");
   for (const diagnostic of result.diagnostics) {
@@ -84,7 +128,7 @@ function assertTypedDiagnostics(result) {
 function assertCanonicalGeneratedResult(result, label) {
   assert.ok(result && typeof result === "object", `${label}: result should be an object`);
   assert.equal(result.success, true, `${label}: success should be true`);
-  assert.equal(result.sourceFormat, "generated-revolved-tool", `${label}: sourceFormat should be canonical`);
+  assert.equal(result.sourceFormat, "generated-revolved-shape", `${label}: sourceFormat should be canonical`);
   assert.ok(Array.isArray(result.rootNodes), `${label}: rootNodes should be an array`);
   assert.ok(Array.isArray(result.geometries), `${label}: geometries should be an array`);
   assert.ok(Array.isArray(result.materials), `${label}: materials should be an array`);
@@ -191,7 +235,7 @@ function analyzeWeldedMeshTopology(geometry, tolerance = 1e-6) {
 
 function assertGeneratedToolShapeValidation(result, label) {
   const geometry = result.geometries[0];
-  const validation = result.generatedTool?.shapeValidation;
+  const validation = result.revolvedShape?.shapeValidation;
   assert.ok(validation && typeof validation === "object", `${label}: shapeValidation should be present`);
   assert.ok(validation.exact && typeof validation.exact === "object", `${label}: exact validation should be present`);
   assert.ok(validation.mesh && typeof validation.mesh === "object", `${label}: mesh validation should be present`);
@@ -238,9 +282,10 @@ function faceColorKeyMap(geometry) {
 function assertStableFaceBindings(result, spec, label) {
   const geometry = result.geometries[0];
   const faceIds = new Set((geometry.faces ?? []).map((face) => face.id));
-  const faceBindings = result.generatedTool?.faceBindings;
+  const faceBindings = result.revolvedShape?.faceBindings;
+  const boundFaces = new Set();
 
-  assert.equal(result.generatedTool.hasStableFaceBindings, true, `${label}: stable face bindings should be enabled`);
+  assert.equal(result.revolvedShape.hasStableFaceBindings, true, `${label}: stable face bindings should be enabled`);
   assert.ok(Array.isArray(faceBindings), `${label}: faceBindings should be an array`);
   assert.ok(faceBindings.length > 0, `${label}: faceBindings should not be empty`);
   assert.ok(
@@ -249,8 +294,11 @@ function assertStableFaceBindings(result, spec, label) {
   );
 
   for (const binding of faceBindings) {
-    assert.equal(binding.geometryIndex, 0, `${label}: generated tools currently bind against geometry 0`);
+    assert.equal(binding.geometryIndex, 0, `${label}: generated revolved shapes currently bind against geometry 0`);
     assert.ok(faceIds.has(binding.faceId), `${label}: faceId should exist in emitted geometry`);
+    const bindingKey = `${binding.geometryIndex}:${binding.faceId}`;
+    assert.equal(boundFaces.has(bindingKey), false, `${label}: each face should resolve to at most one stable binding`);
+    boundFaces.add(bindingKey);
     assert.ok(
       ["profile", "closure", "axis", "start_cap", "end_cap", "degenerated"].includes(binding.systemRole),
       `${label}: systemRole should be a supported runtime role`,
@@ -275,9 +323,9 @@ function assertStableFaceBindings(result, spec, label) {
   }
 }
 
-test("BuildRevolvedTool builds an endmill-like spec into a canonical generated scene payload", async () => {
+test("BuildRevolvedShape builds an endmill-like spec into a canonical generated scene payload", async () => {
   const module = await createModule();
-  const result = module.BuildRevolvedTool(createEndmillLikeSpec(), {});
+  const result = module.BuildRevolvedShape(createEndmillLikeSpec(), {});
 
   assertCanonicalGeneratedResult(result, "endmill-like full revolve");
   assert.ok(result.geometries.length > 0);
@@ -286,9 +334,9 @@ test("BuildRevolvedTool builds an endmill-like spec into a canonical generated s
   validateTopology(result.geometries[0], "endmill-like full revolve");
 });
 
-test("BuildRevolvedTool emits a welded-manifold mesh for the endmill-like full revolve", async () => {
+test("BuildRevolvedShape emits a welded-manifold mesh for the endmill-like full revolve", async () => {
   const module = await createModule();
-  const result = module.BuildRevolvedTool(createEndmillLikeSpec(), {});
+  const result = module.BuildRevolvedShape(createEndmillLikeSpec(), {});
 
   assertCanonicalGeneratedResult(result, "endmill-like welded manifold");
   const welded = analyzeWeldedMeshTopology(result.geometries[0]);
@@ -296,17 +344,17 @@ test("BuildRevolvedTool emits a welded-manifold mesh for the endmill-like full r
   assert.equal(welded.nonManifoldEdgeCount, 0, "endmill-like welded manifold: mesh should not expose non-manifold welded edges");
 });
 
-test("BuildRevolvedTool reports exact and mesh validation metadata for the full revolve", async () => {
+test("BuildRevolvedShape reports exact and mesh validation metadata for the full revolve", async () => {
   const module = await createModule();
-  const result = module.BuildRevolvedTool(createEndmillLikeSpec(), {});
+  const result = module.BuildRevolvedShape(createEndmillLikeSpec(), {});
 
   assertCanonicalGeneratedResult(result, "endmill-like validation metadata");
   assertGeneratedToolShapeValidation(result, "endmill-like validation metadata");
 });
 
-test("BuildRevolvedTool builds a drill-like partial revolve and keeps topology invariants intact", async () => {
+test("BuildRevolvedShape builds a drill-like partial revolve and keeps topology invariants intact", async () => {
   const module = await createModule();
-  const result = module.BuildRevolvedTool(createDrillLikePartialSpec(), {});
+  const result = module.BuildRevolvedShape(createDrillLikePartialSpec(), {});
 
   assertCanonicalGeneratedResult(result, "drill-like partial revolve");
   assert.ok(result.geometries.length === 1, "partial revolve should still emit one generated geometry");
@@ -316,74 +364,74 @@ test("BuildRevolvedTool builds a drill-like partial revolve and keeps topology i
   validateTopology(result.geometries[0], "drill-like partial revolve");
 });
 
-test("BuildRevolvedTool emits stable generatedTool face bindings with runtime roles", async () => {
+test("BuildRevolvedShape emits stable revolvedShape face bindings with runtime roles", async () => {
   const module = await createModule();
   const spec = createEndmillLikeSpec();
-  const result = module.BuildRevolvedTool(spec, {});
+  const result = module.BuildRevolvedShape(spec, {});
 
-  assertCanonicalGeneratedResult(result, "generatedTool metadata");
-  assert.ok(result.generatedTool && typeof result.generatedTool === "object");
-  assert.equal(result.generatedTool.version, 1);
-  assert.equal(result.generatedTool.units, spec.units);
-  assert.equal(result.generatedTool.plane, "XZ");
-  assert.equal(result.generatedTool.closure, spec.profile.closure);
-  assert.equal(result.generatedTool.angleDeg, 360);
-  assert.equal(result.generatedTool.segmentCount, spec.profile.segments.length);
-  assert.ok(Array.isArray(result.generatedTool.segments));
-  assert.equal(result.generatedTool.segments.length, spec.profile.segments.length);
-  assertStableFaceBindings(result, spec, "generatedTool metadata");
+  assertCanonicalGeneratedResult(result, "revolvedShape metadata");
+  assert.ok(result.revolvedShape && typeof result.revolvedShape === "object");
+  assert.equal(result.revolvedShape.version, 1);
+  assert.equal(result.revolvedShape.units, spec.units);
+  assert.equal(result.revolvedShape.plane, "XZ");
+  assert.equal(result.revolvedShape.closure, spec.profile.closure);
+  assert.equal(result.revolvedShape.angleDeg, 360);
+  assert.equal(result.revolvedShape.segmentCount, spec.profile.segments.length);
+  assert.ok(Array.isArray(result.revolvedShape.segments));
+  assert.equal(result.revolvedShape.segments.length, spec.profile.segments.length);
+  assertStableFaceBindings(result, spec, "revolvedShape metadata");
 
-  const roleSet = new Set(result.generatedTool.faceBindings.map((binding) => binding.systemRole));
-  assert.ok(roleSet.has("profile"), "generatedTool metadata: full revolve should expose profile bindings");
-  assert.ok(roleSet.has("closure"), "generatedTool metadata: full revolve should expose closure bindings");
+  const roleSet = new Set(result.revolvedShape.faceBindings.map((binding) => binding.systemRole));
+  assert.ok(roleSet.has("profile"), "revolvedShape metadata: full revolve should expose profile bindings");
+  assert.ok(roleSet.has("closure"), "revolvedShape metadata: full revolve should expose closure bindings");
   assert.ok(
-    result.generatedTool.faceBindings.some((binding) => binding.segmentId === "flank"),
-    "generatedTool metadata: segment bindings should preserve caller segment ids",
+    result.revolvedShape.faceBindings.some((binding) => binding.segmentId === "flank"),
+    "revolvedShape metadata: segment bindings should preserve caller segment ids",
   );
 
   const faceColors = faceColorKeyMap(result.geometries[0]);
   const closureKeys = new Set(
-    result.generatedTool.faceBindings
+    result.revolvedShape.faceBindings
       .filter((binding) => binding.systemRole === "closure")
       .map((binding) => faceColors.get(binding.faceId)),
   );
   const cuttingKeys = new Set(
-    result.generatedTool.faceBindings
+    result.revolvedShape.faceBindings
       .filter((binding) => binding.systemRole === "profile" && binding.segmentTag === "cutting")
       .map((binding) => faceColors.get(binding.faceId)),
   );
   const profileKeys = new Set(
-    result.generatedTool.faceBindings
+    result.revolvedShape.faceBindings
       .filter((binding) => binding.systemRole === "profile")
       .map((binding) => faceColors.get(binding.faceId)),
   );
 
-  assert.equal(closureKeys.size, 1, "generatedTool metadata: closure faces should collapse to one runtime-owned appearance");
-  assert.equal(cuttingKeys.size, 1, "generatedTool metadata: matching cutting tags should collapse to one appearance group");
-  assert.ok(profileKeys.size >= 2, "generatedTool metadata: different profile semantics should produce multiple appearances");
+  assert.equal(closureKeys.size, 1, "revolvedShape metadata: closure faces should collapse to one runtime-owned appearance");
+  assert.equal(cuttingKeys.size, 1, "revolvedShape metadata: matching cutting tags should collapse to one appearance group");
+  assert.ok(profileKeys.size >= 2, "revolvedShape metadata: different profile semantics should produce multiple appearances");
   assert.notEqual(
     [...closureKeys][0],
     [...cuttingKeys][0],
-    "generatedTool metadata: closure appearance should stay distinct from cutting profile appearance",
+    "revolvedShape metadata: closure appearance should stay distinct from cutting profile appearance",
   );
-  assert.ok(result.materials.length >= 4, "generatedTool metadata: materials should reflect grouped face appearances plus fallback geometry color");
+  assert.ok(result.materials.length >= 4, "revolvedShape metadata: materials should reflect grouped face appearances plus fallback geometry color");
 });
 
-test("BuildRevolvedTool reports runtime-owned cap bindings for partial revolves", async () => {
+test("BuildRevolvedShape reports runtime-owned cap bindings for partial revolves", async () => {
   const module = await createModule();
   const spec = createDrillLikePartialSpec();
-  const result = module.BuildRevolvedTool(spec, {});
+  const result = module.BuildRevolvedShape(spec, {});
 
   assertCanonicalGeneratedResult(result, "partial revolve face bindings");
   assertStableFaceBindings(result, spec, "partial revolve face bindings");
 
-  const roleSet = new Set(result.generatedTool.faceBindings.map((binding) => binding.systemRole));
+  const roleSet = new Set(result.revolvedShape.faceBindings.map((binding) => binding.systemRole));
   assert.ok(roleSet.has("profile"), "partial revolve face bindings: partial revolve should expose profile bindings");
   assert.ok(roleSet.has("closure"), "partial revolve face bindings: partial revolve should expose closure bindings");
   assert.ok(roleSet.has("start_cap"), "partial revolve face bindings: partial revolve should expose a start cap");
   assert.ok(roleSet.has("end_cap"), "partial revolve face bindings: partial revolve should expose an end cap");
   assert.ok(
-    result.generatedTool.faceBindings.some(
+    result.revolvedShape.faceBindings.some(
       (binding) => binding.systemRole === "start_cap" && binding.segmentIndex === undefined,
     ),
     "partial revolve face bindings: system-owned caps should not claim caller segment indices",
@@ -391,13 +439,13 @@ test("BuildRevolvedTool reports runtime-owned cap bindings for partial revolves"
 
   const faceColors = faceColorKeyMap(result.geometries[0]);
   const startCapKey = faceColors.get(
-    result.generatedTool.faceBindings.find((binding) => binding.systemRole === "start_cap").faceId,
+    result.revolvedShape.faceBindings.find((binding) => binding.systemRole === "start_cap").faceId,
   );
   const endCapKey = faceColors.get(
-    result.generatedTool.faceBindings.find((binding) => binding.systemRole === "end_cap").faceId,
+    result.revolvedShape.faceBindings.find((binding) => binding.systemRole === "end_cap").faceId,
   );
   const closureKey = faceColors.get(
-    result.generatedTool.faceBindings.find((binding) => binding.systemRole === "closure").faceId,
+    result.revolvedShape.faceBindings.find((binding) => binding.systemRole === "closure").faceId,
   );
 
   assert.ok(startCapKey, "partial revolve face bindings: start cap should carry a deterministic color");
@@ -406,18 +454,18 @@ test("BuildRevolvedTool reports runtime-owned cap bindings for partial revolves"
   assert.notEqual(startCapKey, closureKey, "partial revolve face bindings: cap appearance should stay distinct from closure appearance");
 });
 
-test("BuildRevolvedTool preserves caller-owned tip semantics for axis-touching segments", async () => {
+test("BuildRevolvedShape preserves caller-owned tip semantics for axis-touching segments", async () => {
   const module = await createModule();
-  const result = module.BuildRevolvedTool(createEndmillLikeSpec(), {});
+  const result = module.BuildRevolvedShape(createEndmillLikeSpec(), {});
 
   assertCanonicalGeneratedResult(result, "axis-touching tip semantics");
 
-  const tipBinding = result.generatedTool.faceBindings.find((binding) => binding.segmentId === "tip-axis");
+  const tipBinding = result.revolvedShape.faceBindings.find((binding) => binding.segmentId === "tip-axis");
   assert.ok(tipBinding, "axis-touching tip semantics: the tip segment should still bind to a face");
   assert.equal(tipBinding.systemRole, "profile", "axis-touching tip semantics: caller tip segments should stay in the profile lane");
   assert.equal(tipBinding.segmentTag, "tip", "axis-touching tip semantics: the tip tag should be preserved");
 
-  const closureBindings = result.generatedTool.faceBindings.filter((binding) => binding.systemRole === "closure");
+  const closureBindings = result.revolvedShape.faceBindings.filter((binding) => binding.systemRole === "closure");
   assert.equal(
     closureBindings.some((binding) => binding.segmentId === "tip-axis"),
     false,
@@ -425,20 +473,71 @@ test("BuildRevolvedTool preserves caller-owned tip semantics for axis-touching s
   );
 });
 
-test("BuildRevolvedTool reports exact and mesh validation metadata for the partial revolve", async () => {
+test("BuildRevolvedShape preserves segment provenance for adjacent coplanar annulus faces", async () => {
   const module = await createModule();
-  const result = module.BuildRevolvedTool(createDrillLikePartialSpec(), {});
+  const spec = createCoplanarSplitTipSpec();
+  const result = module.BuildRevolvedShape(spec, {});
+
+  assertCanonicalGeneratedResult(result, "coplanar annulus provenance");
+  assertStableFaceBindings(result, spec, "coplanar annulus provenance");
+
+  const tipBindings = result.revolvedShape.faceBindings
+    .filter((binding) => binding.systemRole === "profile" && binding.segmentTag === "tip")
+    .map((binding) => binding.segmentId)
+    .sort();
+  assert.deepEqual(
+    tipBindings,
+    ["tip-a", "tip-b"],
+    "coplanar annulus provenance: adjacent planar tip segments should keep their original segment ids",
+  );
+});
+
+test("BuildRevolvedShape keeps adjacent coplanar planar semantics color-separated", async () => {
+  const module = await createModule();
+  const spec = createCoplanarSplitSemanticSpec();
+  const result = module.BuildRevolvedShape(spec, {});
+
+  assertCanonicalGeneratedResult(result, "coplanar planar semantic separation");
+  assertStableFaceBindings(result, spec, "coplanar planar semantic separation");
+
+  const genericProfileBindings = result.revolvedShape.faceBindings.filter(
+    (binding) => binding.systemRole === "profile" && binding.segmentIndex === undefined,
+  );
+  assert.equal(
+    genericProfileBindings.length,
+    0,
+    "coplanar planar semantic separation: profile faces should not collapse into runtime-owned generic bindings",
+  );
+
+  const tipBinding = result.revolvedShape.faceBindings.find((binding) => binding.segmentId === "tip-flat");
+  const cornerBinding = result.revolvedShape.faceBindings.find((binding) => binding.segmentId === "corner-flat");
+  assert.ok(tipBinding, "coplanar planar semantic separation: tip-flat should keep a face binding");
+  assert.ok(cornerBinding, "coplanar planar semantic separation: corner-flat should keep a face binding");
+  assert.equal(tipBinding.segmentTag, "tip");
+  assert.equal(cornerBinding.segmentTag, "corner");
+
+  const faceColors = faceColorKeyMap(result.geometries[0]);
+  assert.notEqual(
+    faceColors.get(tipBinding.faceId),
+    faceColors.get(cornerBinding.faceId),
+    "coplanar planar semantic separation: distinct planar semantics should retain distinct colors",
+  );
+});
+
+test("BuildRevolvedShape reports exact and mesh validation metadata for the partial revolve", async () => {
+  const module = await createModule();
+  const result = module.BuildRevolvedShape(createDrillLikePartialSpec(), {});
 
   assertCanonicalGeneratedResult(result, "partial revolve validation metadata");
   assertGeneratedToolShapeValidation(result, "partial revolve validation metadata");
 });
 
-test("BuildRevolvedTool preserves explicit diagnostics for validation-passing specs that OCCT cannot build", async () => {
+test("BuildRevolvedShape preserves explicit diagnostics for validation-passing specs that OCCT cannot build", async () => {
   const module = await createModule();
-  const result = module.BuildRevolvedTool(createCollinearFailureSpec(), {});
+  const result = module.BuildRevolvedShape(createCollinearFailureSpec(), {});
 
   assert.equal(result?.success, false);
-  assert.equal(result?.sourceFormat, "generated-revolved-tool");
+  assert.equal(result?.sourceFormat, "generated-revolved-shape");
   assert.equal(typeof result?.error, "string");
   assert.ok(result.error.length > 0);
   assertTypedDiagnostics(result);

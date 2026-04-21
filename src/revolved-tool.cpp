@@ -6,6 +6,8 @@
 #include <BRepBuilderAPI_MakeEdge.hxx>
 #include <BRepBuilderAPI_MakeFace.hxx>
 #include <BRepBuilderAPI_MakeWire.hxx>
+#include <BRepAdaptor_Curve.hxx>
+#include <BRepClass_FaceClassifier.hxx>
 #include <BRepAdaptor_Surface.hxx>
 #include <BRepPrimAPI_MakeRevol.hxx>
 #include <BRep_Tool.hxx>
@@ -28,9 +30,14 @@
 #include <TopoDS_Wire.hxx>
 #include <gp_Ax1.hxx>
 #include <gp_Ax2.hxx>
+#include <gp_Cone.hxx>
 #include <gp_Circ.hxx>
+#include <gp_Cylinder.hxx>
 #include <gp_Dir.hxx>
 #include <gp_Pnt.hxx>
+#include <gp_Pln.hxx>
+#include <gp_Sphere.hxx>
+#include <gp_Torus.hxx>
 
 #include <algorithm>
 #include <array>
@@ -48,6 +55,38 @@ namespace {
 constexpr double kPointTolerance = 1e-9;
 constexpr double kPi = 3.14159265358979323846;
 
+enum class RevolvedFaceSupportKind {
+    None,
+    Plane,
+    Cylinder,
+    Cone,
+    Sphere,
+    Torus,
+    Other
+};
+
+struct RevolvedFaceSupport {
+    RevolvedFaceSupportKind kind = RevolvedFaceSupportKind::None;
+    bool generatesFace = false;
+    double zValue = 0.0;
+    double zMin = 0.0;
+    double zMax = 0.0;
+    double radialMin = 0.0;
+    double radialMax = 0.0;
+    double radius = 0.0;
+    double centerZ = 0.0;
+    double majorRadius = 0.0;
+    double minorRadius = 0.0;
+    double apexZ = 0.0;
+};
+
+struct RevolvedFaceDescriptor {
+    int faceId = 0;
+    RevolvedFaceSupport support;
+    bool isHorizontalPlane = false;
+    bool isCapPlane = false;
+};
+
 struct RevolvedProfileEdgeSource {
     TopoDS_Edge edge;
     std::string systemRole;
@@ -59,6 +98,7 @@ struct RevolvedProfileEdgeSource {
     bool hasSegmentId = false;
     std::string segmentTag;
     bool hasSegmentTag = false;
+    RevolvedFaceSupport faceSupport;
 };
 
 struct RevolvedProfileWireBuild {
@@ -482,7 +522,7 @@ void ParseVersion(const val& jsSpec, OcctRevolvedToolValidationResult& result)
 
     const double version = jsVersion.as<double>();
     if (!std::isfinite(version) || std::floor(version) != version || static_cast<int>(version) != 1) {
-        AddDiagnostic(result, "unsupported-version", "Only revolved tool spec version 1 is supported.", "version");
+        AddDiagnostic(result, "unsupported-version", "Only revolved shape spec version 1 is supported.", "version");
         return;
     }
 
@@ -513,6 +553,472 @@ void ParseRevolve(const val& jsSpec, OcctRevolvedToolValidationResult& result)
     result.spec.angleDeg = angleDeg;
     if (!std::isfinite(angleDeg) || angleDeg <= 0.0 || angleDeg > 360.0) {
         AddDiagnostic(result, "invalid-revolve-angle", "Revolve angle must be > 0 and <= 360 degrees.", "revolve.angleDeg");
+    }
+}
+
+double ProfileRadius(const gp_Pnt& point)
+{
+    return std::sqrt((point.X() * point.X()) + (point.Y() * point.Y()));
+}
+
+double ScaledTolerance(double left, double right, double multiplier = 1e-6, double floor = 1e-6)
+{
+    return std::max({ floor, std::abs(left) * multiplier, std::abs(right) * multiplier });
+}
+
+bool NearlyEqual(double left, double right, double multiplier = 1e-6, double floor = 1e-6)
+{
+    return std::abs(left - right) <= ScaledTolerance(left, right, multiplier, floor);
+}
+
+double NormalizeAnglePositive(double angle)
+{
+    angle = std::fmod(angle, 2.0 * kPi);
+    if (angle < 0.0) {
+        angle += 2.0 * kPi;
+    }
+    return angle;
+}
+
+double PositiveAngularDistance(double start, double end)
+{
+    return NormalizeAnglePositive(end - start);
+}
+
+bool AngleLiesOnArcSweep(double startAngle, double throughAngle, double endAngle, double testAngle)
+{
+    const double ccwSpan = PositiveAngularDistance(startAngle, endAngle);
+    const double ccwThrough = PositiveAngularDistance(startAngle, throughAngle);
+    const bool isCcw = ccwThrough <= (ccwSpan + 1e-9);
+
+    if (isCcw) {
+        return PositiveAngularDistance(startAngle, testAngle) <= (ccwSpan + 1e-9);
+    }
+
+    return PositiveAngularDistance(testAngle, startAngle) <= (PositiveAngularDistance(endAngle, startAngle) + 1e-9);
+}
+
+bool TryComputeCircleFromThreePoints(
+    const std::array<double, 2>& pointA,
+    const std::array<double, 2>& pointB,
+    const std::array<double, 2>& pointC,
+    std::array<double, 2>& center,
+    double& radius)
+{
+    const double ax = pointA[0];
+    const double az = pointA[1];
+    const double bx = pointB[0];
+    const double bz = pointB[1];
+    const double cx = pointC[0];
+    const double cz = pointC[1];
+
+    const double determinant = 2.0 * ((ax * (bz - cz)) + (bx * (cz - az)) + (cx * (az - bz)));
+    if (std::abs(determinant) <= kPointTolerance) {
+        return false;
+    }
+
+    const double aSquared = (ax * ax) + (az * az);
+    const double bSquared = (bx * bx) + (bz * bz);
+    const double cSquared = (cx * cx) + (cz * cz);
+
+    center[0] = ((aSquared * (bz - cz)) + (bSquared * (cz - az)) + (cSquared * (az - bz))) / determinant;
+    center[1] = ((aSquared * (cx - bx)) + (bSquared * (ax - cx)) + (cSquared * (bx - ax))) / determinant;
+    radius = std::sqrt(SquaredDistance(pointA, center));
+    return std::isfinite(radius) && radius > kPointTolerance;
+}
+
+void IncludeProfilePointInSupport(RevolvedFaceSupport& support, const std::array<double, 2>& point, bool& hasBounds)
+{
+    const double radial = std::max(0.0, point[0]);
+    const double z = point[1];
+    if (!hasBounds) {
+        support.radialMin = radial;
+        support.radialMax = radial;
+        support.zMin = z;
+        support.zMax = z;
+        hasBounds = true;
+        return;
+    }
+
+    support.radialMin = std::min(support.radialMin, radial);
+    support.radialMax = std::max(support.radialMax, radial);
+    support.zMin = std::min(support.zMin, z);
+    support.zMax = std::max(support.zMax, z);
+}
+
+RevolvedFaceSupport BuildLineFaceSupport(const std::array<double, 2>& start, const std::array<double, 2>& end)
+{
+    RevolvedFaceSupport support;
+    const double startRadius = start[0];
+    const double endRadius = end[0];
+    const double startZ = start[1];
+    const double endZ = end[1];
+
+    if (std::abs(startZ - endZ) <= kPointTolerance) {
+        if (std::max(startRadius, endRadius) <= kPointTolerance) {
+            return support;
+        }
+        support.kind = RevolvedFaceSupportKind::Plane;
+        support.generatesFace = true;
+        support.zValue = startZ;
+        support.radialMin = std::max(0.0, std::min(startRadius, endRadius));
+        support.radialMax = std::max(startRadius, endRadius);
+        support.zMin = startZ;
+        support.zMax = startZ;
+        return support;
+    }
+
+    if (std::abs(startRadius - endRadius) <= kPointTolerance) {
+        if (std::max(startRadius, endRadius) <= kPointTolerance) {
+            return support;
+        }
+        support.kind = RevolvedFaceSupportKind::Cylinder;
+        support.generatesFace = true;
+        support.radius = std::max(startRadius, endRadius);
+        support.radialMin = support.radius;
+        support.radialMax = support.radius;
+        support.zMin = std::min(startZ, endZ);
+        support.zMax = std::max(startZ, endZ);
+        return support;
+    }
+
+    support.kind = RevolvedFaceSupportKind::Cone;
+    support.generatesFace = true;
+    support.radialMin = std::max(0.0, std::min(startRadius, endRadius));
+    support.radialMax = std::max(startRadius, endRadius);
+    support.zMin = std::min(startZ, endZ);
+    support.zMax = std::max(startZ, endZ);
+    support.apexZ = startZ - (startRadius * (endZ - startZ) / (endRadius - startRadius));
+    return support;
+}
+
+RevolvedFaceSupport BuildArcFaceSupport(
+    const std::array<double, 2>& start,
+    const OcctRevolvedToolSegment& segment)
+{
+    RevolvedFaceSupport support;
+    std::array<double, 2> center = { 0.0, 0.0 };
+    double radius = 0.0;
+    double startAngle = 0.0;
+    double throughAngle = 0.0;
+    double endAngle = 0.0;
+
+    if (segment.kind == "arc_center") {
+        center = segment.center;
+        radius = std::sqrt(SquaredDistance(start, center));
+        startAngle = std::atan2(start[1] - center[1], start[0] - center[0]);
+        endAngle = std::atan2(segment.end[1] - center[1], segment.end[0] - center[0]);
+
+        double delta = std::remainder(endAngle - startAngle, 2.0 * kPi);
+        const double cross2d =
+            (start[0] - center[0]) * (segment.end[1] - center[1]) -
+            (start[1] - center[1]) * (segment.end[0] - center[0]);
+
+        if (std::abs(std::abs(delta) - kPi) <= 1e-12) {
+            delta = cross2d >= 0.0 ? kPi : -kPi;
+        } else if (cross2d > 0.0 && delta < 0.0) {
+            delta += 2.0 * kPi;
+        } else if (cross2d < 0.0 && delta > 0.0) {
+            delta -= 2.0 * kPi;
+        }
+        throughAngle = startAngle + (delta * 0.5);
+    } else if (segment.kind == "arc_3pt") {
+        if (!TryComputeCircleFromThreePoints(start, segment.through, segment.end, center, radius)) {
+            return support;
+        }
+        startAngle = std::atan2(start[1] - center[1], start[0] - center[0]);
+        throughAngle = std::atan2(segment.through[1] - center[1], segment.through[0] - center[0]);
+        endAngle = std::atan2(segment.end[1] - center[1], segment.end[0] - center[0]);
+    } else {
+        return support;
+    }
+
+    support.generatesFace = true;
+    if (std::abs(center[0]) <= kPointTolerance) {
+        support.kind = RevolvedFaceSupportKind::Sphere;
+        support.radius = radius;
+        support.centerZ = center[1];
+    } else {
+        support.kind = RevolvedFaceSupportKind::Torus;
+        support.majorRadius = center[0];
+        support.minorRadius = radius;
+        support.centerZ = center[1];
+    }
+
+    bool hasBounds = false;
+    const std::array<double, 4> cardinalAngles = { 0.0, 0.5 * kPi, kPi, 1.5 * kPi };
+    auto includeAngle = [&](double angle) {
+        const std::array<double, 2> point = {
+            center[0] + (radius * std::cos(angle)),
+            center[1] + (radius * std::sin(angle))
+        };
+        IncludeProfilePointInSupport(support, point, hasBounds);
+    };
+
+    includeAngle(startAngle);
+    includeAngle(endAngle);
+    for (double angle : cardinalAngles) {
+        if (AngleLiesOnArcSweep(startAngle, throughAngle, endAngle, angle)) {
+            includeAngle(angle);
+        }
+    }
+
+    return support;
+}
+
+RevolvedFaceSupport BuildExpectedFaceSupport(
+    const std::array<double, 2>& start,
+    const std::array<double, 2>& end,
+    const OcctRevolvedToolSegment* segment = nullptr)
+{
+    if (segment == nullptr || segment->kind == "line") {
+        return BuildLineFaceSupport(start, end);
+    }
+
+    return BuildArcFaceSupport(start, *segment);
+}
+
+void AppendProfileSample(std::vector<std::array<double, 2>>& samples, const gp_Pnt& point)
+{
+    samples.push_back({ std::max(0.0, ProfileRadius(point)), point.Z() });
+}
+
+std::vector<std::array<double, 2>> CollectFaceBoundaryProfileSamples(const TopoDS_Face& face)
+{
+    std::vector<std::array<double, 2>> samples;
+
+    for (TopExp_Explorer explorer(face, TopAbs_VERTEX); explorer.More(); explorer.Next()) {
+        AppendProfileSample(samples, BRep_Tool::Pnt(TopoDS::Vertex(explorer.Current())));
+    }
+
+    for (TopExp_Explorer explorer(face, TopAbs_EDGE); explorer.More(); explorer.Next()) {
+        const TopoDS_Edge edge = TopoDS::Edge(explorer.Current());
+        if (edge.IsNull() || BRep_Tool::Degenerated(edge)) {
+            continue;
+        }
+
+        BRepAdaptor_Curve curve(edge);
+        const double first = curve.FirstParameter();
+        const double last = curve.LastParameter();
+        if (!std::isfinite(first) || !std::isfinite(last)) {
+            continue;
+        }
+
+        AppendProfileSample(samples, curve.Value(first));
+        AppendProfileSample(samples, curve.Value(0.5 * (first + last)));
+        AppendProfileSample(samples, curve.Value(last));
+    }
+
+    return samples;
+}
+
+void ApplyProfileBoundsToSupport(const std::vector<std::array<double, 2>>& samples, RevolvedFaceSupport& support)
+{
+    bool hasBounds = false;
+    for (const auto& sample : samples) {
+        IncludeProfilePointInSupport(support, sample, hasBounds);
+    }
+}
+
+bool FaceContainsAxisPoint(const TopoDS_Face& face, double zValue)
+{
+    const BRepClass_FaceClassifier classifier(face, gp_Pnt(0.0, 0.0, zValue), 1e-7);
+    const TopAbs_State state = classifier.State();
+    return state == TopAbs_IN || state == TopAbs_ON;
+}
+
+RevolvedFaceDescriptor DescribeRevolvedFace(const TopoDS_Face& face, int faceId)
+{
+    RevolvedFaceDescriptor descriptor;
+    descriptor.faceId = faceId;
+
+    BRepAdaptor_Surface surface(face, false);
+    const GeomAbs_SurfaceType surfaceType = surface.GetType();
+    std::vector<std::array<double, 2>> samples = CollectFaceBoundaryProfileSamples(face);
+
+    if (surfaceType != GeomAbs_Plane) {
+        double uFirst = 0.0;
+        double uLast = 0.0;
+        double vFirst = 0.0;
+        double vLast = 0.0;
+        BRepTools::UVBounds(face, uFirst, uLast, vFirst, vLast);
+        for (double uFactor : { 0.0, 0.5, 1.0 }) {
+            for (double vFactor : { 0.0, 0.5, 1.0 }) {
+                AppendProfileSample(
+                    samples,
+                    surface.Value(
+                        uFirst + ((uLast - uFirst) * uFactor),
+                        vFirst + ((vLast - vFirst) * vFactor)));
+            }
+        }
+    }
+
+    switch (surfaceType) {
+        case GeomAbs_Plane: {
+            const gp_Pln plane = surface.Plane();
+            const gp_Dir normal = plane.Axis().Direction();
+            descriptor.isHorizontalPlane = std::abs(std::abs(normal.Z()) - 1.0) <= 1e-6;
+            descriptor.isCapPlane = !descriptor.isHorizontalPlane;
+            if (!descriptor.isHorizontalPlane) {
+                descriptor.support.kind = RevolvedFaceSupportKind::Other;
+                break;
+            }
+
+            descriptor.support.kind = RevolvedFaceSupportKind::Plane;
+            descriptor.support.generatesFace = true;
+            descriptor.support.zValue = plane.Location().Z();
+            ApplyProfileBoundsToSupport(samples, descriptor.support);
+            if (FaceContainsAxisPoint(face, descriptor.support.zValue)) {
+                descriptor.support.radialMin = 0.0;
+            }
+            descriptor.support.zMin = descriptor.support.zValue;
+            descriptor.support.zMax = descriptor.support.zValue;
+            break;
+        }
+        case GeomAbs_Cylinder: {
+            const gp_Cylinder cylinder = surface.Cylinder();
+            if (std::abs(std::abs(cylinder.Axis().Direction().Z()) - 1.0) > 1e-6) {
+                descriptor.support.kind = RevolvedFaceSupportKind::Other;
+                break;
+            }
+
+            descriptor.support.kind = RevolvedFaceSupportKind::Cylinder;
+            descriptor.support.generatesFace = true;
+            descriptor.support.radius = cylinder.Radius();
+            ApplyProfileBoundsToSupport(samples, descriptor.support);
+            break;
+        }
+        case GeomAbs_Cone: {
+            const gp_Cone cone = surface.Cone();
+            if (std::abs(std::abs(cone.Axis().Direction().Z()) - 1.0) > 1e-6) {
+                descriptor.support.kind = RevolvedFaceSupportKind::Other;
+                break;
+            }
+
+            descriptor.support.kind = RevolvedFaceSupportKind::Cone;
+            descriptor.support.generatesFace = true;
+            descriptor.support.apexZ = cone.Apex().Z();
+            ApplyProfileBoundsToSupport(samples, descriptor.support);
+            break;
+        }
+        case GeomAbs_Sphere: {
+            const gp_Sphere sphere = surface.Sphere();
+            descriptor.support.kind = RevolvedFaceSupportKind::Sphere;
+            descriptor.support.generatesFace = true;
+            descriptor.support.radius = sphere.Radius();
+            descriptor.support.centerZ = sphere.Location().Z();
+            ApplyProfileBoundsToSupport(samples, descriptor.support);
+            break;
+        }
+        case GeomAbs_Torus: {
+            const gp_Torus torus = surface.Torus();
+            if (std::abs(std::abs(torus.Axis().Direction().Z()) - 1.0) > 1e-6) {
+                descriptor.support.kind = RevolvedFaceSupportKind::Other;
+                break;
+            }
+
+            descriptor.support.kind = RevolvedFaceSupportKind::Torus;
+            descriptor.support.generatesFace = true;
+            descriptor.support.majorRadius = torus.MajorRadius();
+            descriptor.support.minorRadius = torus.MinorRadius();
+            descriptor.support.centerZ = torus.Location().Z();
+            ApplyProfileBoundsToSupport(samples, descriptor.support);
+            break;
+        }
+        default:
+            descriptor.support.kind = RevolvedFaceSupportKind::Other;
+            break;
+    }
+
+    return descriptor;
+}
+
+bool RangeCovers(double outerMin, double outerMax, double innerMin, double innerMax)
+{
+    const double minTolerance = ScaledTolerance(outerMin, innerMin);
+    const double maxTolerance = ScaledTolerance(outerMax, innerMax);
+    return outerMin <= (innerMin + minTolerance) && outerMax >= (innerMax - maxTolerance);
+}
+
+double CoverageScore(double outerMin, double outerMax, double innerMin, double innerMax)
+{
+    return std::abs(outerMin - innerMin) + std::abs(outerMax - innerMax);
+}
+
+bool TryMatchSourceToFace(
+    const RevolvedProfileEdgeSource& source,
+    const RevolvedFaceDescriptor& face,
+    double& score)
+{
+    score = 0.0;
+    if (!source.faceSupport.generatesFace || !face.support.generatesFace) {
+        return false;
+    }
+
+    if (source.faceSupport.kind != face.support.kind) {
+        return false;
+    }
+
+    switch (source.faceSupport.kind) {
+        case RevolvedFaceSupportKind::Plane:
+            if (!face.isHorizontalPlane
+                || !NearlyEqual(face.support.zValue, source.faceSupport.zValue)
+                || !RangeCovers(face.support.radialMin, face.support.radialMax, source.faceSupport.radialMin, source.faceSupport.radialMax)) {
+                return false;
+            }
+            score = CoverageScore(
+                face.support.radialMin,
+                face.support.radialMax,
+                source.faceSupport.radialMin,
+                source.faceSupport.radialMax);
+            return true;
+
+        case RevolvedFaceSupportKind::Cylinder:
+            if (!NearlyEqual(face.support.radius, source.faceSupport.radius)
+                || !RangeCovers(face.support.zMin, face.support.zMax, source.faceSupport.zMin, source.faceSupport.zMax)) {
+                return false;
+            }
+            score = CoverageScore(face.support.zMin, face.support.zMax, source.faceSupport.zMin, source.faceSupport.zMax);
+            return true;
+
+        case RevolvedFaceSupportKind::Cone:
+            if (!NearlyEqual(face.support.apexZ, source.faceSupport.apexZ)
+                || !RangeCovers(face.support.zMin, face.support.zMax, source.faceSupport.zMin, source.faceSupport.zMax)
+                || !RangeCovers(face.support.radialMin, face.support.radialMax, source.faceSupport.radialMin, source.faceSupport.radialMax)) {
+                return false;
+            }
+            score =
+                CoverageScore(face.support.zMin, face.support.zMax, source.faceSupport.zMin, source.faceSupport.zMax) +
+                CoverageScore(face.support.radialMin, face.support.radialMax, source.faceSupport.radialMin, source.faceSupport.radialMax);
+            return true;
+
+        case RevolvedFaceSupportKind::Sphere:
+            if (!NearlyEqual(face.support.radius, source.faceSupport.radius)
+                || !NearlyEqual(face.support.centerZ, source.faceSupport.centerZ)
+                || !RangeCovers(face.support.zMin, face.support.zMax, source.faceSupport.zMin, source.faceSupport.zMax)
+                || !RangeCovers(face.support.radialMin, face.support.radialMax, source.faceSupport.radialMin, source.faceSupport.radialMax)) {
+                return false;
+            }
+            score =
+                CoverageScore(face.support.zMin, face.support.zMax, source.faceSupport.zMin, source.faceSupport.zMax) +
+                CoverageScore(face.support.radialMin, face.support.radialMax, source.faceSupport.radialMin, source.faceSupport.radialMax);
+            return true;
+
+        case RevolvedFaceSupportKind::Torus:
+            if (!NearlyEqual(face.support.majorRadius, source.faceSupport.majorRadius)
+                || !NearlyEqual(face.support.minorRadius, source.faceSupport.minorRadius)
+                || !NearlyEqual(face.support.centerZ, source.faceSupport.centerZ)
+                || !RangeCovers(face.support.zMin, face.support.zMax, source.faceSupport.zMin, source.faceSupport.zMax)
+                || !RangeCovers(face.support.radialMin, face.support.radialMax, source.faceSupport.radialMin, source.faceSupport.radialMax)) {
+                return false;
+            }
+            score =
+                CoverageScore(face.support.zMin, face.support.zMax, source.faceSupport.zMin, source.faceSupport.zMax) +
+                CoverageScore(face.support.radialMin, face.support.radialMax, source.faceSupport.radialMin, source.faceSupport.radialMax);
+            return true;
+
+        default:
+            return false;
     }
 }
 
@@ -598,7 +1104,7 @@ OcctColor ResolveProfileAppearanceColor(const OcctGeneratedToolFaceBinding& bind
         return HashedProfileColor("segment:" + std::to_string(binding.segmentIndex));
     }
 
-    return HashedProfileColor("profile");
+    return MakeSemanticColor(0.63, 0.66, 0.71);
 }
 
 OcctColor ResolveGeneratedFaceColor(const OcctGeneratedToolFaceBinding& binding)
@@ -807,6 +1313,7 @@ bool TryAppendTrackedEdge(
     source.systemRole = systemRole;
     source.start = start;
     source.end = end;
+    source.faceSupport = BuildExpectedFaceSupport(start, end, segment);
     if (segment != nullptr && segmentIndex >= 0) {
         source.segmentIndex = segmentIndex;
         source.hasSegmentIndex = true;
@@ -967,31 +1474,6 @@ bool FaceBindingMatches(
         && binding.segmentTag == candidate.segmentTag;
 }
 
-bool FaceBindingMatchesSource(
-    const OcctGeneratedToolFaceBinding& binding,
-    const RevolvedProfileEdgeSource& source)
-{
-    return binding.systemRole == source.systemRole
-        && binding.hasSegmentIndex == source.hasSegmentIndex
-        && binding.segmentIndex == source.segmentIndex
-        && binding.hasSegmentId == source.hasSegmentId
-        && binding.segmentId == source.segmentId
-        && binding.hasSegmentTag == source.hasSegmentTag
-        && binding.segmentTag == source.segmentTag;
-}
-
-bool HasFaceBindingForSource(
-    const std::vector<OcctGeneratedToolFaceBinding>& bindings,
-    const RevolvedProfileEdgeSource& source)
-{
-    return std::any_of(
-        bindings.begin(),
-        bindings.end(),
-        [&](const OcctGeneratedToolFaceBinding& binding) {
-            return FaceBindingMatchesSource(binding, source);
-        });
-}
-
 void TryAppendFaceBinding(
     std::vector<OcctGeneratedToolFaceBinding>& bindings,
     int geometryIndex,
@@ -1031,55 +1513,85 @@ void TryAppendFaceBinding(
     }
 }
 
-void AppendGeneratedFaceBindings(
-    std::vector<OcctGeneratedToolFaceBinding>& bindings,
+struct ResolvedFaceBindingCandidate {
+    const RevolvedProfileEdgeSource* source = nullptr;
+    double score = 0.0;
+    bool hinted = false;
+};
+
+std::vector<int> CollectGeneratedFaceIds(
     const TopTools_ListOfShape& generatedShapes,
-    const TopTools_IndexedMapOfShape& faceMap,
-    const std::string& systemRole,
-    const RevolvedProfileEdgeSource* source = nullptr)
+    const TopTools_IndexedMapOfShape& faceMap)
 {
+    std::vector<int> faceIds;
     for (TopTools_ListIteratorOfListOfShape it(generatedShapes); it.More(); it.Next()) {
-        TryAppendFaceBinding(bindings, 0, FindFaceId(it.Value(), faceMap), systemRole, source);
+        const int faceId = FindFaceId(it.Value(), faceMap);
+        if (faceId > 0
+            && std::find(faceIds.begin(), faceIds.end(), faceId) == faceIds.end()) {
+            faceIds.push_back(faceId);
+        }
     }
+    return faceIds;
 }
 
-void AppendAxisTouchingPlaneFallbackBinding(
-    std::vector<OcctGeneratedToolFaceBinding>& bindings,
-    const TopTools_IndexedMapOfShape& faceMap,
-    const RevolvedProfileEdgeSource& source)
+bool FaceIdCollectionContains(const std::vector<int>& faceIds, int faceId)
 {
-    if ((!IsAxisPoint(source.start) && !IsAxisPoint(source.end))
-        || std::abs(source.start[1] - source.end[1]) > kPointTolerance
-        || HasFaceBindingForSource(bindings, source)) {
-        return;
+    return std::find(faceIds.begin(), faceIds.end(), faceId) != faceIds.end();
+}
+
+OcctGeneratedToolFaceBinding BuildCollapsedFaceBinding(
+    int geometryIndex,
+    int faceId,
+    const std::vector<const RevolvedProfileEdgeSource*>& sources)
+{
+    OcctGeneratedToolFaceBinding binding;
+    binding.geometryIndex = geometryIndex;
+    binding.faceId = faceId;
+    if (sources.empty()) {
+        binding.systemRole = "profile";
+        return binding;
     }
 
-    const double targetZ = source.start[1];
-    for (int faceId = 1; faceId <= faceMap.Extent(); ++faceId) {
-        const TopoDS_Face candidateFace = TopoDS::Face(faceMap(faceId));
-        BRepAdaptor_Surface surface(candidateFace, false);
-        if (surface.GetType() != GeomAbs_Plane) {
-            continue;
-        }
+    const RevolvedProfileEdgeSource& first = *sources.front();
+    const bool sameRole = std::all_of(
+        sources.begin(),
+        sources.end(),
+        [&](const RevolvedProfileEdgeSource* source) {
+            return source != nullptr && source->systemRole == first.systemRole;
+        });
+    binding.systemRole = sameRole ? first.systemRole : "profile";
 
-        const gp_Pln plane = surface.Plane();
-        const gp_Dir normal = plane.Axis().Direction();
-        if (std::abs(std::abs(normal.Z()) - 1.0) > 1e-6) {
-            continue;
+    if (sources.size() == 1) {
+        const RevolvedProfileEdgeSource& only = *sources.front();
+        if (only.hasSegmentIndex) {
+            binding.segmentIndex = only.segmentIndex;
+            binding.hasSegmentIndex = true;
         }
-
-        double uFirst = 0.0;
-        double uLast = 0.0;
-        double vFirst = 0.0;
-        double vLast = 0.0;
-        BRepTools::UVBounds(candidateFace, uFirst, uLast, vFirst, vLast);
-        const gp_Pnt samplePoint = surface.Value(0.5 * (uFirst + uLast), 0.5 * (vFirst + vLast));
-        if (std::abs(samplePoint.Z() - targetZ) > 1e-6) {
-            continue;
+        if (only.hasSegmentId) {
+            binding.segmentId = only.segmentId;
+            binding.hasSegmentId = true;
         }
+        if (only.hasSegmentTag) {
+            binding.segmentTag = only.segmentTag;
+            binding.hasSegmentTag = true;
+        }
+    }
 
-        TryAppendFaceBinding(bindings, 0, faceId, source.systemRole, &source);
-        return;
+    return binding;
+}
+
+void TryAppendResolvedFaceBinding(
+    std::vector<OcctGeneratedToolFaceBinding>& bindings,
+    const OcctGeneratedToolFaceBinding& binding)
+{
+    const auto duplicate = std::find_if(
+        bindings.begin(),
+        bindings.end(),
+        [&](const OcctGeneratedToolFaceBinding& existing) {
+            return FaceBindingMatches(existing, binding);
+        });
+    if (duplicate == bindings.end()) {
+        bindings.push_back(binding);
     }
 }
 
@@ -1096,34 +1608,88 @@ std::vector<OcctGeneratedToolFaceBinding> BuildGeneratedToolFaceBindings(
     TopExp::MapShapes(revolvedShape, TopAbs_FACE, faceMap);
     TopExp::MapShapes(profileFace, TopAbs_EDGE, profileEdgeMap);
 
+    const int startCapFaceId =
+        std::abs(spec.angleDeg - 360.0) > 1e-9
+            ? FindFaceId(makeRevol.FirstShape(profileFace), faceMap)
+            : 0;
+    const int endCapFaceId =
+        std::abs(spec.angleDeg - 360.0) > 1e-9
+            ? FindFaceId(makeRevol.LastShape(profileFace), faceMap)
+            : 0;
+
+    std::vector<RevolvedFaceDescriptor> faceDescriptors;
+    faceDescriptors.reserve(static_cast<size_t>(faceMap.Extent()));
+    for (int faceId = 1; faceId <= faceMap.Extent(); ++faceId) {
+        faceDescriptors.push_back(DescribeRevolvedFace(TopoDS::Face(faceMap(faceId)), faceId));
+    }
+
+    std::vector<std::vector<int>> sourceHintFaceIds(wireBuild.edgeSources.size());
     const int mappedEdgeCount = std::min(profileEdgeMap.Extent(), static_cast<int>(wireBuild.edgeSources.size()));
     for (int index = 0; index < mappedEdgeCount; ++index) {
-        const auto& edgeSource = wireBuild.edgeSources[static_cast<size_t>(index)];
-        AppendGeneratedFaceBindings(
-            bindings,
-            makeRevol.Generated(profileEdgeMap(index + 1)),
-            faceMap,
-            edgeSource.systemRole,
-            &edgeSource);
+        sourceHintFaceIds[static_cast<size_t>(index)] =
+            CollectGeneratedFaceIds(makeRevol.Generated(profileEdgeMap(index + 1)), faceMap);
+    }
+    for (size_t index = 0; index < wireBuild.edgeSources.size(); ++index) {
+        std::vector<int> directHintFaceIds = CollectGeneratedFaceIds(makeRevol.Generated(wireBuild.edgeSources[index].edge), faceMap);
+        for (int faceId : directHintFaceIds) {
+            if (!FaceIdCollectionContains(sourceHintFaceIds[index], faceId)) {
+                sourceHintFaceIds[index].push_back(faceId);
+            }
+        }
     }
 
-    for (size_t index = static_cast<size_t>(mappedEdgeCount); index < wireBuild.edgeSources.size(); ++index) {
-        const auto& edgeSource = wireBuild.edgeSources[index];
-        AppendGeneratedFaceBindings(
-            bindings,
-            makeRevol.Generated(edgeSource.edge),
-            faceMap,
-            edgeSource.systemRole,
-            &edgeSource);
-    }
+    for (const auto& faceDescriptor : faceDescriptors) {
+        if (faceDescriptor.faceId == startCapFaceId || faceDescriptor.faceId == endCapFaceId) {
+            continue;
+        }
 
-    for (const auto& edgeSource : wireBuild.edgeSources) {
-        AppendAxisTouchingPlaneFallbackBinding(bindings, faceMap, edgeSource);
+        std::vector<ResolvedFaceBindingCandidate> candidates;
+        for (size_t sourceIndex = 0; sourceIndex < wireBuild.edgeSources.size(); ++sourceIndex) {
+            const RevolvedProfileEdgeSource& source = wireBuild.edgeSources[sourceIndex];
+            double score = 0.0;
+            if (!TryMatchSourceToFace(source, faceDescriptor, score)) {
+                continue;
+            }
+
+            ResolvedFaceBindingCandidate candidate;
+            candidate.source = &source;
+            candidate.score = score;
+            candidate.hinted = FaceIdCollectionContains(sourceHintFaceIds[sourceIndex], faceDescriptor.faceId);
+            candidates.push_back(candidate);
+        }
+
+        if (candidates.empty()) {
+            continue;
+        }
+
+        std::vector<const RevolvedProfileEdgeSource*> resolvedSources;
+        if (candidates.size() == 1) {
+            resolvedSources.push_back(candidates.front().source);
+        } else {
+            std::vector<const RevolvedProfileEdgeSource*> hintedSources;
+            for (const auto& candidate : candidates) {
+                if (candidate.hinted) {
+                    hintedSources.push_back(candidate.source);
+                }
+            }
+
+            if (hintedSources.size() == 1) {
+                resolvedSources = std::move(hintedSources);
+            } else if (!hintedSources.empty()) {
+                resolvedSources = std::move(hintedSources);
+            } else {
+                for (const auto& candidate : candidates) {
+                    resolvedSources.push_back(candidate.source);
+                }
+            }
+        }
+
+        TryAppendResolvedFaceBinding(bindings, BuildCollapsedFaceBinding(0, faceDescriptor.faceId, resolvedSources));
     }
 
     if (std::abs(spec.angleDeg - 360.0) > 1e-9) {
-        TryAppendFaceBinding(bindings, 0, FindFaceId(makeRevol.FirstShape(profileFace), faceMap), "start_cap");
-        TryAppendFaceBinding(bindings, 0, FindFaceId(makeRevol.LastShape(profileFace), faceMap), "end_cap");
+        TryAppendFaceBinding(bindings, 0, startCapFaceId, "start_cap");
+        TryAppendFaceBinding(bindings, 0, endCapFaceId, "end_cap");
     }
 
     return bindings;
@@ -1338,8 +1904,8 @@ void PopulateGeneratedScene(
     scene.meshes.push_back(mesh);
 
     OcctNodeData rootNode;
-    rootNode.id = "generated-tool-root";
-    rootNode.name = "Generated Revolved Tool";
+    rootNode.id = "generated-revolved-shape-root";
+    rootNode.name = "Generated Revolved Shape";
     rootNode.isAssembly = false;
     rootNode.transform = {
         1.0f, 0.0f, 0.0f, 0.0f,
@@ -1363,11 +1929,11 @@ void FinalizeBuildFailure(OcctRevolvedToolBuildResult& result, const std::string
 
 } // anonymous namespace
 
-OcctRevolvedToolValidationResult ValidateRevolvedToolSpec(const val& jsSpec)
+OcctRevolvedToolValidationResult ValidateRevolvedShapeSpec(const val& jsSpec)
 {
     OcctRevolvedToolValidationResult result;
     if (!IsObject(jsSpec)) {
-        AddDiagnostic(result, "invalid-spec", "Revolved tool spec must be an object.");
+        AddDiagnostic(result, "invalid-spec", "Revolved shape spec must be an object.");
         return result;
     }
 
@@ -1388,42 +1954,42 @@ OcctRevolvedToolValidationResult ValidateRevolvedToolSpec(const val& jsSpec)
     return result;
 }
 
-OcctRevolvedToolBuildResult BuildRevolvedTool(const val& jsSpec, const val& jsOptions)
+OcctRevolvedToolBuildResult BuildRevolvedShape(const val& jsSpec, const val& jsOptions)
 {
     OcctRevolvedToolBuildResult result;
-    const OcctRevolvedToolValidationResult validation = ValidateRevolvedToolSpec(jsSpec);
+    const OcctRevolvedToolValidationResult validation = ValidateRevolvedShapeSpec(jsSpec);
     if (!validation.ok) {
         result.diagnostics = validation.diagnostics;
         FinalizeBuildFailure(
             result,
             validation.diagnostics.empty()
-                ? "Invalid revolved tool spec."
+                ? "Invalid revolved shape spec."
                 : validation.diagnostics.front().message);
         return result;
     }
 
     const OcctRevolvedToolSpec& spec = validation.spec;
-    result.generatedTool = BuildGeneratedToolMetadata(spec);
-    result.hasGeneratedTool = true;
+    result.revolvedShape = BuildGeneratedToolMetadata(spec);
+    result.hasRevolvedShape = true;
 
     try {
         if (std::abs(ComputeApproximateProfileArea(spec)) <= kPointTolerance) {
-            AddDiagnostic(result, "build-failed", "Generated revolved tool profile encloses zero area.", "profile");
-            FinalizeBuildFailure(result, "Generated revolved tool profile encloses zero area.");
+            AddDiagnostic(result, "build-failed", "Generated revolved shape profile encloses zero area.", "profile");
+            FinalizeBuildFailure(result, "Generated revolved shape profile encloses zero area.");
             return result;
         }
 
         RevolvedProfileWireBuild wireBuild;
         if (!TryBuildProfileWire(spec, wireBuild)) {
-            AddDiagnostic(result, "build-failed", "Failed to build a connected revolved tool profile wire.", "profile");
-            FinalizeBuildFailure(result, "Failed to build a connected revolved tool profile wire.");
+            AddDiagnostic(result, "build-failed", "Failed to build a connected revolved shape profile wire.", "profile");
+            FinalizeBuildFailure(result, "Failed to build a connected revolved shape profile wire.");
             return result;
         }
 
         BRepBuilderAPI_MakeFace faceBuilder(wireBuild.wire, Standard_True);
         if (!faceBuilder.IsDone()) {
-            AddDiagnostic(result, "build-failed", "Failed to create a planar profile face from the revolved tool wire.", "profile");
-            FinalizeBuildFailure(result, "Failed to create a planar profile face from the revolved tool wire.");
+            AddDiagnostic(result, "build-failed", "Failed to create a planar profile face from the revolved shape wire.", "profile");
+            FinalizeBuildFailure(result, "Failed to create a planar profile face from the revolved shape wire.");
             return result;
         }
 
@@ -1456,36 +2022,36 @@ OcctRevolvedToolBuildResult BuildRevolvedTool(const val& jsSpec, const val& jsOp
         }
 
         if (revolvedShape.IsNull()) {
-            AddDiagnostic(result, "build-failed", "OCCT produced a null revolved tool shape.", "revolve");
-            FinalizeBuildFailure(result, "OCCT produced a null revolved tool shape.");
+            AddDiagnostic(result, "build-failed", "OCCT produced a null revolved shape.", "revolve");
+            FinalizeBuildFailure(result, "OCCT produced a null revolved shape.");
             return result;
         }
 
         ImportParams buildParams = ParseBuildParams(jsOptions, spec);
         if (!TriangulateShape(revolvedShape, buildParams)) {
-            AddDiagnostic(result, "build-failed", "Failed to triangulate the generated revolved tool shape.", "mesh");
-            FinalizeBuildFailure(result, "Failed to triangulate the generated revolved tool shape.");
+            AddDiagnostic(result, "build-failed", "Failed to triangulate the generated revolved shape.", "mesh");
+            FinalizeBuildFailure(result, "Failed to triangulate the generated revolved shape.");
             return result;
         }
 
         OcctMeshData mesh = ExtractMeshFromShape(revolvedShape);
         if (mesh.indices.empty() || mesh.faces.empty()) {
-            AddDiagnostic(result, "build-failed", "Generated revolved tool triangulation produced no renderable faces.", "mesh");
-            FinalizeBuildFailure(result, "Generated revolved tool triangulation produced no renderable faces.");
+            AddDiagnostic(result, "build-failed", "Generated revolved shape triangulation produced no renderable faces.", "mesh");
+            FinalizeBuildFailure(result, "Generated revolved shape triangulation produced no renderable faces.");
             return result;
         }
 
-        mesh.name = "Generated Revolved Tool";
+        mesh.name = "Generated Revolved Shape";
         mesh.color = NeutralToolColor();
         ApplyGeneratedToolFaceColors(mesh, faceBindings);
-        result.generatedTool.shapeValidation = BuildGeneratedToolShapeValidation(revolvedShape, mesh);
-        result.generatedTool.hasShapeValidation = true;
+        result.revolvedShape.shapeValidation = BuildGeneratedToolShapeValidation(revolvedShape, mesh);
+        result.revolvedShape.hasShapeValidation = true;
 
         PopulateGeneratedScene(mesh, spec, result.scene);
         result.exactShape = revolvedShape;
         result.exactGeometryShapes = { revolvedShape };
-        result.generatedTool.faceBindings = std::move(faceBindings);
-        result.generatedTool.hasStableFaceBindings = true;
+        result.revolvedShape.faceBindings = std::move(faceBindings);
+        result.revolvedShape.hasStableFaceBindings = true;
         result.success = true;
         result.error.clear();
         return result;
@@ -1493,13 +2059,13 @@ OcctRevolvedToolBuildResult BuildRevolvedTool(const val& jsSpec, const val& jsOp
         const std::string message =
             failure.GetMessageString() != nullptr
                 ? std::string(failure.GetMessageString())
-                : std::string("OCCT threw an exception while building the generated revolved tool.");
+                : std::string("OCCT threw an exception while building the generated revolved shape.");
         AddDiagnostic(result, "build-failed", message, "revolve");
         FinalizeBuildFailure(result, message);
         return result;
     } catch (...) {
-        AddDiagnostic(result, "build-failed", "Unknown exception while building the generated revolved tool.", "revolve");
-        FinalizeBuildFailure(result, "Unknown exception while building the generated revolved tool.");
+        AddDiagnostic(result, "build-failed", "Unknown exception while building the generated revolved shape.", "revolve");
+        FinalizeBuildFailure(result, "Unknown exception while building the generated revolved shape.");
         return result;
     }
 }

@@ -4,7 +4,7 @@ import { buildGeneratedToolLegend, resolveGeneratedToolLegendActiveKeys } from "
 
 test("buildGeneratedToolLegend groups normalized generated-tool face bindings into semantic legend rows", () => {
   const legend = buildGeneratedToolLegend({
-    sourceFormat: "generated-revolved-tool",
+    sourceFormat: "generated-revolved-shape",
     geometries: [{
       id: "geo_0",
       color: [0.8, 0.82, 0.86, 1],
@@ -14,7 +14,7 @@ test("buildGeneratedToolLegend groups normalized generated-tool face bindings in
         { id: 3, color: [0.45, 0.49, 0.54, 1] },
       ],
     }],
-    generatedTool: {
+    revolvedShape: {
       units: "mm",
       angleDeg: 360,
       closure: "explicit",
@@ -64,7 +64,7 @@ test("buildGeneratedToolLegend returns null when generated-tool metadata is abse
 
 test("resolveGeneratedToolLegendActiveKeys marks rows that correspond to selected faces", () => {
   const legend = buildGeneratedToolLegend({
-    sourceFormat: "generated-revolved-tool",
+    sourceFormat: "generated-revolved-shape",
     geometries: [{
       id: "geo_0",
       faces: [
@@ -72,7 +72,7 @@ test("resolveGeneratedToolLegendActiveKeys marks rows that correspond to selecte
         { id: 2, color: [0.45, 0.49, 0.54, 1] },
       ],
     }],
-    generatedTool: {
+    revolvedShape: {
       units: "mm",
       angleDeg: 360,
       closure: "explicit",

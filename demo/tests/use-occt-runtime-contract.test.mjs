@@ -15,8 +15,8 @@ test("dev local dist lookup targets concrete repo-root runtime files instead of 
 });
 
 test("demo runtime hook wires generated tool MVP methods to the root Wasm API", () => {
-  assert.match(useOcctSource, /ValidateRevolvedToolSpec/);
-  assert.match(useOcctSource, /BuildRevolvedTool/);
+  assert.match(useOcctSource, /ValidateRevolvedShapeSpec/);
+  assert.match(useOcctSource, /BuildRevolvedShape/);
   assert.match(useOcctSource, /const buildGeneratedTool = useCallback/);
   assert.match(useOcctSource, /const validateGeneratedToolSpec = useCallback/);
 });

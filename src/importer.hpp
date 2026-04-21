@@ -399,8 +399,8 @@ struct OcctRevolvedToolBuildResult {
     OcctSceneData scene;
     TopoDS_Shape exactShape;
     std::vector<TopoDS_Shape> exactGeometryShapes;
-    OcctGeneratedToolMetadata generatedTool;
-    bool hasGeneratedTool = false;
+    OcctGeneratedToolMetadata revolvedShape;
+    bool hasRevolvedShape = false;
 };
 
 struct ImportParams {

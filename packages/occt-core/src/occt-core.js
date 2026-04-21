@@ -607,28 +607,28 @@ export class OcctCoreClient {
     return this.openManagedExactModel(content, { ...options, format: "brep" });
   }
 
-  async validateRevolvedToolSpec(spec) {
+  async validateRevolvedShapeSpec(spec) {
     const module = await this._ensureModule();
-    if (typeof module.ValidateRevolvedToolSpec !== "function") {
-      throw new Error("Loaded OCCT module does not expose ValidateRevolvedToolSpec().");
+    if (typeof module.ValidateRevolvedShapeSpec !== "function") {
+      throw new Error("Loaded OCCT module does not expose ValidateRevolvedShapeSpec().");
     }
-    return module.ValidateRevolvedToolSpec(spec);
+    return module.ValidateRevolvedShapeSpec(spec);
   }
 
-  async buildRevolvedTool(spec, options = {}) {
+  async buildRevolvedShape(spec, options = {}) {
     const module = await this._ensureModule();
-    if (typeof module.BuildRevolvedTool !== "function") {
-      throw new Error("Loaded OCCT module does not expose BuildRevolvedTool().");
+    if (typeof module.BuildRevolvedShape !== "function") {
+      throw new Error("Loaded OCCT module does not expose BuildRevolvedShape().");
     }
-    return module.BuildRevolvedTool(spec, options);
+    return module.BuildRevolvedShape(spec, options);
   }
 
-  async openExactRevolvedTool(spec, options = {}) {
+  async openExactRevolvedShape(spec, options = {}) {
     const module = await this._ensureModule();
-    if (typeof module.OpenExactRevolvedTool !== "function") {
-      throw new Error("Loaded OCCT module does not expose OpenExactRevolvedTool().");
+    if (typeof module.OpenExactRevolvedShape !== "function") {
+      throw new Error("Loaded OCCT module does not expose OpenExactRevolvedShape().");
     }
-    return module.OpenExactRevolvedTool(spec, options);
+    return module.OpenExactRevolvedShape(spec, options);
   }
 
   async retainExactModel(exactModelId) {

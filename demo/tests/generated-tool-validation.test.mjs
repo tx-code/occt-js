@@ -5,8 +5,8 @@ import { buildGeneratedToolValidationRows } from "../src/lib/generated-tool-vali
 
 test("buildGeneratedToolValidationRows exposes exact and mesh closure summaries", () => {
   const rows = buildGeneratedToolValidationRows({
-    sourceFormat: "generated-revolved-tool",
-    generatedTool: {
+    sourceFormat: "generated-revolved-shape",
+    revolvedShape: {
       shapeValidation: {
         exact: {
           isValid: true,

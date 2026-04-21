@@ -16,7 +16,7 @@ function formatShapeType(shapeType) {
 }
 
 export function buildGeneratedToolValidationRows(model) {
-  const validation = model?.generatedTool?.shapeValidation;
+  const validation = model?.revolvedShape?.shapeValidation;
   if (!validation || typeof validation !== "object") {
     return [];
   }

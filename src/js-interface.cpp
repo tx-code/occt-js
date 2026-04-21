@@ -925,7 +925,7 @@ val GeneratedToolShapeValidationToVal(const OcctGeneratedToolShapeValidation& va
     return obj;
 }
 
-val GeneratedToolMetadataToVal(const OcctGeneratedToolMetadata& metadata)
+val RevolvedShapeMetadataToVal(const OcctGeneratedToolMetadata& metadata)
 {
     val obj = val::object();
     obj.set("version", metadata.version);
@@ -1162,15 +1162,15 @@ val ReadFile(const std::string& format, const val& content, const val& jsParams)
     return ReadByFormat(format, content, jsParams);
 }
 
-val ValidateRevolvedToolSpecBinding(const val& jsSpec)
+val ValidateRevolvedShapeSpecBinding(const val& jsSpec)
 {
-    return RevolvedToolValidationResultToVal(ValidateRevolvedToolSpec(jsSpec));
+    return RevolvedToolValidationResultToVal(ValidateRevolvedShapeSpec(jsSpec));
 }
 
-val BuildRevolvedToolBinding(const val& jsSpec, const val& jsOptions)
+val BuildRevolvedShapeBinding(const val& jsSpec, const val& jsOptions)
 {
-    const OcctRevolvedToolBuildResult buildResult = BuildRevolvedTool(jsSpec, jsOptions);
-    val result = BuildResult(buildResult.scene, "generated-revolved-tool");
+    const OcctRevolvedToolBuildResult buildResult = BuildRevolvedShape(jsSpec, jsOptions);
+    val result = BuildResult(buildResult.scene, "generated-revolved-shape");
     if (!buildResult.diagnostics.empty()) {
         val diagnostics = val::array();
         for (const auto& diagnostic : buildResult.diagnostics) {
@@ -1178,16 +1178,16 @@ val BuildRevolvedToolBinding(const val& jsSpec, const val& jsOptions)
         }
         result.set("diagnostics", diagnostics);
     }
-    if (buildResult.hasGeneratedTool) {
-        result.set("generatedTool", GeneratedToolMetadataToVal(buildResult.generatedTool));
+    if (buildResult.hasRevolvedShape) {
+        result.set("revolvedShape", RevolvedShapeMetadataToVal(buildResult.revolvedShape));
     }
     return result;
 }
 
-val OpenExactRevolvedToolBinding(const val& jsSpec, const val& jsOptions)
+val OpenExactRevolvedShapeBinding(const val& jsSpec, const val& jsOptions)
 {
-    const OcctRevolvedToolBuildResult buildResult = BuildRevolvedTool(jsSpec, jsOptions);
-    val result = BuildResult(buildResult.scene, "generated-revolved-tool");
+    const OcctRevolvedToolBuildResult buildResult = BuildRevolvedShape(jsSpec, jsOptions);
+    val result = BuildResult(buildResult.scene, "generated-revolved-shape");
     if (!buildResult.diagnostics.empty()) {
         val diagnostics = val::array();
         for (const auto& diagnostic : buildResult.diagnostics) {
@@ -1195,8 +1195,8 @@ val OpenExactRevolvedToolBinding(const val& jsSpec, const val& jsOptions)
         }
         result.set("diagnostics", diagnostics);
     }
-    if (buildResult.hasGeneratedTool) {
-        result.set("generatedTool", GeneratedToolMetadataToVal(buildResult.generatedTool));
+    if (buildResult.hasRevolvedShape) {
+        result.set("revolvedShape", RevolvedShapeMetadataToVal(buildResult.revolvedShape));
     }
     if (!buildResult.success) {
         return result;
@@ -1205,7 +1205,7 @@ val OpenExactRevolvedToolBinding(const val& jsSpec, const val& jsOptions)
     const int exactModelId = ExactModelStore::Instance().Register(
         buildResult.exactShape,
         buildResult.exactGeometryShapes,
-        "generated-revolved-tool",
+        "generated-revolved-shape",
         buildResult.scene.sourceUnit,
         buildResult.scene.unitScaleToMeters
     );
@@ -1213,8 +1213,8 @@ val OpenExactRevolvedToolBinding(const val& jsSpec, const val& jsOptions)
     if (exactModelId <= 0) {
         OcctSceneData scene;
         scene.success = false;
-        scene.error = "Failed to register retained exact generated tool state.";
-        result = BuildResult(scene, "generated-revolved-tool");
+        scene.error = "Failed to register retained exact generated revolved shape state.";
+        result = BuildResult(scene, "generated-revolved-shape");
         if (!buildResult.diagnostics.empty()) {
             val diagnostics = val::array();
             for (const auto& diagnostic : buildResult.diagnostics) {
@@ -1222,8 +1222,8 @@ val OpenExactRevolvedToolBinding(const val& jsSpec, const val& jsOptions)
             }
             result.set("diagnostics", diagnostics);
         }
-        if (buildResult.hasGeneratedTool) {
-            result.set("generatedTool", GeneratedToolMetadataToVal(buildResult.generatedTool));
+        if (buildResult.hasRevolvedShape) {
+            result.set("revolvedShape", RevolvedShapeMetadataToVal(buildResult.revolvedShape));
         }
         return result;
     }
@@ -1549,9 +1549,9 @@ EMSCRIPTEN_BINDINGS(occtjs)
     function("ReadStepFile", &ReadStepFile);
     function("ReadIgesFile", &ReadIgesFile);
     function("ReadBrepFile", &ReadBrepFile);
-    function("ValidateRevolvedToolSpec", &ValidateRevolvedToolSpecBinding);
-    function("BuildRevolvedTool", &BuildRevolvedToolBinding);
-    function("OpenExactRevolvedTool", &OpenExactRevolvedToolBinding);
+    function("ValidateRevolvedShapeSpec", &ValidateRevolvedShapeSpecBinding);
+    function("BuildRevolvedShape", &BuildRevolvedShapeBinding);
+    function("OpenExactRevolvedShape", &OpenExactRevolvedShapeBinding);
     function("OpenExactModel", &OpenExactModel);
     function("OpenExactStepModel", &OpenExactStepModel);
     function("OpenExactIgesModel", &OpenExactIgesModel);

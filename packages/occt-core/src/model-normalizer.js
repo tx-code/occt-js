@@ -1,6 +1,6 @@
 import { normalizeOcctFormat } from "./formats.js";
 
-const GENERATED_TOOL_SOURCE_FORMAT = "generated-revolved-tool";
+const GENERATED_REVOLVED_SHAPE_SOURCE_FORMAT = "generated-revolved-shape";
 const IDENTITY_MATRIX = [
   1, 0, 0, 0,
   0, 1, 0, 0,
@@ -451,13 +451,13 @@ function normalizeWarnings(rawWarnings) {
   });
 }
 
-function normalizeGeneratedToolMetadata(rawGeneratedTool, geometries) {
-  if (!rawGeneratedTool || typeof rawGeneratedTool !== "object") {
+function normalizeRevolvedShapeMetadata(rawRevolvedShape, geometries) {
+  if (!rawRevolvedShape || typeof rawRevolvedShape !== "object") {
     return undefined;
   }
 
-  const segments = Array.isArray(rawGeneratedTool.segments)
-    ? rawGeneratedTool.segments.map((segment, index) => ({
+  const segments = Array.isArray(rawRevolvedShape.segments)
+    ? rawRevolvedShape.segments.map((segment, index) => ({
       index: Number.isFinite(segment?.index) ? segment.index : index,
       kind: typeof segment?.kind === "string" ? segment.kind : "line",
       ...(typeof segment?.id === "string" ? { id: segment.id } : {}),
@@ -466,20 +466,20 @@ function normalizeGeneratedToolMetadata(rawGeneratedTool, geometries) {
     : [];
 
   const metadata = {
-    version: rawGeneratedTool.version === 1 ? 1 : 1,
-    units: rawGeneratedTool.units,
-    plane: rawGeneratedTool.plane,
-    closure: rawGeneratedTool.closure,
-    angleDeg: Number(rawGeneratedTool.angleDeg ?? 0),
-    segmentCount: Number.isFinite(rawGeneratedTool.segmentCount)
-      ? rawGeneratedTool.segmentCount
+    version: rawRevolvedShape.version === 1 ? 1 : 1,
+    units: rawRevolvedShape.units,
+    plane: rawRevolvedShape.plane,
+    closure: rawRevolvedShape.closure,
+    angleDeg: Number(rawRevolvedShape.angleDeg ?? 0),
+    segmentCount: Number.isFinite(rawRevolvedShape.segmentCount)
+      ? rawRevolvedShape.segmentCount
       : segments.length,
-    hasStableFaceBindings: rawGeneratedTool.hasStableFaceBindings === true,
+    hasStableFaceBindings: rawRevolvedShape.hasStableFaceBindings === true,
     segments,
   };
 
-  if (rawGeneratedTool.shapeValidation && typeof rawGeneratedTool.shapeValidation === "object") {
-    const rawValidation = rawGeneratedTool.shapeValidation;
+  if (rawRevolvedShape.shapeValidation && typeof rawRevolvedShape.shapeValidation === "object") {
+    const rawValidation = rawRevolvedShape.shapeValidation;
     metadata.shapeValidation = {
       exact: {
         isValid: rawValidation?.exact?.isValid === true,
@@ -502,8 +502,8 @@ function normalizeGeneratedToolMetadata(rawGeneratedTool, geometries) {
     };
   }
 
-  if (Array.isArray(rawGeneratedTool.faceBindings)) {
-    metadata.faceBindings = rawGeneratedTool.faceBindings.map((binding) => {
+  if (Array.isArray(rawRevolvedShape.faceBindings)) {
+    metadata.faceBindings = rawRevolvedShape.faceBindings.map((binding) => {
       const geometryIndex = Number.isFinite(binding?.geometryIndex) ? binding.geometryIndex : -1;
       const geometry = geometryIndex >= 0 ? geometries[geometryIndex] : undefined;
       return {
@@ -522,8 +522,8 @@ function normalizeGeneratedToolMetadata(rawGeneratedTool, geometries) {
 }
 
 function normalizeResultSourceFormat(sourceFormat) {
-  if (typeof sourceFormat === "string" && sourceFormat.trim().toLowerCase() === GENERATED_TOOL_SOURCE_FORMAT) {
-    return GENERATED_TOOL_SOURCE_FORMAT;
+  if (typeof sourceFormat === "string" && sourceFormat.trim().toLowerCase() === GENERATED_REVOLVED_SHAPE_SOURCE_FORMAT) {
+    return GENERATED_REVOLVED_SHAPE_SOURCE_FORMAT;
   }
   return normalizeOcctFormat(sourceFormat);
 }
@@ -594,9 +594,9 @@ export function normalizeOcctResult(rawResult, options = {}) {
   if (Number.isFinite(rawResult.unitScaleToMeters) && rawResult.unitScaleToMeters > 0) {
     result.unitScaleToMeters = rawResult.unitScaleToMeters;
   }
-  const generatedTool = normalizeGeneratedToolMetadata(rawResult.generatedTool, geometries);
-  if (generatedTool) {
-    result.generatedTool = generatedTool;
+  const revolvedShape = normalizeRevolvedShapeMetadata(rawResult.revolvedShape, geometries);
+  if (revolvedShape) {
+    result.revolvedShape = revolvedShape;
   }
 
   return result;

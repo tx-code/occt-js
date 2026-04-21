@@ -80,9 +80,9 @@ function findDiagnostic(result, code) {
   return result.diagnostics.find((diagnostic) => diagnostic.code === code);
 }
 
-test("ValidateRevolvedToolSpec accepts a minimal strict line-and-arc revolved tool spec", async () => {
+test("ValidateRevolvedShapeSpec accepts a minimal strict line-and-arc revolved shape spec", async () => {
   const module = await createModule();
-  const result = module.ValidateRevolvedToolSpec(createValidSpec());
+  const result = module.ValidateRevolvedShapeSpec(createValidSpec());
 
   assert.deepEqual(result, {
     ok: true,
@@ -90,13 +90,13 @@ test("ValidateRevolvedToolSpec accepts a minimal strict line-and-arc revolved to
   });
 });
 
-test("ValidateRevolvedToolSpec rejects unsupported units and negative radii with typed diagnostics", async () => {
+test("ValidateRevolvedShapeSpec rejects unsupported units and negative radii with typed diagnostics", async () => {
   const module = await createModule();
   const spec = createValidSpec();
   spec.units = "cm";
   spec.profile.start = [-1, 0];
 
-  const result = module.ValidateRevolvedToolSpec(spec);
+  const result = module.ValidateRevolvedShapeSpec(spec);
 
   assert.equal(result?.ok, false);
   assertTypedDiagnostics(result);
@@ -110,7 +110,7 @@ test("ValidateRevolvedToolSpec rejects unsupported units and negative radii with
   assert.equal(negativeRadius.path, "profile.start[0]");
 });
 
-test("ValidateRevolvedToolSpec rejects invalid arc definitions and explicit non-closed profiles", async () => {
+test("ValidateRevolvedShapeSpec rejects invalid arc definitions and explicit non-closed profiles", async () => {
   const module = await createModule();
   const spec = createValidSpec();
   spec.profile.segments = [
@@ -132,7 +132,7 @@ test("ValidateRevolvedToolSpec rejects invalid arc definitions and explicit non-
     },
   ];
 
-  const result = module.ValidateRevolvedToolSpec(spec);
+  const result = module.ValidateRevolvedShapeSpec(spec);
 
   assert.equal(result?.ok, false);
   assertTypedDiagnostics(result);
@@ -147,14 +147,14 @@ test("ValidateRevolvedToolSpec rejects invalid arc definitions and explicit non-
   assert.equal(profileNotClosed.path, "profile.segments");
 });
 
-test("ValidateRevolvedToolSpec rejects invalid partial revolve ranges without touching scene-build APIs", async () => {
+test("ValidateRevolvedShapeSpec rejects invalid partial revolve ranges without touching scene-build APIs", async () => {
   const module = await createModule();
 
   for (const angleDeg of [0, -30, 361]) {
     const spec = cloneSpec(createValidSpec());
     spec.revolve.angleDeg = angleDeg;
 
-    const result = module.ValidateRevolvedToolSpec(spec);
+    const result = module.ValidateRevolvedShapeSpec(spec);
 
     assert.equal(result?.ok, false, `angleDeg=${angleDeg} should fail validation`);
     assertTypedDiagnostics(result);

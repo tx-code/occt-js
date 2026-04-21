@@ -1,14 +1,14 @@
 import type {
   OcctFormat,
-  OcctJSGeneratedToolFaceBinding,
-  OcctJSGeneratedToolMetadata,
-  OcctJSGeneratedToolSegmentDescriptor,
+  OcctJSGeneratedRevolvedShapeFaceBinding,
+  OcctJSGeneratedRevolvedShapeMetadata,
+  OcctJSGeneratedRevolvedShapeSegmentDescriptor,
   OcctJSImportAppearancePreset,
   OcctJSImportColorMode,
   OcctJSColor,
   OcctJSExactChamferResult,
   OcctJSExactElementKind,
-  OcctJSExactRevolvedToolOpenResult,
+  OcctJSExactRevolvedShapeOpenResult,
   OcctJSExactGeometryFamily,
   OcctJSExactHoleResult,
   OcctJSExactModelDiagnostics,
@@ -21,15 +21,15 @@ import type {
   OcctJSLifecycleResult,
   OcctJSModule,
   OcctJSOrientationResult,
-  OcctJSRevolvedToolBuildOptions,
-  OcctJSRevolvedToolBuildResult,
-  OcctJSRevolvedToolSpec,
-  OcctJSRevolvedToolValidationResult,
+  OcctJSRevolvedShapeBuildOptions,
+  OcctJSRevolvedShapeBuildResult,
+  OcctJSRevolvedShapeSpec,
+  OcctJSRevolvedShapeValidationResult,
 } from "@tx-code/occt-js";
 
 export type OcctPoint3 = [number, number, number];
-export type OcctGeneratedToolSourceFormat = "generated-revolved-tool";
-export type OcctNormalizedSourceFormat = OcctFormat | OcctGeneratedToolSourceFormat;
+export type OcctGeneratedRevolvedShapeSourceFormat = "generated-revolved-shape";
+export type OcctNormalizedSourceFormat = OcctFormat | OcctGeneratedRevolvedShapeSourceFormat;
 
 export type OcctMatrix4 = [
   number, number, number, number,
@@ -145,13 +145,13 @@ export interface OcctNormalizedStats {
   reusedInstanceCount: number;
 }
 
-export interface OcctNormalizedGeneratedToolFaceBinding extends OcctJSGeneratedToolFaceBinding {
+export interface OcctNormalizedRevolvedShapeFaceBinding extends OcctJSGeneratedRevolvedShapeFaceBinding {
   geometryId?: string;
 }
 
-export interface OcctNormalizedGeneratedToolMetadata extends Omit<OcctJSGeneratedToolMetadata, "segments" | "faceBindings"> {
-  segments: OcctJSGeneratedToolSegmentDescriptor[];
-  faceBindings?: OcctNormalizedGeneratedToolFaceBinding[];
+export interface OcctNormalizedRevolvedShapeMetadata extends Omit<OcctJSGeneratedRevolvedShapeMetadata, "segments" | "faceBindings"> {
+  segments: OcctJSGeneratedRevolvedShapeSegmentDescriptor[];
+  faceBindings?: OcctNormalizedRevolvedShapeFaceBinding[];
 }
 
 export interface OcctNormalizedResult {
@@ -164,7 +164,7 @@ export interface OcctNormalizedResult {
   materials: OcctNormalizedMaterial[];
   warnings: OcctNormalizedWarning[];
   stats: OcctNormalizedStats;
-  generatedTool?: OcctNormalizedGeneratedToolMetadata;
+  revolvedShape?: OcctNormalizedRevolvedShapeMetadata;
 }
 
 export interface OcctNormalizedExactGeometryBinding {
@@ -468,9 +468,9 @@ export declare class OcctCoreClient {
   openManagedExactStep(content: OcctBinaryInput, options?: Omit<OcctImportModelOptions, "format">): Promise<OcctManagedExactModel>;
   openManagedExactIges(content: OcctBinaryInput, options?: Omit<OcctImportModelOptions, "format">): Promise<OcctManagedExactModel>;
   openManagedExactBrep(content: OcctBinaryInput, options?: Omit<OcctImportModelOptions, "format">): Promise<OcctManagedExactModel>;
-  validateRevolvedToolSpec(spec: OcctJSRevolvedToolSpec): Promise<OcctJSRevolvedToolValidationResult>;
-  buildRevolvedTool(spec: OcctJSRevolvedToolSpec, options?: OcctJSRevolvedToolBuildOptions): Promise<OcctJSRevolvedToolBuildResult>;
-  openExactRevolvedTool(spec: OcctJSRevolvedToolSpec, options?: OcctJSRevolvedToolBuildOptions): Promise<OcctJSExactRevolvedToolOpenResult>;
+  validateRevolvedShapeSpec(spec: OcctJSRevolvedShapeSpec): Promise<OcctJSRevolvedShapeValidationResult>;
+  buildRevolvedShape(spec: OcctJSRevolvedShapeSpec, options?: OcctJSRevolvedShapeBuildOptions): Promise<OcctJSRevolvedShapeBuildResult>;
+  openExactRevolvedShape(spec: OcctJSRevolvedShapeSpec, options?: OcctJSRevolvedShapeBuildOptions): Promise<OcctJSExactRevolvedShapeOpenResult>;
   retainExactModel(exactModelId: number): Promise<OcctJSLifecycleResult>;
   releaseExactModel(exactModelId: number): Promise<OcctJSLifecycleResult>;
   getExactModelDiagnostics(): Promise<OcctJSExactModelDiagnostics>;
@@ -542,4 +542,12 @@ export type {
   OcctJSLifecycleResult,
   OcctJSModule,
   OcctJSOrientationResult,
+  OcctJSRevolvedShapeBuildOptions,
+  OcctJSRevolvedShapeBuildResult,
+  OcctJSRevolvedShapeSpec,
+  OcctJSRevolvedShapeValidationResult,
+  OcctJSExactRevolvedShapeOpenResult,
+  OcctJSGeneratedRevolvedShapeMetadata,
+  OcctJSGeneratedRevolvedShapeFaceBinding,
+  OcctJSGeneratedRevolvedShapeSegmentDescriptor,
 };

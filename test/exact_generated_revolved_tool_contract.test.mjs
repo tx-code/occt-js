@@ -31,6 +31,48 @@ function createEndmillLikeSpec() {
   };
 }
 
+function createBallLikeSpec() {
+  return {
+    version: 1,
+    units: "mm",
+    profile: {
+      plane: "XZ",
+      start: [0, 0],
+      closure: "explicit",
+      segments: [
+        { kind: "arc_center", id: "ball", tag: "tip", center: [0, 5], end: [5, 5] },
+        { kind: "line", id: "flute", tag: "cutting", end: [5, 12] },
+        { kind: "line", id: "axis-top", tag: "closure", end: [0, 12] },
+        { kind: "line", id: "axis-bottom", tag: "closure", end: [0, 0] },
+      ],
+    },
+    revolve: {
+      angleDeg: 360,
+    },
+  };
+}
+
+function createDrillLikeSpec() {
+  return {
+    version: 1,
+    units: "mm",
+    profile: {
+      plane: "XZ",
+      start: [0, 0],
+      closure: "explicit",
+      segments: [
+        { kind: "line", id: "tip", tag: "tip", end: [3, 2] },
+        { kind: "line", id: "body", tag: "cutting", end: [3, 10] },
+        { kind: "line", id: "axis-top", tag: "closure", end: [0, 10] },
+        { kind: "line", id: "axis-bottom", tag: "closure", end: [0, 0] },
+      ],
+    },
+    revolve: {
+      angleDeg: 360,
+    },
+  };
+}
+
 function createInvalidSpec() {
   return {
     version: 1,
@@ -52,7 +94,7 @@ function createInvalidSpec() {
 
 function assertCanonicalExactGeneratedPayload(result, label) {
   assert.equal(result?.success, true, `${label}: success should be true`);
-  assert.equal(result?.sourceFormat, "generated-revolved-tool", `${label}: sourceFormat should be generated-revolved-tool`);
+  assert.equal(result?.sourceFormat, "generated-revolved-shape", `${label}: sourceFormat should be generated-revolved-shape`);
   assert.equal(typeof result?.exactModelId, "number", `${label}: exactModelId should be numeric`);
   assert.ok(Number.isInteger(result.exactModelId) && result.exactModelId > 0, `${label}: exactModelId should be positive`);
   assert.ok(Array.isArray(result?.rootNodes), `${label}: rootNodes should be an array`);
@@ -60,12 +102,12 @@ function assertCanonicalExactGeneratedPayload(result, label) {
   assert.ok(Array.isArray(result?.materials), `${label}: materials should be an array`);
   assert.ok(Array.isArray(result?.exactGeometryBindings), `${label}: exactGeometryBindings should be an array`);
   assert.equal(result.exactGeometryBindings.length, result.geometries.length, `${label}: exactGeometryBindings should align with geometries`);
-  assert.equal(result?.generatedTool?.hasStableFaceBindings, true, `${label}: stable bindings should be available`);
-  assert.ok(Array.isArray(result?.generatedTool?.faceBindings), `${label}: faceBindings should be an array`);
-  assert.ok(result.generatedTool.faceBindings.length > 0, `${label}: faceBindings should not be empty`);
-  assert.ok(result?.generatedTool?.shapeValidation, `${label}: shape validation should be available`);
-  assert.equal(result.generatedTool.shapeValidation.exact.isValid, true, `${label}: exact shape validation should pass`);
-  assert.equal(result.generatedTool.shapeValidation.mesh.isWatertight, true, `${label}: generated mesh should be watertight`);
+  assert.equal(result?.revolvedShape?.hasStableFaceBindings, true, `${label}: stable bindings should be available`);
+  assert.ok(Array.isArray(result?.revolvedShape?.faceBindings), `${label}: faceBindings should be an array`);
+  assert.ok(result.revolvedShape.faceBindings.length > 0, `${label}: faceBindings should not be empty`);
+  assert.ok(result?.revolvedShape?.shapeValidation, `${label}: shape validation should be available`);
+  assert.equal(result.revolvedShape.shapeValidation.exact.isValid, true, `${label}: exact shape validation should pass`);
+  assert.equal(result.revolvedShape.shapeValidation.mesh.isWatertight, true, `${label}: generated mesh should be watertight`);
 }
 
 function findRepresentativeFace(module, result, expectedFamily) {
@@ -85,9 +127,19 @@ function findRepresentativeFace(module, result, expectedFamily) {
   return null;
 }
 
-test("OpenExactRevolvedTool returns retained exact handles for a generated revolved tool", async () => {
+function familyForSegmentId(module, result, segmentId) {
+  const binding = result.revolvedShape.faceBindings.find((candidate) => candidate.segmentId === segmentId);
+  assert.ok(binding, `binding for segment ${segmentId} should exist`);
+
+  const handle = result.exactGeometryBindings[0].exactShapeHandle;
+  const family = module.GetExactGeometryType(result.exactModelId, handle, "face", binding.faceId);
+  assert.equal(family?.ok, true, `exact family lookup for ${segmentId} should succeed`);
+  return family.family;
+}
+
+test("OpenExactRevolvedShape returns retained exact handles for a generated revolved shape", async () => {
   const module = await createModule();
-  const result = module.OpenExactRevolvedTool(createEndmillLikeSpec(), {});
+  const result = module.OpenExactRevolvedShape(createEndmillLikeSpec(), {});
 
   try {
     assertCanonicalExactGeneratedPayload(result, "generated exact open");
@@ -101,9 +153,9 @@ test("OpenExactRevolvedTool returns retained exact handles for a generated revol
   }
 });
 
-test("OpenExactRevolvedTool registers generated tools in the exact store and supports representative exact queries", async () => {
+test("OpenExactRevolvedShape registers generated revolved shapes in the exact store and supports representative exact queries", async () => {
   const module = await createModule();
-  const result = module.OpenExactRevolvedTool(createEndmillLikeSpec(), {});
+  const result = module.OpenExactRevolvedShape(createEndmillLikeSpec(), {});
 
   try {
     assertCanonicalExactGeneratedPayload(result, "generated exact query");
@@ -111,11 +163,11 @@ test("OpenExactRevolvedTool registers generated tools in the exact store and sup
     const diagnostics = module.GetExactModelDiagnostics();
     const entry = diagnostics.liveExactModels.find((candidate) => candidate.exactModelId === result.exactModelId);
     assert.equal(typeof entry, "object");
-    assert.equal(entry.sourceFormat, "generated-revolved-tool");
+    assert.equal(entry.sourceFormat, "generated-revolved-shape");
     assert.equal(entry.exactGeometryCount, 1);
 
     const cylinderFace = findRepresentativeFace(module, result, "cylinder");
-    assert.ok(cylinderFace, "generated revolved tool should expose at least one cylindrical exact face");
+    assert.ok(cylinderFace, "generated revolved shape should expose at least one cylindrical exact face");
 
     const radius = module.MeasureExactRadius(
       result.exactModelId,
@@ -132,18 +184,70 @@ test("OpenExactRevolvedTool registers generated tools in the exact store and sup
   }
 });
 
-test("OpenExactRevolvedTool keeps lifecycle and failure behavior explicit", async () => {
+test("OpenExactRevolvedShape keeps face bindings aligned with the exact face families they color", async () => {
+  const module = await createModule();
+  const cases = [
+    {
+      label: "bullnose",
+      spec: createEndmillLikeSpec(),
+      expectations: {
+        tip: "plane",
+        corner: "torus",
+        flute: "cylinder",
+        "axis-top": "plane",
+      },
+    },
+    {
+      label: "ball",
+      spec: createBallLikeSpec(),
+      expectations: {
+        ball: "sphere",
+        flute: "cylinder",
+        "axis-top": "plane",
+      },
+    },
+    {
+      label: "drill",
+      spec: createDrillLikeSpec(),
+      expectations: {
+        tip: "cone",
+        body: "cylinder",
+        "axis-top": "plane",
+      },
+    },
+  ];
+
+  for (const testCase of cases) {
+    const result = module.OpenExactRevolvedShape(testCase.spec, {});
+    try {
+      assertCanonicalExactGeneratedPayload(result, `${testCase.label} exact family mapping`);
+      for (const [segmentId, expectedFamily] of Object.entries(testCase.expectations)) {
+        assert.equal(
+          familyForSegmentId(module, result, segmentId),
+          expectedFamily,
+          `${testCase.label}: ${segmentId} should stay bound to a ${expectedFamily} face`,
+        );
+      }
+    } finally {
+      if (result?.exactModelId) {
+        module.ReleaseExactModel(result.exactModelId);
+      }
+    }
+  }
+});
+
+test("OpenExactRevolvedShape keeps lifecycle and failure behavior explicit", async () => {
   const module = await createModule();
 
-  const invalid = module.OpenExactRevolvedTool(createInvalidSpec(), {});
+  const invalid = module.OpenExactRevolvedShape(createInvalidSpec(), {});
   assert.equal(invalid?.success, false);
-  assert.equal(invalid?.sourceFormat, "generated-revolved-tool");
+  assert.equal(invalid?.sourceFormat, "generated-revolved-shape");
   assert.ok(Array.isArray(invalid?.diagnostics));
   assert.ok(invalid.diagnostics.some((diagnostic) => diagnostic.code === "unsupported-unit"));
   assert.equal("exactModelId" in invalid, false);
   assert.equal("exactGeometryBindings" in invalid, false);
 
-  const opened = module.OpenExactRevolvedTool(createEndmillLikeSpec(), {});
+  const opened = module.OpenExactRevolvedShape(createEndmillLikeSpec(), {});
   assertCanonicalExactGeneratedPayload(opened, "generated lifecycle");
   const representativeFace = findRepresentativeFace(module, opened, "cylinder") ?? {
     exactShapeHandle: opened.exactGeometryBindings[0].exactShapeHandle,

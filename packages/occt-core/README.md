@@ -83,7 +83,7 @@ Contract rules:
 Apps own settings persistence, and `@tx-code/occt-core` only consumes the chosen import-time appearance options.
 Viewer overrides remain downstream concerns; the adapter does not own repaint, theme switching, or post-import display policy.
 
-## Generated Revolved Tool SDK
+## Generated Revolved Shape SDK
 
 `@tx-code/occt-core` also exposes package-first wrappers for the generated revolved-tool Wasm surface:
 
@@ -105,21 +105,21 @@ const spec = {
   revolve: { angleDeg: 360 },
 };
 
-const validation = await core.validateRevolvedToolSpec(spec);
-const built = await core.buildRevolvedTool(spec, {
+const validation = await core.validateRevolvedShapeSpec(spec);
+const built = await core.buildRevolvedShape(spec, {
   linearDeflectionType: "bounding_box_ratio",
   linearDeflection: 0.001,
   angularDeflection: 0.5,
 });
-const exact = await core.openExactRevolvedTool(spec);
+const exact = await core.openExactRevolvedShape(spec);
 ```
 
-Generated-tool wrapper rules:
+Generated revolved-shape wrapper rules:
 
-- `validateRevolvedToolSpec(spec)` forwards the typed validation lane and returns the root validation DTO unchanged.
-- `buildRevolvedTool(spec, options?)` forwards the generated-tool scene build lane and returns the root generated-tool payload, including `generatedTool.faceBindings` and semantic face colors.
-- `openExactRevolvedTool(spec, options?)` forwards the retained exact-open lane and returns the root exact payload, including `exactModelId` and `exactGeometryBindings`.
-- These wrappers stay package-first but intentionally do not invent a second generated-tool DTO layer on top of the root runtime contract.
+- `validateRevolvedShapeSpec(spec)` forwards the typed validation lane and returns the root validation DTO unchanged.
+- `buildRevolvedShape(spec, options?)` forwards the generated scene build lane and returns the root revolved-shape payload, including `revolvedShape.faceBindings` and semantic face colors.
+- `openExactRevolvedShape(spec, options?)` forwards the retained exact-open lane and returns the root exact payload, including `exactModelId` and `exactGeometryBindings`.
+- These wrappers stay package-first but intentionally do not invent a second revolved-shape DTO layer on top of the root runtime contract.
 
 ## Exact Measurement and Helper SDK
 
