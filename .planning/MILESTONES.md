@@ -1,5 +1,21 @@
 # Milestones
 
+## v1.8 Wasm+JS Revolved Shape Generation (Shipped: 2026-04-21)
+
+**Phases completed:** 3 phases, 6 plans, 6 tasks
+**Known deferred items at close:** 1 (see `STATE.md` Deferred Items)
+
+**Key accomplishments:**
+
+- The root Wasm runtime now accepts one generic `RevolvedShapeSpec` and exposes additive validate/build/exact-open flows without owning upstream tool-library schemas.
+- Generated revolved shapes now preserve retained exact-model handles, stable segment-to-face bindings, explicit `systemRole` semantics, and deterministic runtime-owned face appearance.
+- `@tx-code/occt-core` now ships package-first wrappers and typings for revolved-shape validation, build, and exact-open flows.
+- The public runtime surface is now explicitly generic `revolved shape`, while tool presets and vendor semantics remain demo/app-side only.
+- Root/package docs and `npm run test:release:root` now lock the revolved-shape contract and governance path without widening unconditional secondary-surface checks.
+- Demo preset catalogs and exported artifacts now exercise a broader downstream sample set while keeping runtime ownership narrow.
+
+---
+
 ## v1.7 Exact Lifecycle & Performance (Shipped: 2026-04-20)
 
 **Phases completed:** 3 phases, 6 plans, 6 tasks

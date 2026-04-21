@@ -1,5 +1,32 @@
 # Retrospective
 
+## Milestone: v1.8 — Wasm+JS Revolved Shape Generation
+
+**Shipped:** 2026-04-21
+
+### What shipped
+
+- The root Wasm carrier now exposes one generic revolved-shape contract with additive validate, build, and exact-open flows.
+- Generated revolved shapes now preserve stable segment-to-face bindings, explicit runtime-owned roles, deterministic semantic colors, and exact/mesh validation metadata.
+- `@tx-code/occt-core` now ships package-first wrappers and typings for revolved-shape validation, build, and exact-open flows.
+- Root/package docs and release governance now lock the generic revolved-shape surface while keeping downstream tool presets demo-local.
+
+### What worked
+
+- Pulling tool semantics back out of the root runtime and naming the surface generically kept the Wasm carrier aligned with its intended boundary.
+- Root contract tests plus package-wrapper tests were enough to stabilize exact-open, face binding, and governance behavior without widening demo checks into the root gate.
+- Treating demo presets as downstream-only let the repo show realistic samples without letting app-specific schemas pollute the runtime contract.
+
+### What to revisit
+
+- Milestone closeout still needed manual backfill because planning artifacts lagged behind code reality for Phase 28 and Phase 29.
+- Dedicated milestone audit coverage was missing at closeout time; the repo relied on phase evidence plus contract tests instead of a formal `v1.8` milestone audit.
+
+### Carry-forward ideas
+
+- Keep future geometry milestones generic-first at the root/package boundary and push app/vendor semantics outward unless there is a compelling kernel reason not to.
+- If a future milestone expands beyond revolved shapes, define the next normalized geometry contract explicitly before touching demo presets or app-owned abstractions.
+
 ## Milestone: v1.7 — Exact Lifecycle & Performance
 
 **Shipped:** 2026-04-20

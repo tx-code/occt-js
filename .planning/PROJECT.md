@@ -39,12 +39,13 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 - ✓ Phase 24 lifecycle governance now ships additive root diagnostics (`GetExactModelDiagnostics`), deterministic released-handle exact-query behavior, and package-first managed disposal wrappers in `@tx-code/occt-core`. — Phase 24
 - ✓ Phase 25 performance hardening now removes avoidable retained-query/store copy overhead, shares IGES temp-file staging across import and orientation paths, and adds an explicit perf visibility lane (`npm run test:perf:exact`). — Phase 25
 - ✓ Phase 26 closeout now publishes package-first lifecycle/performance guidance, governance locks for perf/soak routing, and explicit long-session evidence via `npm run test:soak:exact`. — Phase 26
+- ✓ Downstream JS code can validate and build app-neutral revolved shapes from one normalized profile spec through the root Wasm runtime. — Phase 27
+- ✓ Generated revolved-shape flows now retain exact geometry, expose stable segment-to-face bindings, and report explicit closure/cap/profile roles plus deterministic default appearance. — Phase 28
+- ✓ `@tx-code/occt-core`, published typings, docs, and release governance now lock the generic revolved-shape contract package-first without widening the runtime-first boundary. — Phase 29
 
 ### Active
 
-- [ ] Downstream JS code can build app-neutral revolved tool shapes from a normalized profile spec through the root Wasm runtime.
-- [ ] Generated tool flows can retain exact generated geometry and expose stable segment-to-face bindings with explicit closure/cap roles.
-- [ ] `@tx-code/occt-core`, typings, docs, and release governance lock the revolved-tool contract package-first without widening the runtime-first boundary.
+- None yet. Define the next milestone with `$gsd-new-milestone`.
 
 ### Out of Scope
 
@@ -53,7 +54,7 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 - Treating Babylon/demo layers as first-order release gates for the root runtime.
 - Selection sessions, overlay rendering, label layout, or measurement widgets in the runtime/package layer — those remain downstream app concerns.
 - Owning app-specific tool-library schemas or adapter registries in the root runtime — callers must provide a normalized revolved profile spec.
-- Non-axisymmetric tool bodies, flute-level solids, or decorative detail generation — `v1.8` is limited to axisymmetric revolved tools.
+- Non-axisymmetric bodies, flute-level solids, or decorative detail generation — `v1.8` is limited to axisymmetric revolved shapes.
 - Tool libraries, feeds/speeds, machine metadata, or CAM process semantics — those remain app-side concerns above the geometry runtime.
 
 ## Current State
@@ -68,17 +69,18 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 
 `v1.7 Exact Lifecycle & Performance` shipped on 2026-04-20 and is now archived in `.planning/milestones/`. Phases 24-26 shipped lifecycle diagnostics, managed disposal helpers, retained-query/store and IGES staging performance hardening, governance-locked lifecycle/perf docs, and explicit long-session soak evidence.
 
-`v1.8 Wasm+JS Revolved Tool Generation` is now the active milestone. It focuses on an app-neutral revolved profile spec, additive Wasm build/open flows for generated tool geometry, stable segment-to-face binding semantics, and package-first JS wrappers/docs while keeping tool-library ownership and non-axisymmetric modeling outside the root runtime boundary.
+`v1.8 Wasm+JS Revolved Shape Generation` shipped on 2026-04-21 and is now archived in `.planning/milestones/`. The repo now exposes a generic revolved-shape runtime/package surface with retained exact-open support, stable face-binding semantics, and governance-locked package/docs coverage while keeping tool-library ownership downstream.
 
-## Current Milestone: v1.8 Wasm+JS Revolved Tool Generation
+## No Active Milestone
 
-**Goal:** Add an app-neutral Wasm+JS revolved tool-generation surface that downstream apps can use to build tool geometry and exact models without importing app-specific tool schemas into the root runtime.
+The repository is between milestones.
 
-**Target features:**
-- Normalize generated tool input around a generic revolved profile spec rather than app-specific tool definitions.
-- Build scene-compatible meshes and retained exact models for generated tools through additive root Wasm APIs.
-- Expose stable segment-to-face bindings and deterministic default appearance semantics without caller-supplied colors.
-- Publish package-first JS wrappers, typings, docs, and governance coverage for the generated tool contract.
+**Next step:** start the next cycle with `$gsd-new-milestone`.
+
+**Current shipped baseline:**
+- Generic revolved-shape validation/build/exact-open now ships through the root Wasm carrier.
+- `@tx-code/occt-core` exposes package-first wrappers for the same surface.
+- Demo-local tool presets remain downstream-only and do not define the root contract.
 
 ## Context
 
@@ -88,12 +90,12 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 - `SceneGraph.net` remains the best local reference for measurement behavior above the kernel layer, but `occt-js` intentionally stopped at exact-kernel foundations plus package-first placement/relation support.
 - OCCT `PrsDim` remains the local geometry reference for placement and relation behavior, but `occt-js` intentionally stops short of AIS/Prs3d interactive dimensions.
 - The current exact runtime now exposes retained exact-model lifecycle, primitive exact queries, pairwise distance/angle/thickness, placement DTOs, relation classification, narrow selected-ref hole/chamfer helper semantics, package-only midpoint/equal-distance/symmetry helpers, published package typings, helper-aware release verification, additive lifecycle diagnostics, package-first managed disposal wrappers, and explicit perf/soak verification lanes.
-- `v1.7` is archived; active planning pressure has moved to defining and executing `v1.8` around generated tool geometry.
-- The current milestone assumes upstream apps define their own tool metadata and only hand `occt-js` a normalized revolved profile plus optional semantic tags.
-- Generated tool colors are not caller-owned in `v1.8`; deterministic default appearance should derive from runtime-side tag and role semantics.
+- `v1.7` and `v1.8` are archived; the next GSD step is defining the next milestone rather than extending the current one in place.
+- The shipped revolved-shape surface assumes upstream apps define their own tool metadata and only hand `occt-js` a normalized revolved profile plus optional semantic tags.
+- Generated revolved-shape colors are not caller-owned in `v1.8`; deterministic default appearance should derive from runtime-side tag and role semantics.
 - Segment-to-face bindings must be captured at build time from OCCT history rather than inferred later from final face order.
 - GSD is the primary repository workflow; superpowers remain optional support tooling for narrow tasks only.
-- Deferred seed `SEED-001-web-exact-brep-measurement` remains dormant and does not match this milestone, because the current focus is generated tool geometry rather than broader exact-measurement expansion.
+- Deferred seed `SEED-001-web-exact-brep-measurement` remains dormant and does not match this milestone, because the current focus is generated revolved-shape geometry rather than broader exact-measurement expansion.
 
 ## Constraints
 
@@ -132,8 +134,8 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 | Lock the helper SDK package-first through package-local typings plus root governance/tarball coverage | Phase 23 needed the helper family to be releasable without blurring the root/package boundary or widening secondary-surface gates | ✓ Good |
 | Sequence lifecycle/performance hardening before broader semantics or ecosystem cleanup | The exact helper surface is now shipped; stabilizing retained-handle safety and large-model cost hotspots reduces downstream risk before adding more breadth | ✓ Good |
 | Keep lifecycle diagnostics explicit and managed disposal package-first | Phase 24 needed safer lifecycle ergonomics while preserving root numeric handle ownership and avoiding viewer/global disposal policy | ✓ Good |
-| Model generated tools as app-neutral revolved profile specs instead of importing third-party tool schemas into the root runtime | Different tool-definition apps need one stable geometry contract, while schema ownership and adapter logic stay upstream | — Pending |
-| Derive generated-tool appearance from runtime tag and role semantics rather than caller-supplied colors | The generated-tool surface should stay easy to consume in downstream apps without forcing every caller to own material policy | — Pending |
+| Model generated shapes as app-neutral revolved profile specs instead of importing third-party tool schemas into the root runtime | Different tool-definition apps need one stable geometry contract, while schema ownership and adapter logic stay upstream | ✓ Good |
+| Derive generated-shape appearance from runtime tag and role semantics rather than caller-supplied colors | The generated-shape surface should stay easy to consume in downstream apps without forcing every caller to own material policy | ✓ Good |
 
 ## Evolution
 
@@ -223,4 +225,4 @@ This document evolves at phase transitions and milestone boundaries.
 </details>
 
 ---
-*Last updated: 2026-04-20 after v1.8 milestone initialization*
+*Last updated: 2026-04-21 after v1.8 milestone closeout*

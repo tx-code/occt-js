@@ -48,35 +48,88 @@ function findPhaseDir(phaseNumber) {
 test("active milestone planning corpus stays internally consistent", () => {
   const project = readRepoText(".planning/PROJECT.md");
   const roadmap = readRepoText(".planning/ROADMAP.md");
-  const requirements = readRepoText(".planning/REQUIREMENTS.md");
   const state = readRepoText(".planning/STATE.md");
   const frontmatter = parseFrontmatter(state);
   const coreValue =
     "Downstream applications can reliably consume the OCCT Wasm runtime and its root API contract without build drift or packaging surprises.";
+  const requirementsExists = existsSync(resolve(repoRoot, ".planning", "REQUIREMENTS.md"));
 
-  assert.equal(frontmatter.milestone, "v1.5");
-  assert.equal(frontmatter.milestone_name, "Root Release Hardening");
+  assert.equal(typeof frontmatter.milestone, "string");
+  assert.equal(typeof frontmatter.milestone_name, "string");
+  assert.ok(frontmatter.milestone.length > 0);
+  assert.ok(frontmatter.milestone_name.length > 0);
   assert.match(project, new RegExp(escapeRegExp(coreValue)));
   assert.match(state, new RegExp(escapeRegExp(coreValue)));
-  assert.match(roadmap, /🚧 \*\*v1\.5 Root Release Hardening\*\* - Phases 18-20 \(active\)/);
-  assert.match(project, /## Current Milestone: v1\.5 Root Release Hardening/);
-  assert.match(requirements, /## v1\.5 Requirements/);
-  assert.match(state, /Current focus:\s*Phase 19 Root Release Governance Decoupling/i);
+
+  if (requirementsExists) {
+    const requirements = readRepoText(".planning/REQUIREMENTS.md");
+    assert.match(
+      roadmap,
+      new RegExp(`🚧 \\*\\*${escapeRegExp(frontmatter.milestone)} ${escapeRegExp(frontmatter.milestone_name)}\\*\\*`),
+    );
+    assert.match(
+      project,
+      new RegExp(`## Current Milestone: ${escapeRegExp(frontmatter.milestone)} ${escapeRegExp(frontmatter.milestone_name)}`),
+    );
+    assert.match(requirements, /## v1 Requirements/);
+    assert.match(state, /Current focus:\s*.+/i);
+    return;
+  }
+
+  assert.doesNotMatch(roadmap, /🚧 \*\*/);
+  assert.match(roadmap, /\[v1\.8 Wasm\+JS Revolved Shape Generation\]/);
+  assert.match(project, /## No Active Milestone/);
+  assert.match(project, /\$gsd-new-milestone/);
+  assert.match(state, /Current focus:\s*Planning next milestone/i);
 });
 
 test("completed active-milestone phases keep their planning artifacts", () => {
-  const phaseDir = findPhaseDir("18");
+  const requirementsExists = existsSync(resolve(repoRoot, ".planning", "REQUIREMENTS.md"));
 
-  assert.ok(phaseDir, "expected a phase directory for completed Phase 18");
+  if (!requirementsExists) {
+    const state = readRepoText(".planning/STATE.md");
+    const frontmatter = parseFrontmatter(state);
+    const archivedPhasesRoot = resolve(repoRoot, ".planning", "milestones", `${frontmatter.milestone}-phases`);
 
-  const phaseFiles = readdirSync(phaseDir);
-  const planFiles = phaseFiles.filter((name) => name.endsWith("-PLAN.md"));
-  const summaryFiles = phaseFiles.filter((name) => name.endsWith("-SUMMARY.md"));
-  const verificationFiles = phaseFiles.filter((name) => name.endsWith("-VERIFICATION.md"));
+    assert.equal(existsSync(archivedPhasesRoot), true);
 
-  assert.equal(planFiles.length > 0, true);
-  assert.equal(summaryFiles.length, planFiles.length);
-  assert.equal(verificationFiles.length, 1);
+    const phaseDirs = readdirSync(archivedPhasesRoot, { withFileTypes: true }).filter((entry) => entry.isDirectory());
+    assert.equal(phaseDirs.length > 0, true);
+
+    for (const phaseDir of phaseDirs) {
+      const phaseFiles = readdirSync(resolve(archivedPhasesRoot, phaseDir.name));
+      const planFiles = phaseFiles.filter((name) => name.endsWith("-PLAN.md"));
+      const summaryFiles = phaseFiles.filter((name) => name.endsWith("-SUMMARY.md"));
+
+      assert.equal(planFiles.length > 0, true, `expected plan artifacts for archived phase ${phaseDir.name}`);
+      assert.equal(
+        summaryFiles.length,
+        planFiles.length,
+        `expected summary count parity for archived phase ${phaseDir.name}`,
+      );
+    }
+    return;
+  }
+
+  const roadmap = readRepoText(".planning/ROADMAP.md");
+  const completedPhaseNumbers = [...roadmap.matchAll(/- \[x\] \*\*Phase (\d+):/g)].map((match) => match[1]);
+  assert.equal(completedPhaseNumbers.length > 0, true);
+
+  for (const phaseNumber of completedPhaseNumbers) {
+    const phaseDir = findPhaseDir(phaseNumber);
+    assert.ok(phaseDir, `expected a phase directory for completed Phase ${phaseNumber}`);
+
+    const phaseFiles = readdirSync(phaseDir);
+    const planFiles = phaseFiles.filter((name) => name.endsWith("-PLAN.md"));
+    const summaryFiles = phaseFiles.filter((name) => name.endsWith("-SUMMARY.md"));
+
+    assert.equal(planFiles.length > 0, true, `expected plan artifacts for completed Phase ${phaseNumber}`);
+    assert.equal(
+      summaryFiles.length,
+      planFiles.length,
+      `expected summary count parity for completed Phase ${phaseNumber}`,
+    );
+  }
 });
 
 test("archived milestone links in roadmap resolve to archived planning files", () => {

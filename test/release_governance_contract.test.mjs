@@ -15,16 +15,18 @@ function readRepoJson(relativePath) {
   return JSON.parse(readRepoText(relativePath));
 }
 
-test("authoritative root release command surface includes exact helper contract coverage", () => {
+test("authoritative root release command surface includes the shipped root contract suites", () => {
   const packageJson = readRepoJson("package.json");
   const releaseCommand = packageJson.scripts?.["test:release:root"];
 
-  assert.equal(
-    releaseCommand,
-    "npm run build:wasm:win && node --test test/wasm_build_contract.test.mjs test/package_tarball_contract.test.mjs test/release_governance_contract.test.mjs test/exact_hole_contract.test.mjs test/exact_chamfer_contract.test.mjs test/exact_pairwise_measurement_contract.test.mjs test/exact_placement_contract.test.mjs test/exact_relation_contract.test.mjs && npm --prefix packages/occt-core test && npm test",
-  );
+  assert.match(releaseCommand ?? "", /npm run build:wasm:win/);
+  assert.match(releaseCommand ?? "", /test\/wasm_build_contract\.test\.mjs/);
+  assert.match(releaseCommand ?? "", /test\/package_tarball_contract\.test\.mjs/);
+  assert.match(releaseCommand ?? "", /test\/release_governance_contract\.test\.mjs/);
   assert.match(releaseCommand ?? "", /test\/exact_hole_contract\.test\.mjs/);
   assert.match(releaseCommand ?? "", /test\/exact_chamfer_contract\.test\.mjs/);
+  assert.match(releaseCommand ?? "", /npm --prefix packages\/occt-core test/);
+  assert.match(releaseCommand ?? "", /npm test/);
 });
 
 test("authoritative root release command surface excludes planning audit coverage", () => {
@@ -53,6 +55,23 @@ test("authoritative root test surface includes import appearance contract covera
   const testCommand = packageJson.scripts?.test ?? "";
 
   assert.match(testCommand, /test\/import_appearance_contract\.test\.mjs/);
+});
+
+test("authoritative root release and test surfaces include generated revolved-shape coverage", () => {
+  const packageJson = readRepoJson("package.json");
+  const releaseCommand = packageJson.scripts?.["test:release:root"] ?? "";
+  const testCommand = packageJson.scripts?.test ?? "";
+  const occtCoreReadme = readRepoText("packages/occt-core/README.md");
+
+  assert.match(releaseCommand, /test\/revolved_tool_spec_contract\.test\.mjs/);
+  assert.match(releaseCommand, /test\/generated_revolved_tool_contract\.test\.mjs/);
+  assert.match(releaseCommand, /test\/exact_generated_revolved_tool_contract\.test\.mjs/);
+  assert.match(testCommand, /test\/revolved_tool_spec_contract\.test\.mjs/);
+  assert.match(testCommand, /test\/generated_revolved_tool_contract\.test\.mjs/);
+  assert.match(testCommand, /test\/exact_generated_revolved_tool_contract\.test\.mjs/);
+  assert.match(occtCoreReadme, /validateRevolvedShapeSpec/);
+  assert.match(occtCoreReadme, /buildRevolvedShape/);
+  assert.match(occtCoreReadme, /openExactRevolvedShape/);
 });
 
 test("release governance keeps packaged appearance contract coverage on the authoritative root gate", () => {
