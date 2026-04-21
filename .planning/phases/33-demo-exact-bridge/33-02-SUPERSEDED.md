@@ -55,6 +55,8 @@ must_haves:
       pattern: geometryId|exactGeometryBindings|transform
 ---
 
+> Superseded on 2026-04-21 when `Phase 33` was narrowed to exact-session retention and inserted `Phase 33.1` became the canonical multi-actor workspace direction. Keep this file only as historical input for re-planning the actor-aware selection bridge.
+
 <objective>
 Resolve Babylon selections into occurrence-safe exact refs and store them as measurement-ready demo state.
 

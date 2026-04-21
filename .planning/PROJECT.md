@@ -49,7 +49,7 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 ### Active
 
 - `v1.10 Exact Measurement Demo Loop` is now active.
-- The current delivery target is a browser demo workflow that retains a managed exact model beside rendered scene data, resolves viewer picks to occurrence-safe exact refs, and proves the shipped exact measurement kernel through direct interaction.
+- The current delivery target is a browser demo workflow that can keep an imported workpiece plus generated tool in one shared workspace, move the tool, resolve actor-scoped viewer picks to occurrence-safe exact refs, and prove the shipped exact measurement kernel through direct interaction.
 - Demo-owned overlays, result presentation, and interaction state are in scope only as downstream `demo/` behavior; the authoritative root runtime/package release boundary remains unchanged.
 
 ### Out of Scope
@@ -60,12 +60,12 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 - Moving selection sessions, overlay rendering, label layout, or measurement widgets into the runtime/package layer — those remain downstream app concerns even if `v1.10` adds a demo-owned MVP.
 - Automatic whole-model measurement candidate discovery or semantic feature mining — `v1.10` is proving the manual selection-to-measure loop first.
 - Full AIS/Prs3d-style dimension authoring, annotation editing, or label-layout systems — the milestone needs inspection-grade demo behavior, not a full dimension product surface.
-- New broad exact-runtime APIs before the demo loop proves a concrete missing primitive — the current kernel/package surface is already broad and the immediate risk is integration correctness.
+- New broad exact-runtime APIs before the demo loop proves a concrete missing primitive — the current kernel/package surface is already broad, and only additive cross-model pairwise support justified by the workpiece-plus-tool loop is in scope.
 - Persistent measurement history, reporting, tolerance analysis, or collaboration workflows — those are app/product features above the geometry/runtime layer.
 
 ## Current State
 
-`v1.10 Exact Measurement Demo Loop` is now active on 2026-04-21. The milestone is aimed at proving the shipped exact measurement kernel through one browser demo workflow: retain a managed exact model beside the rendered scene, resolve Babylon picks into occurrence-safe exact refs, run supported measurements, and expose minimal placement-backed inspection or overlay behavior without turning `occt-js` into a viewer framework.
+`v1.10 Exact Measurement Demo Loop` is now active on 2026-04-21. The milestone is aimed at proving the shipped exact measurement kernel through one browser demo workflow that now includes a workpiece-plus-tool path: retain actor-scoped exact state beside the rendered scene, move a generated tool relative to an imported model, resolve Babylon picks into actor-scoped occurrence-safe exact refs, run supported measurements, and expose minimal placement-backed inspection or overlay behavior without turning `occt-js` into a viewer framework.
 
 `v1.3 Appearance Expansion` shipped on 2026-04-15 and is now archived in `.planning/milestones/`. The root runtime now exposes `appearancePreset`, `colorMode`, `defaultColor`, and `defaultOpacity`; `occt-core` forwards and normalizes that full contract without inventing viewer-side repaint behavior; and root/package docs plus `npm run test:release:root` now lock the shipped semantics in place.
 
@@ -87,8 +87,9 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 
 **Target features:**
 - Managed exact-model retention in the demo import lane plus clean disposal and reset behavior.
-- Selection-to-exact-ref bridging from rendered face, edge, and vertex picks.
-- Demo-owned exact measurement commands, typed results, and minimal placement-backed overlay or inspection output.
+- Multi-actor workspace support for an imported workpiece plus generated tool, including movable tool pose.
+- Actor-scoped selection-to-exact-ref bridging from rendered face, edge, and vertex picks.
+- Demo-owned exact measurement commands, typed results, and minimal placement-backed overlay or inspection output, including workpiece-tool measurement paths.
 - Docs, tests, and conditional secondary-surface verification for the measurement demo loop.
 
 ## Context
@@ -100,7 +101,8 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 - OCCT `PrsDim` remains the local geometry reference for placement and relation behavior, but `occt-js` intentionally stops short of AIS/Prs3d interactive dimensions.
 - The current exact runtime now exposes retained exact-model lifecycle, primitive exact queries, pairwise distance/angle/thickness, placement DTOs, relation classification, narrow selected-ref hole/chamfer helper semantics, package-only midpoint/equal-distance/symmetry helpers, published package typings, helper-aware release verification, additive lifecycle diagnostics, package-first managed disposal wrappers, and explicit perf/soak verification lanes.
 - `v1.7`, `v1.8`, and `v1.9` are archived; `v1.10 Exact Measurement Demo Loop` is now the active milestone.
-- The demo already has Babylon picking and highlight infrastructure, but it does not yet retain managed exact models or bridge picks to occurrence-safe exact refs for measurement execution.
+- The demo already has Babylon picking and highlight infrastructure and now retains managed exact state for one active model, but it does not yet support a multi-actor workpiece-plus-tool workspace or actor-scoped selection refs for measurement execution.
+- The current exact pairwise API still rejects refs from different `exactModelId` values, which is now a concrete blocker for imported-workpiece plus generated-tool measurement in one demo workspace.
 - The dormant `SEED-001-web-exact-brep-measurement` direction is now being resumed as a demo-first integration milestone rather than a new runtime-first kernel expansion.
 - GSD is the primary repository workflow; superpowers remain optional support tooling for narrow tasks only.
 
@@ -148,6 +150,8 @@ Downstream applications can reliably consume the OCCT Wasm runtime and its root 
 | Lock shared-profile and extruded-shape coverage package-first without inventing a second schema | Downstream JS needs one stable contract across root/runtime/package/docs, while app-owned tool adapters stay upstream | ✓ Good |
 | Prove exact measurement usability through a demo-owned integration loop before adding more kernel surface | The runtime and `occt-core` already ship a broad measurement kernel; the highest remaining risk is integration correctness, lifecycle safety, and demo ergonomics | ✓ Good |
 | Keep selection-to-exact-ref mapping inside the demo bridge instead of pushing viewer ids into root APIs | Exact refs must stay occurrence-safe and retained-handle-aware, while Babylon entity ids are app-local and disposable | ✓ Good |
+| Introduce a multi-actor demo workspace before shipping the measurement MVP | The requested workpiece-plus-tool loop requires simultaneous retained exact actors, movable tool pose, and actor-scoped selection state before measurement commands can be correct | ✓ Good |
+| Treat cross-model exact pairwise support as an additive, demo-proven kernel gap rather than a generic API expansion | Current pairwise wrappers require one shared `exactModelId`; the workpiece-plus-tool loop makes that limitation concrete enough to justify a narrow additive extension | ✓ Good |
 
 ## Evolution
 

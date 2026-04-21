@@ -8,13 +8,15 @@
 ### Demo Exact Bridge
 
 - [x] **DEMO-01**: Demo users can import a CAD model or load a generated shape and retain a managed exact model alongside the rendered scene until the model is replaced or explicitly cleared.
-- [ ] **DEMO-02**: Demo users can select a rendered face, edge, or vertex and the app resolves that pick into an occurrence-safe `OcctExactRef` suitable for existing exact queries and measurement commands.
+- [ ] **DEMO-02**: Demo users can select a rendered face, edge, or vertex from the current workpiece or tool actor and the app resolves that pick into an actor-scoped occurrence-safe `OcctExactRef` suitable for existing exact queries and measurement commands.
+- [ ] **DEMO-03**: Demo users can keep an imported workpiece and a generated tool active in one shared workspace, with the tool pose movable without discarding either actor's retained exact state.
 
 ### Measurement Workflows
 
 - [ ] **MEAS-01**: Demo users can run supported exact distance, angle, thickness, radius or diameter, edge-length, and face-area workflows from current selections and receive typed results or explicit unsupported feedback.
 - [ ] **MEAS-02**: Demo users can inspect placement-backed measurement output for supported workflows through anchors, frames, or guide geometry rendered by the demo without changing the shipped root DTO contracts.
 - [ ] **MEAS-03**: Demo users can clear, rerun, and compare measurements during one loaded-model session without stale retained-handle errors, orphaned overlay state, or invalid selection carryover.
+- [ ] **MEAS-04**: Supported pairwise exact measurements can compare refs from different retained exact models by honoring actor-scoped transforms instead of requiring one shared `exactModelId`.
 
 ### Docs & Verification
 
@@ -36,7 +38,7 @@
 |---------|--------|
 | Whole-model measurement candidate discovery | `v1.10` is proving the manual selection-to-measure loop first |
 | Full AIS/Prs3d-style dimension widgets, label layout, or annotation editing | The milestone needs a demo-owned MVP, not a full dimension authoring system |
-| New broad root exact APIs without a demo-proven gap | The current kernel/package surface is already broad; integration risk is the immediate problem |
+| New broad root exact APIs beyond the workpiece-plus-tool measurement gap now proven by the demo target | The current kernel/package surface is already broad; only additive cross-model pairwise support justified by the demo loop is in scope |
 | Desktop or Tauri-specific measurement UX or packaging | The browser demo is the target validation surface for this milestone |
 | Persistent measurement history, reporting, tolerance analysis, or collaboration workflows | Those are product features above the geometry/runtime layer |
 
@@ -45,17 +47,19 @@
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | DEMO-01 | Phase 33 | Complete |
-| DEMO-02 | Phase 33 | Planned |
+| DEMO-02 | Phase 33.1 | Planned |
+| DEMO-03 | Phase 33.1 | Planned |
 | MEAS-01 | Phase 34 | Planned |
 | MEAS-02 | Phase 34 | Planned |
 | MEAS-03 | Phase 34 | Planned |
+| MEAS-04 | Phase 33.1 | Planned |
 | DOCS-05 | Phase 35 | Planned |
 | E2E-01 | Phase 35 | Planned |
 | GOV-03 | Phase 35 | Planned |
 
 **Coverage:**
-- v1 requirements: 8 total
-- Mapped to phases: 8
+- v1 requirements: 10 total
+- Mapped to phases: 10
 - Unmapped: 0
 
 ---
