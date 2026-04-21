@@ -25,9 +25,9 @@ test("demo runtime hook wires generated tool MVP methods to the retained exact-o
 test("demo runtime hook provisions one exact-session contract across imported and generated model flows", () => {
   assert.match(useOcctSource, /openManagedExactModel/);
   assert.match(useOcctSource, /openExactRevolvedShape/);
-  assert.match(useOcctSource, /exactSession/);
-  assert.match(useOcctSource, /setImportedModels\([\s\S]*exactSession/);
-  assert.match(useOcctSource, /setModel\([\s\S]*exactSession/);
+  assert.match(useOcctSource, /upsertWorkpieceActor/);
+  assert.match(useOcctSource, /upsertToolActor/);
+  assert.match(useOcctSource, /clearWorkspaceExactSessions/);
 });
 
 test("viewer reset path clears the demo exact session before dropping model state", () => {

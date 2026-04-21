@@ -34,9 +34,9 @@ export function useOcct() {
   const modulePromiseRef = useRef(null);
   const runtimeRef = useRef(null);
   const runtimePromiseRef = useRef(null);
-  const setImportedModels = useViewerStore((s) => s.setImportedModels);
-  const setModel = useViewerStore((s) => s.setModel);
-  const setExactSession = useViewerStore((s) => s.setExactSession);
+  const upsertWorkpieceActor = useViewerStore((s) => s.upsertWorkpieceActor);
+  const upsertToolActor = useViewerStore((s) => s.upsertToolActor);
+  const clearWorkspaceActors = useViewerStore((s) => s.clearWorkspaceActors);
   const setLoading = useViewerStore((s) => s.setLoading);
   const setLoadingMessage = useViewerStore((s) => s.setLoadingMessage);
 
@@ -131,21 +131,35 @@ export function useOcct() {
     return result ?? { ok: true };
   }, []);
 
-  const clearExactSession = useCallback(async () => {
-    const exactSession = useViewerStore.getState().exactSession;
-    setExactSession(null);
-    return disposeExactSession(exactSession);
-  }, [disposeExactSession, setExactSession]);
+  const clearWorkspaceExactSessions = useCallback(async () => {
+    const workspaceActors = useViewerStore.getState().workspaceActors ?? {};
+    const exactSessions = Object.values(workspaceActors)
+      .map((actor) => actor?.exactSession ?? null)
+      .filter(Boolean);
 
-  const replaceExactSession = useCallback(async (nextExactSession, applyState) => {
-    await clearExactSession();
+    clearWorkspaceActors();
+
+    for (const exactSession of exactSessions) {
+      await disposeExactSession(exactSession);
+    }
+
+    return { ok: true };
+  }, [clearWorkspaceActors, disposeExactSession]);
+
+  const replaceActorExactSession = useCallback(async ({
+    actorId,
+    nextExactSession,
+    applyState,
+  }) => {
+    const previousExactSession = useViewerStore.getState().workspaceActors?.[actorId]?.exactSession ?? null;
     applyState(nextExactSession);
+    await disposeExactSession(previousExactSession);
     return nextExactSession;
-  }, [clearExactSession]);
+  }, [disposeExactSession]);
 
   useEffect(() => () => {
-    clearExactSession().catch(() => {});
-  }, [clearExactSession]);
+    clearWorkspaceExactSessions().catch(() => {});
+  }, [clearWorkspaceExactSessions]);
 
   const importFile = useCallback(async (file) => {
     setLoading(true, "Loading engine...");
@@ -195,14 +209,20 @@ export function useOcct() {
         console.warn("Auto orient failed for", file.name, error);
       }
 
-      await replaceExactSession(nextExactSession, (exactSession) => {
-        setImportedModels(result, autoOrientResult, file.name, exactSession);
+      await replaceActorExactSession({
+        actorId: "workpiece",
+        nextExactSession,
+        applyState: (exactSession) => {
+          upsertWorkpieceActor({
+            rawModel: result,
+            autoOrientModel: autoOrientResult,
+            fileName: file.name,
+            exactSession,
+          });
+        },
       });
-      const { orientationMode } = useViewerStore.getState();
-      if (orientationMode === "auto-orient" && autoOrientResult) {
-        return autoOrientResult;
-      }
-      return result;
+
+      return useViewerStore.getState().model ?? result;
     } catch (error) {
       if (nextExactSession) {
         try {
@@ -215,7 +235,7 @@ export function useOcct() {
     } finally {
       setLoading(false);
     }
-  }, [ensureModule, replaceExactSession, setImportedModels, setLoading, setLoadingMessage]);
+  }, [ensureModule, replaceActorExactSession, setLoading, setLoadingMessage, upsertWorkpieceActor]);
 
   const validateGeneratedToolSpec = useCallback(async (spec) => {
     const occt = await ensureModule();
@@ -262,8 +282,16 @@ export function useOcct() {
         sourceFormat: "generated-revolved-shape",
       });
 
-      await replaceExactSession(nextExactSession, (exactSession) => {
-        setModel(normalizedResult, label, exactSession);
+      await replaceActorExactSession({
+        actorId: "tool",
+        nextExactSession,
+        applyState: (exactSession) => {
+          upsertToolActor({
+            model: normalizedResult,
+            label,
+            exactSession,
+          });
+        },
       });
       return {
         validation,
@@ -282,10 +310,10 @@ export function useOcct() {
     } finally {
       setLoading(false);
     }
-  }, [ensureModule, replaceExactSession, setLoading, setLoadingMessage, setModel]);
+  }, [ensureModule, replaceActorExactSession, setLoading, setLoadingMessage, upsertToolActor]);
 
   return {
-    clearExactSession,
+    clearExactSession: clearWorkspaceExactSessions,
     importFile,
     ensureModule,
     validateGeneratedToolSpec,

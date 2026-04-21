@@ -1,87 +1,200 @@
 import { create } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
+import {
+  buildWorkspaceLabel,
+  buildWorkspaceModel,
+  createIdentityActorPose,
+  nudgeActorPose,
+  patchActorPose,
+} from "../lib/workspace-model.js";
 
-export const useViewerStore = create(subscribeWithSelector((set, get) => ({
-  // Model
+function clearSelectionState() {
+  return {
+    selectedItems: [],
+    selectedDetail: null,
+    selectionRequest: null,
+    selectionRequestSeq: 0,
+  };
+}
+
+function resolveOrientationMode(workspaceActors, orientationMode) {
+  const actorCount = Object.keys(workspaceActors ?? {}).length;
+  const workpieceActor = workspaceActors?.workpiece ?? null;
+
+  if (!workpieceActor) {
+    return actorCount === 0
+      ? (orientationMode === "raw" ? "raw" : "auto-orient")
+      : "raw";
+  }
+
+  return orientationMode === "auto-orient" && workpieceActor.autoOrientModel
+    ? "auto-orient"
+    : "raw";
+}
+
+function deriveWorkspaceState(workspaceActors, orientationMode) {
+  const nextOrientationMode = resolveOrientationMode(workspaceActors, orientationMode);
+  const workpieceActor = workspaceActors?.workpiece ?? null;
+
+  return {
+    workspaceActors,
+    orientationMode: nextOrientationMode,
+    model: buildWorkspaceModel(workspaceActors, nextOrientationMode),
+    rawModel: workpieceActor?.rawModel ?? null,
+    autoOrientModel: workpieceActor?.autoOrientModel ?? null,
+    fileName: buildWorkspaceLabel(workspaceActors),
+    exactSession: null,
+  };
+}
+
+const INITIAL_MODEL_STATE = Object.freeze({
+  workspaceActors: {},
   model: null,
   rawModel: null,
   autoOrientModel: null,
   fileName: "",
   exactSession: null,
   loading: false,
-  loadingMessage: "",  // "Loading engine...", "Parsing model...", etc.
+  loadingMessage: "",
+});
+
+export const useViewerStore = create(subscribeWithSelector((set, get) => ({
+  ...INITIAL_MODEL_STATE,
 
   // View
   facesVisible: true,
   edgesVisible: true,
   gridVisible: true,
   toolpathVisible: false,
-  projectionMode: "perspective", // "perspective" | "orthographic"
+  projectionMode: "perspective",
   treeOpen: false,
-  theme: "dark", // "dark" | "light"
-  orientationMode: "auto-orient", // "raw" | "auto-orient"
+  theme: "dark",
+  orientationMode: "auto-orient",
 
   // Selection (serializable summary)
   pickMode: "face",
   selectedItems: [],
-  selectedDetail: null, // { mode, items: [{ id, meshUniqueId, info: {...} }] } or null
+  selectedDetail: null,
   selectionRequest: null,
   selectionRequestSeq: 0,
 
-  // Actions
-  setModel: (model, fileName, exactSession = null) => set({
-    model,
-    rawModel: model,
-    autoOrientModel: null,
-    fileName,
-    exactSession,
-    orientationMode: "raw",
-    selectedItems: [],
-    selectedDetail: null,
-    selectionRequest: null,
-    selectionRequestSeq: 0,
-  }),
-  setImportedModels: (rawModel, autoOrientModel, fileName, exactSession = null) => set((state) => {
-    const nextMode = state.orientationMode === "auto-orient" && autoOrientModel
-      ? "auto-orient"
-      : "raw";
+  // Workspace actions
+  upsertWorkpieceActor: ({
+    rawModel,
+    autoOrientModel = null,
+    fileName = "",
+    exactSession = null,
+  }) => set((state) => {
+    const nextWorkspaceActors = {
+      ...state.workspaceActors,
+      workpiece: {
+        actorId: "workpiece",
+        actorRole: "workpiece",
+        label: fileName,
+        fileName,
+        rawModel,
+        autoOrientModel,
+        exactSession,
+        actorPose: createIdentityActorPose(),
+      },
+    };
 
     return {
-      rawModel,
-      autoOrientModel,
-      model: nextMode === "auto-orient" ? autoOrientModel : rawModel,
-      fileName,
-      exactSession,
-      orientationMode: nextMode,
-      selectedItems: [],
-      selectedDetail: null,
-      selectionRequest: null,
-      selectionRequestSeq: 0,
+      ...deriveWorkspaceState(nextWorkspaceActors, state.orientationMode),
+      ...clearSelectionState(),
     };
   }),
-  setExactSession: (exactSession) => set({
-    exactSession,
-    selectedItems: [],
-    selectedDetail: null,
-    selectionRequest: null,
-    selectionRequestSeq: 0,
-  }),
-  setOrientationMode: (orientationMode) => set((state) => {
-    const nextMode = orientationMode === "raw" ? "raw" : "auto-orient";
-    const canUseAutoOrient = !state.fileName || !!state.autoOrientModel;
-
-    if (nextMode === "auto-orient" && !canUseAutoOrient) {
-      return {
-        orientationMode: "raw",
-        model: state.rawModel,
-      };
-    }
+  upsertToolActor: ({
+    model,
+    label = "Generated Tool",
+    exactSession = null,
+  }) => set((state) => {
+    const nextWorkspaceActors = {
+      ...state.workspaceActors,
+      tool: {
+        actorId: "tool",
+        actorRole: "tool",
+        label,
+        fileName: label,
+        model,
+        rawModel: model,
+        autoOrientModel: null,
+        exactSession,
+        actorPose: createIdentityActorPose(),
+      },
+    };
 
     return {
-      orientationMode: nextMode,
-      model: nextMode === "auto-orient"
-        ? (state.autoOrientModel || state.model)
-        : (state.rawModel || state.model),
+      ...deriveWorkspaceState(nextWorkspaceActors, state.orientationMode),
+      ...clearSelectionState(),
+    };
+  }),
+  clearWorkspaceActors: () => set((state) => ({
+    ...INITIAL_MODEL_STATE,
+    orientationMode: resolveOrientationMode({}, state.orientationMode),
+    ...clearSelectionState(),
+  })),
+  setActorPose: (actorId, patch) => set((state) => {
+    const actor = state.workspaceActors?.[actorId];
+    if (!actor) {
+      return {};
+    }
+
+    const nextWorkspaceActors = {
+      ...state.workspaceActors,
+      [actorId]: {
+        ...actor,
+        actorPose: patchActorPose(actor.actorPose, patch),
+      },
+    };
+
+    return {
+      ...deriveWorkspaceState(nextWorkspaceActors, state.orientationMode),
+      ...clearSelectionState(),
+    };
+  }),
+  nudgeActorPose: (actorId, translationDelta) => set((state) => {
+    const actor = state.workspaceActors?.[actorId];
+    if (!actor) {
+      return {};
+    }
+
+    const nextWorkspaceActors = {
+      ...state.workspaceActors,
+      [actorId]: {
+        ...actor,
+        actorPose: nudgeActorPose(actor.actorPose, translationDelta),
+      },
+    };
+
+    return {
+      ...deriveWorkspaceState(nextWorkspaceActors, state.orientationMode),
+      ...clearSelectionState(),
+    };
+  }),
+
+  // Legacy wrappers kept for in-repo compatibility during the workspace transition.
+  setModel: (model, fileName, exactSession = null) => {
+    get().upsertToolActor({
+      model,
+      label: fileName,
+      exactSession,
+    });
+  },
+  setImportedModels: (rawModel, autoOrientModel, fileName, exactSession = null) => {
+    get().upsertWorkpieceActor({
+      rawModel,
+      autoOrientModel,
+      fileName,
+      exactSession,
+    });
+  },
+
+  // View actions
+  setOrientationMode: (orientationMode) => set((state) => {
+    const nextOrientationMode = orientationMode === "raw" ? "raw" : "auto-orient";
+    return {
+      ...deriveWorkspaceState(state.workspaceActors, nextOrientationMode),
     };
   }),
   setLoading: (loading, loadingMessage = "") => set({
@@ -89,15 +202,19 @@ export const useViewerStore = create(subscribeWithSelector((set, get) => ({
     loadingMessage: loading ? loadingMessage : "",
   }),
   setLoadingMessage: (loadingMessage) => set({ loadingMessage }),
-  toggleFaces: () => set((s) => ({ facesVisible: !s.facesVisible })),
-  toggleEdges: () => set((s) => ({ edgesVisible: !s.edgesVisible })),
-  toggleGrid: () => set((s) => ({ gridVisible: !s.gridVisible })),
-  toggleToolpath: () => set((s) => ({ toolpathVisible: !s.toolpathVisible })),
+  toggleFaces: () => set((state) => ({ facesVisible: !state.facesVisible })),
+  toggleEdges: () => set((state) => ({ edgesVisible: !state.edgesVisible })),
+  toggleGrid: () => set((state) => ({ gridVisible: !state.gridVisible })),
+  toggleToolpath: () => set((state) => ({ toolpathVisible: !state.toolpathVisible })),
   setProjection: (mode) => set({ projectionMode: mode }),
-  setPickMode: (mode) => set({ pickMode: mode, selectedItems: [], selectedDetail: null }),
+  setPickMode: (mode) => set({
+    pickMode: mode,
+    selectedItems: [],
+    selectedDetail: null,
+  }),
   setTreeOpen: (open) => set({ treeOpen: open }),
   setTheme: (theme) => set({ theme: theme === "dark" ? "dark" : "light" }),
-  toggleTheme: () => set((s) => ({ theme: s.theme === "dark" ? "light" : "dark" })),
+  toggleTheme: () => set((state) => ({ theme: state.theme === "dark" ? "light" : "dark" })),
   setSelectedItems: (items) => set({ selectedItems: items }),
   setSelectedDetail: (detail) => set({ selectedDetail: detail }),
   requestSelection: (selectionRequest) => set((state) => ({
@@ -105,13 +222,8 @@ export const useViewerStore = create(subscribeWithSelector((set, get) => ({
     selectionRequestSeq: state.selectionRequestSeq + 1,
   })),
   reset: () => set({
-    model: null,
-    rawModel: null,
-    autoOrientModel: null,
-    fileName: "",
-    exactSession: null,
-    loading: false,
-    loadingMessage: "",
+    ...INITIAL_MODEL_STATE,
+    orientationMode: "auto-orient",
     selectedItems: [],
     selectedDetail: null,
     selectionRequest: null,

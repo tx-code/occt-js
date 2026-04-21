@@ -44,18 +44,23 @@ async function getLinePassLayerStats(page, layer) {
   }, layer);
 }
 
-async function getExactSessionSnapshot(page) {
+async function getWorkspaceSnapshot(page) {
   return page.evaluate(async () => {
     const { useViewerStore } = await import("/src/store/viewerStore.js");
-    const exactSession = useViewerStore.getState().exactSession;
-    if (!exactSession) {
-      return null;
-    }
-
+    const workspaceActors = useViewerStore.getState().workspaceActors ?? {};
     return {
-      exactModelId: exactSession.exactModelId ?? null,
-      sourceFormat: exactSession.sourceFormat ?? null,
-      label: exactSession.label ?? "",
+      fileName: useViewerStore.getState().fileName ?? "",
+      actorIds: Object.keys(workspaceActors),
+      actors: Object.fromEntries(Object.entries(workspaceActors).map(([actorId, actor]) => [
+        actorId,
+        {
+          actorRole: actor?.actorRole ?? null,
+          exactModelId: actor?.exactSession?.exactModelId ?? null,
+          sourceFormat: actor?.exactSession?.sourceFormat ?? null,
+          label: actor?.label ?? "",
+          pose: actor?.actorPose ?? null,
+        },
+      ])),
     };
   });
 }
@@ -98,6 +103,56 @@ async function getProjectedModelCornerPoint(page) {
       }
     }
     return best ? { u: best.u, v: best.v } : null;
+  });
+
+  if (!box || !uv) {
+    return null;
+  }
+
+  return {
+    x: box.x + uv.u * box.width,
+    y: box.y + uv.v * box.height,
+  };
+}
+
+async function getProjectedVisibleModelPoint(page) {
+  const canvas = page.locator("[data-testid='render-canvas']");
+  const box = await canvas.boundingBox();
+  const uv = await page.evaluate(() => {
+    const scene = window.BABYLON?.EngineStore?.LastCreatedScene;
+    if (!scene) return null;
+
+    const engine = scene.getEngine();
+    const candidates = [
+      [0.5, 0.5],
+      [0.45, 0.5],
+      [0.55, 0.5],
+      [0.5, 0.45],
+      [0.5, 0.55],
+      [0.42, 0.42],
+      [0.58, 0.42],
+      [0.42, 0.58],
+      [0.58, 0.58],
+      [0.35, 0.5],
+      [0.65, 0.5],
+    ];
+
+    for (const [u, v] of candidates) {
+      const picked = scene.pick(
+        u * engine.getRenderWidth(),
+        v * engine.getRenderHeight(),
+        (mesh) =>
+          mesh?.isVisible &&
+          !mesh?.metadata?.occtLinePassManaged &&
+          typeof mesh.getTotalVertices === "function" &&
+          mesh.getTotalVertices() > 0,
+      );
+      if (picked?.hit) {
+        return { u, v };
+      }
+    }
+
+    return null;
   });
 
   if (!box || !uv) {
@@ -269,7 +324,8 @@ test("raw and auto-orient modes can be switched after import", async ({ page }) 
 
   const rawButton = page.locator("[data-testid='orientation-mode-raw-toolbar']");
   const autoButton = page.locator("[data-testid='orientation-mode-auto-toolbar']");
-  const initialExactSession = await getExactSessionSnapshot(page);
+  const initialWorkspace = await getWorkspaceSnapshot(page);
+  const initialExactSession = initialWorkspace?.actors?.workpiece ?? null;
 
   await expect(rawButton).toBeVisible();
   await expect(autoButton).toBeVisible();
@@ -281,29 +337,41 @@ test("raw and auto-orient modes can be switched after import", async ({ page }) 
   await rawButton.click();
   await expect(rawButton).toHaveClass(/cyan/);
   await expect(autoButton).not.toHaveClass(/cyan/);
-  expect(await getExactSessionSnapshot(page)).toEqual(initialExactSession);
+  expect((await getWorkspaceSnapshot(page)).actors.workpiece).toEqual(initialExactSession);
 
   await autoButton.click();
   await expect(autoButton).toHaveClass(/cyan/);
   await expect(rawButton).not.toHaveClass(/cyan/);
-  expect(await getExactSessionSnapshot(page)).toEqual(initialExactSession);
+  expect((await getWorkspaceSnapshot(page)).actors.workpiece).toEqual(initialExactSession);
 });
 
-test("replacing an imported model with a generated tool replaces the authoritative exact session", async ({ page }) => {
+test("imported workpiece and generated tool coexist as workspace actors and tool pose can move", async ({ page }) => {
   await loadFixture(page);
-  const importedSession = await getExactSessionSnapshot(page);
+  const importedWorkspace = await getWorkspaceSnapshot(page);
+  const importedSession = importedWorkspace?.actors?.workpiece ?? null;
   expect(importedSession?.exactModelId ?? 0).toBeGreaterThan(0);
   expect(importedSession?.sourceFormat).toBe("step");
+  expect(importedWorkspace.actorIds.sort()).toEqual(["workpiece"]);
 
   await page.click("[data-testid='open-generated-tool-panel-toolbar']");
   await page.click("[data-testid='generated-tool-preset-bullnose']");
   await page.click("[data-testid='generated-tool-build']");
   await expect(page.locator("[data-testid='generated-tool-panel']")).toBeHidden({ timeout: 30_000 });
 
-  const generatedSession = await getExactSessionSnapshot(page);
+  const workspace = await getWorkspaceSnapshot(page);
+  const generatedSession = workspace?.actors?.tool ?? null;
+  expect(workspace.actorIds.sort()).toEqual(["tool", "workpiece"]);
+  expect(workspace.actors.workpiece.exactModelId).toBe(importedSession?.exactModelId);
   expect(generatedSession?.exactModelId ?? 0).toBeGreaterThan(0);
   expect(generatedSession?.exactModelId).not.toBe(importedSession?.exactModelId);
   expect(generatedSession?.sourceFormat).toBe("generated-revolved-shape");
+
+  await expect(page.locator("[data-testid='tool-pose-panel']")).toBeVisible();
+  await page.click("[data-testid='tool-pose-nudge-x-plus']");
+
+  const movedWorkspace = await getWorkspaceSnapshot(page);
+  expect(movedWorkspace.actors.tool.exactModelId).toBe(generatedSession?.exactModelId);
+  expect(movedWorkspace.actors.tool.pose.translation.x).toBeGreaterThan(0);
 });
 
 test("raw and auto-orient keep CAD edge line-pass meshes alive", async ({ page }) => {
@@ -425,9 +493,9 @@ test("clicking on model shows face selection panel", async ({ page }) => {
   await loadFixture(page);
   await expect(page.locator("[data-testid='stats-panel']")).toBeVisible();
 
-  const canvas = page.locator("[data-testid='render-canvas']");
-  const box = await canvas.boundingBox();
-  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  const target = await getProjectedVisibleModelPoint(page);
+  expect(target).not.toBeNull();
+  await page.mouse.click(target.x, target.y);
 
   await expect(page.locator("[data-testid='selection-panel']")).toBeVisible({ timeout: 5000 });
   expect(errors).toEqual([]);
@@ -438,9 +506,9 @@ test("clicking on model does not emit WebGL invalid depth-function errors", asyn
   await loadFixture(page);
   await expect(page.locator("[data-testid='stats-panel']")).toBeVisible();
 
-  const canvas = page.locator("[data-testid='render-canvas']");
-  const box = await canvas.boundingBox();
-  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  const target = await getProjectedVisibleModelPoint(page);
+  expect(target).not.toBeNull();
+  await page.mouse.click(target.x, target.y);
   await page.waitForTimeout(500);
 
   expect(errors).toEqual([]);
