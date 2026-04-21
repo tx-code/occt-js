@@ -1,4 +1,15 @@
-# 31-02 Summary
+---
+phase: 31-linear-extruded-shape-runtime
+plan: "02"
+subsystem: extruded-face-semantics
+tags: [extruded-shape, bindings, appearance, exact-open]
+requirements-completed: [MAP-03, MAP-04]
+completed: 2026-04-21
+---
+
+# Phase 31 Plan 02 Summary
+
+**Generated extruded shapes now ship stable wall/cap semantics and deterministic runtime-owned appearance grouping.**
 
 ## Outcome
 

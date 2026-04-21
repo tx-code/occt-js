@@ -1,4 +1,15 @@
-# 30-02 Summary
+---
+phase: 30-shared-profile-kernel
+plan: "02"
+subsystem: revolved-shape-integration
+tags: [revolved-shape, profile2d, shared-kernel, regression]
+requirements-completed: [PROF-03]
+completed: 2026-04-21
+---
+
+# Phase 30 Plan 02 Summary
+
+**Revolved build and exact-open flows now reuse the shared `Profile2D` kernel without caller-visible drift.**
 
 ## Outcome
 

@@ -1,10 +1,11 @@
 ---
 phase: 30
 slug: shared-profile-kernel
-status: draft
+status: complete
 nyquist_compliant: true
-wave_0_complete: false
+wave_0_complete: true
 created: 2026-04-21
+verified: 2026-04-21
 ---
 
 # Phase 30 - Validation Strategy
@@ -38,10 +39,10 @@ created: 2026-04-21
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 30-01-01 | 01 | 1 | PROF-01, PROF-02 | T-30-01-01 | Generic local-2D profile validation rejects discontinuity, open loops, unsupported segments, and degenerate arcs without leaking revolve-specific assumptions. | integration | `npm run build:wasm:win && node --test test/profile_2d_spec_contract.test.mjs` | ❌ W0 | ⬜ pending |
-| 30-01-02 | 01 | 1 | PROF-01, PROF-02, PROF-03 | T-30-01-02 | Shared DTOs and validator wire into the built runtime while `ValidateRevolvedShapeSpec(...)` keeps its shipped behavior. | integration | `npm run build:wasm:win && node --test test/profile_2d_spec_contract.test.mjs test/revolved_tool_spec_contract.test.mjs` | ❌ W0 | ⬜ pending |
-| 30-02-01 | 02 | 1 | PROF-03 | T-30-02-01 | Revolved build/exact flows consume the shared kernel without changing generated-scene, face-binding, or exact-open semantics. | integration | `npm run build:wasm:win && node --test test/generated_revolved_tool_contract.test.mjs test/exact_generated_revolved_tool_contract.test.mjs` | ✅ | ⬜ pending |
-| 30-02-02 | 02 | 1 | PROF-03 | T-30-02-02 | Root/package command routing continues to prove no public drift after the internal refactor. | integration | `npm run build:wasm:win && node --test test/profile_2d_spec_contract.test.mjs test/revolved_tool_spec_contract.test.mjs test/generated_revolved_tool_contract.test.mjs test/exact_generated_revolved_tool_contract.test.mjs && npm --prefix packages/occt-core test && npm test` | ❌ W0 | ⬜ pending |
+| 30-01-01 | 01 | 1 | PROF-01, PROF-02 | T-30-01-01 | Generic local-2D profile validation rejects discontinuity, open loops, unsupported segments, and degenerate arcs without leaking revolve-specific assumptions. | integration | `npm run build:wasm:win && node --test test/profile_2d_spec_contract.test.mjs` | ✅ | ✅ green |
+| 30-01-02 | 01 | 1 | PROF-01, PROF-02, PROF-03 | T-30-01-02 | Shared DTOs and validator wire into the built runtime while `ValidateRevolvedShapeSpec(...)` keeps its shipped behavior. | integration | `npm run build:wasm:win && node --test test/profile_2d_spec_contract.test.mjs test/revolved_tool_spec_contract.test.mjs` | ✅ | ✅ green |
+| 30-02-01 | 02 | 1 | PROF-03 | T-30-02-01 | Revolved build/exact flows consume the shared kernel without changing generated-scene, face-binding, or exact-open semantics. | integration | `npm run build:wasm:win && node --test test/generated_revolved_tool_contract.test.mjs test/exact_generated_revolved_tool_contract.test.mjs` | ✅ | ✅ green |
+| 30-02-02 | 02 | 1 | PROF-03 | T-30-02-02 | Root/package command routing continues to prove no public drift after the internal refactor. | integration | `npm run build:wasm:win && node --test test/profile_2d_spec_contract.test.mjs test/revolved_tool_spec_contract.test.mjs test/generated_revolved_tool_contract.test.mjs test/exact_generated_revolved_tool_contract.test.mjs && npm --prefix packages/occt-core test && npm test` | ✅ | ✅ green |
 
 *Status: ⬜ pending - ✅ green - ❌ red - ⚠️ flaky*
 
@@ -49,10 +50,10 @@ created: 2026-04-21
 
 ## Wave 0 Requirements
 
-- [ ] `src/profile-2d.hpp` / `src/profile-2d.cpp` - new shared profile normalization and validation seam
-- [ ] `dist/occt-js.d.ts` - shared `Profile2D` DTOs and additive validator types
-- [ ] `test/profile_2d_spec_contract.test.mjs` - new root shared-profile validator contract test
-- [ ] `package.json` - route shared-profile contract coverage through root test commands if new file is added
+- [x] `src/profile-2d.hpp` / `src/profile-2d.cpp` - new shared profile normalization and validation seam
+- [x] `dist/occt-js.d.ts` - shared `Profile2D` DTOs and additive validator types
+- [x] `test/profile_2d_spec_contract.test.mjs` - new root shared-profile validator contract test
+- [x] `package.json` - route shared-profile contract coverage through root test commands if new file is added
 
 ---
 
@@ -74,4 +75,4 @@ created: 2026-04-21
 - [x] Feedback latency < 900s
 - [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** granted 2026-04-21 after root and package verification passed.

@@ -1,4 +1,15 @@
-# 31-01 Summary
+---
+phase: 31-linear-extruded-shape-runtime
+plan: "01"
+subsystem: extruded-runtime
+tags: [extruded-shape, root-runtime, profile2d, exact-open]
+requirements-completed: [EXTR-01, EXTR-02]
+completed: 2026-04-21
+---
+
+# Phase 31 Plan 01 Summary
+
+**The root runtime now exposes additive generic linear extruded-shape validate, build, and exact-open flows.**
 
 ## Outcome
 

@@ -1,10 +1,11 @@
 ---
 phase: 31
 slug: linear-extruded-shape-runtime
-status: draft
+status: complete
 nyquist_compliant: true
-wave_0_complete: false
+wave_0_complete: true
 created: 2026-04-21
+verified: 2026-04-21
 ---
 
 # Phase 31 - Validation Strategy
@@ -38,10 +39,10 @@ created: 2026-04-21
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 31-01-01 | 01 | 1 | EXTR-01 | T-31-01-01 | Extruded spec validation rejects unsupported units, non-positive depth, and invalid profile input before OCCT build. | integration | `npm run build:wasm:win && node --test test/extruded_shape_spec_contract.test.mjs` | ❌ W0 | ⬜ pending |
-| 31-01-02 | 01 | 1 | EXTR-01, EXTR-02 | T-31-01-02 | Build and exact-open for generated extruded shapes return canonical scene payloads and retained exact handles without drifting shared-profile or revolved behavior. | integration | `npm run build:wasm:win && node --test test/profile_2d_spec_contract.test.mjs test/revolved_tool_spec_contract.test.mjs test/generated_revolved_tool_contract.test.mjs test/exact_generated_revolved_tool_contract.test.mjs test/extruded_shape_spec_contract.test.mjs test/generated_extruded_shape_contract.test.mjs test/exact_generated_extruded_shape_contract.test.mjs` | ❌ W0 | ⬜ pending |
-| 31-02-01 | 02 | 1 | MAP-03 | T-31-02-01 | Extruded wall faces keep caller segment provenance while `start_cap` and `end_cap` remain runtime-owned and stable. | integration | `npm run build:wasm:win && node --test test/generated_extruded_shape_contract.test.mjs test/exact_generated_extruded_shape_contract.test.mjs` | ❌ W0 | ⬜ pending |
-| 31-02-02 | 02 | 1 | MAP-04 | T-31-02-02 | Runtime-owned wall/cap appearance grouping remains deterministic and representative exact-family bindings stay aligned with semantic face roles. | integration | `npm run build:wasm:win && node --test test/generated_extruded_shape_contract.test.mjs test/exact_generated_extruded_shape_contract.test.mjs && npm test` | ❌ W0 | ⬜ pending |
+| 31-01-01 | 01 | 1 | EXTR-01 | T-31-01-01 | Extruded spec validation rejects unsupported units, non-positive depth, and invalid profile input before OCCT build. | integration | `npm run build:wasm:win && node --test test/extruded_shape_spec_contract.test.mjs` | ✅ | ✅ green |
+| 31-01-02 | 01 | 1 | EXTR-01, EXTR-02 | T-31-01-02 | Build and exact-open for generated extruded shapes return canonical scene payloads and retained exact handles without drifting shared-profile or revolved behavior. | integration | `npm run build:wasm:win && node --test test/profile_2d_spec_contract.test.mjs test/revolved_tool_spec_contract.test.mjs test/generated_revolved_tool_contract.test.mjs test/exact_generated_revolved_tool_contract.test.mjs test/extruded_shape_spec_contract.test.mjs test/generated_extruded_shape_contract.test.mjs test/exact_generated_extruded_shape_contract.test.mjs` | ✅ | ✅ green |
+| 31-02-01 | 02 | 1 | MAP-03 | T-31-02-01 | Extruded wall faces keep caller segment provenance while `start_cap` and `end_cap` remain runtime-owned and stable. | integration | `npm run build:wasm:win && node --test test/generated_extruded_shape_contract.test.mjs test/exact_generated_extruded_shape_contract.test.mjs` | ✅ | ✅ green |
+| 31-02-02 | 02 | 1 | MAP-04 | T-31-02-02 | Runtime-owned wall/cap appearance grouping remains deterministic and representative exact-family bindings stay aligned with semantic face roles. | integration | `npm run build:wasm:win && node --test test/generated_extruded_shape_contract.test.mjs test/exact_generated_extruded_shape_contract.test.mjs && npm test` | ✅ | ✅ green |
 
 *Status: ⬜ pending - ✅ green - ❌ red - ⚠️ flaky*
 
@@ -49,12 +50,12 @@ created: 2026-04-21
 
 ## Wave 0 Requirements
 
-- [ ] `src/extruded-shape.hpp` / `src/extruded-shape.cpp` - new extruded-family adapter over the shared profile kernel
-- [ ] `dist/occt-js.d.ts` - additive generated-extruded-shape typings
-- [ ] `test/extruded_shape_spec_contract.test.mjs` - new root extruded-family validation contract test
-- [ ] `test/generated_extruded_shape_contract.test.mjs` - new generated-scene / semantic extruded-family regression suite
-- [ ] `test/exact_generated_extruded_shape_contract.test.mjs` - new exact-open / exact-family regression suite
-- [ ] `package.json` - route new root contract coverage through authoritative root commands
+- [x] `src/extruded-shape.hpp` / `src/extruded-shape.cpp` - new extruded-family adapter over the shared profile kernel
+- [x] `dist/occt-js.d.ts` - additive generated-extruded-shape typings
+- [x] `test/extruded_shape_spec_contract.test.mjs` - new root extruded-family validation contract test
+- [x] `test/generated_extruded_shape_contract.test.mjs` - new generated-scene / semantic extruded-family regression suite
+- [x] `test/exact_generated_extruded_shape_contract.test.mjs` - new exact-open / exact-family regression suite
+- [x] `package.json` - route new root contract coverage through authoritative root commands
 
 ---
 
@@ -76,4 +77,4 @@ created: 2026-04-21
 - [x] Feedback latency < 900s
 - [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** granted 2026-04-21 after root contract and full runtime verification passed.
