@@ -51,6 +51,67 @@ function validateTopology(geometry, label) {
   assert.equal(geometry.triangleToFaceMap.length, geometry.indices.length / 3, `${label}: triangleToFaceMap parity`);
 }
 
+function roundColor(color) {
+  return {
+    r: Number(color.r.toFixed(6)),
+    g: Number(color.g.toFixed(6)),
+    b: Number(color.b.toFixed(6)),
+  };
+}
+
+function colorKey(color) {
+  const rounded = roundColor(color);
+  return JSON.stringify([rounded.r, rounded.g, rounded.b]);
+}
+
+function faceColorKeyMap(geometry) {
+  return new Map((geometry.faces ?? []).map((face) => [face.id, face.color ? colorKey(face.color) : null]));
+}
+
+function assertStableFaceBindings(result, spec, label) {
+  const geometry = result.geometries[0];
+  const faceIds = new Set((geometry.faces ?? []).map((face) => face.id));
+  const faceBindings = result.extrudedShape?.faceBindings;
+  const boundFaces = new Set();
+
+  assert.equal(result.extrudedShape.hasStableFaceBindings, true, `${label}: stable face bindings should be enabled`);
+  assert.ok(Array.isArray(faceBindings), `${label}: faceBindings should be an array`);
+  assert.ok(faceBindings.length > 0, `${label}: faceBindings should not be empty`);
+  assert.ok(
+    geometry.faces.every((face) => face.color && typeof face.color.r === "number"),
+    `${label}: generated faces should expose deterministic default colors`,
+  );
+
+  for (const binding of faceBindings) {
+    assert.equal(binding.geometryIndex, 0, `${label}: generated extruded shapes currently bind against geometry 0`);
+    assert.ok(faceIds.has(binding.faceId), `${label}: faceId should exist in emitted geometry`);
+    const bindingKey = `${binding.geometryIndex}:${binding.faceId}`;
+    assert.equal(boundFaces.has(bindingKey), false, `${label}: each face should resolve to at most one stable binding`);
+    boundFaces.add(bindingKey);
+    assert.ok(
+      ["wall", "start_cap", "end_cap"].includes(binding.systemRole),
+      `${label}: systemRole should be a supported runtime role`,
+    );
+
+    if (binding.segmentIndex !== undefined) {
+      assert.ok(
+        binding.segmentIndex >= 0 && binding.segmentIndex < spec.profile.segments.length,
+        `${label}: segmentIndex should be in range`,
+      );
+      const segment = spec.profile.segments[binding.segmentIndex];
+      if (segment.id !== undefined) {
+        assert.equal(binding.segmentId, segment.id, `${label}: segmentId should echo the originating segment id`);
+      }
+      if (segment.tag !== undefined) {
+        assert.equal(binding.segmentTag, segment.tag, `${label}: segmentTag should echo the originating segment tag`);
+      }
+    } else {
+      assert.equal(binding.segmentId, undefined, `${label}: runtime-owned bindings should not claim a segmentId`);
+      assert.equal(binding.segmentTag, undefined, `${label}: runtime-owned bindings should not claim a segmentTag`);
+    }
+  }
+}
+
 test("BuildExtrudedShape builds a mixed line-and-arc profile into a canonical generated scene payload", async () => {
   const module = await createModule();
   const spec = createRoundedPrismSpec();
@@ -67,4 +128,60 @@ test("BuildExtrudedShape builds a mixed line-and-arc profile into a canonical ge
   assert.equal(result.extrudedShape.depth, spec.extrusion.depth);
   assert.equal(result.extrudedShape.segmentCount, spec.profile.segments.length);
   validateTopology(result.geometries[0], "mixed extruded prism");
+});
+
+test("BuildExtrudedShape emits stable face bindings and runtime-owned semantic appearance for wall start_cap and end_cap roles", async () => {
+  const module = await createModule();
+  const spec = createRoundedPrismSpec();
+  const result = module.BuildExtrudedShape(spec, {});
+
+  assertCanonicalGeneratedResult(result, "extruded semantic metadata");
+  assertStableFaceBindings(result, spec, "extruded semantic metadata");
+  assert.ok(result.extrudedShape?.shapeValidation, "extruded semantic metadata: shape validation should be present");
+  assert.equal(result.extrudedShape.shapeValidation.exact.isValid, true, "extruded semantic metadata: exact shape should validate");
+  assert.equal(result.extrudedShape.shapeValidation.mesh.isWatertight, true, "extruded semantic metadata: mesh should be watertight");
+
+  const roleSet = new Set(result.extrudedShape.faceBindings.map((binding) => binding.systemRole));
+  assert.ok(roleSet.has("wall"), "extruded semantic metadata: wall bindings should be present");
+  assert.ok(roleSet.has("start_cap"), "extruded semantic metadata: start_cap binding should be present");
+  assert.ok(roleSet.has("end_cap"), "extruded semantic metadata: end_cap binding should be present");
+  assert.ok(
+    result.extrudedShape.faceBindings.some((binding) => binding.segmentId === "arc-wall"),
+    "extruded semantic metadata: caller segment provenance should be preserved for wall faces",
+  );
+  assert.ok(
+    result.extrudedShape.faceBindings.some(
+      (binding) => binding.systemRole === "start_cap" && binding.segmentIndex === undefined,
+    ),
+    "extruded semantic metadata: runtime-owned start_cap should not claim caller provenance",
+  );
+  assert.ok(
+    result.extrudedShape.faceBindings.some(
+      (binding) => binding.systemRole === "end_cap" && binding.segmentIndex === undefined,
+    ),
+    "extruded semantic metadata: runtime-owned end_cap should not claim caller provenance",
+  );
+
+  const faceColors = faceColorKeyMap(result.geometries[0]);
+  const wallTagKeys = new Set(
+    result.extrudedShape.faceBindings
+      .filter((binding) => binding.systemRole === "wall" && binding.segmentTag === "wall")
+      .map((binding) => faceColors.get(binding.faceId)),
+  );
+  const curvedWallKey = faceColors.get(
+    result.extrudedShape.faceBindings.find((binding) => binding.segmentId === "arc-wall").faceId,
+  );
+  const startCapKey = faceColors.get(
+    result.extrudedShape.faceBindings.find((binding) => binding.systemRole === "start_cap").faceId,
+  );
+  const endCapKey = faceColors.get(
+    result.extrudedShape.faceBindings.find((binding) => binding.systemRole === "end_cap").faceId,
+  );
+
+  assert.equal(wallTagKeys.size, 1, "extruded semantic metadata: matching wall tags should collapse to one appearance group");
+  assert.notEqual(curvedWallKey, [...wallTagKeys][0], "extruded semantic metadata: distinct wall semantics should keep distinct colors");
+  assert.notEqual(startCapKey, [...wallTagKeys][0], "extruded semantic metadata: cap color should stay distinct from wall color");
+  assert.notEqual(endCapKey, [...wallTagKeys][0], "extruded semantic metadata: cap color should stay distinct from wall color");
+  assert.notEqual(startCapKey, endCapKey, "extruded semantic metadata: start and end caps should remain visually distinguishable");
+  assert.ok(result.materials.length >= 4, "extruded semantic metadata: materials should reflect grouped wall/cap appearances");
 });

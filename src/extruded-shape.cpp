@@ -17,6 +17,7 @@
 #include <TopExp.hxx>
 #include <TopExp_Explorer.hxx>
 #include <TopTools_IndexedMapOfShape.hxx>
+#include <TopTools_ListIteratorOfListOfShape.hxx>
 #include <TopoDS.hxx>
 #include <TopoDS_Edge.hxx>
 #include <TopoDS_Face.hxx>
@@ -27,8 +28,10 @@
 
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <cmath>
 #include <exception>
+#include <map>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -39,6 +42,21 @@ namespace {
 
 constexpr double kPointTolerance = 1e-9;
 constexpr double kPi = 3.14159265358979323846;
+
+struct ExtrudedProfileEdgeSource {
+    TopoDS_Edge edge;
+    int segmentIndex = -1;
+    bool hasSegmentIndex = false;
+    std::string segmentId;
+    bool hasSegmentId = false;
+    std::string segmentTag;
+    bool hasSegmentTag = false;
+};
+
+struct ExtrudedProfileWireBuild {
+    TopoDS_Wire wire;
+    std::vector<ExtrudedProfileEdgeSource> edgeSources;
+};
 
 bool IsObject(const val& jsValue)
 {
@@ -209,6 +227,87 @@ OcctColor NeutralShapeColor()
     return OcctColor(0.84, 0.86, 0.89);
 }
 
+OcctColor MakeSemanticColor(double r, double g, double b)
+{
+    return OcctColor(r, g, b);
+}
+
+std::string ToLowerAscii(std::string value)
+{
+    std::transform(
+        value.begin(),
+        value.end(),
+        value.begin(),
+        [](unsigned char ch) {
+            return static_cast<char>(std::tolower(ch));
+        });
+    return value;
+}
+
+uint32_t StableHash32(const std::string& text)
+{
+    uint32_t hash = 2166136261u;
+    for (unsigned char ch : text) {
+        hash ^= static_cast<uint32_t>(ch);
+        hash *= 16777619u;
+    }
+    return hash;
+}
+
+OcctColor HashedWallColor(const std::string& semanticKey)
+{
+    static const std::array<OcctColor, 6> kWallPalette = {
+        MakeSemanticColor(0.20, 0.57, 0.72),
+        MakeSemanticColor(0.73, 0.45, 0.24),
+        MakeSemanticColor(0.35, 0.60, 0.47),
+        MakeSemanticColor(0.58, 0.52, 0.73),
+        MakeSemanticColor(0.77, 0.56, 0.20),
+        MakeSemanticColor(0.48, 0.62, 0.69),
+    };
+
+    const uint32_t hash = StableHash32(semanticKey.empty() ? "wall" : semanticKey);
+    return kWallPalette[hash % kWallPalette.size()];
+}
+
+OcctColor ResolveWallAppearanceColor(const OcctGeneratedShapeFaceBinding& binding)
+{
+    if (binding.hasSegmentTag) {
+        const std::string tag = ToLowerAscii(binding.segmentTag);
+        if (tag == "wall") {
+            return MakeSemanticColor(0.20, 0.57, 0.72);
+        }
+        if (tag == "curved") {
+            return MakeSemanticColor(0.73, 0.45, 0.24);
+        }
+        if (tag == "base") {
+            return MakeSemanticColor(0.35, 0.60, 0.47);
+        }
+        return HashedWallColor(tag);
+    }
+
+    if (binding.hasSegmentId) {
+        return HashedWallColor(ToLowerAscii(binding.segmentId));
+    }
+
+    if (binding.hasSegmentIndex) {
+        return HashedWallColor("segment:" + std::to_string(binding.segmentIndex));
+    }
+
+    return MakeSemanticColor(0.63, 0.66, 0.71);
+}
+
+OcctColor ResolveExtrudedFaceColor(const OcctGeneratedShapeFaceBinding& binding)
+{
+    const std::string role = ToLowerAscii(binding.systemRole);
+    if (role == "start_cap") {
+        return MakeSemanticColor(0.88, 0.67, 0.25);
+    }
+    if (role == "end_cap") {
+        return MakeSemanticColor(0.69, 0.39, 0.24);
+    }
+    return ResolveWallAppearanceColor(binding);
+}
+
 ImportParams ParseBuildParams(const val& jsOptions, const OcctExtrudedShapeSpec& spec)
 {
     ImportParams params;
@@ -340,12 +439,13 @@ bool TryMakeArc3PointEdge(
     return !edge.IsNull();
 }
 
-bool TryBuildProfileWire(const OcctProfile2DSpec& profile, TopoDS_Wire& wire)
+bool TryBuildProfileWire(const OcctProfile2DSpec& profile, ExtrudedProfileWireBuild& build)
 {
     BRepBuilderAPI_MakeWire wireBuilder;
     std::array<double, 2> currentPoint = profile.start;
 
-    for (const auto& segment : profile.segments) {
+    for (size_t segmentIndex = 0; segmentIndex < profile.segments.size(); ++segmentIndex) {
+        const auto& segment = profile.segments[segmentIndex];
         const std::array<double, 2> segmentStart = segment.hasStart ? segment.start : currentPoint;
         TopoDS_Edge edge;
         bool edgeBuilt = false;
@@ -367,6 +467,20 @@ bool TryBuildProfileWire(const OcctProfile2DSpec& profile, TopoDS_Wire& wire)
             return false;
         }
 
+        ExtrudedProfileEdgeSource source;
+        source.edge = edge;
+        source.segmentIndex = static_cast<int>(segmentIndex);
+        source.hasSegmentIndex = true;
+        if (segment.hasId) {
+            source.segmentId = segment.id;
+            source.hasSegmentId = true;
+        }
+        if (segment.hasTag) {
+            source.segmentTag = segment.tag;
+            source.hasSegmentTag = true;
+        }
+        build.edgeSources.push_back(std::move(source));
+
         currentPoint = segment.end;
     }
 
@@ -374,8 +488,8 @@ bool TryBuildProfileWire(const OcctProfile2DSpec& profile, TopoDS_Wire& wire)
         return false;
     }
 
-    wire = wireBuilder.Wire();
-    return !wire.IsNull();
+    build.wire = wireBuilder.Wire();
+    return !build.wire.IsNull();
 }
 
 double ComputeApproximateProfileArea(const OcctProfile2DSpec& profile)
@@ -541,6 +655,206 @@ OcctGeneratedShapeShapeValidation BuildGeneratedShapeValidation(
     return validation;
 }
 
+int FindFaceId(const TopoDS_Shape& shape, const TopTools_IndexedMapOfShape& faceMap)
+{
+    if (shape.IsNull() || shape.ShapeType() != TopAbs_FACE) {
+        return 0;
+    }
+
+    int faceId = faceMap.FindIndex(shape);
+    if (faceId > 0) {
+        return faceId;
+    }
+
+    faceId = faceMap.FindIndex(shape.Oriented(TopAbs_FORWARD));
+    if (faceId > 0) {
+        return faceId;
+    }
+
+    return faceMap.FindIndex(shape.Oriented(TopAbs_REVERSED));
+}
+
+bool FaceBindingMatches(
+    const OcctGeneratedShapeFaceBinding& binding,
+    const OcctGeneratedShapeFaceBinding& candidate)
+{
+    return binding.geometryIndex == candidate.geometryIndex
+        && binding.faceId == candidate.faceId
+        && binding.systemRole == candidate.systemRole
+        && binding.hasSegmentIndex == candidate.hasSegmentIndex
+        && binding.segmentIndex == candidate.segmentIndex
+        && binding.hasSegmentId == candidate.hasSegmentId
+        && binding.segmentId == candidate.segmentId
+        && binding.hasSegmentTag == candidate.hasSegmentTag
+        && binding.segmentTag == candidate.segmentTag;
+}
+
+void TryAppendResolvedFaceBinding(
+    std::vector<OcctGeneratedShapeFaceBinding>& bindings,
+    const OcctGeneratedShapeFaceBinding& binding)
+{
+    const auto duplicate = std::find_if(
+        bindings.begin(),
+        bindings.end(),
+        [&](const OcctGeneratedShapeFaceBinding& existing) {
+            return FaceBindingMatches(existing, binding);
+        });
+    if (duplicate == bindings.end()) {
+        bindings.push_back(binding);
+    }
+}
+
+void TryAppendFaceBinding(
+    std::vector<OcctGeneratedShapeFaceBinding>& bindings,
+    int geometryIndex,
+    int faceId,
+    const std::string& systemRole,
+    const ExtrudedProfileEdgeSource* source = nullptr)
+{
+    if (faceId <= 0) {
+        return;
+    }
+
+    OcctGeneratedShapeFaceBinding binding;
+    binding.geometryIndex = geometryIndex;
+    binding.faceId = faceId;
+    binding.systemRole = systemRole;
+    if (source != nullptr && source->hasSegmentIndex) {
+        binding.segmentIndex = source->segmentIndex;
+        binding.hasSegmentIndex = true;
+    }
+    if (source != nullptr && source->hasSegmentId) {
+        binding.segmentId = source->segmentId;
+        binding.hasSegmentId = true;
+    }
+    if (source != nullptr && source->hasSegmentTag) {
+        binding.segmentTag = source->segmentTag;
+        binding.hasSegmentTag = true;
+    }
+
+    TryAppendResolvedFaceBinding(bindings, binding);
+}
+
+std::vector<int> CollectGeneratedFaceIds(
+    const TopTools_ListOfShape& generatedShapes,
+    const TopTools_IndexedMapOfShape& faceMap)
+{
+    std::vector<int> faceIds;
+    for (TopTools_ListIteratorOfListOfShape it(generatedShapes); it.More(); it.Next()) {
+        const int faceId = FindFaceId(it.Value(), faceMap);
+        if (faceId > 0
+            && std::find(faceIds.begin(), faceIds.end(), faceId) == faceIds.end()) {
+            faceIds.push_back(faceId);
+        }
+    }
+    return faceIds;
+}
+
+bool FaceIdCollectionContains(const std::vector<int>& faceIds, int faceId)
+{
+    return std::find(faceIds.begin(), faceIds.end(), faceId) != faceIds.end();
+}
+
+OcctGeneratedShapeFaceBinding BuildCollapsedWallBinding(
+    int geometryIndex,
+    int faceId,
+    const std::vector<const ExtrudedProfileEdgeSource*>& sources)
+{
+    OcctGeneratedShapeFaceBinding binding;
+    binding.geometryIndex = geometryIndex;
+    binding.faceId = faceId;
+    binding.systemRole = "wall";
+    if (sources.size() == 1) {
+        const ExtrudedProfileEdgeSource& source = *sources.front();
+        if (source.hasSegmentIndex) {
+            binding.segmentIndex = source.segmentIndex;
+            binding.hasSegmentIndex = true;
+        }
+        if (source.hasSegmentId) {
+            binding.segmentId = source.segmentId;
+            binding.hasSegmentId = true;
+        }
+        if (source.hasSegmentTag) {
+            binding.segmentTag = source.segmentTag;
+            binding.hasSegmentTag = true;
+        }
+    }
+    return binding;
+}
+
+std::vector<OcctGeneratedShapeFaceBinding> BuildExtrudedFaceBindings(
+    const TopoDS_Shape& extrudedShape,
+    const TopoDS_Face& profileFace,
+    BRepPrimAPI_MakePrism& makePrism,
+    const ExtrudedProfileWireBuild& wireBuild)
+{
+    std::vector<OcctGeneratedShapeFaceBinding> bindings;
+    TopTools_IndexedMapOfShape faceMap;
+    TopTools_IndexedMapOfShape profileEdgeMap;
+    TopExp::MapShapes(extrudedShape, TopAbs_FACE, faceMap);
+    TopExp::MapShapes(profileFace, TopAbs_EDGE, profileEdgeMap);
+
+    const int startCapFaceId = FindFaceId(makePrism.FirstShape(profileFace), faceMap);
+    const int endCapFaceId = FindFaceId(makePrism.LastShape(profileFace), faceMap);
+
+    std::map<int, std::vector<const ExtrudedProfileEdgeSource*>> sourcesByFaceId;
+    const int mappedEdgeCount = std::min(profileEdgeMap.Extent(), static_cast<int>(wireBuild.edgeSources.size()));
+    for (int index = 0; index < mappedEdgeCount; ++index) {
+        std::vector<int> faceIds = CollectGeneratedFaceIds(makePrism.Generated(profileEdgeMap(index + 1)), faceMap);
+        const std::vector<int> directFaceIds = CollectGeneratedFaceIds(makePrism.Generated(wireBuild.edgeSources[static_cast<size_t>(index)].edge), faceMap);
+        for (int faceId : directFaceIds) {
+            if (!FaceIdCollectionContains(faceIds, faceId)) {
+                faceIds.push_back(faceId);
+            }
+        }
+
+        for (int faceId : faceIds) {
+            auto& sources = sourcesByFaceId[faceId];
+            const ExtrudedProfileEdgeSource* source = &wireBuild.edgeSources[static_cast<size_t>(index)];
+            if (std::find(sources.begin(), sources.end(), source) == sources.end()) {
+                sources.push_back(source);
+            }
+        }
+    }
+
+    for (const auto& [faceId, sources] : sourcesByFaceId) {
+        if (faceId == startCapFaceId || faceId == endCapFaceId) {
+            continue;
+        }
+        TryAppendResolvedFaceBinding(bindings, BuildCollapsedWallBinding(0, faceId, sources));
+    }
+
+    TryAppendFaceBinding(bindings, 0, startCapFaceId, "start_cap");
+    TryAppendFaceBinding(bindings, 0, endCapFaceId, "end_cap");
+    return bindings;
+}
+
+void ApplyGeneratedExtrudedFaceColors(
+    OcctMeshData& mesh,
+    const std::vector<OcctGeneratedShapeFaceBinding>& faceBindings)
+{
+    std::vector<bool> assigned(mesh.faces.size(), false);
+    for (const auto& binding : faceBindings) {
+        if (binding.faceId <= 0 || binding.faceId > static_cast<int>(mesh.faces.size())) {
+            continue;
+        }
+
+        const size_t faceIndex = static_cast<size_t>(binding.faceId - 1);
+        if (assigned[faceIndex]) {
+            continue;
+        }
+
+        mesh.faces[faceIndex].color = ResolveExtrudedFaceColor(binding);
+        assigned[faceIndex] = mesh.faces[faceIndex].color.isValid;
+    }
+
+    for (size_t faceIndex = 0; faceIndex < mesh.faces.size(); ++faceIndex) {
+        if (!assigned[faceIndex]) {
+            mesh.faces[faceIndex].color = NeutralShapeColor();
+        }
+    }
+}
+
 OcctGeneratedExtrudedShapeMetadata BuildExtrudedShapeMetadata(const OcctExtrudedShapeSpec& spec)
 {
     OcctGeneratedExtrudedShapeMetadata metadata;
@@ -648,14 +962,14 @@ OcctExtrudedShapeBuildResult BuildExtrudedShape(const val& jsSpec, const val& js
             return result;
         }
 
-        TopoDS_Wire wire;
-        if (!TryBuildProfileWire(spec.profile, wire)) {
+        ExtrudedProfileWireBuild wireBuild;
+        if (!TryBuildProfileWire(spec.profile, wireBuild)) {
             AddDiagnostic(result, "build-failed", "Failed to build a connected extruded shape profile wire.", "profile");
             FinalizeBuildFailure(result, "Failed to build a connected extruded shape profile wire.");
             return result;
         }
 
-        BRepBuilderAPI_MakeFace faceBuilder(wire, Standard_True);
+        BRepBuilderAPI_MakeFace faceBuilder(wireBuild.wire, Standard_True);
         if (!faceBuilder.IsDone()) {
             AddDiagnostic(result, "build-failed", "Failed to create a planar profile face from the extruded shape wire.", "profile");
             FinalizeBuildFailure(result, "Failed to create a planar profile face from the extruded shape wire.");
@@ -678,6 +992,9 @@ OcctExtrudedShapeBuildResult BuildExtrudedShape(const val& jsSpec, const val& js
             return result;
         }
 
+        const std::vector<OcctGeneratedShapeFaceBinding> faceBindings =
+            BuildExtrudedFaceBindings(extrudedShape, face, makePrism, wireBuild);
+
         ImportParams buildParams = ParseBuildParams(jsOptions, spec);
         if (!TriangulateShape(extrudedShape, buildParams)) {
             AddDiagnostic(result, "build-failed", "Failed to triangulate the generated extruded shape.", "mesh");
@@ -694,8 +1011,11 @@ OcctExtrudedShapeBuildResult BuildExtrudedShape(const val& jsSpec, const val& js
 
         mesh.name = "Generated Extruded Shape";
         mesh.color = NeutralShapeColor();
+        ApplyGeneratedExtrudedFaceColors(mesh, faceBindings);
         result.extrudedShape.shapeValidation = BuildGeneratedShapeValidation(extrudedShape, mesh);
         result.extrudedShape.hasShapeValidation = true;
+        result.extrudedShape.faceBindings = faceBindings;
+        result.extrudedShape.hasStableFaceBindings = true;
 
         PopulateGeneratedScene(mesh, spec, result.scene);
         result.exactShape = extrudedShape;

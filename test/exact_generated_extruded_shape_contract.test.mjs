@@ -57,6 +57,19 @@ function findRepresentativeFace(module, result, expectedFamily) {
   return null;
 }
 
+function familyForFaceId(module, result, faceId) {
+  const handle = result.exactGeometryBindings[0].exactShapeHandle;
+  const family = module.GetExactGeometryType(result.exactModelId, handle, "face", faceId);
+  assert.equal(family?.ok, true, `exact family lookup for face ${faceId} should succeed`);
+  return family.family;
+}
+
+function familyForSegmentId(module, result, segmentId) {
+  const binding = result.extrudedShape.faceBindings.find((candidate) => candidate.segmentId === segmentId);
+  assert.ok(binding, `binding for segment ${segmentId} should exist`);
+  return familyForFaceId(module, result, binding.faceId);
+}
+
 test("OpenExactExtrudedShape returns retained exact handles for a generated extruded shape", async () => {
   const module = await createModule();
   const result = module.OpenExactExtrudedShape(createRoundedPrismSpec(), {});
@@ -66,6 +79,35 @@ test("OpenExactExtrudedShape returns retained exact handles for a generated extr
     assert.equal(result.geometries.length, 1, "generated extruded exact open should export one geometry");
     assert.equal(result.exactGeometryBindings.length, 1, "generated extruded exact open should export one exact geometry binding");
     assert.equal(result.exactGeometryBindings[0].exactShapeHandle, 1, "first generated extruded exact shape handle should be 1");
+  } finally {
+    if (result?.exactModelId) {
+      module.ReleaseExactModel(result.exactModelId);
+    }
+  }
+});
+
+test("OpenExactExtrudedShape keeps wall and cap bindings aligned with representative exact families", async () => {
+  const module = await createModule();
+  const result = module.OpenExactExtrudedShape(createRoundedPrismSpec(), {});
+
+  try {
+    assertCanonicalExactGeneratedPayload(result, "generated extruded semantic exact mapping");
+    assert.equal(result.extrudedShape.hasStableFaceBindings, true, "generated extruded semantic exact mapping: stable bindings should be enabled");
+    assert.ok(Array.isArray(result.extrudedShape.faceBindings), "generated extruded semantic exact mapping: faceBindings should exist");
+
+    assert.equal(familyForSegmentId(module, result, "base"), "plane");
+    assert.equal(familyForSegmentId(module, result, "right-wall"), "plane");
+    assert.equal(familyForSegmentId(module, result, "arc-wall"), "cylinder");
+    assert.equal(familyForSegmentId(module, result, "left-wall"), "plane");
+
+    const startCap = result.extrudedShape.faceBindings.find((binding) => binding.systemRole === "start_cap");
+    const endCap = result.extrudedShape.faceBindings.find((binding) => binding.systemRole === "end_cap");
+    assert.ok(startCap, "generated extruded semantic exact mapping: start_cap binding should exist");
+    assert.ok(endCap, "generated extruded semantic exact mapping: end_cap binding should exist");
+    assert.equal(startCap.segmentId, undefined, "generated extruded semantic exact mapping: start_cap should stay runtime-owned");
+    assert.equal(endCap.segmentId, undefined, "generated extruded semantic exact mapping: end_cap should stay runtime-owned");
+    assert.equal(familyForFaceId(module, result, startCap.faceId), "plane");
+    assert.equal(familyForFaceId(module, result, endCap.faceId), "plane");
   } finally {
     if (result?.exactModelId) {
       module.ReleaseExactModel(result.exactModelId);
