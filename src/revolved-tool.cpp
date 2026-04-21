@@ -107,6 +107,18 @@ struct RevolvedProfileWireBuild {
     std::vector<RevolvedProfileEdgeSource> edgeSources;
 };
 
+struct ResolvedRevolvedProfileSegment {
+    OcctRevolvedToolSegment segment;
+    std::string systemRole;
+    int segmentIndex = -1;
+    bool hasSegmentIndex = false;
+};
+
+struct ResolvedRevolvedProfileLoop {
+    OcctProfile2DSpec profile;
+    std::vector<ResolvedRevolvedProfileSegment> segments;
+};
+
 bool IsObject(const val& jsValue)
 {
     return jsValue.typeOf().as<std::string>() == "object" && !jsValue.isNull();
@@ -120,11 +132,6 @@ bool IsNumber(const val& jsValue)
 bool IsString(const val& jsValue)
 {
     return jsValue.typeOf().as<std::string>() == "string";
-}
-
-bool IsArrayLike(const val& jsValue)
-{
-    return IsObject(jsValue) && jsValue.hasOwnProperty("length") && IsNumber(jsValue["length"]);
 }
 
 OcctRevolvedToolDiagnostic MakeDiagnostic(
@@ -196,46 +203,6 @@ bool TryParseStringProperty(
     return true;
 }
 
-bool TryParsePoint2(
-    const val& jsValue,
-    std::array<double, 2>& point,
-    OcctRevolvedToolValidationResult& result,
-    const std::string& path,
-    int segmentIndex = -1)
-{
-    if (!IsArrayLike(jsValue) || jsValue["length"].as<unsigned>() < 2) {
-        AddDiagnostic(result, "invalid-type", "Expected a 2D point [radius, z].", path, segmentIndex);
-        return false;
-    }
-
-    bool ok = true;
-    for (unsigned axis = 0; axis < 2; ++axis) {
-        const std::string axisPath = path + "[" + std::to_string(axis) + "]";
-        val coordinate = jsValue[axis];
-        if (!IsNumber(coordinate)) {
-            AddDiagnostic(result, "invalid-type", "Expected a numeric coordinate.", axisPath, segmentIndex);
-            ok = false;
-            continue;
-        }
-
-        const double value = coordinate.as<double>();
-        point[axis] = value;
-
-        if (!std::isfinite(value)) {
-            AddDiagnostic(result, "non-finite-coordinate", "Coordinates must be finite numbers.", axisPath, segmentIndex);
-            ok = false;
-            continue;
-        }
-
-        if (axis == 0 && value < 0.0) {
-            AddDiagnostic(result, "negative-radius", "Radius coordinates must be >= 0.", axisPath, segmentIndex);
-            ok = false;
-        }
-    }
-
-    return ok;
-}
-
 double SquaredDistance(const std::array<double, 2>& left, const std::array<double, 2>& right)
 {
     const double dx = left[0] - right[0];
@@ -246,173 +213,6 @@ double SquaredDistance(const std::array<double, 2>& left, const std::array<doubl
 bool PointsCoincident(const std::array<double, 2>& left, const std::array<double, 2>& right)
 {
     return SquaredDistance(left, right) <= (kPointTolerance * kPointTolerance);
-}
-
-bool ValidateArcCenterSegment(
-    const std::array<double, 2>& start,
-    const OcctRevolvedToolSegment& segment,
-    OcctRevolvedToolValidationResult& result,
-    int segmentIndex)
-{
-    if (!segment.hasEnd || !segment.hasCenter) {
-        return false;
-    }
-
-    if (PointsCoincident(start, segment.end)) {
-        AddDiagnostic(
-            result,
-            "invalid-arc",
-            "arc_center segments must end at a different point than they start.",
-            "profile.segments[" + std::to_string(segmentIndex) + "]",
-            segmentIndex);
-        return false;
-    }
-
-    const double startRadiusSq = SquaredDistance(start, segment.center);
-    const double endRadiusSq = SquaredDistance(segment.end, segment.center);
-    if (startRadiusSq <= (kPointTolerance * kPointTolerance)
-        || endRadiusSq <= (kPointTolerance * kPointTolerance)) {
-        AddDiagnostic(
-            result,
-            "invalid-arc",
-            "arc_center segments require a non-degenerate radius.",
-            "profile.segments[" + std::to_string(segmentIndex) + "]",
-            segmentIndex);
-        return false;
-    }
-
-    const double startRadius = std::sqrt(startRadiusSq);
-    const double endRadius = std::sqrt(endRadiusSq);
-    const double radiusTolerance = std::max({ kPointTolerance, startRadius * 1e-6, endRadius * 1e-6 });
-    if (std::abs(startRadius - endRadius) > radiusTolerance) {
-        AddDiagnostic(
-            result,
-            "invalid-arc",
-            "arc_center segments require start and end points to be equidistant from the center.",
-            "profile.segments[" + std::to_string(segmentIndex) + "]",
-            segmentIndex);
-        return false;
-    }
-
-    return true;
-}
-
-bool ValidateArc3PointSegment(
-    const std::array<double, 2>& start,
-    const OcctRevolvedToolSegment& segment,
-    OcctRevolvedToolValidationResult& result,
-    int segmentIndex)
-{
-    if (!segment.hasEnd || !segment.hasThrough) {
-        return false;
-    }
-
-    if (PointsCoincident(start, segment.end)
-        || PointsCoincident(start, segment.through)
-        || PointsCoincident(segment.through, segment.end)) {
-        AddDiagnostic(
-            result,
-            "invalid-arc",
-            "arc_3pt segments require three distinct points.",
-            "profile.segments[" + std::to_string(segmentIndex) + "]",
-            segmentIndex);
-        return false;
-    }
-
-    const double area2 =
-        start[0] * (segment.through[1] - segment.end[1]) +
-        segment.through[0] * (segment.end[1] - start[1]) +
-        segment.end[0] * (start[1] - segment.through[1]);
-    if (std::abs(area2) <= kPointTolerance) {
-        AddDiagnostic(
-            result,
-            "invalid-arc",
-            "arc_3pt segments require non-collinear start, through, and end points.",
-            "profile.segments[" + std::to_string(segmentIndex) + "]",
-            segmentIndex);
-        return false;
-    }
-
-    return true;
-}
-
-void ParseSegment(
-    const val& jsSegment,
-    int segmentIndex,
-    const std::array<double, 2>& currentPoint,
-    bool hasCurrentPoint,
-    OcctRevolvedToolValidationResult& result)
-{
-    const std::string segmentPath = "profile.segments[" + std::to_string(segmentIndex) + "]";
-    if (!IsObject(jsSegment)) {
-        AddDiagnostic(result, "invalid-type", "Each profile segment must be an object.", segmentPath, segmentIndex);
-        return;
-    }
-
-    OcctRevolvedToolSegment segment;
-    if (TryParseStringProperty(jsSegment, "id", segment.id, result, segmentPath + ".id", segmentIndex)) {
-        segment.hasId = true;
-    }
-    if (TryParseStringProperty(jsSegment, "tag", segment.tag, result, segmentPath + ".tag", segmentIndex)) {
-        segment.hasTag = true;
-    }
-
-    val jsKind = val::undefined();
-    if (!TryGetOwnProperty(jsSegment, "kind", jsKind)) {
-        AddDiagnostic(result, "missing-field", "Each profile segment requires a kind.", segmentPath + ".kind", segmentIndex);
-        result.spec.profile.segments.push_back(segment);
-        return;
-    }
-    if (!IsString(jsKind)) {
-        AddDiagnostic(result, "invalid-type", "Expected a string value.", segmentPath + ".kind", segmentIndex);
-        result.spec.profile.segments.push_back(segment);
-        return;
-    }
-    segment.kind = jsKind.as<std::string>();
-
-    val jsEnd = val::undefined();
-    if (!TryGetOwnProperty(jsSegment, "end", jsEnd)) {
-        AddDiagnostic(result, "missing-field", "Each profile segment requires an end point.", segmentPath + ".end", segmentIndex);
-    } else {
-        segment.hasEnd = TryParsePoint2(jsEnd, segment.end, result, segmentPath + ".end", segmentIndex);
-    }
-
-    if (segment.kind == "arc_center") {
-        val jsCenter = val::undefined();
-        if (!TryGetOwnProperty(jsSegment, "center", jsCenter)) {
-            AddDiagnostic(result, "missing-field", "arc_center segments require a center point.", segmentPath + ".center", segmentIndex);
-        } else {
-            segment.hasCenter = TryParsePoint2(jsCenter, segment.center, result, segmentPath + ".center", segmentIndex);
-        }
-    } else if (segment.kind == "arc_3pt") {
-        val jsThrough = val::undefined();
-        if (!TryGetOwnProperty(jsSegment, "through", jsThrough)) {
-            AddDiagnostic(result, "missing-field", "arc_3pt segments require a through point.", segmentPath + ".through", segmentIndex);
-        } else {
-            segment.hasThrough = TryParsePoint2(jsThrough, segment.through, result, segmentPath + ".through", segmentIndex);
-        }
-    } else if (segment.kind != "line") {
-        AddDiagnostic(result, "unsupported-segment-kind", "Supported segment kinds are line, arc_center, and arc_3pt.", segmentPath + ".kind", segmentIndex);
-    }
-
-    if (hasCurrentPoint && segment.hasEnd) {
-        if (segment.kind == "line") {
-            if (PointsCoincident(currentPoint, segment.end)) {
-                AddDiagnostic(
-                    result,
-                    "degenerate-segment",
-                    "line segments must end at a different point than they start.",
-                    segmentPath,
-                    segmentIndex);
-            }
-        } else if (segment.kind == "arc_center") {
-            ValidateArcCenterSegment(currentPoint, segment, result, segmentIndex);
-        } else if (segment.kind == "arc_3pt") {
-            ValidateArc3PointSegment(currentPoint, segment, result, segmentIndex);
-        }
-    }
-
-    result.spec.profile.segments.push_back(segment);
 }
 
 void ParseProfile(const val& jsProfile, OcctRevolvedToolValidationResult& result)
@@ -1314,47 +1114,103 @@ bool TryAppendTrackedEdge(
     return true;
 }
 
-bool TryAppendLineIfNeeded(
-    BRepBuilderAPI_MakeWire& wireBuilder,
-    const std::array<double, 2>& start,
-    const std::array<double, 2>& end,
+void AppendResolvedProfileSegment(
+    ResolvedRevolvedProfileLoop& loop,
+    const OcctRevolvedToolSegment& segment,
     const std::string& systemRole,
-    std::vector<RevolvedProfileEdgeSource>& edgeSources)
+    int segmentIndex = -1)
 {
-    if (PointsCoincident(start, end)) {
-        return true;
+    ResolvedRevolvedProfileSegment resolved;
+    resolved.segment = segment;
+    resolved.systemRole = systemRole;
+    if (segmentIndex >= 0) {
+        resolved.segmentIndex = segmentIndex;
+        resolved.hasSegmentIndex = true;
     }
-
-    TopoDS_Edge edge;
-    if (!TryMakeLineEdge(ProfilePointToPnt(start), ProfilePointToPnt(end), edge)) {
-        return false;
-    }
-    return TryAppendTrackedEdge(wireBuilder, edge, start, end, systemRole, edgeSources);
+    loop.profile.segments.push_back(resolved.segment);
+    loop.segments.push_back(std::move(resolved));
 }
 
-double ComputeApproximateProfileArea(const OcctRevolvedToolSpec& spec)
+ResolvedRevolvedProfileLoop ResolveRevolvedProfileLoop(const OcctRevolvedToolSpec& spec)
 {
-    std::vector<std::array<double, 2>> points;
-    points.push_back(spec.profile.start);
+    ResolvedRevolvedProfileLoop loop;
+    loop.profile.version = spec.version;
+    loop.profile.start = spec.profile.start;
+    loop.profile.hasStart = spec.profile.hasStart;
 
     std::array<double, 2> currentPoint = spec.profile.start;
-    for (const auto& segment : spec.profile.segments) {
-        currentPoint = segment.end;
-        points.push_back(currentPoint);
+    for (size_t segmentIndex = 0; segmentIndex < spec.profile.segments.size(); ++segmentIndex) {
+        OcctRevolvedToolSegment resolvedSegment = spec.profile.segments[segmentIndex];
+        if (!resolvedSegment.hasStart) {
+            resolvedSegment.start = currentPoint;
+            resolvedSegment.hasStart = true;
+        }
+        AppendResolvedProfileSegment(
+            loop,
+            resolvedSegment,
+            InferSegmentSystemRole(resolvedSegment.start, resolvedSegment.end, &resolvedSegment),
+            static_cast<int>(segmentIndex));
+        currentPoint = resolvedSegment.end;
     }
 
     if (spec.profile.closure == "auto_axis") {
         const std::array<double, 2> axisCurrent = { 0.0, currentPoint[1] };
         const std::array<double, 2> axisStart = { 0.0, spec.profile.start[1] };
-        if (!PointsCoincident(currentPoint, axisCurrent)) {
-            points.push_back(axisCurrent);
+
+        auto appendSyntheticLine = [&](const std::array<double, 2>& start, const std::array<double, 2>& end, const std::string& systemRole) {
+            if (PointsCoincident(start, end)) {
+                return;
+            }
+
+            OcctRevolvedToolSegment syntheticSegment;
+            syntheticSegment.kind = "line";
+            syntheticSegment.start = start;
+            syntheticSegment.hasStart = true;
+            syntheticSegment.end = end;
+            syntheticSegment.hasEnd = true;
+            AppendResolvedProfileSegment(loop, syntheticSegment, systemRole);
+        };
+
+        appendSyntheticLine(currentPoint, axisCurrent, "closure");
+        appendSyntheticLine(axisCurrent, axisStart, "axis");
+        appendSyntheticLine(axisStart, spec.profile.start, "closure");
+    }
+
+    return loop;
+}
+
+bool TryResolveValidatedProfileLoop(
+    const OcctRevolvedToolSpec& spec,
+    ResolvedRevolvedProfileLoop& loop,
+    OcctRevolvedToolBuildResult& result)
+{
+    loop = ResolveRevolvedProfileLoop(spec);
+
+    OcctProfile2DValidationOptions options;
+    options.rootPath = "profile";
+    options.requireClosed = true;
+    const OcctProfile2DValidationResult normalized = ValidateNormalizedProfile2DSpec(loop.profile, options);
+    if (!normalized.ok) {
+        for (const auto& diagnostic : normalized.diagnostics) {
+            result.diagnostics.push_back(diagnostic);
         }
-        if (!PointsCoincident(axisCurrent, axisStart)) {
-            points.push_back(axisStart);
-        }
-        if (!PointsCoincident(axisStart, spec.profile.start)) {
-            points.push_back(spec.profile.start);
-        }
+        return false;
+    }
+
+    loop.profile = normalized.spec;
+    const size_t syncedSegmentCount = std::min(loop.segments.size(), loop.profile.segments.size());
+    for (size_t index = 0; index < syncedSegmentCount; ++index) {
+        loop.segments[index].segment = loop.profile.segments[index];
+    }
+    return true;
+}
+
+double ComputeApproximateProfileArea(const OcctProfile2DSpec& profile)
+{
+    std::vector<std::array<double, 2>> points;
+    points.push_back(profile.start);
+    for (const auto& segment : profile.segments) {
+        points.push_back(segment.end);
     }
 
     if (points.size() < 3) {
@@ -1371,48 +1227,39 @@ double ComputeApproximateProfileArea(const OcctRevolvedToolSpec& spec)
     return 0.5 * twiceArea;
 }
 
-bool TryBuildProfileWire(const OcctRevolvedToolSpec& spec, RevolvedProfileWireBuild& build)
+bool TryBuildProfileWire(const ResolvedRevolvedProfileLoop& loop, RevolvedProfileWireBuild& build)
 {
     BRepBuilderAPI_MakeWire wireBuilder;
-    std::array<double, 2> currentPoint = spec.profile.start;
+    std::array<double, 2> currentPoint = loop.profile.start;
 
-    for (size_t segmentIndex = 0; segmentIndex < spec.profile.segments.size(); ++segmentIndex) {
-        const auto& segment = spec.profile.segments[segmentIndex];
+    for (const auto& resolvedSegment : loop.segments) {
+        const auto& segment = resolvedSegment.segment;
+        const std::array<double, 2> segmentStart = segment.hasStart ? segment.start : currentPoint;
         TopoDS_Edge edge;
         bool edgeBuilt = false;
 
         if (segment.kind == "line") {
-            edgeBuilt = TryMakeLineEdge(ProfilePointToPnt(currentPoint), ProfilePointToPnt(segment.end), edge);
+            edgeBuilt = TryMakeLineEdge(ProfilePointToPnt(segmentStart), ProfilePointToPnt(segment.end), edge);
         } else if (segment.kind == "arc_center") {
-            edgeBuilt = TryMakeArcCenterEdge(currentPoint, segment, edge);
+            edgeBuilt = TryMakeArcCenterEdge(segmentStart, segment, edge);
         } else if (segment.kind == "arc_3pt") {
-            edgeBuilt = TryMakeArc3PointEdge(currentPoint, segment, edge);
+            edgeBuilt = TryMakeArc3PointEdge(segmentStart, segment, edge);
         }
 
         if (!edgeBuilt
             || !TryAppendTrackedEdge(
                 wireBuilder,
                 edge,
-                currentPoint,
+                segmentStart,
                 segment.end,
-                InferSegmentSystemRole(currentPoint, segment.end, &segment),
+                resolvedSegment.systemRole,
                 build.edgeSources,
                 &segment,
-                static_cast<int>(segmentIndex))) {
+                resolvedSegment.hasSegmentIndex ? resolvedSegment.segmentIndex : -1)) {
             return false;
         }
 
         currentPoint = segment.end;
-    }
-
-    if (spec.profile.closure == "auto_axis") {
-        const std::array<double, 2> axisCurrent = { 0.0, currentPoint[1] };
-        const std::array<double, 2> axisStart = { 0.0, spec.profile.start[1] };
-        if (!TryAppendLineIfNeeded(wireBuilder, currentPoint, axisCurrent, "closure", build.edgeSources)
-            || !TryAppendLineIfNeeded(wireBuilder, axisCurrent, axisStart, "axis", build.edgeSources)
-            || !TryAppendLineIfNeeded(wireBuilder, axisStart, spec.profile.start, "closure", build.edgeSources)) {
-            return false;
-        }
     }
 
     if (!wireBuilder.IsDone()) {
@@ -1642,6 +1489,17 @@ std::vector<OcctGeneratedToolFaceBinding> BuildGeneratedToolFaceBindings(
         }
 
         if (candidates.empty()) {
+            std::vector<const RevolvedProfileEdgeSource*> hintedSources;
+            for (size_t sourceIndex = 0; sourceIndex < wireBuild.edgeSources.size(); ++sourceIndex) {
+                if (FaceIdCollectionContains(sourceHintFaceIds[sourceIndex], faceDescriptor.faceId)) {
+                    hintedSources.push_back(&wireBuild.edgeSources[sourceIndex]);
+                }
+            }
+            if (hintedSources.empty()) {
+                continue;
+            }
+
+            TryAppendResolvedFaceBinding(bindings, BuildCollapsedFaceBinding(0, faceDescriptor.faceId, hintedSources));
             continue;
         }
 
@@ -1956,14 +1814,24 @@ OcctRevolvedToolBuildResult BuildRevolvedShape(const val& jsSpec, const val& jsO
     result.hasRevolvedShape = true;
 
     try {
-        if (std::abs(ComputeApproximateProfileArea(spec)) <= kPointTolerance) {
+        ResolvedRevolvedProfileLoop resolvedProfileLoop;
+        if (!TryResolveValidatedProfileLoop(spec, resolvedProfileLoop, result)) {
+            FinalizeBuildFailure(
+                result,
+                result.diagnostics.empty()
+                    ? "Failed to normalize a closed revolved shape profile."
+                    : result.diagnostics.front().message);
+            return result;
+        }
+
+        if (std::abs(ComputeApproximateProfileArea(resolvedProfileLoop.profile)) <= kPointTolerance) {
             AddDiagnostic(result, "build-failed", "Generated revolved shape profile encloses zero area.", "profile");
             FinalizeBuildFailure(result, "Generated revolved shape profile encloses zero area.");
             return result;
         }
 
         RevolvedProfileWireBuild wireBuild;
-        if (!TryBuildProfileWire(spec, wireBuild)) {
+        if (!TryBuildProfileWire(resolvedProfileLoop, wireBuild)) {
             AddDiagnostic(result, "build-failed", "Failed to build a connected revolved shape profile wire.", "profile");
             FinalizeBuildFailure(result, "Failed to build a connected revolved shape profile wire.");
             return result;

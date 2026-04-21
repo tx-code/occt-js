@@ -454,6 +454,34 @@ test("BuildRevolvedShape reports runtime-owned cap bindings for partial revolves
   assert.notEqual(startCapKey, closureKey, "partial revolve face bindings: cap appearance should stay distinct from closure appearance");
 });
 
+test("BuildRevolvedShape keeps auto_axis caller segments bound through the shared profile kernel seam", async () => {
+  const module = await createModule();
+  const spec = createDrillLikePartialSpec();
+  const result = module.BuildRevolvedShape(spec, {});
+
+  assertCanonicalGeneratedResult(result, "partial revolve shared-kernel provenance");
+  assertStableFaceBindings(result, spec, "partial revolve shared-kernel provenance");
+
+  const tipBinding = result.revolvedShape.faceBindings.find((binding) => binding.segmentId === "tip-land");
+  const fluteBinding = result.revolvedShape.faceBindings.find((binding) => binding.segmentId === "flute-profile");
+  const neckBinding = result.revolvedShape.faceBindings.find((binding) => binding.segmentId === "neck");
+  assert.ok(tipBinding, "partial revolve shared-kernel provenance: tip-land should keep a caller-owned face binding");
+  assert.ok(fluteBinding, "partial revolve shared-kernel provenance: flute-profile should keep a caller-owned face binding");
+  assert.ok(neckBinding, "partial revolve shared-kernel provenance: neck should keep a caller-owned face binding");
+  assert.equal(fluteBinding.systemRole, "profile", "partial revolve shared-kernel provenance: flute-profile should remain in the profile lane");
+  assert.equal(fluteBinding.segmentTag, "cutting", "partial revolve shared-kernel provenance: flute-profile should preserve its tag");
+
+  const runtimeOwnedBindings = result.revolvedShape.faceBindings.filter((binding) =>
+    ["closure", "axis", "start_cap", "end_cap"].includes(binding.systemRole),
+  );
+  assert.ok(runtimeOwnedBindings.length >= 3, "partial revolve shared-kernel provenance: synthetic closure/cap faces should stay runtime-owned");
+  assert.equal(
+    runtimeOwnedBindings.some((binding) => binding.segmentIndex !== undefined || binding.segmentId !== undefined),
+    false,
+    "partial revolve shared-kernel provenance: synthetic closure/cap faces must not claim caller segment provenance",
+  );
+});
+
 test("BuildRevolvedShape preserves caller-owned tip semantics for axis-touching segments", async () => {
   const module = await createModule();
   const result = module.BuildRevolvedShape(createEndmillLikeSpec(), {});

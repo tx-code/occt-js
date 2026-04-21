@@ -73,6 +73,26 @@ function createDrillLikeSpec() {
   };
 }
 
+function createDrillLikePartialSpec() {
+  return {
+    version: 1,
+    units: "inch",
+    profile: {
+      plane: "XZ",
+      start: [0, 0],
+      closure: "auto_axis",
+      segments: [
+        { kind: "line", id: "tip-land", tag: "tip", end: [1.5, 0] },
+        { kind: "arc_3pt", id: "flute-profile", tag: "cutting", through: [4.5, 3], end: [1, 8] },
+        { kind: "line", id: "neck", tag: "neck", end: [1, 12] },
+      ],
+    },
+    revolve: {
+      angleDeg: 210,
+    },
+  };
+}
+
 function createInvalidSpec() {
   return {
     version: 1,
@@ -232,6 +252,44 @@ test("OpenExactRevolvedShape keeps face bindings aligned with the exact face fam
       if (result?.exactModelId) {
         module.ReleaseExactModel(result.exactModelId);
       }
+    }
+  }
+});
+
+test("OpenExactRevolvedShape keeps auto_axis caller bindings aligned after the shared-kernel refactor", async () => {
+  const module = await createModule();
+  const result = module.OpenExactRevolvedShape(createDrillLikePartialSpec(), {});
+
+  try {
+    assertCanonicalExactGeneratedPayload(result, "partial revolve shared-kernel exact mapping");
+    assert.equal(
+      familyForSegmentId(module, result, "tip-land"),
+      "plane",
+      "partial revolve shared-kernel exact mapping: tip-land should stay bound to a plane face",
+    );
+    assert.equal(
+      familyForSegmentId(module, result, "flute-profile"),
+      "other",
+      "partial revolve shared-kernel exact mapping: flute-profile should stay bound to the freeform revolved face",
+    );
+    assert.equal(
+      familyForSegmentId(module, result, "neck"),
+      "cylinder",
+      "partial revolve shared-kernel exact mapping: neck should stay bound to a cylinder face",
+    );
+
+    const runtimeOwnedBindings = result.revolvedShape.faceBindings.filter((binding) =>
+      ["closure", "axis", "start_cap", "end_cap"].includes(binding.systemRole),
+    );
+    assert.ok(runtimeOwnedBindings.length >= 3, "partial revolve shared-kernel exact mapping: runtime-owned closure/cap faces should still be present");
+    assert.equal(
+      runtimeOwnedBindings.some((binding) => binding.segmentId !== undefined || binding.segmentIndex !== undefined),
+      false,
+      "partial revolve shared-kernel exact mapping: runtime-owned closure/cap faces must not claim caller segments",
+    );
+  } finally {
+    if (result?.exactModelId) {
+      module.ReleaseExactModel(result.exactModelId);
     }
   }
 });

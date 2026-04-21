@@ -85,6 +85,24 @@ function createRevolvedShapeSpec() {
   };
 }
 
+function createAutoAxisRevolvedShapeSpec() {
+  return {
+    version: 1,
+    units: "inch",
+    profile: {
+      plane: "XZ",
+      start: [0, 0],
+      closure: "auto_axis",
+      segments: [
+        { kind: "line", id: "tip-land", tag: "tip", end: [1.5, 0] },
+        { kind: "arc_3pt", id: "flute-profile", tag: "cutting", through: [4.5, 3], end: [1, 8] },
+        { kind: "line", id: "neck", tag: "neck", end: [1, 12] },
+      ],
+    },
+    revolve: { angleDeg: 210 },
+  };
+}
+
 describe("normalizeOcctFormat", () => {
   it("maps known extensions to canonical formats", () => {
     assert.equal(normalizeOcctFormat("step"), "step");
@@ -2506,6 +2524,79 @@ describe("createOcctCore", () => {
     assert.equal(exact.exactModelId, 42);
     assert.deepEqual(calls, [
       ["validate", spec],
+      ["build", spec, buildOptions],
+      ["openExact", spec, buildOptions],
+    ]);
+  });
+
+  it("keeps auto_axis shared-kernel revolved specs intact through the package wrapper", async () => {
+    const calls = [];
+    const spec = createAutoAxisRevolvedShapeSpec();
+    const buildOptions = {
+      linearDeflectionType: "bounding_box_ratio",
+      linearDeflection: 0.001,
+      angularDeflection: 0.5,
+    };
+    const core = createOcctCore({
+      factory: async () => ({
+        BuildRevolvedShape: (incomingSpec, incomingOptions) => {
+          calls.push(["build", incomingSpec, incomingOptions]);
+          return {
+            success: true,
+            sourceFormat: "generated-revolved-shape",
+            rootNodes: [],
+            geometries: [],
+            materials: [],
+            warnings: [],
+            stats: EMPTY_STATS,
+            revolvedShape: {
+              version: 1,
+              units: "inch",
+              plane: "XZ",
+              closure: "auto_axis",
+              angleDeg: 210,
+              segmentCount: 3,
+              hasStableFaceBindings: true,
+              segments: [],
+              faceBindings: [],
+            },
+          };
+        },
+        OpenExactRevolvedShape: (incomingSpec, incomingOptions) => {
+          calls.push(["openExact", incomingSpec, incomingOptions]);
+          return {
+            success: true,
+            sourceFormat: "generated-revolved-shape",
+            exactModelId: 84,
+            exactGeometryBindings: [{ exactShapeHandle: 1 }],
+            rootNodes: [],
+            geometries: [],
+            materials: [],
+            warnings: [],
+            stats: EMPTY_STATS,
+            revolvedShape: {
+              version: 1,
+              units: "inch",
+              plane: "XZ",
+              closure: "auto_axis",
+              angleDeg: 210,
+              segmentCount: 3,
+              hasStableFaceBindings: true,
+              segments: [],
+              faceBindings: [],
+            },
+          };
+        },
+      }),
+    });
+
+    const built = await core.buildRevolvedShape(spec, buildOptions);
+    const exact = await core.openExactRevolvedShape(spec, buildOptions);
+
+    assert.equal(built.revolvedShape.closure, "auto_axis");
+    assert.equal(exact.revolvedShape.closure, "auto_axis");
+    assert.equal(exact.exactModelId, 84);
+    assert.deepEqual(calls, [
       ["build", spec, buildOptions],
       ["openExact", spec, buildOptions],
     ]);
