@@ -28,7 +28,7 @@
 </details>
 
 - [x] **Phase 30: Shared Profile Kernel** - Define one reusable 2D profile contract and validation seam that multiple generated-solid families can share.
-- [ ] **Phase 31: Linear Extruded Shape Runtime** - Add additive root Wasm APIs for validating, building, and exact-opening linear extruded solids with stable semantic face bindings.
+- [x] **Phase 31: Linear Extruded Shape Runtime** - Add additive root Wasm APIs for validating, building, and exact-opening linear extruded solids with stable semantic face bindings.
 - [ ] **Phase 32: occt-core SDK & Governance for Profile Solids** - Publish package-first wrappers, typings, docs, and release coverage for the shared-profile and extruded-shape contract.
 
 ## Phase Details
@@ -58,8 +58,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 31-01-PLAN.md — Add linear extruded-shape build and exact-open flows on top of the shared profile kernel
-- [ ] 31-02-PLAN.md — Capture stable extruded face bindings, runtime roles, and semantic appearance groups
+- [x] 31-01-PLAN.md — Add linear extruded-shape build and exact-open flows on top of the shared profile kernel
+- [x] 31-02-PLAN.md — Capture stable extruded face bindings, runtime roles, and semantic appearance groups
 
 ### Phase 32: occt-core SDK & Governance for Profile Solids
 **Goal**: Shared profiles and extruded shapes ship package-first through `@tx-code/occt-core`, published typings, docs, and authoritative release coverage.
@@ -83,7 +83,7 @@ Phases execute in numeric order: 30 → 31 → 32
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 30. Shared Profile Kernel | v1.9 | 2/2 | Complete | 2026-04-21 |
-| 31. Linear Extruded Shape Runtime | v1.9 | 0/2 | Not started | — |
+| 31. Linear Extruded Shape Runtime | v1.9 | 2/2 | Complete | 2026-04-21 |
 | 32. occt-core SDK & Governance for Profile Solids | v1.9 | 0/2 | Not started | — |
 | 27. Revolved Shape Spec & Wasm Builder | v1.8 | 2/2 | Complete | 2026-04-20 |
 | 28. Exact Revolved Shapes & Binding Semantics | v1.8 | 2/2 | Complete | 2026-04-21 |
