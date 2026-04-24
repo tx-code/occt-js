@@ -4,6 +4,8 @@ build2/
 dist/*.wasm
 dist/*.js
 !dist/.gitkeep
+!dist/occt-js.js
+!dist/occt-js.wasm
 !dist/occt-js.d.ts
 *.o
 *.a
