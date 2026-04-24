@@ -246,6 +246,37 @@ function transformExactChamferResult(transform, result) {
   };
 }
 
+function transformExactCompoundHoleResult(transform, result) {
+  return {
+    ...result,
+    frame: transformPlacementFrame(transform, result.frame),
+    anchors: transformPlacementAnchors(transform, result.anchors),
+    axisDirection: result.axisDirection ? transformDirection(transform, result.axisDirection) : result.axisDirection,
+  };
+}
+
+function normalizeCompoundHoleDescriptionResult(exactRef, result, expectedFamily) {
+  if (result?.ok !== true) {
+    return result;
+  }
+  if (result.family !== expectedFamily) {
+    return {
+      ok: false,
+      code: "unsupported-geometry",
+      message: `Exact compound-hole helper normalized to ${result.family}, not ${expectedFamily}.`,
+    };
+  }
+
+  const transformed = transformExactCompoundHoleResult(exactRef.transform, result);
+  const normalized = {
+    ...transformed,
+    kind: expectedFamily,
+    ref: exactRef,
+  };
+  delete normalized.family;
+  return normalized;
+}
+
 function inverseTransformPoint(transform, point) {
   const [x, y, z] = point;
   const translated = [
@@ -380,10 +411,47 @@ function validateExactRef(ref, operationName) {
 function validatePairwiseExactRefs(refA, refB, operationName) {
   const exactRefA = validateExactRef(refA, operationName);
   const exactRefB = validateExactRef(refB, operationName);
-  if (exactRefA.exactModelId !== exactRefB.exactModelId) {
-    throw new Error(`${operationName} requires refs from the same exactModelId in v1.1.`);
-  }
   return [exactRefA, exactRefB];
+}
+
+function callPairwiseExactQuery(module, exactRefA, exactRefB, operation) {
+  const {
+    sameModelMethodName,
+    crossModelMethodName,
+  } = operation;
+
+  if (exactRefA.exactModelId === exactRefB.exactModelId) {
+    if (typeof module[sameModelMethodName] !== "function") {
+      throw new Error(`Loaded OCCT module does not expose ${sameModelMethodName}().`);
+    }
+    return module[sameModelMethodName](
+      exactRefA.exactModelId,
+      exactRefA.exactShapeHandle,
+      exactRefA.kind,
+      exactRefA.elementId,
+      exactRefB.exactShapeHandle,
+      exactRefB.kind,
+      exactRefB.elementId,
+      exactRefA.transform,
+      exactRefB.transform,
+    );
+  }
+
+  if (typeof module[crossModelMethodName] !== "function") {
+    throw new Error(`Loaded OCCT module does not expose ${crossModelMethodName}().`);
+  }
+  return module[crossModelMethodName](
+    exactRefA.exactModelId,
+    exactRefA.exactShapeHandle,
+    exactRefA.kind,
+    exactRefA.elementId,
+    exactRefA.transform,
+    exactRefB.exactModelId,
+    exactRefB.exactShapeHandle,
+    exactRefB.kind,
+    exactRefB.elementId,
+    exactRefB.transform,
+  );
 }
 
 async function resolveFactory(options) {
@@ -663,6 +731,54 @@ export class OcctCoreClient {
     return module.OpenExactExtrudedShape(spec, options);
   }
 
+  async validateHelicalSweepSpec(spec) {
+    const module = await this._ensureModule();
+    if (typeof module.ValidateHelicalSweepSpec !== "function") {
+      throw new Error("Loaded OCCT module does not expose ValidateHelicalSweepSpec().");
+    }
+    return module.ValidateHelicalSweepSpec(spec);
+  }
+
+  async buildHelicalSweep(spec, options = {}) {
+    const module = await this._ensureModule();
+    if (typeof module.BuildHelicalSweep !== "function") {
+      throw new Error("Loaded OCCT module does not expose BuildHelicalSweep().");
+    }
+    return module.BuildHelicalSweep(spec, options);
+  }
+
+  async openExactHelicalSweep(spec, options = {}) {
+    const module = await this._ensureModule();
+    if (typeof module.OpenExactHelicalSweep !== "function") {
+      throw new Error("Loaded OCCT module does not expose OpenExactHelicalSweep().");
+    }
+    return module.OpenExactHelicalSweep(spec, options);
+  }
+
+  async validateCompositeShapeSpec(spec) {
+    const module = await this._ensureModule();
+    if (typeof module.ValidateCompositeShapeSpec !== "function") {
+      throw new Error("Loaded OCCT module does not expose ValidateCompositeShapeSpec().");
+    }
+    return module.ValidateCompositeShapeSpec(spec);
+  }
+
+  async buildCompositeShape(spec, options = {}) {
+    const module = await this._ensureModule();
+    if (typeof module.BuildCompositeShape !== "function") {
+      throw new Error("Loaded OCCT module does not expose BuildCompositeShape().");
+    }
+    return module.BuildCompositeShape(spec, options);
+  }
+
+  async openExactCompositeShape(spec, options = {}) {
+    const module = await this._ensureModule();
+    if (typeof module.OpenExactCompositeShape !== "function") {
+      throw new Error("Loaded OCCT module does not expose OpenExactCompositeShape().");
+    }
+    return module.OpenExactCompositeShape(spec, options);
+  }
+
   async retainExactModel(exactModelId) {
     const module = await this._ensureModule();
     if (typeof module.RetainExactModel !== "function") {
@@ -708,21 +824,10 @@ export class OcctCoreClient {
   async measureExactDistance(refA, refB) {
     const module = await this._ensureModule();
     const [exactRefA, exactRefB] = validatePairwiseExactRefs(refA, refB, "measureExactDistance");
-    if (typeof module.MeasureExactDistance !== "function") {
-      throw new Error("Loaded OCCT module does not expose MeasureExactDistance().");
-    }
-
-    const result = module.MeasureExactDistance(
-      exactRefA.exactModelId,
-      exactRefA.exactShapeHandle,
-      exactRefA.kind,
-      exactRefA.elementId,
-      exactRefB.exactShapeHandle,
-      exactRefB.kind,
-      exactRefB.elementId,
-      exactRefA.transform,
-      exactRefB.transform,
-    );
+    const result = callPairwiseExactQuery(module, exactRefA, exactRefB, {
+      sameModelMethodName: "MeasureExactDistance",
+      crossModelMethodName: "MeasureExactDistanceCrossModel",
+    });
     return result?.ok === true
       ? { ...result, refA: exactRefA, refB: exactRefB }
       : result;
@@ -731,21 +836,10 @@ export class OcctCoreClient {
   async measureExactAngle(refA, refB) {
     const module = await this._ensureModule();
     const [exactRefA, exactRefB] = validatePairwiseExactRefs(refA, refB, "measureExactAngle");
-    if (typeof module.MeasureExactAngle !== "function") {
-      throw new Error("Loaded OCCT module does not expose MeasureExactAngle().");
-    }
-
-    const result = module.MeasureExactAngle(
-      exactRefA.exactModelId,
-      exactRefA.exactShapeHandle,
-      exactRefA.kind,
-      exactRefA.elementId,
-      exactRefB.exactShapeHandle,
-      exactRefB.kind,
-      exactRefB.elementId,
-      exactRefA.transform,
-      exactRefB.transform,
-    );
+    const result = callPairwiseExactQuery(module, exactRefA, exactRefB, {
+      sameModelMethodName: "MeasureExactAngle",
+      crossModelMethodName: "MeasureExactAngleCrossModel",
+    });
     return result?.ok === true
       ? { ...result, refA: exactRefA, refB: exactRefB }
       : result;
@@ -754,21 +848,10 @@ export class OcctCoreClient {
   async measureExactThickness(refA, refB) {
     const module = await this._ensureModule();
     const [exactRefA, exactRefB] = validatePairwiseExactRefs(refA, refB, "measureExactThickness");
-    if (typeof module.MeasureExactThickness !== "function") {
-      throw new Error("Loaded OCCT module does not expose MeasureExactThickness().");
-    }
-
-    const result = module.MeasureExactThickness(
-      exactRefA.exactModelId,
-      exactRefA.exactShapeHandle,
-      exactRefA.kind,
-      exactRefA.elementId,
-      exactRefB.exactShapeHandle,
-      exactRefB.kind,
-      exactRefB.elementId,
-      exactRefA.transform,
-      exactRefB.transform,
-    );
+    const result = callPairwiseExactQuery(module, exactRefA, exactRefB, {
+      sameModelMethodName: "MeasureExactThickness",
+      crossModelMethodName: "MeasureExactThicknessCrossModel",
+    });
     return result?.ok === true
       ? { ...result, refA: exactRefA, refB: exactRefB }
       : result;
@@ -777,21 +860,10 @@ export class OcctCoreClient {
   async classifyExactRelation(refA, refB) {
     const module = await this._ensureModule();
     const [exactRefA, exactRefB] = validatePairwiseExactRefs(refA, refB, "classifyExactRelation");
-    if (typeof module.ClassifyExactRelation !== "function") {
-      throw new Error("Loaded OCCT module does not expose ClassifyExactRelation().");
-    }
-
-    const result = module.ClassifyExactRelation(
-      exactRefA.exactModelId,
-      exactRefA.exactShapeHandle,
-      exactRefA.kind,
-      exactRefA.elementId,
-      exactRefB.exactShapeHandle,
-      exactRefB.kind,
-      exactRefB.elementId,
-      exactRefA.transform,
-      exactRefB.transform,
-    );
+    const result = callPairwiseExactQuery(module, exactRefA, exactRefB, {
+      sameModelMethodName: "ClassifyExactRelation",
+      crossModelMethodName: "ClassifyExactRelationCrossModel",
+    });
     return result?.ok === true
       ? { ...result, refA: exactRefA, refB: exactRefB }
       : result;
@@ -800,21 +872,10 @@ export class OcctCoreClient {
   async suggestExactDistancePlacement(refA, refB) {
     const module = await this._ensureModule();
     const [exactRefA, exactRefB] = validatePairwiseExactRefs(refA, refB, "suggestExactDistancePlacement");
-    if (typeof module.SuggestExactDistancePlacement !== "function") {
-      throw new Error("Loaded OCCT module does not expose SuggestExactDistancePlacement().");
-    }
-
-    const result = module.SuggestExactDistancePlacement(
-      exactRefA.exactModelId,
-      exactRefA.exactShapeHandle,
-      exactRefA.kind,
-      exactRefA.elementId,
-      exactRefB.exactShapeHandle,
-      exactRefB.kind,
-      exactRefB.elementId,
-      exactRefA.transform,
-      exactRefB.transform,
-    );
+    const result = callPairwiseExactQuery(module, exactRefA, exactRefB, {
+      sameModelMethodName: "SuggestExactDistancePlacement",
+      crossModelMethodName: "SuggestExactDistancePlacementCrossModel",
+    });
     return result?.ok === true
       ? { ...result, refA: exactRefA, refB: exactRefB }
       : result;
@@ -823,21 +884,10 @@ export class OcctCoreClient {
   async suggestExactAnglePlacement(refA, refB) {
     const module = await this._ensureModule();
     const [exactRefA, exactRefB] = validatePairwiseExactRefs(refA, refB, "suggestExactAnglePlacement");
-    if (typeof module.SuggestExactAnglePlacement !== "function") {
-      throw new Error("Loaded OCCT module does not expose SuggestExactAnglePlacement().");
-    }
-
-    const result = module.SuggestExactAnglePlacement(
-      exactRefA.exactModelId,
-      exactRefA.exactShapeHandle,
-      exactRefA.kind,
-      exactRefA.elementId,
-      exactRefB.exactShapeHandle,
-      exactRefB.kind,
-      exactRefB.elementId,
-      exactRefA.transform,
-      exactRefB.transform,
-    );
+    const result = callPairwiseExactQuery(module, exactRefA, exactRefB, {
+      sameModelMethodName: "SuggestExactAnglePlacement",
+      crossModelMethodName: "SuggestExactAnglePlacementCrossModel",
+    });
     return result?.ok === true
       ? { ...result, refA: exactRefA, refB: exactRefB }
       : result;
@@ -846,21 +896,10 @@ export class OcctCoreClient {
   async suggestExactThicknessPlacement(refA, refB) {
     const module = await this._ensureModule();
     const [exactRefA, exactRefB] = validatePairwiseExactRefs(refA, refB, "suggestExactThicknessPlacement");
-    if (typeof module.SuggestExactThicknessPlacement !== "function") {
-      throw new Error("Loaded OCCT module does not expose SuggestExactThicknessPlacement().");
-    }
-
-    const result = module.SuggestExactThicknessPlacement(
-      exactRefA.exactModelId,
-      exactRefA.exactShapeHandle,
-      exactRefA.kind,
-      exactRefA.elementId,
-      exactRefB.exactShapeHandle,
-      exactRefB.kind,
-      exactRefB.elementId,
-      exactRefA.transform,
-      exactRefB.transform,
-    );
+    const result = callPairwiseExactQuery(module, exactRefA, exactRefB, {
+      sameModelMethodName: "SuggestExactThicknessPlacement",
+      crossModelMethodName: "SuggestExactThicknessPlacementCrossModel",
+    });
     return result?.ok === true
       ? { ...result, refA: exactRefA, refB: exactRefB }
       : result;
@@ -962,6 +1001,38 @@ export class OcctCoreClient {
       ...transformExactChamferResult(exactRef.transform, result),
       ref: exactRef,
     };
+  }
+
+  async describeExactCounterbore(ref) {
+    const module = await this._ensureModule();
+    const exactRef = validateExactRef(ref, "describeExactCounterbore");
+    if (typeof module.DescribeExactCompoundHole !== "function") {
+      throw new Error("Loaded OCCT module does not expose DescribeExactCompoundHole().");
+    }
+
+    const result = module.DescribeExactCompoundHole(
+      exactRef.exactModelId,
+      exactRef.exactShapeHandle,
+      exactRef.kind,
+      exactRef.elementId,
+    );
+    return normalizeCompoundHoleDescriptionResult(exactRef, result, "counterbore");
+  }
+
+  async describeExactCountersink(ref) {
+    const module = await this._ensureModule();
+    const exactRef = validateExactRef(ref, "describeExactCountersink");
+    if (typeof module.DescribeExactCompoundHole !== "function") {
+      throw new Error("Loaded OCCT module does not expose DescribeExactCompoundHole().");
+    }
+
+    const result = module.DescribeExactCompoundHole(
+      exactRef.exactModelId,
+      exactRef.exactShapeHandle,
+      exactRef.kind,
+      exactRef.elementId,
+    );
+    return normalizeCompoundHoleDescriptionResult(exactRef, result, "countersink");
   }
 
   async suggestExactMidpointPlacement(refA, refB) {

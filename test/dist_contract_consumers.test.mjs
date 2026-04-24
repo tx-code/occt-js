@@ -14,25 +14,39 @@ test("package.json publishes the canonical dist runtime artifacts", () => {
   const packageJson = readRepoJson("package.json");
 
   assert.equal(packageJson.main, "dist/occt-js.js");
+  assert.equal(packageJson.module, "dist/occt-js.mjs");
   assert.equal(packageJson.types, "dist/occt-js.d.ts");
   assert.ok(packageJson.files.includes("dist/occt-js.js"));
+  assert.ok(packageJson.files.includes("dist/occt-js.mjs"));
   assert.ok(packageJson.files.includes("dist/occt-js.wasm"));
   assert.ok(packageJson.files.includes("dist/occt-js.d.ts"));
   assert.equal(packageJson.main.includes("build/wasm"), false);
+  assert.equal(packageJson.module.includes("build/wasm"), false);
   assert.equal(packageJson.types.includes("build/wasm"), false);
   assert.equal(packageJson.files.some((entry) => entry.includes("build/wasm")), false);
 });
 
-test("demo useOcct hook stays on dist runtime paths instead of build intermediates", () => {
+test("root export map keeps browser import on ESM while Node require stays on CJS", () => {
+  const packageJson = readRepoJson("package.json");
+  const rootExports = packageJson.exports?.["."] ?? {};
+
+  assert.equal(rootExports.import, "./dist/occt-js.mjs");
+  assert.equal(rootExports.default, "./dist/occt-js.mjs");
+  assert.equal(rootExports.require, "./dist/occt-js.js");
+  assert.equal(rootExports.node, "./dist/occt-js.js");
+});
+
+test("demo useOcct hook keeps Tauri on dist resources and web on bundled ESM import", () => {
   const hookSource = readRepoText("demo/src/hooks/useOcct.js");
 
   assert.ok(hookSource.includes('resolveResource("dist/occt-js.js")'));
   assert.ok(hookSource.includes('resolveResource("dist/occt-js.wasm")'));
-  assert.match(hookSource, /new URL\(\s*"\.\.\/\.\.\/\.\.\/dist\/occt-js\.js",\s*import\.meta\.url\s*\)\.href/);
-  assert.match(hookSource, /new URL\(\s*"\.\.\/\.\.\/\.\.\/dist\/occt-js\.wasm",\s*import\.meta\.url\s*\)\.href/);
+  assert.ok(hookSource.includes('import("@tx-code/occt-js")'));
+  assert.ok(hookSource.includes('import("@tx-code/occt-js/dist/occt-js.wasm?url")'));
   assert.doesNotMatch(hookSource, /new URL\(\s*\/\*\s*@vite-ignore\s*\*\/\s*"\.\.\/\.\.\/\.\.\/dist\/",\s*import\.meta\.url\s*\)/);
   assert.doesNotMatch(hookSource, /new URL\(\s*"\.\.\/\.\.\/\.\.\/dist\/",\s*import\.meta\.url\s*\)/);
   assert.equal(hookSource.includes("build/wasm"), false);
+  assert.equal(hookSource.includes("unpkg.com"), false);
 });
 
 test("Tauri bundles only the canonical dist runtime artifacts", () => {

@@ -71,6 +71,78 @@ Contract rules:
 - `OpenExactExtrudedShape(...)` reuses the same generated solid and returns retained exact handles for downstream exact queries.
 - `@tx-code/occt-core` mirrors this surface package-first through `validateProfile2DSpec`, `validateExtrudedShapeSpec`, `buildExtrudedShape`, and `openExactExtrudedShape`.
 
+The root runtime also exposes a generic helical sweep lane for non-tool-coupled spiral bodies:
+
+```js
+const helicalSpec = {
+  version: 1,
+  units: "mm",
+  helix: {
+    radius: 8,
+    pitch: 3,
+    turns: 4,
+    handedness: "right",
+  },
+  section: {
+    kind: "circle",
+    radius: 0.8,
+    segments: 24,
+  },
+};
+
+const helicalValidation = occt.ValidateHelicalSweepSpec(helicalSpec);
+const helicalBuilt = occt.BuildHelicalSweep(helicalSpec, {
+  linearDeflectionType: "bounding_box_ratio",
+  linearDeflection: 0.001,
+  angularDeflection: 0.5,
+});
+const helicalExact = occt.OpenExactHelicalSweep(helicalSpec);
+```
+
+Helical sweep rules:
+
+- `ValidateHelicalSweepSpec(spec)` validates one generic circular-section helix contract.
+- `BuildHelicalSweep(...)` returns `sourceFormat: "generated-helical-sweep"` with additive `helicalSweep` metadata and stable runtime face bindings.
+- `OpenExactHelicalSweep(...)` reuses the same generated body and returns retained exact handles for downstream exact queries.
+- `@tx-code/occt-core` mirrors this surface package-first through `validateHelicalSweepSpec`, `buildHelicalSweep`, and `openExactHelicalSweep`.
+
+The runtime also exposes a generic composite lane for boolean pipelines over generated operands (still tool-schema agnostic):
+
+```js
+const compositeSpec = {
+  version: 1,
+  units: "mm",
+  seed: {
+    family: "revolved",
+    spec: revolvedSpec,
+  },
+  steps: [
+    {
+      op: "cut",
+      operand: {
+        family: "helical-sweep",
+        spec: helicalSpec,
+      },
+    },
+  ],
+};
+
+const compositeValidation = occt.ValidateCompositeShapeSpec(compositeSpec);
+const compositeBuilt = occt.BuildCompositeShape(compositeSpec, {
+  linearDeflectionType: "bounding_box_ratio",
+  linearDeflection: 0.001,
+  angularDeflection: 0.5,
+});
+const compositeExact = occt.OpenExactCompositeShape(compositeSpec);
+```
+
+Composite-shape rules:
+
+- `ValidateCompositeShapeSpec(spec)` validates a generic seed + boolean-step pipeline over `revolved`, `extruded`, and `helical-sweep` operands.
+- `BuildCompositeShape(...)` returns `sourceFormat: "generated-composite-shape"` with additive `compositeShape` metadata and shape-validation evidence.
+- `OpenExactCompositeShape(...)` reuses the same generated composite body and returns retained exact handles for downstream exact queries.
+- `@tx-code/occt-core` mirrors this surface package-first through `validateCompositeShapeSpec`, `buildCompositeShape`, and `openExactCompositeShape`.
+
 ## Package Usage
 
 Install the packaged Wasm carrier:
@@ -195,6 +267,8 @@ The shipped helper family stays intentionally narrow:
 - `describeExactChamfer(ref)` only recognizes a supported planar chamfer face ref.
 - `suggestExactSymmetryPlacement(refA, refB)` is a midplane-style symmetry helper for supported parallel pairs.
 - `suggestExactMidpointPlacement(...)` and `describeExactEqualDistance(...)` are package-first compositions over the shipped placement and pairwise measurement surface.
+
+The shipped browser demo is a simplified integration sample. It keeps supported exact action routing, overlay rendering, and current-result session behavior in app code. For the current `v1.13` CAM sample, demo-owned workflow names (`clearance / step depth`, `center-to-center`, and `surface-to-center`) compose over shipped exact primitives; they are not new runtime or package API names. `occt-js` and `@tx-code/occt-core` do not publish candidate discovery, pinned sessions, or measurement-product UX as part of the package contract.
 
 ### Lower-level root Wasm reference
 
@@ -396,7 +470,7 @@ Demo, Babylon, and Tauri surfaces are conditional secondary-surface verification
 | Touched paths | Follow-up commands | Scope |
 |---------------|--------------------|-------|
 | `demo/`, `demo/src/`, `demo/tests/` | `npm --prefix demo test` | demo node-style verification |
-| `demo/`, `demo/src/`, `demo/tests/` | `npm --prefix demo run test:e2e` | browser smoke verification for the current Project Home shell |
+| `demo/`, `demo/src/`, `demo/tests/` | `npm --prefix demo run test:e2e` | browser smoke and measurement interaction verification for the current Project Home shell and demo loop |
 | `demo/`, `demo/src/`, `demo/tests/` | `npm --prefix demo run build` | production demo build |
 | `demo/src-tauri/` | `npm --prefix demo run tauri:build` | desktop-only follow-up verification |
 | `packages/occt-babylon-loader/` | `npm --prefix packages/occt-babylon-loader test` | loader package verification |

@@ -2,6 +2,8 @@ import { normalizeOcctFormat } from "./formats.js";
 
 const GENERATED_REVOLVED_SHAPE_SOURCE_FORMAT = "generated-revolved-shape";
 const GENERATED_EXTRUDED_SHAPE_SOURCE_FORMAT = "generated-extruded-shape";
+const GENERATED_HELICAL_SWEEP_SOURCE_FORMAT = "generated-helical-sweep";
+const GENERATED_COMPOSITE_SHAPE_SOURCE_FORMAT = "generated-composite-shape";
 const IDENTITY_MATRIX = [
   1, 0, 0, 0,
   0, 1, 0, 0,
@@ -573,12 +575,85 @@ function normalizeExtrudedShapeMetadata(rawExtrudedShape, geometries) {
   return metadata;
 }
 
+function normalizeHelicalSweepMetadata(rawHelicalSweep, geometries) {
+  if (!rawHelicalSweep || typeof rawHelicalSweep !== "object") {
+    return undefined;
+  }
+
+  const metadata = {
+    version: rawHelicalSweep.version === 1 ? 1 : 1,
+    units: rawHelicalSweep.units,
+    helixRadius: Number(rawHelicalSweep.helixRadius ?? 0),
+    pitch: Number(rawHelicalSweep.pitch ?? 0),
+    turns: Number(rawHelicalSweep.turns ?? 0),
+    height: Number(rawHelicalSweep.height ?? 0),
+    handedness: rawHelicalSweep.handedness,
+    sectionKind: rawHelicalSweep.sectionKind,
+    sectionRadius: Number(rawHelicalSweep.sectionRadius ?? 0),
+    sectionSegments: Number.isFinite(rawHelicalSweep.sectionSegments)
+      ? rawHelicalSweep.sectionSegments
+      : 24,
+    sectionPointCount: Number.isFinite(rawHelicalSweep.sectionPointCount)
+      ? rawHelicalSweep.sectionPointCount
+      : 0,
+    hasStableFaceBindings: rawHelicalSweep.hasStableFaceBindings === true,
+  };
+
+  const shapeValidation = normalizeGeneratedShapeValidation(rawHelicalSweep.shapeValidation);
+  if (shapeValidation) {
+    metadata.shapeValidation = shapeValidation;
+  }
+
+  const faceBindings = normalizeGeneratedFaceBindings(rawHelicalSweep.faceBindings, geometries, "sweep");
+  if (faceBindings) {
+    metadata.faceBindings = faceBindings;
+  }
+
+  return metadata;
+}
+
+function normalizeCompositeShapeMetadata(rawCompositeShape) {
+  if (!rawCompositeShape || typeof rawCompositeShape !== "object") {
+    return undefined;
+  }
+
+  const metadata = {
+    version: rawCompositeShape.version === 1 ? 1 : 1,
+    units: rawCompositeShape.units,
+    seedFamily: rawCompositeShape.seedFamily,
+    stepCount: Number.isFinite(rawCompositeShape.stepCount)
+      ? rawCompositeShape.stepCount
+      : 0,
+    operations: Array.isArray(rawCompositeShape.operations)
+      ? rawCompositeShape.operations.map((operation, index) => ({
+        index: Number.isFinite(operation?.index) ? operation.index : index,
+        op: typeof operation?.op === "string" ? operation.op : "cut",
+        family: typeof operation?.family === "string" ? operation.family : "revolved",
+        hasTransform: operation?.hasTransform === true,
+      }))
+      : [],
+  };
+
+  const shapeValidation = normalizeGeneratedShapeValidation(rawCompositeShape.shapeValidation);
+  if (shapeValidation) {
+    metadata.shapeValidation = shapeValidation;
+  }
+
+  return metadata;
+}
+
 function normalizeResultSourceFormat(sourceFormat) {
   if (typeof sourceFormat === "string" && sourceFormat.trim().toLowerCase() === GENERATED_REVOLVED_SHAPE_SOURCE_FORMAT) {
     return GENERATED_REVOLVED_SHAPE_SOURCE_FORMAT;
   }
   if (typeof sourceFormat === "string" && sourceFormat.trim().toLowerCase() === GENERATED_EXTRUDED_SHAPE_SOURCE_FORMAT) {
     return GENERATED_EXTRUDED_SHAPE_SOURCE_FORMAT;
+  }
+  if (typeof sourceFormat === "string" && sourceFormat.trim().toLowerCase() === GENERATED_HELICAL_SWEEP_SOURCE_FORMAT) {
+    return GENERATED_HELICAL_SWEEP_SOURCE_FORMAT;
+  }
+  if (typeof sourceFormat === "string" && sourceFormat.trim().toLowerCase() === GENERATED_COMPOSITE_SHAPE_SOURCE_FORMAT) {
+    return GENERATED_COMPOSITE_SHAPE_SOURCE_FORMAT;
   }
   return normalizeOcctFormat(sourceFormat);
 }
@@ -656,6 +731,14 @@ export function normalizeOcctResult(rawResult, options = {}) {
   const extrudedShape = normalizeExtrudedShapeMetadata(rawResult.extrudedShape, geometries);
   if (extrudedShape) {
     result.extrudedShape = extrudedShape;
+  }
+  const helicalSweep = normalizeHelicalSweepMetadata(rawResult.helicalSweep, geometries);
+  if (helicalSweep) {
+    result.helicalSweep = helicalSweep;
+  }
+  const compositeShape = normalizeCompositeShapeMetadata(rawResult.compositeShape);
+  if (compositeShape) {
+    result.compositeShape = compositeShape;
   }
 
   return result;

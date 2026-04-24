@@ -8,6 +8,28 @@ import {
 } from "../src/index.js";
 import { loadOcctFactory } from "../../../test/load_occt_factory.mjs";
 
+function createProfile2DSpec() {
+  return {
+    version: 1,
+    start: [0, 0],
+    segments: [
+      { kind: "line", id: "base", tag: "base", end: [6, 0] },
+      { kind: "line", id: "right-wall", tag: "wall", end: [6, 10] },
+      { kind: "line", id: "top", tag: "cap", end: [0, 10] },
+      { kind: "line", id: "left-wall", tag: "wall", end: [0, 0] },
+    ],
+  };
+}
+
+function createExtrudedShapeSpec() {
+  return {
+    version: 1,
+    units: "mm",
+    profile: createProfile2DSpec(),
+    extrusion: { depth: 24 },
+  };
+}
+
 test("createOcctCore imports custom defaultColor through the built root carrier", async () => {
   const factory = loadOcctFactory();
   const wasmBinary = new Uint8Array(await readFile(new URL("../../../dist/occt-js.wasm", import.meta.url)));
@@ -386,6 +408,180 @@ async function findSupportedChamferOccurrenceRef(core, exactModel) {
           continue;
         }
         return info.ref;
+      }
+    }
+  }
+
+  return null;
+}
+
+function parallelDirections(left, right, tolerance = 1e-5) {
+  const cross = [
+    left[1] * right[2] - left[2] * right[1],
+    left[2] * right[0] - left[0] * right[2],
+    left[0] * right[1] - left[1] * right[0],
+  ];
+  return Math.hypot(...cross) <= tolerance;
+}
+
+function distanceToAxis(pointOnAxisA, axisA, pointOnAxisB) {
+  const normalizedAxis = (() => {
+    const length = Math.hypot(...axisA);
+    return length > 0 ? axisA.map((value) => value / length) : [0, 0, 0];
+  })();
+  const offset = [
+    pointOnAxisB[0] - pointOnAxisA[0],
+    pointOnAxisB[1] - pointOnAxisA[1],
+    pointOnAxisB[2] - pointOnAxisA[2],
+  ];
+  const cross = [
+    normalizedAxis[1] * offset[2] - normalizedAxis[2] * offset[1],
+    normalizedAxis[2] * offset[0] - normalizedAxis[0] * offset[2],
+    normalizedAxis[0] * offset[1] - normalizedAxis[1] * offset[0],
+  ];
+  return Math.hypot(...cross);
+}
+
+async function collectHoleCylinderCandidates(core, exactModel) {
+  const occurrences = collectGeometryOccurrences(exactModel.rootNodes);
+  const cylinders = [];
+  for (const occurrence of occurrences) {
+    const geometry = exactModel.geometries.find((entry) => entry.geometryId === occurrence.geometryId);
+    if (!geometry) {
+      continue;
+    }
+
+    for (const face of geometry.faces ?? []) {
+      const ref = resolveExactElementRef(exactModel, {
+        nodeId: occurrence.nodeId,
+        geometryId: occurrence.geometryId,
+        kind: "face",
+        elementId: face.id,
+      });
+      if (ref?.ok !== true) {
+        continue;
+      }
+
+      const family = await core.getExactGeometryType(ref);
+      if (family?.ok !== true || family.family !== "cylinder") {
+        continue;
+      }
+
+      const hole = await core.describeExactHole(ref);
+      if (hole?.ok !== true) {
+        continue;
+      }
+
+      const center = await core.measureExactCenter(ref);
+      const radius = await core.measureExactRadius(ref);
+      if (center?.ok !== true || radius?.ok !== true) {
+        continue;
+      }
+
+      cylinders.push({
+        geometry,
+        face,
+        ref,
+        hole,
+        center,
+        radius,
+      });
+    }
+  }
+
+  return cylinders;
+}
+
+async function findSupportedCounterboreOccurrenceRef(core, exactModel) {
+  const cylinders = await collectHoleCylinderCandidates(core, exactModel);
+  for (let leftIndex = 0; leftIndex < cylinders.length; leftIndex += 1) {
+    for (let rightIndex = leftIndex + 1; rightIndex < cylinders.length; rightIndex += 1) {
+      const left = cylinders[leftIndex];
+      const right = cylinders[rightIndex];
+      if (!parallelDirections(left.center.axisDirection, right.center.axisDirection)) {
+        continue;
+      }
+      if (distanceToAxis(left.center.center, left.center.axisDirection, right.center.center) > 1e-4) {
+        continue;
+      }
+      if (Math.abs(left.radius.radius - right.radius.radius) <= 1e-4) {
+        continue;
+      }
+
+      return left.radius.radius > right.radius.radius ? left.ref : right.ref;
+    }
+  }
+
+  return null;
+}
+
+async function findSupportedCountersinkOccurrenceRef(core, exactModel) {
+  const cylinders = await collectHoleCylinderCandidates(core, exactModel);
+  const occurrences = collectGeometryOccurrences(exactModel.rootNodes);
+  for (const occurrence of occurrences) {
+    const geometry = exactModel.geometries.find((entry) => entry.geometryId === occurrence.geometryId);
+    if (!geometry) {
+      continue;
+    }
+
+    for (const face of geometry.faces ?? []) {
+      const ref = resolveExactElementRef(exactModel, {
+        nodeId: occurrence.nodeId,
+        geometryId: occurrence.geometryId,
+        kind: "face",
+        elementId: face.id,
+      });
+      if (ref?.ok !== true) {
+        continue;
+      }
+
+      const family = await core.getExactGeometryType(ref);
+      if (family?.ok !== true || family.family !== "cone") {
+        continue;
+      }
+
+      const center = await core.measureExactCenter(ref);
+      if (center?.ok !== true) {
+        continue;
+      }
+
+      const radii = [];
+      for (const edgeIndex of face.edgeIndices ?? []) {
+        const edge = geometry.edges?.[edgeIndex];
+        if (!edge) {
+          continue;
+        }
+        const edgeRef = resolveExactElementRef(exactModel, {
+          nodeId: occurrence.nodeId,
+          geometryId: occurrence.geometryId,
+          kind: "edge",
+          elementId: edge.id,
+        });
+        if (edgeRef?.ok !== true) {
+          continue;
+        }
+        const edgeFamily = await core.getExactGeometryType(edgeRef);
+        if (edgeFamily?.ok !== true || edgeFamily.family !== "circle") {
+          continue;
+        }
+        const radius = await core.measureExactRadius(edgeRef);
+        if (radius?.ok === true) {
+          radii.push(radius.radius);
+        }
+      }
+
+      for (const cylinder of cylinders) {
+        if (!parallelDirections(center.axisDirection, cylinder.center.axisDirection)) {
+          continue;
+        }
+        if (distanceToAxis(center.center, center.axisDirection, cylinder.center.center) > 1e-4) {
+          continue;
+        }
+        const matchingRadius = radii.some((radius) => Math.abs(radius - cylinder.radius.radius) <= 1e-4);
+        const largerRadius = radii.some((radius) => radius - cylinder.radius.radius > 1e-4);
+        if (matchingRadius && largerRadius) {
+          return ref;
+        }
       }
     }
   }
@@ -879,6 +1075,86 @@ test("occt-core package-only helper semantics compose over retained exact placem
   assert.deepEqual(await core.releaseExactModel(exactModel.exactModelId), { ok: true });
 });
 
+test("occt-core compound-hole helpers normalize live semantics into occurrence space", async () => {
+  const factory = loadOcctFactory();
+  const wasmBinary = new Uint8Array(await readFile(new URL("../../../dist/occt-js.wasm", import.meta.url)));
+  const counterboreBytes = new Uint8Array(await readFile(new URL("../../../test/freecad_hole_puzzle_counterbore.brep", import.meta.url)));
+  const countersinkBytes = new Uint8Array(await readFile(new URL("../../../test/freecad_hole_puzzle_countersink.brep", import.meta.url)));
+
+  const core = createOcctCore({
+    factory,
+    wasmBinary,
+  });
+
+  const counterboreExact = normalizeExactOpenResult(await core.openExactBrep(counterboreBytes, {
+    fileName: "freecad_hole_puzzle_counterbore.brep",
+  }), {
+    sourceFileName: "freecad_hole_puzzle_counterbore.brep",
+  });
+  const countersinkExact = normalizeExactOpenResult(await core.openExactBrep(countersinkBytes, {
+    fileName: "freecad_hole_puzzle_countersink.brep",
+  }), {
+    sourceFileName: "freecad_hole_puzzle_countersink.brep",
+  });
+
+  try {
+    const counterboreRef = await findSupportedCounterboreOccurrenceRef(core, counterboreExact);
+    const countersinkRef = await findSupportedCountersinkOccurrenceRef(core, countersinkExact);
+
+    assert.ok(counterboreRef?.ok === true, "counterbore fixture should expose a supported counterbore exact ref");
+    assert.ok(countersinkRef?.ok === true, "countersink fixture should expose a supported countersink exact ref");
+
+    const shiftedCounterboreRef = {
+      ...counterboreRef,
+      transform: translateTransform(counterboreRef.transform, 40, -20, 15),
+    };
+    const shiftedCountersinkRef = {
+      ...countersinkRef,
+      transform: translateTransform(countersinkRef.transform, -25, 30, 12),
+    };
+
+    const counterbore = await core.describeExactCounterbore(counterboreRef);
+    const shiftedCounterbore = await core.describeExactCounterbore(shiftedCounterboreRef);
+    const countersink = await core.describeExactCountersink(countersinkRef);
+    const shiftedCountersink = await core.describeExactCountersink(shiftedCountersinkRef);
+
+    assert.equal(counterbore?.ok, true);
+    assert.equal(shiftedCounterbore?.ok, true);
+    assert.equal(counterbore?.kind, "counterbore");
+    assert.equal(shiftedCounterbore?.kind, "counterbore");
+    assert.ok(Math.abs(counterbore.holeDiameter - shiftedCounterbore.holeDiameter) < 1e-6);
+    assert.ok(Math.abs(counterbore.counterboreDiameter - shiftedCounterbore.counterboreDiameter) < 1e-6);
+    assert.ok(Math.abs(counterbore.counterboreDepth - shiftedCounterbore.counterboreDepth) < 1e-6);
+    assert.deepEqual(shiftedCounterbore.frame.origin, translatePoint(counterbore.frame.origin, 40, -20, 15));
+    assert.deepEqual(shiftedCounterbore.anchors[0].point, translatePoint(counterbore.anchors[0].point, 40, -20, 15));
+    assert.deepEqual(shiftedCounterbore.axisDirection, counterbore.axisDirection);
+
+    assert.equal(countersink?.ok, true);
+    assert.equal(shiftedCountersink?.ok, true);
+    assert.equal(countersink?.kind, "countersink");
+    assert.equal(shiftedCountersink?.kind, "countersink");
+    assert.ok(Math.abs(countersink.holeDiameter - shiftedCountersink.holeDiameter) < 1e-6);
+    assert.ok(Math.abs(countersink.countersinkDiameter - shiftedCountersink.countersinkDiameter) < 1e-6);
+    assert.ok(Math.abs(countersink.countersinkAngle - shiftedCountersink.countersinkAngle) < 1e-6);
+    assert.deepEqual(shiftedCountersink.frame.origin, translatePoint(countersink.frame.origin, -25, 30, 12));
+    assert.deepEqual(shiftedCountersink.anchors[0].point, translatePoint(countersink.anchors[0].point, -25, 30, 12));
+    assert.deepEqual(shiftedCountersink.axisDirection, countersink.axisDirection);
+  } finally {
+    await core.releaseExactModel(counterboreExact.exactModelId);
+    await core.releaseExactModel(countersinkExact.exactModelId);
+  }
+});
+
+test("occt-core live package surface no longer publishes candidate-analysis helpers", async () => {
+  const core = createOcctCore({
+    factory: loadOcctFactory(),
+    wasmBinary: new Uint8Array(await readFile(new URL("../../../dist/occt-js.wasm", import.meta.url))),
+  });
+
+  assert.equal("analyzeExactMeasurementCandidates" in core, false);
+  assert.equal(typeof core.analyzeExactMeasurementCandidates, "undefined");
+});
+
 test("occt-core exact thickness wrappers honor repeated parallel occurrences", async () => {
   const factory = loadOcctFactory();
   const wasmBinary = new Uint8Array(await readFile(new URL("../../../dist/occt-js.wasm", import.meta.url)));
@@ -930,4 +1206,91 @@ test("occt-core exact thickness wrappers honor repeated parallel occurrences", a
   assert.deepEqual(thickness?.refB, second);
 
   assert.deepEqual(await core.releaseExactModel(exactModel.exactModelId), { ok: true });
+});
+
+test("cross-model exact pairwise wrappers accept different exactModelId values for generated extruded faces", async () => {
+  const factory = loadOcctFactory();
+  const wasmBinary = new Uint8Array(await readFile(new URL("../../../dist/occt-js.wasm", import.meta.url)));
+  const core = createOcctCore({
+    factory,
+    wasmBinary,
+  });
+  const spec = createExtrudedShapeSpec();
+  let exactModelA = null;
+  let exactModelB = null;
+
+  try {
+    exactModelA = normalizeExactOpenResult(await core.openExactExtrudedShape(spec), {
+      sourceFileName: "cross-model-a.generated-extruded",
+    });
+    exactModelB = normalizeExactOpenResult(await core.openExactExtrudedShape(spec), {
+      sourceFileName: "cross-model-b.generated-extruded",
+    });
+
+    const geometryIdA = exactModelA.geometries[0]?.geometryId ?? exactModelA.geometries[0]?.id;
+    const geometryIdB = exactModelB.geometries[0]?.geometryId ?? exactModelB.geometries[0]?.id;
+    const nodeIdA = exactModelA.rootNodes[0]?.nodeId ?? exactModelA.rootNodes[0]?.id;
+    const nodeIdB = exactModelB.rootNodes[0]?.nodeId ?? exactModelB.rootNodes[0]?.id;
+
+    const refA = resolveExactElementRef(exactModelA, {
+      nodeId: nodeIdA,
+      geometryId: geometryIdA,
+      kind: "face",
+      elementId: 5,
+    });
+    const refBBase = resolveExactElementRef(exactModelB, {
+      nodeId: nodeIdB,
+      geometryId: geometryIdB,
+      kind: "face",
+      elementId: 5,
+    });
+    const refB = {
+      ...refBBase,
+      transform: translateTransform(refBBase.transform, 0, 0, 40),
+    };
+
+    assert.equal(refA?.ok, true);
+    assert.equal(refBBase?.ok, true);
+    assert.notEqual(refA.exactModelId, refB.exactModelId);
+
+    const distance = await core.measureExactDistance(refA, refB);
+    const thickness = await core.measureExactThickness(refA, refB);
+    const relation = await core.classifyExactRelation(refA, refB);
+    const placement = await core.suggestExactDistancePlacement(refA, refB);
+    const thicknessPlacement = await core.suggestExactThicknessPlacement(refA, refB);
+
+    assert.equal(distance?.ok, true);
+    assert.ok(Math.abs(distance.value - 40) < 1e-6);
+    assert.deepEqual(distance?.refA, refA);
+    assert.deepEqual(distance?.refB, refB);
+
+    assert.equal(thickness?.ok, true);
+    assert.ok(Math.abs(thickness.value - 40) < 1e-6);
+    assert.deepEqual(thickness?.refA, refA);
+    assert.deepEqual(thickness?.refB, refB);
+
+    assert.equal(relation?.ok, true);
+    assert.equal(relation?.kind, "parallel");
+    assert.deepEqual(relation?.refA, refA);
+    assert.deepEqual(relation?.refB, refB);
+
+    assert.equal(placement?.ok, true);
+    assert.equal(placement?.kind, "distance");
+    assert.ok(Math.abs(placement.value - 40) < 1e-6);
+    assert.deepEqual(placement?.refA, refA);
+    assert.deepEqual(placement?.refB, refB);
+
+    assert.equal(thicknessPlacement?.ok, true);
+    assert.equal(thicknessPlacement?.kind, "thickness");
+    assert.ok(Math.abs(thicknessPlacement.value - 40) < 1e-6);
+    assert.deepEqual(thicknessPlacement?.refA, refA);
+    assert.deepEqual(thicknessPlacement?.refB, refB);
+  } finally {
+    if (exactModelA?.exactModelId) {
+      await core.releaseExactModel(exactModelA.exactModelId);
+    }
+    if (exactModelB?.exactModelId) {
+      await core.releaseExactModel(exactModelB.exactModelId);
+    }
+  }
 });

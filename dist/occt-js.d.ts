@@ -319,6 +319,24 @@ export interface OcctJSExactChamferSuccess {
 
 export type OcctJSExactChamferResult = OcctJSExactChamferSuccess | OcctJSExactQueryFailure;
 
+export interface OcctJSExactCompoundHoleSuccess {
+    ok: true;
+    kind: "compound-hole";
+    family: "counterbore" | "countersink";
+    holeDiameter: number;
+    holeDepth?: number;
+    isThrough?: boolean;
+    frame?: OcctJSExactPlacementFrame;
+    anchors?: OcctJSExactPlacementAnchor[];
+    axisDirection?: [number, number, number];
+    counterboreDiameter?: number;
+    counterboreDepth?: number;
+    countersinkDiameter?: number;
+    countersinkAngle?: number;
+}
+
+export type OcctJSExactCompoundHoleResult = OcctJSExactCompoundHoleSuccess | OcctJSExactQueryFailure;
+
 export type OcctJSProfile2DSegmentKind = "line" | "arc_center" | "arc_3pt";
 export type OcctJSProfile2DDiagnosticCode =
     | "build-failed"
@@ -606,6 +624,247 @@ export type OcctJSExactExtrudedShapeOpenResult =
     | OcctJSExtrudedShapeBuildFailure
     | OcctJSExactExtrudedShapeOpenSuccess;
 
+export type OcctJSHelicalSweepUnits = "mm" | "inch";
+export type OcctJSHelicalSweepHandedness = "right" | "left";
+export type OcctJSHelicalSweepSectionKind = "circle" | "polyline";
+export type OcctJSHelicalSweepDiagnosticCode =
+    | "invalid-spec"
+    | "invalid-type"
+    | "missing-field"
+    | "unsupported-version"
+    | "unsupported-unit"
+    | "invalid-helix-radius"
+    | "invalid-helix-pitch"
+    | "invalid-helix-turns"
+    | "invalid-handedness"
+    | "unsupported-section-kind"
+    | "invalid-section-radius"
+    | "invalid-section-segments"
+    | "invalid-section-points"
+    | "build-failed";
+
+export interface OcctJSHelicalSweepCircleSection {
+    kind: "circle";
+    radius: number;
+    segments?: number;
+}
+
+export interface OcctJSHelicalSweepPolylineSection {
+    kind: "polyline";
+    points: Array<[number, number]>;
+}
+
+export type OcctJSHelicalSweepSection =
+    | OcctJSHelicalSweepCircleSection
+    | OcctJSHelicalSweepPolylineSection;
+
+export interface OcctJSHelicalSweepSpec {
+    version?: 1;
+    units: OcctJSHelicalSweepUnits;
+    helix: {
+        radius: number;
+        pitch: number;
+        turns: number;
+        handedness?: OcctJSHelicalSweepHandedness;
+    };
+    section: OcctJSHelicalSweepSection;
+}
+
+export type OcctJSHelicalSweepDiagnostic = Omit<OcctJSProfile2DDiagnostic, "code"> & {
+    code: OcctJSHelicalSweepDiagnosticCode;
+};
+
+export interface OcctJSHelicalSweepValidationResult {
+    ok: boolean;
+    diagnostics: OcctJSHelicalSweepDiagnostic[];
+}
+
+export interface OcctJSHelicalSweepBuildOptions {
+    linearDeflectionType?: "bounding_box_ratio" | "absolute_value";
+    linearDeflection?: number;
+    angularDeflection?: number;
+}
+
+export type OcctJSGeneratedHelicalSweepSystemRole =
+    | "sweep"
+    | "start_cap"
+    | "end_cap";
+
+export interface OcctJSGeneratedHelicalSweepFaceBinding {
+    geometryIndex: number;
+    faceId: number;
+    systemRole: OcctJSGeneratedHelicalSweepSystemRole;
+    segmentIndex?: number;
+    segmentId?: string;
+    segmentTag?: string;
+}
+
+export interface OcctJSGeneratedHelicalSweepMetadata {
+    version: 1;
+    units: OcctJSHelicalSweepUnits;
+    helixRadius: number;
+    pitch: number;
+    turns: number;
+    height: number;
+    handedness: OcctJSHelicalSweepHandedness;
+    sectionKind: OcctJSHelicalSweepSectionKind;
+    sectionRadius: number;
+    sectionSegments: number;
+    sectionPointCount: number;
+    hasStableFaceBindings: boolean;
+    shapeValidation?: OcctJSGeneratedShapeShapeValidation;
+    faceBindings?: OcctJSGeneratedHelicalSweepFaceBinding[];
+}
+
+export interface OcctJSHelicalSweepBuildFailure {
+    success: false;
+    error: string;
+    sourceFormat: "generated-helical-sweep";
+    diagnostics: OcctJSHelicalSweepDiagnostic[];
+    helicalSweep?: OcctJSGeneratedHelicalSweepMetadata;
+}
+
+export interface OcctJSHelicalSweepBuildSuccess extends OcctJSResult {
+    success: true;
+    sourceFormat: "generated-helical-sweep";
+    helicalSweep: OcctJSGeneratedHelicalSweepMetadata;
+    diagnostics?: OcctJSHelicalSweepDiagnostic[];
+}
+
+export type OcctJSHelicalSweepBuildResult =
+    | OcctJSHelicalSweepBuildFailure
+    | OcctJSHelicalSweepBuildSuccess;
+
+export interface OcctJSExactHelicalSweepOpenSuccess extends OcctJSExactOpenResult {
+    success: true;
+    sourceFormat: "generated-helical-sweep";
+    exactModelId: number;
+    exactGeometryBindings: OcctJSExactGeometryBinding[];
+    helicalSweep: OcctJSGeneratedHelicalSweepMetadata;
+    diagnostics?: OcctJSHelicalSweepDiagnostic[];
+}
+
+export type OcctJSExactHelicalSweepOpenResult =
+    | OcctJSHelicalSweepBuildFailure
+    | OcctJSExactHelicalSweepOpenSuccess;
+
+export type OcctJSCompositeShapeUnits = "mm" | "inch";
+export type OcctJSCompositeOperandFamily = "revolved" | "extruded" | "helical-sweep";
+export type OcctJSCompositeShapeStepOp = "fuse" | "cut";
+export type OcctJSCompositeShapeDiagnosticCode =
+    | "invalid-spec"
+    | "invalid-type"
+    | "missing-field"
+    | "unsupported-version"
+    | "unsupported-unit"
+    | "unsupported-operand-family"
+    | "unsupported-step-op"
+    | "invalid-transform"
+    | "operand-unit-mismatch"
+    | "operand-build-failed"
+    | "build-failed"
+    | OcctJSRevolvedShapeDiagnosticCode
+    | OcctJSExtrudedShapeDiagnosticCode
+    | OcctJSHelicalSweepDiagnosticCode;
+
+export interface OcctJSCompositeShapeRevolvedOperandSpec {
+    family: "revolved";
+    spec: OcctJSRevolvedShapeSpec;
+    transform?: OcctJSMatrix4;
+}
+
+export interface OcctJSCompositeShapeExtrudedOperandSpec {
+    family: "extruded";
+    spec: OcctJSExtrudedShapeSpec;
+    transform?: OcctJSMatrix4;
+}
+
+export interface OcctJSCompositeShapeHelicalOperandSpec {
+    family: "helical-sweep";
+    spec: OcctJSHelicalSweepSpec;
+    transform?: OcctJSMatrix4;
+}
+
+export type OcctJSCompositeShapeOperandSpec =
+    | OcctJSCompositeShapeRevolvedOperandSpec
+    | OcctJSCompositeShapeExtrudedOperandSpec
+    | OcctJSCompositeShapeHelicalOperandSpec;
+
+export interface OcctJSCompositeShapeStepSpec {
+    op: OcctJSCompositeShapeStepOp;
+    operand: OcctJSCompositeShapeOperandSpec;
+}
+
+export interface OcctJSCompositeShapeSpec {
+    version?: 1;
+    units: OcctJSCompositeShapeUnits;
+    seed: OcctJSCompositeShapeOperandSpec;
+    steps?: OcctJSCompositeShapeStepSpec[];
+}
+
+export type OcctJSCompositeShapeDiagnostic = Omit<OcctJSProfile2DDiagnostic, "code"> & {
+    code: OcctJSCompositeShapeDiagnosticCode;
+};
+
+export interface OcctJSCompositeShapeValidationResult {
+    ok: boolean;
+    diagnostics: OcctJSCompositeShapeDiagnostic[];
+}
+
+export interface OcctJSCompositeShapeBuildOptions {
+    linearDeflectionType?: "bounding_box_ratio" | "absolute_value";
+    linearDeflection?: number;
+    angularDeflection?: number;
+}
+
+export interface OcctJSGeneratedCompositeShapeOperationDescriptor {
+    index: number;
+    op: OcctJSCompositeShapeStepOp;
+    family: OcctJSCompositeOperandFamily;
+    hasTransform: boolean;
+}
+
+export interface OcctJSGeneratedCompositeShapeMetadata {
+    version: 1;
+    units: OcctJSCompositeShapeUnits;
+    seedFamily: OcctJSCompositeOperandFamily;
+    stepCount: number;
+    operations: OcctJSGeneratedCompositeShapeOperationDescriptor[];
+    shapeValidation?: OcctJSGeneratedShapeShapeValidation;
+}
+
+export interface OcctJSCompositeShapeBuildFailure {
+    success: false;
+    error: string;
+    sourceFormat: "generated-composite-shape";
+    diagnostics: OcctJSCompositeShapeDiagnostic[];
+    compositeShape?: OcctJSGeneratedCompositeShapeMetadata;
+}
+
+export interface OcctJSCompositeShapeBuildSuccess extends OcctJSResult {
+    success: true;
+    sourceFormat: "generated-composite-shape";
+    compositeShape: OcctJSGeneratedCompositeShapeMetadata;
+    diagnostics?: OcctJSCompositeShapeDiagnostic[];
+}
+
+export type OcctJSCompositeShapeBuildResult =
+    | OcctJSCompositeShapeBuildFailure
+    | OcctJSCompositeShapeBuildSuccess;
+
+export interface OcctJSExactCompositeShapeOpenSuccess extends OcctJSExactOpenResult {
+    success: true;
+    sourceFormat: "generated-composite-shape";
+    exactModelId: number;
+    exactGeometryBindings: OcctJSExactGeometryBinding[];
+    compositeShape: OcctJSGeneratedCompositeShapeMetadata;
+    diagnostics?: OcctJSCompositeShapeDiagnostic[];
+}
+
+export type OcctJSExactCompositeShapeOpenResult =
+    | OcctJSCompositeShapeBuildFailure
+    | OcctJSExactCompositeShapeOpenSuccess;
+
 export interface OcctJSReadParams {
     rootMode?: "one-shape" | "multiple-shapes";
     linearUnit?: "millimeter" | "centimeter" | "meter" | "inch" | "foot";
@@ -688,10 +947,16 @@ export interface OcctJSModule {
     ValidateProfile2DSpec(spec: OcctJSProfile2DSpec): OcctJSProfile2DValidationResult;
     ValidateRevolvedShapeSpec(spec: OcctJSRevolvedShapeSpec): OcctJSRevolvedShapeValidationResult;
     ValidateExtrudedShapeSpec(spec: OcctJSExtrudedShapeSpec): OcctJSExtrudedShapeValidationResult;
+    ValidateHelicalSweepSpec(spec: OcctJSHelicalSweepSpec): OcctJSHelicalSweepValidationResult;
+    ValidateCompositeShapeSpec(spec: OcctJSCompositeShapeSpec): OcctJSCompositeShapeValidationResult;
     BuildRevolvedShape(spec: OcctJSRevolvedShapeSpec, options?: OcctJSRevolvedShapeBuildOptions): OcctJSRevolvedShapeBuildResult;
     BuildExtrudedShape(spec: OcctJSExtrudedShapeSpec, options?: OcctJSExtrudedShapeBuildOptions): OcctJSExtrudedShapeBuildResult;
+    BuildHelicalSweep(spec: OcctJSHelicalSweepSpec, options?: OcctJSHelicalSweepBuildOptions): OcctJSHelicalSweepBuildResult;
+    BuildCompositeShape(spec: OcctJSCompositeShapeSpec, options?: OcctJSCompositeShapeBuildOptions): OcctJSCompositeShapeBuildResult;
     OpenExactRevolvedShape(spec: OcctJSRevolvedShapeSpec, options?: OcctJSRevolvedShapeBuildOptions): OcctJSExactRevolvedShapeOpenResult;
     OpenExactExtrudedShape(spec: OcctJSExtrudedShapeSpec, options?: OcctJSExtrudedShapeBuildOptions): OcctJSExactExtrudedShapeOpenResult;
+    OpenExactHelicalSweep(spec: OcctJSHelicalSweepSpec, options?: OcctJSHelicalSweepBuildOptions): OcctJSExactHelicalSweepOpenResult;
+    OpenExactCompositeShape(spec: OcctJSCompositeShapeSpec, options?: OcctJSCompositeShapeBuildOptions): OcctJSExactCompositeShapeOpenResult;
     OpenExactModel(format: string, content: Uint8Array, params?: OcctJSReadParams): OcctJSExactOpenResult;
     OpenExactStepModel(content: Uint8Array, params?: OcctJSReadParams): OcctJSExactOpenResult;
     OpenExactIgesModel(content: Uint8Array, params?: OcctJSReadParams): OcctJSExactOpenResult;
@@ -706,16 +971,24 @@ export interface OcctJSModule {
     MeasureExactFaceArea(exactModelId: number, exactShapeHandle: number, kind: OcctJSExactElementKind, elementId: number): OcctJSExactFaceAreaResult;
     EvaluateExactFaceNormal(exactModelId: number, exactShapeHandle: number, kind: OcctJSExactElementKind, elementId: number, localQueryPoint: [number, number, number]): OcctJSExactFaceNormalResult;
     MeasureExactDistance(exactModelId: number, exactShapeHandleA: number, kindA: OcctJSExactElementKind, elementIdA: number, exactShapeHandleB: number, kindB: OcctJSExactElementKind, elementIdB: number, transformA: OcctJSMatrix4, transformB: OcctJSMatrix4): OcctJSExactDistanceResult;
+    MeasureExactDistanceCrossModel(exactModelIdA: number, exactShapeHandleA: number, kindA: OcctJSExactElementKind, elementIdA: number, transformA: OcctJSMatrix4, exactModelIdB: number, exactShapeHandleB: number, kindB: OcctJSExactElementKind, elementIdB: number, transformB: OcctJSMatrix4): OcctJSExactDistanceResult;
     MeasureExactAngle(exactModelId: number, exactShapeHandleA: number, kindA: OcctJSExactElementKind, elementIdA: number, exactShapeHandleB: number, kindB: OcctJSExactElementKind, elementIdB: number, transformA: OcctJSMatrix4, transformB: OcctJSMatrix4): OcctJSExactAngleResult;
+    MeasureExactAngleCrossModel(exactModelIdA: number, exactShapeHandleA: number, kindA: OcctJSExactElementKind, elementIdA: number, transformA: OcctJSMatrix4, exactModelIdB: number, exactShapeHandleB: number, kindB: OcctJSExactElementKind, elementIdB: number, transformB: OcctJSMatrix4): OcctJSExactAngleResult;
     MeasureExactThickness(exactModelId: number, exactShapeHandleA: number, kindA: OcctJSExactElementKind, elementIdA: number, exactShapeHandleB: number, kindB: OcctJSExactElementKind, elementIdB: number, transformA: OcctJSMatrix4, transformB: OcctJSMatrix4): OcctJSExactThicknessResult;
+    MeasureExactThicknessCrossModel(exactModelIdA: number, exactShapeHandleA: number, kindA: OcctJSExactElementKind, elementIdA: number, transformA: OcctJSMatrix4, exactModelIdB: number, exactShapeHandleB: number, kindB: OcctJSExactElementKind, elementIdB: number, transformB: OcctJSMatrix4): OcctJSExactThicknessResult;
     ClassifyExactRelation(exactModelId: number, exactShapeHandleA: number, kindA: OcctJSExactElementKind, elementIdA: number, exactShapeHandleB: number, kindB: OcctJSExactElementKind, elementIdB: number, transformA: OcctJSMatrix4, transformB: OcctJSMatrix4): OcctJSExactRelationResult;
+    ClassifyExactRelationCrossModel(exactModelIdA: number, exactShapeHandleA: number, kindA: OcctJSExactElementKind, elementIdA: number, transformA: OcctJSMatrix4, exactModelIdB: number, exactShapeHandleB: number, kindB: OcctJSExactElementKind, elementIdB: number, transformB: OcctJSMatrix4): OcctJSExactRelationResult;
     SuggestExactDistancePlacement(exactModelId: number, exactShapeHandleA: number, kindA: OcctJSExactElementKind, elementIdA: number, exactShapeHandleB: number, kindB: OcctJSExactElementKind, elementIdB: number, transformA: OcctJSMatrix4, transformB: OcctJSMatrix4): OcctJSExactPlacementResult;
+    SuggestExactDistancePlacementCrossModel(exactModelIdA: number, exactShapeHandleA: number, kindA: OcctJSExactElementKind, elementIdA: number, transformA: OcctJSMatrix4, exactModelIdB: number, exactShapeHandleB: number, kindB: OcctJSExactElementKind, elementIdB: number, transformB: OcctJSMatrix4): OcctJSExactPlacementResult;
     SuggestExactAnglePlacement(exactModelId: number, exactShapeHandleA: number, kindA: OcctJSExactElementKind, elementIdA: number, exactShapeHandleB: number, kindB: OcctJSExactElementKind, elementIdB: number, transformA: OcctJSMatrix4, transformB: OcctJSMatrix4): OcctJSExactPlacementResult;
+    SuggestExactAnglePlacementCrossModel(exactModelIdA: number, exactShapeHandleA: number, kindA: OcctJSExactElementKind, elementIdA: number, transformA: OcctJSMatrix4, exactModelIdB: number, exactShapeHandleB: number, kindB: OcctJSExactElementKind, elementIdB: number, transformB: OcctJSMatrix4): OcctJSExactPlacementResult;
     SuggestExactThicknessPlacement(exactModelId: number, exactShapeHandleA: number, kindA: OcctJSExactElementKind, elementIdA: number, exactShapeHandleB: number, kindB: OcctJSExactElementKind, elementIdB: number, transformA: OcctJSMatrix4, transformB: OcctJSMatrix4): OcctJSExactPlacementResult;
+    SuggestExactThicknessPlacementCrossModel(exactModelIdA: number, exactShapeHandleA: number, kindA: OcctJSExactElementKind, elementIdA: number, transformA: OcctJSMatrix4, exactModelIdB: number, exactShapeHandleB: number, kindB: OcctJSExactElementKind, elementIdB: number, transformB: OcctJSMatrix4): OcctJSExactPlacementResult;
     SuggestExactRadiusPlacement(exactModelId: number, exactShapeHandle: number, kind: OcctJSExactElementKind, elementId: number): OcctJSExactPlacementResult;
     SuggestExactDiameterPlacement(exactModelId: number, exactShapeHandle: number, kind: OcctJSExactElementKind, elementId: number): OcctJSExactPlacementResult;
     DescribeExactHole(exactModelId: number, exactShapeHandle: number, kind: OcctJSExactElementKind, elementId: number): OcctJSExactHoleResult;
     DescribeExactChamfer(exactModelId: number, exactShapeHandle: number, kind: OcctJSExactElementKind, elementId: number): OcctJSExactChamferResult;
+    DescribeExactCompoundHole(exactModelId: number, exactShapeHandle: number, kind: OcctJSExactElementKind, elementId: number): OcctJSExactCompoundHoleResult;
     AnalyzeOptimalOrientation(format: OcctFormat, content: Uint8Array, params?: OcctJSOrientationParams): OcctJSOrientationResult;
 }
 

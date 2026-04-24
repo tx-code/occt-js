@@ -108,6 +108,44 @@ function createExtrudedShapeSpec() {
   };
 }
 
+function createHelicalSweepSpec() {
+  return {
+    version: 1,
+    units: "mm",
+    helix: {
+      radius: 8,
+      pitch: 3,
+      turns: 4,
+      handedness: "right",
+    },
+    section: {
+      kind: "circle",
+      radius: 0.8,
+      segments: 24,
+    },
+  };
+}
+
+function createCompositeShapeSpec() {
+  return {
+    version: 1,
+    units: "mm",
+    seed: {
+      family: "revolved",
+      spec: createRevolvedShapeSpec(),
+    },
+    steps: [
+      {
+        op: "cut",
+        operand: {
+          family: "helical-sweep",
+          spec: createHelicalSweepSpec(),
+        },
+      },
+    ],
+  };
+}
+
 function createAutoAxisRevolvedShapeSpec() {
   return {
     version: 1,
@@ -478,6 +516,256 @@ describe("normalizeOcctResult", () => {
     assert.equal(exact.geometries[0].geometryId, "geo_0");
     assert.equal(exact.exactGeometryBindings[0].geometryId, "geo_0");
     assert.equal(exact.extrudedShape.faceBindings[0].geometryId, "geo_0");
+  });
+
+  it("preserves generated helical sweep source format and geometry bindings", () => {
+    const result = normalizeOcctResult({
+      success: true,
+      sourceFormat: "generated-helical-sweep",
+      rootNodes: [{
+        id: "helical-root",
+        name: "Generated Helical Sweep",
+        isAssembly: false,
+        transform: IDENTITY_MATRIX,
+        meshes: [0],
+        children: [],
+      }],
+      geometries: [{
+        name: "helical-body",
+        color: { r: 0.8, g: 0.8, b: 0.82 },
+        positions: new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0]),
+        normals: new Float32Array([0, 0, 1, 0, 0, 1, 0, 0, 1]),
+        indices: new Uint32Array([0, 1, 2]),
+        faces: [{
+          id: 1,
+          name: "sweep",
+          firstIndex: 0,
+          indexCount: 3,
+          edgeIndices: [],
+          color: { r: 0.84, g: 0.66, b: 0.24 },
+        }],
+        edges: [],
+        vertices: [],
+        triangleToFaceMap: new Int32Array([1]),
+      }],
+      materials: [
+        { r: 0.8, g: 0.8, b: 0.82 },
+        { r: 0.84, g: 0.66, b: 0.24 },
+      ],
+      warnings: [],
+      stats: { ...EMPTY_STATS, rootCount: 1, nodeCount: 1, partCount: 1, geometryCount: 1, materialCount: 2, triangleCount: 1 },
+      helicalSweep: {
+        version: 1,
+        units: "mm",
+        helixRadius: 8,
+        pitch: 3,
+        turns: 4,
+        height: 12,
+        handedness: "right",
+        sectionKind: "circle",
+        sectionRadius: 0.8,
+        sectionSegments: 24,
+        hasStableFaceBindings: true,
+        shapeValidation: {
+          exact: {
+            isValid: true,
+            isClosed: true,
+            isSolid: true,
+            shapeType: "solid",
+            solidCount: 1,
+            shellCount: 1,
+            faceCount: 1,
+            edgeCount: 0,
+            vertexCount: 0,
+          },
+          mesh: {
+            isWatertight: true,
+            isManifold: true,
+            weldedVertexCount: 3,
+            boundaryEdgeCount: 0,
+            nonManifoldEdgeCount: 0,
+          },
+        },
+        faceBindings: [{
+          geometryIndex: 0,
+          faceId: 1,
+          systemRole: "sweep",
+        }],
+      },
+    });
+
+    assert.equal(result.sourceFormat, "generated-helical-sweep");
+    assert.equal(result.helicalSweep.units, "mm");
+    assert.equal(result.helicalSweep.helixRadius, 8);
+    assert.equal(result.helicalSweep.turns, 4);
+    assert.equal(result.helicalSweep.faceBindings[0].geometryId, "geo_0");
+    assert.equal(result.helicalSweep.shapeValidation.mesh.isWatertight, true);
+  });
+
+  it("normalizeExactOpenResult preserves generated helical sweep metadata and exact geometry bindings", () => {
+    const exact = normalizeExactOpenResult({
+      success: true,
+      sourceFormat: "generated-helical-sweep",
+      exactModelId: 61,
+      exactGeometryBindings: [{ exactShapeHandle: 11 }],
+      rootNodes: [{
+        id: "helical-root",
+        name: "Generated Helical Sweep",
+        isAssembly: false,
+        transform: IDENTITY_MATRIX,
+        meshes: [0],
+        children: [],
+      }],
+      geometries: [{
+        name: "helical-body",
+        color: { r: 0.8, g: 0.8, b: 0.82 },
+        positions: new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0]),
+        normals: new Float32Array([0, 0, 1, 0, 0, 1, 0, 0, 1]),
+        indices: new Uint32Array([0, 1, 2]),
+        faces: [{
+          id: 1,
+          name: "sweep",
+          firstIndex: 0,
+          indexCount: 3,
+          edgeIndices: [],
+          color: { r: 0.84, g: 0.66, b: 0.24 },
+        }],
+        edges: [],
+        vertices: [],
+        triangleToFaceMap: new Int32Array([1]),
+      }],
+      materials: [
+        { r: 0.8, g: 0.8, b: 0.82 },
+        { r: 0.84, g: 0.66, b: 0.24 },
+      ],
+      warnings: [],
+      stats: { ...EMPTY_STATS, rootCount: 1, nodeCount: 1, partCount: 1, geometryCount: 1, materialCount: 2, triangleCount: 1 },
+      helicalSweep: {
+        version: 1,
+        units: "mm",
+        helixRadius: 8,
+        pitch: 3,
+        turns: 4,
+        height: 12,
+        handedness: "right",
+        sectionKind: "circle",
+        sectionRadius: 0.8,
+        sectionSegments: 24,
+        hasStableFaceBindings: true,
+        faceBindings: [{
+          geometryIndex: 0,
+          faceId: 1,
+          systemRole: "sweep",
+        }],
+      },
+    });
+
+    assert.equal(exact.exactModelId, 61);
+    assert.equal(exact.geometries[0].geometryId, "geo_0");
+    assert.equal(exact.exactGeometryBindings[0].geometryId, "geo_0");
+    assert.equal(exact.helicalSweep.faceBindings[0].geometryId, "geo_0");
+  });
+
+  it("preserves generated composite shape source format and metadata", () => {
+    const result = normalizeOcctResult({
+      success: true,
+      sourceFormat: "generated-composite-shape",
+      rootNodes: [{
+        id: "composite-root",
+        name: "Generated Composite Shape",
+        isAssembly: false,
+        transform: IDENTITY_MATRIX,
+        meshes: [0],
+        children: [],
+      }],
+      geometries: [{
+        name: "composite-body",
+        color: { r: 0.82, g: 0.84, b: 0.88 },
+        positions: new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0]),
+        normals: new Float32Array([0, 0, 1, 0, 0, 1, 0, 0, 1]),
+        indices: new Uint32Array([0, 1, 2]),
+        faces: [{
+          id: 1,
+          name: "body",
+          firstIndex: 0,
+          indexCount: 3,
+          edgeIndices: [],
+          color: { r: 0.82, g: 0.84, b: 0.88 },
+        }],
+        edges: [],
+        vertices: [],
+        triangleToFaceMap: new Int32Array([1]),
+      }],
+      materials: [{ r: 0.82, g: 0.84, b: 0.88 }],
+      warnings: [],
+      stats: { ...EMPTY_STATS, rootCount: 1, nodeCount: 1, partCount: 1, geometryCount: 1, materialCount: 1, triangleCount: 1 },
+      compositeShape: {
+        version: 1,
+        units: "mm",
+        seedFamily: "revolved",
+        stepCount: 2,
+        operations: [
+          { index: 0, op: "cut", family: "helical-sweep", hasTransform: false },
+          { index: 1, op: "fuse", family: "extruded", hasTransform: true },
+        ],
+      },
+    });
+
+    assert.equal(result.sourceFormat, "generated-composite-shape");
+    assert.equal(result.compositeShape.units, "mm");
+    assert.equal(result.compositeShape.seedFamily, "revolved");
+    assert.equal(result.compositeShape.stepCount, 2);
+    assert.equal(result.compositeShape.operations[1].hasTransform, true);
+  });
+
+  it("normalizeExactOpenResult preserves generated composite-shape metadata and exact geometry bindings", () => {
+    const exact = normalizeExactOpenResult({
+      success: true,
+      sourceFormat: "generated-composite-shape",
+      exactModelId: 96,
+      exactGeometryBindings: [{ exactShapeHandle: 3 }],
+      rootNodes: [{
+        id: "composite-root",
+        name: "Generated Composite Shape",
+        isAssembly: false,
+        transform: IDENTITY_MATRIX,
+        meshes: [0],
+        children: [],
+      }],
+      geometries: [{
+        name: "composite-body",
+        color: { r: 0.82, g: 0.84, b: 0.88 },
+        positions: new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0]),
+        normals: new Float32Array([0, 0, 1, 0, 0, 1, 0, 0, 1]),
+        indices: new Uint32Array([0, 1, 2]),
+        faces: [{
+          id: 1,
+          name: "body",
+          firstIndex: 0,
+          indexCount: 3,
+          edgeIndices: [],
+          color: { r: 0.82, g: 0.84, b: 0.88 },
+        }],
+        edges: [],
+        vertices: [],
+        triangleToFaceMap: new Int32Array([1]),
+      }],
+      materials: [{ r: 0.82, g: 0.84, b: 0.88 }],
+      warnings: [],
+      stats: { ...EMPTY_STATS, rootCount: 1, nodeCount: 1, partCount: 1, geometryCount: 1, materialCount: 1, triangleCount: 1 },
+      compositeShape: {
+        version: 1,
+        units: "mm",
+        seedFamily: "revolved",
+        stepCount: 1,
+        operations: [{ index: 0, op: "cut", family: "helical-sweep", hasTransform: false }],
+      },
+    });
+
+    assert.equal(exact.exactModelId, 96);
+    assert.equal(exact.geometries[0].geometryId, "geo_0");
+    assert.equal(exact.exactGeometryBindings[0].geometryId, "geo_0");
+    assert.equal(exact.compositeShape.operations[0].family, "helical-sweep");
   });
 
   it("keeps unit metadata absent when the raw payload omits it", () => {
@@ -1222,6 +1510,209 @@ describe("createOcctCore", () => {
       refA,
       refB,
     });
+  });
+
+  it("dispatches cross-model pairwise wrappers when refs use different exactModelId values", async () => {
+    const crossModelCalls = [];
+    const sameModelCalls = [];
+    const refA = {
+      exactModelId: 17,
+      exactShapeHandle: 33,
+      nodeId: "node-a",
+      geometryId: "geo_a",
+      kind: "face",
+      elementId: 5,
+      transform: IDENTITY_MATRIX.slice(),
+    };
+    const refB = {
+      exactModelId: 29,
+      exactShapeHandle: 47,
+      nodeId: "node-b",
+      geometryId: "geo_b",
+      kind: "face",
+      elementId: 6,
+      transform: [
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        0, 0, 40, 1,
+      ],
+    };
+    const core = createOcctCore({
+      factory: async () => ({
+        MeasureExactDistance: (...args) => {
+          sameModelCalls.push(["distance", args]);
+          return { ok: false, code: "wrong-path", message: "same-model path should not be used" };
+        },
+        MeasureExactAngle: (...args) => {
+          sameModelCalls.push(["angle", args]);
+          return { ok: false, code: "wrong-path", message: "same-model path should not be used" };
+        },
+        MeasureExactThickness: (...args) => {
+          sameModelCalls.push(["thickness", args]);
+          return { ok: false, code: "wrong-path", message: "same-model path should not be used" };
+        },
+        ClassifyExactRelation: (...args) => {
+          sameModelCalls.push(["relation", args]);
+          return { ok: false, code: "wrong-path", message: "same-model path should not be used" };
+        },
+        SuggestExactDistancePlacement: (...args) => {
+          sameModelCalls.push(["distance-placement", args]);
+          return { ok: false, code: "wrong-path", message: "same-model path should not be used" };
+        },
+        SuggestExactAnglePlacement: (...args) => {
+          sameModelCalls.push(["angle-placement", args]);
+          return { ok: false, code: "wrong-path", message: "same-model path should not be used" };
+        },
+        SuggestExactThicknessPlacement: (...args) => {
+          sameModelCalls.push(["thickness-placement", args]);
+          return { ok: false, code: "wrong-path", message: "same-model path should not be used" };
+        },
+        MeasureExactDistanceCrossModel: (...args) => {
+          crossModelCalls.push(["distance", args]);
+          return {
+            ok: true,
+            value: 40,
+            pointA: [0, 0, 0],
+            pointB: [0, 0, 40],
+            workingPlaneOrigin: [0, 0, 20],
+            workingPlaneNormal: [0, 0, 1],
+          };
+        },
+        MeasureExactAngleCrossModel: (...args) => {
+          crossModelCalls.push(["angle", args]);
+          return {
+            ok: true,
+            value: Math.PI / 2,
+            origin: [3, 5, 20],
+            directionA: [1, 0, 0],
+            directionB: [0, 1, 0],
+            pointA: [6, 5, 20],
+            pointB: [3, 10, 20],
+            workingPlaneOrigin: [3, 5, 20],
+            workingPlaneNormal: [0, 0, 1],
+          };
+        },
+        MeasureExactThicknessCrossModel: (...args) => {
+          crossModelCalls.push(["thickness", args]);
+          return {
+            ok: true,
+            value: 40,
+            pointA: [0, 0, 0],
+            pointB: [0, 0, 40],
+            workingPlaneOrigin: [0, 0, 20],
+            workingPlaneNormal: [0, 0, 1],
+          };
+        },
+        ClassifyExactRelationCrossModel: (...args) => {
+          crossModelCalls.push(["relation", args]);
+          return {
+            ok: true,
+            kind: "parallel",
+            frame: {
+              origin: [0, 0, 20],
+              normal: [0, 0, 1],
+              xDir: [1, 0, 0],
+              yDir: [0, 1, 0],
+            },
+            anchors: [
+              { role: "attach", point: [0, 0, 0] },
+              { role: "attach", point: [0, 0, 40] },
+            ],
+            directionA: [0, 0, 1],
+            directionB: [0, 0, 1],
+          };
+        },
+        SuggestExactDistancePlacementCrossModel: (...args) => {
+          crossModelCalls.push(["distance-placement", args]);
+          return {
+            ok: true,
+            kind: "distance",
+            value: 40,
+            frame: {
+              origin: [0, 0, 20],
+              normal: [1, 0, 0],
+              xDir: [0, 0, 1],
+              yDir: [0, 1, 0],
+            },
+            anchors: [
+              { role: "attach", point: [0, 0, 0] },
+              { role: "attach", point: [0, 0, 40] },
+            ],
+          };
+        },
+        SuggestExactAnglePlacementCrossModel: (...args) => {
+          crossModelCalls.push(["angle-placement", args]);
+          return {
+            ok: true,
+            kind: "angle",
+            value: Math.PI / 2,
+            frame: {
+              origin: [3, 5, 20],
+              normal: [0, 0, 1],
+              xDir: [1, 0, 0],
+              yDir: [0, 1, 0],
+            },
+            anchors: [
+              { role: "anchor", point: [3, 5, 20] },
+              { role: "attach", point: [6, 5, 20] },
+              { role: "attach", point: [3, 10, 20] },
+            ],
+          };
+        },
+        SuggestExactThicknessPlacementCrossModel: (...args) => {
+          crossModelCalls.push(["thickness-placement", args]);
+          return {
+            ok: true,
+            kind: "thickness",
+            value: 40,
+            frame: {
+              origin: [0, 0, 20],
+              normal: [1, 0, 0],
+              xDir: [0, 0, 1],
+              yDir: [0, 1, 0],
+            },
+            anchors: [
+              { role: "attach", point: [0, 0, 0] },
+              { role: "attach", point: [0, 0, 40] },
+            ],
+          };
+        },
+      }),
+    });
+
+    const distance = await core.measureExactDistance(refA, refB);
+    const angle = await core.measureExactAngle(refA, refB);
+    const thickness = await core.measureExactThickness(refA, refB);
+    const relation = await core.classifyExactRelation(refA, refB);
+    const distancePlacement = await core.suggestExactDistancePlacement(refA, refB);
+    const anglePlacement = await core.suggestExactAnglePlacement(refA, refB);
+    const thicknessPlacement = await core.suggestExactThicknessPlacement(refA, refB);
+
+    assert.deepEqual(sameModelCalls, []);
+    assert.deepEqual(crossModelCalls, [
+      ["distance", [17, 33, "face", 5, refA.transform, 29, 47, "face", 6, refB.transform]],
+      ["angle", [17, 33, "face", 5, refA.transform, 29, 47, "face", 6, refB.transform]],
+      ["thickness", [17, 33, "face", 5, refA.transform, 29, 47, "face", 6, refB.transform]],
+      ["relation", [17, 33, "face", 5, refA.transform, 29, 47, "face", 6, refB.transform]],
+      ["distance-placement", [17, 33, "face", 5, refA.transform, 29, 47, "face", 6, refB.transform]],
+      ["angle-placement", [17, 33, "face", 5, refA.transform, 29, 47, "face", 6, refB.transform]],
+      ["thickness-placement", [17, 33, "face", 5, refA.transform, 29, 47, "face", 6, refB.transform]],
+    ]);
+    assert.deepEqual(distance.refA, refA);
+    assert.deepEqual(distance.refB, refB);
+    assert.deepEqual(angle.refA, refA);
+    assert.deepEqual(angle.refB, refB);
+    assert.deepEqual(thickness.refA, refA);
+    assert.deepEqual(thickness.refB, refB);
+    assert.deepEqual(relation.refA, refA);
+    assert.deepEqual(relation.refB, refB);
+    assert.deepEqual(distancePlacement.refA, refA);
+    assert.deepEqual(distancePlacement.refB, refB);
+    assert.deepEqual(anglePlacement.refA, refA);
+    assert.deepEqual(anglePlacement.refB, refB);
+    assert.deepEqual(thicknessPlacement.refA, refA);
+    assert.deepEqual(thicknessPlacement.refB, refB);
   });
 
   it("wraps measureExactAngle(refA, refB) through occurrence-scoped exact refs", async () => {
@@ -2209,6 +2700,251 @@ describe("createOcctCore", () => {
     );
   });
 
+  it("wraps describeExactCounterbore(ref) through occurrence-scoped exact refs", async () => {
+    const calls = [];
+    const ref = {
+      exactModelId: 17,
+      exactShapeHandle: 33,
+      nodeId: "node-a",
+      geometryId: "geo_0",
+      kind: "face",
+      elementId: 9,
+      transform: IDENTITY_MATRIX.slice(),
+    };
+    const core = createOcctCore({
+      factory: async () => ({
+        DescribeExactCompoundHole: (...args) => {
+          calls.push(args);
+          return {
+            ok: true,
+            kind: "compound-hole",
+            family: "counterbore",
+            holeDiameter: 10,
+            holeDepth: 20,
+            isThrough: false,
+            counterboreDiameter: 16,
+            counterboreDepth: 5,
+            frame: {
+              origin: [1, 2, 3],
+              normal: [0, 0, 1],
+              xDir: [1, 0, 0],
+              yDir: [0, 1, 0],
+            },
+            anchors: [
+              { role: "entry", point: [1, 2, 13] },
+              { role: "anchor", point: [1, 2, 8] },
+              { role: "bottom", point: [1, 2, -7] },
+            ],
+            axisDirection: [0, 0, 1],
+          };
+        },
+      }),
+    });
+
+    const result = await core.describeExactCounterbore(ref);
+
+    assert.deepEqual(calls, [[17, 33, "face", 9]]);
+    assert.deepEqual(result, {
+      ok: true,
+      kind: "counterbore",
+      holeDiameter: 10,
+      holeDepth: 20,
+      isThrough: false,
+      counterboreDiameter: 16,
+      counterboreDepth: 5,
+      frame: {
+        origin: [1, 2, 3],
+        normal: [0, 0, 1],
+        xDir: [1, 0, 0],
+        yDir: [0, 1, 0],
+      },
+      anchors: [
+        { role: "entry", point: [1, 2, 13] },
+        { role: "anchor", point: [1, 2, 8] },
+        { role: "bottom", point: [1, 2, -7] },
+      ],
+      axisDirection: [0, 0, 1],
+      ref,
+    });
+  });
+
+  it("wraps describeExactCountersink(ref) through occurrence-scoped exact refs", async () => {
+    const calls = [];
+    const ref = {
+      exactModelId: 17,
+      exactShapeHandle: 33,
+      nodeId: "node-a",
+      geometryId: "geo_0",
+      kind: "face",
+      elementId: 9,
+      transform: IDENTITY_MATRIX.slice(),
+    };
+    const core = createOcctCore({
+      factory: async () => ({
+        DescribeExactCompoundHole: (...args) => {
+          calls.push(args);
+          return {
+            ok: true,
+            kind: "compound-hole",
+            family: "countersink",
+            holeDiameter: 10,
+            holeDepth: 20,
+            isThrough: false,
+            countersinkDiameter: 16,
+            countersinkAngle: Math.PI / 2,
+            frame: {
+              origin: [1, 2, 3],
+              normal: [0, 0, 1],
+              xDir: [1, 0, 0],
+              yDir: [0, 1, 0],
+            },
+            anchors: [
+              { role: "entry", point: [1, 2, 13] },
+              { role: "anchor", point: [1, 2, 8] },
+              { role: "bottom", point: [1, 2, -7] },
+            ],
+            axisDirection: [0, 0, 1],
+          };
+        },
+      }),
+    });
+
+    const result = await core.describeExactCountersink(ref);
+
+    assert.deepEqual(calls, [[17, 33, "face", 9]]);
+    assert.deepEqual(result, {
+      ok: true,
+      kind: "countersink",
+      holeDiameter: 10,
+      holeDepth: 20,
+      isThrough: false,
+      countersinkDiameter: 16,
+      countersinkAngle: Math.PI / 2,
+      frame: {
+        origin: [1, 2, 3],
+        normal: [0, 0, 1],
+        xDir: [1, 0, 0],
+        yDir: [0, 1, 0],
+      },
+      anchors: [
+        { role: "entry", point: [1, 2, 13] },
+        { role: "anchor", point: [1, 2, 8] },
+        { role: "bottom", point: [1, 2, -7] },
+      ],
+      axisDirection: [0, 0, 1],
+      ref,
+    });
+  });
+
+  it("transforms compound-hole semantic geometry into occurrence space", async () => {
+    const ref = {
+      exactModelId: 17,
+      exactShapeHandle: 33,
+      nodeId: "node-a",
+      geometryId: "geo_0",
+      kind: "face",
+      elementId: 9,
+      transform: [
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        10, 20, 30, 1,
+      ],
+    };
+    const core = createOcctCore({
+      factory: async () => ({
+        DescribeExactCompoundHole: () => ({
+          ok: true,
+          kind: "compound-hole",
+          family: "counterbore",
+          holeDiameter: 10,
+          holeDepth: 20,
+          isThrough: false,
+          counterboreDiameter: 16,
+          counterboreDepth: 5,
+          frame: {
+            origin: [1, 2, 3],
+            normal: [0, 0, 1],
+            xDir: [1, 0, 0],
+            yDir: [0, 1, 0],
+          },
+          anchors: [
+            { role: "entry", point: [1, 2, 13] },
+            { role: "anchor", point: [1, 2, 8] },
+            { role: "bottom", point: [1, 2, -7] },
+          ],
+          axisDirection: [0, 0, 1],
+        }),
+      }),
+    });
+
+    const result = await core.describeExactCounterbore(ref);
+
+    assert.deepEqual(result, {
+      ok: true,
+      kind: "counterbore",
+      holeDiameter: 10,
+      holeDepth: 20,
+      isThrough: false,
+      counterboreDiameter: 16,
+      counterboreDepth: 5,
+      frame: {
+        origin: [11, 22, 33],
+        normal: [0, 0, 1],
+        xDir: [1, 0, 0],
+        yDir: [0, 1, 0],
+      },
+      anchors: [
+        { role: "entry", point: [11, 22, 43] },
+        { role: "anchor", point: [11, 22, 38] },
+        { role: "bottom", point: [11, 22, 23] },
+      ],
+      axisDirection: [0, 0, 1],
+      ref,
+    });
+  });
+
+  it("compound-hole helpers preserve explicit unsupported and failure results", async () => {
+    const ref = {
+      exactModelId: 17,
+      exactShapeHandle: 33,
+      nodeId: "node-a",
+      geometryId: "geo_0",
+      kind: "face",
+      elementId: 9,
+      transform: IDENTITY_MATRIX.slice(),
+    };
+    const core = createOcctCore({
+      factory: async () => ({
+        DescribeExactCompoundHole: () => ({
+          ok: false,
+          code: "unsupported-geometry",
+          message: "Exact compound-hole helper only supports selected refs that normalize into supported counterbore or countersink cavities.",
+        }),
+      }),
+    });
+
+    assert.deepEqual(await core.describeExactCounterbore(ref), {
+      ok: false,
+      code: "unsupported-geometry",
+      message: "Exact compound-hole helper only supports selected refs that normalize into supported counterbore or countersink cavities.",
+    });
+    assert.deepEqual(await core.describeExactCountersink(ref), {
+      ok: false,
+      code: "unsupported-geometry",
+      message: "Exact compound-hole helper only supports selected refs that normalize into supported counterbore or countersink cavities.",
+    });
+  });
+
+  it("does not expose analyzeExactMeasurementCandidates on the package client", async () => {
+    const core = createOcctCore({
+      factory: async () => ({}),
+    });
+
+    assert.equal("analyzeExactMeasurementCandidates" in core, false);
+    assert.equal(typeof core.analyzeExactMeasurementCandidates, "undefined");
+  });
+
   it("suggestExactMidpointPlacement derives midpoint geometry from supported distance placement", async () => {
     const refA = {
       exactModelId: 17,
@@ -2780,6 +3516,178 @@ describe("createOcctCore", () => {
     ]);
   });
 
+  it("wraps generated helical sweep entrypoints without forcing raw Wasm access", async () => {
+    const calls = [];
+    const spec = createHelicalSweepSpec();
+    const buildOptions = {
+      linearDeflectionType: "bounding_box_ratio",
+      linearDeflection: 0.001,
+      angularDeflection: 0.5,
+    };
+    const core = createOcctCore({
+      factory: async () => ({
+        ValidateHelicalSweepSpec: (incomingSpec) => {
+          calls.push(["validateHelical", incomingSpec]);
+          return { ok: true, diagnostics: [] };
+        },
+        BuildHelicalSweep: (incomingSpec, incomingOptions) => {
+          calls.push(["buildHelical", incomingSpec, incomingOptions]);
+          return {
+            success: true,
+            sourceFormat: "generated-helical-sweep",
+            rootNodes: [],
+            geometries: [],
+            materials: [],
+            warnings: [],
+            stats: EMPTY_STATS,
+            helicalSweep: {
+              version: 1,
+              units: "mm",
+              helixRadius: 8,
+              pitch: 3,
+              turns: 4,
+              height: 12,
+              handedness: "right",
+              sectionKind: "circle",
+              sectionRadius: 0.8,
+              sectionSegments: 24,
+              hasStableFaceBindings: true,
+              faceBindings: [],
+            },
+          };
+        },
+        OpenExactHelicalSweep: (incomingSpec, incomingOptions) => {
+          calls.push(["openExactHelical", incomingSpec, incomingOptions]);
+          return {
+            success: true,
+            sourceFormat: "generated-helical-sweep",
+            exactModelId: 73,
+            exactGeometryBindings: [{ exactShapeHandle: 1 }],
+            rootNodes: [],
+            geometries: [],
+            materials: [],
+            warnings: [],
+            stats: EMPTY_STATS,
+            helicalSweep: {
+              version: 1,
+              units: "mm",
+              helixRadius: 8,
+              pitch: 3,
+              turns: 4,
+              height: 12,
+              handedness: "right",
+              sectionKind: "circle",
+              sectionRadius: 0.8,
+              sectionSegments: 24,
+              hasStableFaceBindings: true,
+              faceBindings: [],
+            },
+          };
+        },
+      }),
+    });
+
+    const validation = await core.validateHelicalSweepSpec(spec);
+    const built = await core.buildHelicalSweep(spec, buildOptions);
+    const exact = await core.openExactHelicalSweep(spec, buildOptions);
+
+    assert.deepEqual(validation, { ok: true, diagnostics: [] });
+    assert.equal(built.sourceFormat, "generated-helical-sweep");
+    assert.equal(built.helicalSweep.hasStableFaceBindings, true);
+    assert.equal(exact.exactModelId, 73);
+    assert.deepEqual(calls, [
+      ["validateHelical", spec],
+      ["buildHelical", spec, buildOptions],
+      ["openExactHelical", spec, buildOptions],
+    ]);
+  });
+
+  it("wraps generated composite-shape entrypoints without forcing raw Wasm access", async () => {
+    const calls = [];
+    const spec = createCompositeShapeSpec();
+    const buildOptions = {
+      linearDeflectionType: "bounding_box_ratio",
+      linearDeflection: 0.001,
+      angularDeflection: 0.5,
+    };
+    const core = createOcctCore({
+      factory: async () => ({
+        ValidateCompositeShapeSpec: (incomingSpec) => {
+          calls.push(["validateComposite", incomingSpec]);
+          return { ok: true, diagnostics: [] };
+        },
+        BuildCompositeShape: (incomingSpec, incomingOptions) => {
+          calls.push(["buildComposite", incomingSpec, incomingOptions]);
+          return {
+            success: true,
+            sourceFormat: "generated-composite-shape",
+            rootNodes: [],
+            geometries: [],
+            materials: [],
+            warnings: [],
+            stats: EMPTY_STATS,
+            compositeShape: {
+              version: 1,
+              units: "mm",
+              seedFamily: "revolved",
+              stepCount: 1,
+              operations: [
+                {
+                  index: 0,
+                  op: "cut",
+                  family: "helical-sweep",
+                  hasTransform: false,
+                },
+              ],
+            },
+          };
+        },
+        OpenExactCompositeShape: (incomingSpec, incomingOptions) => {
+          calls.push(["openExactComposite", incomingSpec, incomingOptions]);
+          return {
+            success: true,
+            sourceFormat: "generated-composite-shape",
+            exactModelId: 91,
+            exactGeometryBindings: [{ exactShapeHandle: 1 }],
+            rootNodes: [],
+            geometries: [],
+            materials: [],
+            warnings: [],
+            stats: EMPTY_STATS,
+            compositeShape: {
+              version: 1,
+              units: "mm",
+              seedFamily: "revolved",
+              stepCount: 1,
+              operations: [
+                {
+                  index: 0,
+                  op: "cut",
+                  family: "helical-sweep",
+                  hasTransform: false,
+                },
+              ],
+            },
+          };
+        },
+      }),
+    });
+
+    const validation = await core.validateCompositeShapeSpec(spec);
+    const built = await core.buildCompositeShape(spec, buildOptions);
+    const exact = await core.openExactCompositeShape(spec, buildOptions);
+
+    assert.deepEqual(validation, { ok: true, diagnostics: [] });
+    assert.equal(built.sourceFormat, "generated-composite-shape");
+    assert.equal(built.compositeShape.stepCount, 1);
+    assert.equal(exact.exactModelId, 91);
+    assert.deepEqual(calls, [
+      ["validateComposite", spec],
+      ["buildComposite", spec, buildOptions],
+      ["openExactComposite", spec, buildOptions],
+    ]);
+  });
+
   it("keeps auto_axis shared-kernel revolved specs intact through the package wrapper", async () => {
     const calls = [];
     const spec = createAutoAxisRevolvedShapeSpec();
@@ -2893,11 +3801,35 @@ describe("createOcctCore", () => {
       core.openExactExtrudedShape(createExtrudedShapeSpec()),
       /Loaded OCCT module does not expose OpenExactExtrudedShape\(\)\./,
     );
+    await assert.rejects(
+      core.validateHelicalSweepSpec(createHelicalSweepSpec()),
+      /Loaded OCCT module does not expose ValidateHelicalSweepSpec\(\)\./,
+    );
+    await assert.rejects(
+      core.buildHelicalSweep(createHelicalSweepSpec()),
+      /Loaded OCCT module does not expose BuildHelicalSweep\(\)\./,
+    );
+    await assert.rejects(
+      core.openExactHelicalSweep(createHelicalSweepSpec()),
+      /Loaded OCCT module does not expose OpenExactHelicalSweep\(\)\./,
+    );
+    await assert.rejects(
+      core.validateCompositeShapeSpec(createCompositeShapeSpec()),
+      /Loaded OCCT module does not expose ValidateCompositeShapeSpec\(\)\./,
+    );
+    await assert.rejects(
+      core.buildCompositeShape(createCompositeShapeSpec()),
+      /Loaded OCCT module does not expose BuildCompositeShape\(\)\./,
+    );
+    await assert.rejects(
+      core.openExactCompositeShape(createCompositeShapeSpec()),
+      /Loaded OCCT module does not expose OpenExactCompositeShape\(\)\./,
+    );
   });
 });
 
 describe("resolveAutoOrientedModel", () => {
-  it("applies successful OCCT orientation analysis in Babylon coordinates", async () => {
+  it("applies successful OCCT orientation analysis in manufacturing Z-up coordinates", async () => {
     const model = {
       rootNodes: [
         {
@@ -2938,8 +3870,8 @@ describe("resolveAutoOrientedModel", () => {
     assert.notEqual(oriented, model);
     assert.deepEqual(oriented.rootNodes[0].transform, [
       1, 0, 0, 0,
-      0, 0, -1, 0,
       0, 1, 0, 0,
+      0, 0, 1, 0,
       0, 0, 0, 1,
     ]);
   });

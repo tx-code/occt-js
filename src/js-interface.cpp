@@ -11,9 +11,11 @@
 #include "importer-step.hpp"
 #include "importer-iges.hpp"
 #include "importer-brep.hpp"
+#include "composite-shape.hpp"
 #include "exact-model-store.hpp"
 #include "exact-query.hpp"
 #include "extruded-shape.hpp"
+#include "helical-sweep.hpp"
 #include "orientation.hpp"
 #include "profile-2d.hpp"
 #include "revolved-tool.hpp"
@@ -834,6 +836,51 @@ val ExactChamferResultToVal(const OcctExactChamferResult& result)
     return obj;
 }
 
+val ExactCompoundHoleResultToVal(const OcctExactCompoundHoleResult& result)
+{
+    if (!result.ok) {
+        return ExactFailureToVal(result);
+    }
+
+    val obj = val::object();
+    obj.set("ok", true);
+    obj.set("kind", result.kind);
+    obj.set("family", result.family);
+    obj.set("holeDiameter", result.holeDiameter);
+    if (result.hasHoleDepth) {
+        obj.set("holeDepth", result.holeDepth);
+    }
+    if (result.hasIsThrough) {
+        obj.set("isThrough", result.isThrough);
+    }
+    if (result.hasFrame) {
+        obj.set("frame", ExactPlacementFrameToVal(result.frame));
+    }
+    if (!result.anchors.empty()) {
+        val anchors = val::array();
+        for (const auto& anchor : result.anchors) {
+            anchors.call<void>("push", ExactPlacementAnchorToVal(anchor));
+        }
+        obj.set("anchors", anchors);
+    }
+    if (result.hasAxisDirection) {
+        obj.set("axisDirection", Vector3ToVal(result.axisDirection));
+    }
+    if (result.hasCounterboreDiameter) {
+        obj.set("counterboreDiameter", result.counterboreDiameter);
+    }
+    if (result.hasCounterboreDepth) {
+        obj.set("counterboreDepth", result.counterboreDepth);
+    }
+    if (result.hasCountersinkDiameter) {
+        obj.set("countersinkDiameter", result.countersinkDiameter);
+    }
+    if (result.hasCountersinkAngle) {
+        obj.set("countersinkAngle", result.countersinkAngle);
+    }
+    return obj;
+}
+
 val Profile2DDiagnosticToVal(const OcctProfile2DDiagnostic& diagnostic)
 {
     val obj = val::object();
@@ -890,6 +937,40 @@ val ExtrudedShapeValidationResultToVal(const OcctExtrudedShapeValidationResult& 
     val diagnostics = val::array();
     for (const auto& diagnostic : result.diagnostics) {
         diagnostics.call<void>("push", ExtrudedShapeDiagnosticToVal(diagnostic));
+    }
+    obj.set("diagnostics", diagnostics);
+    return obj;
+}
+
+val HelicalSweepDiagnosticToVal(const OcctHelicalSweepDiagnostic& diagnostic)
+{
+    return Profile2DDiagnosticToVal(diagnostic);
+}
+
+val HelicalSweepValidationResultToVal(const OcctHelicalSweepValidationResult& result)
+{
+    val obj = val::object();
+    obj.set("ok", result.ok);
+    val diagnostics = val::array();
+    for (const auto& diagnostic : result.diagnostics) {
+        diagnostics.call<void>("push", HelicalSweepDiagnosticToVal(diagnostic));
+    }
+    obj.set("diagnostics", diagnostics);
+    return obj;
+}
+
+val CompositeShapeDiagnosticToVal(const OcctCompositeShapeDiagnostic& diagnostic)
+{
+    return Profile2DDiagnosticToVal(diagnostic);
+}
+
+val CompositeShapeValidationResultToVal(const OcctCompositeShapeValidationResult& result)
+{
+    val obj = val::object();
+    obj.set("ok", result.ok);
+    val diagnostics = val::array();
+    for (const auto& diagnostic : result.diagnostics) {
+        diagnostics.call<void>("push", CompositeShapeDiagnosticToVal(diagnostic));
     }
     obj.set("diagnostics", diagnostics);
     return obj;
@@ -1012,6 +1093,61 @@ val ExtrudedShapeMetadataToVal(const OcctGeneratedExtrudedShapeMetadata& metadat
         }
         obj.set("faceBindings", faceBindings);
     }
+    return obj;
+}
+
+val HelicalSweepMetadataToVal(const OcctGeneratedHelicalSweepMetadata& metadata)
+{
+    val obj = val::object();
+    obj.set("version", metadata.version);
+    obj.set("units", metadata.units);
+    obj.set("helixRadius", metadata.helixRadius);
+    obj.set("pitch", metadata.pitch);
+    obj.set("turns", metadata.turns);
+    obj.set("height", metadata.height);
+    obj.set("handedness", metadata.handedness);
+    obj.set("sectionKind", metadata.sectionKind);
+    obj.set("sectionRadius", metadata.sectionRadius);
+    obj.set("sectionSegments", metadata.sectionSegments);
+    obj.set("sectionPointCount", metadata.sectionPointCount);
+    obj.set("hasStableFaceBindings", metadata.hasStableFaceBindings);
+    if (metadata.hasShapeValidation) {
+        obj.set("shapeValidation", GeneratedToolShapeValidationToVal(metadata.shapeValidation));
+    }
+    if (!metadata.faceBindings.empty()) {
+        val faceBindings = val::array();
+        for (const auto& faceBinding : metadata.faceBindings) {
+            faceBindings.call<void>("push", GeneratedToolFaceBindingToVal(faceBinding));
+        }
+        obj.set("faceBindings", faceBindings);
+    }
+    return obj;
+}
+
+val CompositeShapeMetadataToVal(const OcctGeneratedCompositeShapeMetadata& metadata)
+{
+    val obj = val::object();
+    obj.set("version", metadata.version);
+    obj.set("units", metadata.units);
+    obj.set("seedFamily", metadata.seedFamily);
+    obj.set("stepCount", metadata.stepCount);
+    if (metadata.hasShapeValidation) {
+        obj.set("shapeValidation", GeneratedToolShapeValidationToVal(metadata.shapeValidation));
+    }
+
+    if (!metadata.operations.empty()) {
+        val operations = val::array();
+        for (const auto& operation : metadata.operations) {
+            val descriptor = val::object();
+            descriptor.set("index", operation.index);
+            descriptor.set("op", operation.op);
+            descriptor.set("family", operation.family);
+            descriptor.set("hasTransform", operation.hasTransform);
+            operations.call<void>("push", descriptor);
+        }
+        obj.set("operations", operations);
+    }
+
     return obj;
 }
 
@@ -1239,6 +1375,16 @@ val ValidateExtrudedShapeSpecBinding(const val& jsSpec)
     return ExtrudedShapeValidationResultToVal(ValidateExtrudedShapeSpec(jsSpec));
 }
 
+val ValidateHelicalSweepSpecBinding(const val& jsSpec)
+{
+    return HelicalSweepValidationResultToVal(ValidateHelicalSweepSpec(jsSpec));
+}
+
+val ValidateCompositeShapeSpecBinding(const val& jsSpec)
+{
+    return CompositeShapeValidationResultToVal(ValidateCompositeShapeSpec(jsSpec));
+}
+
 val BuildRevolvedShapeBinding(const val& jsSpec, const val& jsOptions)
 {
     const OcctRevolvedToolBuildResult buildResult = BuildRevolvedShape(jsSpec, jsOptions);
@@ -1269,6 +1415,40 @@ val BuildExtrudedShapeBinding(const val& jsSpec, const val& jsOptions)
     }
     if (buildResult.hasExtrudedShape) {
         result.set("extrudedShape", ExtrudedShapeMetadataToVal(buildResult.extrudedShape));
+    }
+    return result;
+}
+
+val BuildHelicalSweepBinding(const val& jsSpec, const val& jsOptions)
+{
+    const OcctHelicalSweepBuildResult buildResult = BuildHelicalSweep(jsSpec, jsOptions);
+    val result = BuildResult(buildResult.scene, "generated-helical-sweep");
+    if (!buildResult.diagnostics.empty()) {
+        val diagnostics = val::array();
+        for (const auto& diagnostic : buildResult.diagnostics) {
+            diagnostics.call<void>("push", HelicalSweepDiagnosticToVal(diagnostic));
+        }
+        result.set("diagnostics", diagnostics);
+    }
+    if (buildResult.hasHelicalSweep) {
+        result.set("helicalSweep", HelicalSweepMetadataToVal(buildResult.helicalSweep));
+    }
+    return result;
+}
+
+val BuildCompositeShapeBinding(const val& jsSpec, const val& jsOptions)
+{
+    const OcctCompositeShapeBuildResult buildResult = BuildCompositeShape(jsSpec, jsOptions);
+    val result = BuildResult(buildResult.scene, "generated-composite-shape");
+    if (!buildResult.diagnostics.empty()) {
+        val diagnostics = val::array();
+        for (const auto& diagnostic : buildResult.diagnostics) {
+            diagnostics.call<void>("push", CompositeShapeDiagnosticToVal(diagnostic));
+        }
+        result.set("diagnostics", diagnostics);
+    }
+    if (buildResult.hasCompositeShape) {
+        result.set("compositeShape", CompositeShapeMetadataToVal(buildResult.compositeShape));
     }
     return result;
 }
@@ -1362,6 +1542,104 @@ val OpenExactExtrudedShapeBinding(const val& jsSpec, const val& jsOptions)
         }
         if (buildResult.hasExtrudedShape) {
             result.set("extrudedShape", ExtrudedShapeMetadataToVal(buildResult.extrudedShape));
+        }
+        return result;
+    }
+
+    result.set("exactModelId", exactModelId);
+    result.set("exactGeometryBindings", ExactGeometryBindingsToVal(buildResult.exactGeometryShapes.size()));
+    return result;
+}
+
+val OpenExactHelicalSweepBinding(const val& jsSpec, const val& jsOptions)
+{
+    const OcctHelicalSweepBuildResult buildResult = BuildHelicalSweep(jsSpec, jsOptions);
+    val result = BuildResult(buildResult.scene, "generated-helical-sweep");
+    if (!buildResult.diagnostics.empty()) {
+        val diagnostics = val::array();
+        for (const auto& diagnostic : buildResult.diagnostics) {
+            diagnostics.call<void>("push", HelicalSweepDiagnosticToVal(diagnostic));
+        }
+        result.set("diagnostics", diagnostics);
+    }
+    if (buildResult.hasHelicalSweep) {
+        result.set("helicalSweep", HelicalSweepMetadataToVal(buildResult.helicalSweep));
+    }
+    if (!buildResult.success) {
+        return result;
+    }
+
+    const int exactModelId = ExactModelStore::Instance().Register(
+        buildResult.exactShape,
+        buildResult.exactGeometryShapes,
+        "generated-helical-sweep",
+        buildResult.scene.sourceUnit,
+        buildResult.scene.unitScaleToMeters
+    );
+
+    if (exactModelId <= 0) {
+        OcctSceneData scene;
+        scene.success = false;
+        scene.error = "Failed to register retained exact generated helical sweep state.";
+        result = BuildResult(scene, "generated-helical-sweep");
+        if (!buildResult.diagnostics.empty()) {
+            val diagnostics = val::array();
+            for (const auto& diagnostic : buildResult.diagnostics) {
+                diagnostics.call<void>("push", HelicalSweepDiagnosticToVal(diagnostic));
+            }
+            result.set("diagnostics", diagnostics);
+        }
+        if (buildResult.hasHelicalSweep) {
+            result.set("helicalSweep", HelicalSweepMetadataToVal(buildResult.helicalSweep));
+        }
+        return result;
+    }
+
+    result.set("exactModelId", exactModelId);
+    result.set("exactGeometryBindings", ExactGeometryBindingsToVal(buildResult.exactGeometryShapes.size()));
+    return result;
+}
+
+val OpenExactCompositeShapeBinding(const val& jsSpec, const val& jsOptions)
+{
+    const OcctCompositeShapeBuildResult buildResult = BuildCompositeShape(jsSpec, jsOptions);
+    val result = BuildResult(buildResult.scene, "generated-composite-shape");
+    if (!buildResult.diagnostics.empty()) {
+        val diagnostics = val::array();
+        for (const auto& diagnostic : buildResult.diagnostics) {
+            diagnostics.call<void>("push", CompositeShapeDiagnosticToVal(diagnostic));
+        }
+        result.set("diagnostics", diagnostics);
+    }
+    if (buildResult.hasCompositeShape) {
+        result.set("compositeShape", CompositeShapeMetadataToVal(buildResult.compositeShape));
+    }
+    if (!buildResult.success) {
+        return result;
+    }
+
+    const int exactModelId = ExactModelStore::Instance().Register(
+        buildResult.exactShape,
+        buildResult.exactGeometryShapes,
+        "generated-composite-shape",
+        buildResult.scene.sourceUnit,
+        buildResult.scene.unitScaleToMeters
+    );
+
+    if (exactModelId <= 0) {
+        OcctSceneData scene;
+        scene.success = false;
+        scene.error = "Failed to register retained exact generated composite shape state.";
+        result = BuildResult(scene, "generated-composite-shape");
+        if (!buildResult.diagnostics.empty()) {
+            val diagnostics = val::array();
+            for (const auto& diagnostic : buildResult.diagnostics) {
+                diagnostics.call<void>("push", CompositeShapeDiagnosticToVal(diagnostic));
+            }
+            result.set("diagnostics", diagnostics);
+        }
+        if (buildResult.hasCompositeShape) {
+            result.set("compositeShape", CompositeShapeMetadataToVal(buildResult.compositeShape));
         }
         return result;
     }
@@ -1488,6 +1766,34 @@ val MeasureExactDistanceBinding(
     );
 }
 
+val MeasureExactDistanceCrossModelBinding(
+    int exactModelIdA,
+    int exactShapeHandleA,
+    const std::string& kindA,
+    int elementIdA,
+    const val& jsTransformA,
+    int exactModelIdB,
+    int exactShapeHandleB,
+    const std::string& kindB,
+    int elementIdB,
+    const val& jsTransformB)
+{
+    return ExactDistanceResultToVal(
+        MeasureExactDistanceCrossModel(
+            exactModelIdA,
+            exactShapeHandleA,
+            kindA,
+            elementIdA,
+            MatrixToTrsf(ParseMatrix4(jsTransformA)),
+            exactModelIdB,
+            exactShapeHandleB,
+            kindB,
+            elementIdB,
+            MatrixToTrsf(ParseMatrix4(jsTransformB))
+        )
+    );
+}
+
 val MeasureExactAngleBinding(
     int exactModelId,
     int exactShapeHandleA,
@@ -1509,6 +1815,34 @@ val MeasureExactAngleBinding(
             kindB,
             elementIdB,
             MatrixToTrsf(ParseMatrix4(jsTransformA)),
+            MatrixToTrsf(ParseMatrix4(jsTransformB))
+        )
+    );
+}
+
+val MeasureExactAngleCrossModelBinding(
+    int exactModelIdA,
+    int exactShapeHandleA,
+    const std::string& kindA,
+    int elementIdA,
+    const val& jsTransformA,
+    int exactModelIdB,
+    int exactShapeHandleB,
+    const std::string& kindB,
+    int elementIdB,
+    const val& jsTransformB)
+{
+    return ExactAngleResultToVal(
+        MeasureExactAngleCrossModel(
+            exactModelIdA,
+            exactShapeHandleA,
+            kindA,
+            elementIdA,
+            MatrixToTrsf(ParseMatrix4(jsTransformA)),
+            exactModelIdB,
+            exactShapeHandleB,
+            kindB,
+            elementIdB,
             MatrixToTrsf(ParseMatrix4(jsTransformB))
         )
     );
@@ -1540,6 +1874,34 @@ val MeasureExactThicknessBinding(
     );
 }
 
+val MeasureExactThicknessCrossModelBinding(
+    int exactModelIdA,
+    int exactShapeHandleA,
+    const std::string& kindA,
+    int elementIdA,
+    const val& jsTransformA,
+    int exactModelIdB,
+    int exactShapeHandleB,
+    const std::string& kindB,
+    int elementIdB,
+    const val& jsTransformB)
+{
+    return ExactThicknessResultToVal(
+        MeasureExactThicknessCrossModel(
+            exactModelIdA,
+            exactShapeHandleA,
+            kindA,
+            elementIdA,
+            MatrixToTrsf(ParseMatrix4(jsTransformA)),
+            exactModelIdB,
+            exactShapeHandleB,
+            kindB,
+            elementIdB,
+            MatrixToTrsf(ParseMatrix4(jsTransformB))
+        )
+    );
+}
+
 val ClassifyExactRelationBinding(
     int exactModelId,
     int exactShapeHandleA,
@@ -1561,6 +1923,34 @@ val ClassifyExactRelationBinding(
             kindB,
             elementIdB,
             MatrixToTrsf(ParseMatrix4(jsTransformA)),
+            MatrixToTrsf(ParseMatrix4(jsTransformB))
+        )
+    );
+}
+
+val ClassifyExactRelationCrossModelBinding(
+    int exactModelIdA,
+    int exactShapeHandleA,
+    const std::string& kindA,
+    int elementIdA,
+    const val& jsTransformA,
+    int exactModelIdB,
+    int exactShapeHandleB,
+    const std::string& kindB,
+    int elementIdB,
+    const val& jsTransformB)
+{
+    return ExactRelationResultToVal(
+        ClassifyExactRelationCrossModel(
+            exactModelIdA,
+            exactShapeHandleA,
+            kindA,
+            elementIdA,
+            MatrixToTrsf(ParseMatrix4(jsTransformA)),
+            exactModelIdB,
+            exactShapeHandleB,
+            kindB,
+            elementIdB,
             MatrixToTrsf(ParseMatrix4(jsTransformB))
         )
     );
@@ -1592,6 +1982,34 @@ val SuggestExactDistancePlacementBinding(
     );
 }
 
+val SuggestExactDistancePlacementCrossModelBinding(
+    int exactModelIdA,
+    int exactShapeHandleA,
+    const std::string& kindA,
+    int elementIdA,
+    const val& jsTransformA,
+    int exactModelIdB,
+    int exactShapeHandleB,
+    const std::string& kindB,
+    int elementIdB,
+    const val& jsTransformB)
+{
+    return ExactPlacementResultToVal(
+        SuggestExactDistancePlacementCrossModel(
+            exactModelIdA,
+            exactShapeHandleA,
+            kindA,
+            elementIdA,
+            MatrixToTrsf(ParseMatrix4(jsTransformA)),
+            exactModelIdB,
+            exactShapeHandleB,
+            kindB,
+            elementIdB,
+            MatrixToTrsf(ParseMatrix4(jsTransformB))
+        )
+    );
+}
+
 val SuggestExactAnglePlacementBinding(
     int exactModelId,
     int exactShapeHandleA,
@@ -1618,6 +2036,34 @@ val SuggestExactAnglePlacementBinding(
     );
 }
 
+val SuggestExactAnglePlacementCrossModelBinding(
+    int exactModelIdA,
+    int exactShapeHandleA,
+    const std::string& kindA,
+    int elementIdA,
+    const val& jsTransformA,
+    int exactModelIdB,
+    int exactShapeHandleB,
+    const std::string& kindB,
+    int elementIdB,
+    const val& jsTransformB)
+{
+    return ExactPlacementResultToVal(
+        SuggestExactAnglePlacementCrossModel(
+            exactModelIdA,
+            exactShapeHandleA,
+            kindA,
+            elementIdA,
+            MatrixToTrsf(ParseMatrix4(jsTransformA)),
+            exactModelIdB,
+            exactShapeHandleB,
+            kindB,
+            elementIdB,
+            MatrixToTrsf(ParseMatrix4(jsTransformB))
+        )
+    );
+}
+
 val SuggestExactThicknessPlacementBinding(
     int exactModelId,
     int exactShapeHandleA,
@@ -1639,6 +2085,34 @@ val SuggestExactThicknessPlacementBinding(
             kindB,
             elementIdB,
             MatrixToTrsf(ParseMatrix4(jsTransformA)),
+            MatrixToTrsf(ParseMatrix4(jsTransformB))
+        )
+    );
+}
+
+val SuggestExactThicknessPlacementCrossModelBinding(
+    int exactModelIdA,
+    int exactShapeHandleA,
+    const std::string& kindA,
+    int elementIdA,
+    const val& jsTransformA,
+    int exactModelIdB,
+    int exactShapeHandleB,
+    const std::string& kindB,
+    int elementIdB,
+    const val& jsTransformB)
+{
+    return ExactPlacementResultToVal(
+        SuggestExactThicknessPlacementCrossModel(
+            exactModelIdA,
+            exactShapeHandleA,
+            kindA,
+            elementIdA,
+            MatrixToTrsf(ParseMatrix4(jsTransformA)),
+            exactModelIdB,
+            exactShapeHandleB,
+            kindB,
+            elementIdB,
             MatrixToTrsf(ParseMatrix4(jsTransformB))
         )
     );
@@ -1672,6 +2146,13 @@ val DescribeExactChamferBinding(int exactModelId, int exactShapeHandle, const st
     );
 }
 
+val DescribeExactCompoundHoleBinding(int exactModelId, int exactShapeHandle, const std::string& kind, int elementId)
+{
+    return ExactCompoundHoleResultToVal(
+        DescribeExactCompoundHole(exactModelId, exactShapeHandle, kind, elementId)
+    );
+}
+
 val AnalyzeOptimalOrientation(const std::string& format, const val& content, const val& jsParams)
 {
     std::vector<uint8_t> buffer = ExtractBytes(content);
@@ -1690,10 +2171,16 @@ EMSCRIPTEN_BINDINGS(occtjs)
     function("ValidateProfile2DSpec", &ValidateProfile2DSpecBinding);
     function("ValidateRevolvedShapeSpec", &ValidateRevolvedShapeSpecBinding);
     function("ValidateExtrudedShapeSpec", &ValidateExtrudedShapeSpecBinding);
+    function("ValidateHelicalSweepSpec", &ValidateHelicalSweepSpecBinding);
+    function("ValidateCompositeShapeSpec", &ValidateCompositeShapeSpecBinding);
     function("BuildRevolvedShape", &BuildRevolvedShapeBinding);
     function("BuildExtrudedShape", &BuildExtrudedShapeBinding);
+    function("BuildHelicalSweep", &BuildHelicalSweepBinding);
+    function("BuildCompositeShape", &BuildCompositeShapeBinding);
     function("OpenExactRevolvedShape", &OpenExactRevolvedShapeBinding);
     function("OpenExactExtrudedShape", &OpenExactExtrudedShapeBinding);
+    function("OpenExactHelicalSweep", &OpenExactHelicalSweepBinding);
+    function("OpenExactCompositeShape", &OpenExactCompositeShapeBinding);
     function("OpenExactModel", &OpenExactModel);
     function("OpenExactStepModel", &OpenExactStepModel);
     function("OpenExactIgesModel", &OpenExactIgesModel);
@@ -1708,15 +2195,23 @@ EMSCRIPTEN_BINDINGS(occtjs)
     function("MeasureExactFaceArea", &MeasureExactFaceAreaBinding);
     function("EvaluateExactFaceNormal", &EvaluateExactFaceNormalBinding);
     function("MeasureExactDistance", &MeasureExactDistanceBinding);
+    function("MeasureExactDistanceCrossModel", &MeasureExactDistanceCrossModelBinding);
     function("MeasureExactAngle", &MeasureExactAngleBinding);
+    function("MeasureExactAngleCrossModel", &MeasureExactAngleCrossModelBinding);
     function("MeasureExactThickness", &MeasureExactThicknessBinding);
+    function("MeasureExactThicknessCrossModel", &MeasureExactThicknessCrossModelBinding);
     function("ClassifyExactRelation", &ClassifyExactRelationBinding);
+    function("ClassifyExactRelationCrossModel", &ClassifyExactRelationCrossModelBinding);
     function("SuggestExactDistancePlacement", &SuggestExactDistancePlacementBinding);
+    function("SuggestExactDistancePlacementCrossModel", &SuggestExactDistancePlacementCrossModelBinding);
     function("SuggestExactAnglePlacement", &SuggestExactAnglePlacementBinding);
+    function("SuggestExactAnglePlacementCrossModel", &SuggestExactAnglePlacementCrossModelBinding);
     function("SuggestExactThicknessPlacement", &SuggestExactThicknessPlacementBinding);
+    function("SuggestExactThicknessPlacementCrossModel", &SuggestExactThicknessPlacementCrossModelBinding);
     function("SuggestExactRadiusPlacement", &SuggestExactRadiusPlacementBinding);
     function("SuggestExactDiameterPlacement", &SuggestExactDiameterPlacementBinding);
     function("DescribeExactHole", &DescribeExactHoleBinding);
     function("DescribeExactChamfer", &DescribeExactChamferBinding);
+    function("DescribeExactCompoundHole", &DescribeExactCompoundHoleBinding);
     function("AnalyzeOptimalOrientation", &AnalyzeOptimalOrientation);
 }

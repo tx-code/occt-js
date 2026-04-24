@@ -56,6 +56,9 @@ TResult MakeFailure(const std::string& code, const std::string& message)
     return result;
 }
 
+constexpr const char* kCompoundHoleUnsupportedMessage =
+    "Exact compound-hole helper only supports selected refs that normalize into supported counterbore or countersink cavities.";
+
 std::string NormalizeKind(const std::string& kind)
 {
     std::string normalized = kind;
@@ -87,6 +90,11 @@ gp_Pnt Midpoint(const gp_Pnt& left, const gp_Pnt& right)
         0.5 * (left.Y() + right.Y()),
         0.5 * (left.Z() + right.Z())
     );
+}
+
+double AxisParameterOnLine(const gp_Pnt& axisOrigin, const gp_Dir& axisDirection, const gp_Pnt& point)
+{
+    return gp_Vec(axisOrigin, point).Dot(gp_Vec(axisDirection));
 }
 
 gp_Pnt ToPoint(const std::array<double, 3>& point)
@@ -440,6 +448,14 @@ void AddChamferAnchor(OcctExactChamferResult& result, const std::string& role, c
     result.anchors.push_back(anchor);
 }
 
+void AddCompoundHoleAnchor(OcctExactCompoundHoleResult& result, const std::string& role, const gp_Pnt& point)
+{
+    OcctExactPlacementAnchor anchor;
+    anchor.role = role;
+    anchor.point = ToArray(point);
+    result.anchors.push_back(anchor);
+}
+
 bool IsOutsideState(const TopAbs_State state)
 {
     return state == TopAbs_OUT || state == TopAbs_ON;
@@ -555,21 +571,32 @@ OcctLifecycleResult ResolveHoleCandidateFace(
     return ok;
 }
 
-struct HoleBoundaryInfo {
+struct CircularBoundaryInfo {
+    TopoDS_Edge edge;
     gp_Pnt center;
     double axisParameter = 0.0;
+    double radius = 0.0;
     bool isOpen = false;
 };
 
-OcctLifecycleResult CollectHoleBoundaryInfo(
-    const TopoDS_Face& holeFace,
-    const gp_Cylinder& cylinder,
+struct HoleCylinderDescriptor {
+    TopoDS_Face face;
+    gp_Cylinder cylinder;
+    gp_Dir axisDirection;
+    gp_Dir radialDirection;
+    std::vector<CircularBoundaryInfo> boundaries;
+};
+
+OcctLifecycleResult CollectCoaxialCircularBoundaryInfo(
+    const TopoDS_Face& face,
+    const gp_Pnt& axisOrigin,
     const gp_Dir& axisDirection,
-    std::vector<HoleBoundaryInfo>& boundaries)
+    std::vector<CircularBoundaryInfo>& boundaries,
+    const double expectedRadius = -1.0)
 {
     TopTools_IndexedMapOfShape edges;
-    TopExp::MapShapes(holeFace, TopAbs_EDGE, edges);
-    const gp_Lin axisLine(cylinder.Location(), axisDirection);
+    TopExp::MapShapes(face, TopAbs_EDGE, edges);
+    const gp_Lin axisLine(axisOrigin, axisDirection);
     const double tolerance = Precision::Confusion();
 
     for (int edgeIndex = 1; edgeIndex <= edges.Extent(); edgeIndex += 1) {
@@ -590,13 +617,14 @@ OcctLifecycleResult CollectHoleBoundaryInfo(
         if (axisLine.Distance(circle.Location()) > tolerance) {
             continue;
         }
-        if (std::abs(circle.Radius() - cylinder.Radius()) > tolerance) {
+        if (expectedRadius >= 0.0 && std::abs(circle.Radius() - expectedRadius) > tolerance) {
             continue;
         }
 
         bool duplicate = false;
         for (const auto& boundary : boundaries) {
-            if (boundary.center.Distance(circle.Location()) <= tolerance) {
+            if (boundary.center.Distance(circle.Location()) <= tolerance
+                && std::abs(boundary.radius - circle.Radius()) <= tolerance) {
                 duplicate = true;
                 break;
             }
@@ -605,10 +633,38 @@ OcctLifecycleResult CollectHoleBoundaryInfo(
             continue;
         }
 
-        HoleBoundaryInfo boundary;
+        CircularBoundaryInfo boundary;
+        boundary.edge = edge;
         boundary.center = circle.Location();
-        boundary.axisParameter = gp_Vec(cylinder.Location(), boundary.center).Dot(gp_Vec(axisDirection));
+        boundary.axisParameter = AxisParameterOnLine(axisOrigin, axisDirection, boundary.center);
+        boundary.radius = circle.Radius();
         boundaries.push_back(boundary);
+    }
+
+    std::sort(boundaries.begin(), boundaries.end(), [](const CircularBoundaryInfo& left, const CircularBoundaryInfo& right) {
+        return left.axisParameter < right.axisParameter;
+    });
+
+    OcctLifecycleResult ok;
+    ok.ok = true;
+    return ok;
+}
+
+OcctLifecycleResult CollectHoleBoundaryInfo(
+    const TopoDS_Face& holeFace,
+    const gp_Cylinder& cylinder,
+    const gp_Dir& axisDirection,
+    std::vector<CircularBoundaryInfo>& boundaries)
+{
+    OcctLifecycleResult lifecycle = CollectCoaxialCircularBoundaryInfo(
+        holeFace,
+        cylinder.Location(),
+        axisDirection,
+        boundaries,
+        cylinder.Radius()
+    );
+    if (!lifecycle.ok) {
+        return lifecycle;
     }
 
     if (boundaries.size() != 2) {
@@ -618,20 +674,23 @@ OcctLifecycleResult CollectHoleBoundaryInfo(
         );
     }
 
-    std::sort(boundaries.begin(), boundaries.end(), [](const HoleBoundaryInfo& left, const HoleBoundaryInfo& right) {
-        return left.axisParameter < right.axisParameter;
-    });
-
     OcctLifecycleResult ok;
     ok.ok = true;
     return ok;
 }
 
-OcctLifecycleResult ResolveHoleBoundaryOpenStates(
+OcctLifecycleResult ResolveBoundaryOpenStates(
     const TopoDS_Shape& geometryShape,
     const gp_Dir& axisDirection,
-    std::vector<HoleBoundaryInfo>& boundaries)
+    std::vector<CircularBoundaryInfo>& boundaries)
 {
+    if (boundaries.size() < 2) {
+        return MakeFailure<OcctLifecycleResult>(
+            "unsupported-geometry",
+            "Exact hole helper requires at least two circular boundaries."
+        );
+    }
+
     const double depth = std::abs(boundaries[1].axisParameter - boundaries[0].axisParameter);
     const double probeDistance = std::max(Precision::Confusion() * 100.0, std::min(depth * 0.1, 0.5));
     const double midpoint = 0.5 * (boundaries[0].axisParameter + boundaries[1].axisParameter);
@@ -645,6 +704,589 @@ OcctLifecycleResult ResolveHoleBoundaryOpenStates(
             return lifecycle;
         }
         boundary.isOpen = IsOutsideState(state);
+    }
+
+    OcctLifecycleResult ok;
+    ok.ok = true;
+    return ok;
+}
+
+bool CircularBoundaryMatches(
+    const CircularBoundaryInfo& boundary,
+    const gp_Pnt& center,
+    const double radius,
+    const double tolerance = Precision::Confusion())
+{
+    return boundary.center.Distance(center) <= tolerance
+        && std::abs(boundary.radius - radius) <= tolerance;
+}
+
+const CircularBoundaryInfo* FindMatchingBoundary(
+    const std::vector<CircularBoundaryInfo>& boundaries,
+    const gp_Pnt& center,
+    const double radius)
+{
+    for (const auto& boundary : boundaries) {
+        if (CircularBoundaryMatches(boundary, center, radius)) {
+            return &boundary;
+        }
+    }
+    return nullptr;
+}
+
+const CircularBoundaryInfo* FindOtherBoundary(
+    const std::vector<CircularBoundaryInfo>& boundaries,
+    const gp_Pnt& center,
+    const double radius)
+{
+    for (const auto& boundary : boundaries) {
+        if (!CircularBoundaryMatches(boundary, center, radius)) {
+            return &boundary;
+        }
+    }
+    return nullptr;
+}
+
+void CollectAdjacentFaces(
+    const TopTools_IndexedDataMapOfShapeListOfShape& edgeToFaces,
+    const TopoDS_Edge& edge,
+    std::vector<TopoDS_Face>& ownerFaces,
+    const TopoDS_Face* excludeA = nullptr,
+    const TopoDS_Face* excludeB = nullptr)
+{
+    if (!edgeToFaces.Contains(edge)) {
+        return;
+    }
+
+    for (TopTools_ListIteratorOfListOfShape it(edgeToFaces.FindFromKey(edge)); it.More(); it.Next()) {
+        const TopoDS_Face face = TopoDS::Face(it.Value());
+        if (face.IsNull()) {
+            continue;
+        }
+        if ((excludeA != nullptr && face.IsSame(*excludeA))
+            || (excludeB != nullptr && face.IsSame(*excludeB))) {
+            continue;
+        }
+
+        bool duplicate = false;
+        for (const auto& existing : ownerFaces) {
+            if (existing.IsSame(face)) {
+                duplicate = true;
+                break;
+            }
+        }
+        if (!duplicate) {
+            ownerFaces.push_back(face);
+        }
+    }
+}
+
+bool IsSameAxis(
+    const gp_Pnt& originA,
+    const gp_Dir& directionA,
+    const gp_Pnt& originB,
+    const gp_Dir& directionB)
+{
+    return directionA.IsParallel(directionB, Precision::Angular())
+        && gp_Lin(originA, directionA).Distance(originB) <= Precision::Confusion();
+}
+
+OcctLifecycleResult ResolveHoleCylinderDescriptor(
+    const TopoDS_Shape& geometryShape,
+    const TopoDS_Face& holeFace,
+    HoleCylinderDescriptor& descriptor)
+{
+    BRepAdaptor_Surface surface(holeFace, false);
+    if (surface.GetType() != GeomAbs_Cylinder) {
+        return MakeFailure<OcctLifecycleResult>(
+            "unsupported-geometry",
+            "Exact hole helper only supports cylindrical face refs or circular edge refs adjacent to one cylindrical face."
+        );
+    }
+
+    descriptor.face = holeFace;
+    descriptor.cylinder = surface.Cylinder();
+    descriptor.axisDirection = descriptor.cylinder.Axis().Direction();
+
+    const gp_Pnt samplePoint = SampleFacePoint(holeFace, surface);
+    const double sampleParameter = AxisParameterOnLine(
+        descriptor.cylinder.Location(),
+        descriptor.axisDirection,
+        samplePoint
+    );
+    const gp_Pnt axisPoint = descriptor.cylinder.Location().Translated(gp_Vec(descriptor.axisDirection) * sampleParameter);
+    if (!TryMakeDirection(axisPoint, samplePoint, descriptor.radialDirection)) {
+        return MakeFailure<OcctLifecycleResult>(
+            "unsupported-geometry",
+            "Exact hole helper requires cylindrical geometry with a stable radial direction."
+        );
+    }
+
+    const double radialProbeDistance = std::max(
+        Precision::Confusion() * 100.0,
+        std::min(descriptor.cylinder.Radius() * 0.25, 0.5)
+    );
+    const gp_Pnt inwardProbe = samplePoint.Translated(gp_Vec(descriptor.radialDirection) * (-radialProbeDistance));
+    TopAbs_State inwardState = TopAbs_UNKNOWN;
+    OcctLifecycleResult lifecycle = ClassifyPointInShape(geometryShape, inwardProbe, inwardState);
+    if (!lifecycle.ok) {
+        return lifecycle;
+    }
+    if (!IsOutsideState(inwardState)) {
+        return MakeFailure<OcctLifecycleResult>(
+            "unsupported-geometry",
+            "Selected cylindrical geometry does not bound a supported hole cavity."
+        );
+    }
+
+    descriptor.boundaries.clear();
+    lifecycle = CollectHoleBoundaryInfo(holeFace, descriptor.cylinder, descriptor.axisDirection, descriptor.boundaries);
+    if (!lifecycle.ok) {
+        return lifecycle;
+    }
+
+    lifecycle = ResolveBoundaryOpenStates(geometryShape, descriptor.axisDirection, descriptor.boundaries);
+    if (!lifecycle.ok) {
+        return lifecycle;
+    }
+
+    if (!descriptor.boundaries[0].isOpen && !descriptor.boundaries[1].isOpen) {
+        return MakeFailure<OcctLifecycleResult>(
+            "unsupported-geometry",
+            "Exact hole helper requires at least one open circular boundary."
+        );
+    }
+
+    OcctLifecycleResult ok;
+    ok.ok = true;
+    return ok;
+}
+
+OcctExactHoleResult BuildHoleResult(const HoleCylinderDescriptor& descriptor)
+{
+    const gp_Pnt centerPoint = Midpoint(descriptor.boundaries[0].center, descriptor.boundaries[1].center);
+    const double depth = std::abs(descriptor.boundaries[1].axisParameter - descriptor.boundaries[0].axisParameter);
+
+    OcctExactHoleResult result;
+    result.ok = true;
+    result.kind = "hole";
+    result.profile = "cylindrical";
+    result.radius = descriptor.cylinder.Radius();
+    result.diameter = result.radius * 2.0;
+    result.hasAxisDirection = true;
+    result.axisDirection = ToArray(descriptor.axisDirection);
+    result.hasDepth = true;
+    result.depth = depth;
+    result.hasIsThrough = true;
+    result.isThrough = descriptor.boundaries[0].isOpen && descriptor.boundaries[1].isOpen;
+    if (!BuildFrameFromNormalAndX(centerPoint, descriptor.axisDirection, descriptor.radialDirection, result.frame)) {
+        return MakeFailure<OcctExactHoleResult>(
+            "unsupported-geometry",
+            "Exact hole helper requires a stable working frame."
+        );
+    }
+    result.hasFrame = true;
+
+    AddHoleAnchor(result, "center", centerPoint);
+    if (result.isThrough) {
+        AddHoleAnchor(result, "entry", descriptor.boundaries[0].center);
+        AddHoleAnchor(result, "exit", descriptor.boundaries[1].center);
+    } else if (descriptor.boundaries[0].isOpen) {
+        AddHoleAnchor(result, "entry", descriptor.boundaries[0].center);
+        AddHoleAnchor(result, "bottom", descriptor.boundaries[1].center);
+    } else {
+        AddHoleAnchor(result, "entry", descriptor.boundaries[1].center);
+        AddHoleAnchor(result, "bottom", descriptor.boundaries[0].center);
+    }
+
+    return result;
+}
+
+OcctLifecycleResult TryDescribeExactCounterboreFromCylinder(
+    const TopoDS_Shape& geometryShape,
+    const TopoDS_Face& selectedCylinderFace,
+    OcctExactCompoundHoleResult& result)
+{
+    HoleCylinderDescriptor primary;
+    OcctLifecycleResult lifecycle = ResolveHoleCylinderDescriptor(geometryShape, selectedCylinderFace, primary);
+    if (!lifecycle.ok) {
+        return lifecycle;
+    }
+
+    TopTools_IndexedDataMapOfShapeListOfShape edgeToFaces;
+    TopExp::MapShapesAndAncestors(geometryShape, TopAbs_EDGE, TopAbs_FACE, edgeToFaces);
+
+    const gp_Pnt axisOrigin = primary.cylinder.Location();
+    const gp_Dir axisDirection = primary.axisDirection;
+
+    for (const auto& primaryBoundary : primary.boundaries) {
+        std::vector<TopoDS_Face> planeFaces;
+        CollectAdjacentFaces(edgeToFaces, primaryBoundary.edge, planeFaces, &primary.face);
+
+        for (const auto& planeFace : planeFaces) {
+            BRepAdaptor_Surface planeSurface(planeFace, false);
+            if (planeSurface.GetType() != GeomAbs_Plane) {
+                continue;
+            }
+
+            const gp_Pln plane = planeSurface.Plane();
+            if (!plane.Axis().Direction().IsParallel(axisDirection, Precision::Angular())) {
+                continue;
+            }
+
+            std::vector<CircularBoundaryInfo> planeBoundaries;
+            lifecycle = CollectCoaxialCircularBoundaryInfo(planeFace, axisOrigin, axisDirection, planeBoundaries);
+            if (!lifecycle.ok || planeBoundaries.size() < 2) {
+                continue;
+            }
+
+            if (FindMatchingBoundary(planeBoundaries, primaryBoundary.center, primaryBoundary.radius) == nullptr) {
+                continue;
+            }
+
+            for (const auto& transitionBoundary : planeBoundaries) {
+                if (CircularBoundaryMatches(transitionBoundary, primaryBoundary.center, primaryBoundary.radius)) {
+                    continue;
+                }
+                if (std::abs(transitionBoundary.radius - primaryBoundary.radius) <= Precision::Confusion()) {
+                    continue;
+                }
+
+                std::vector<TopoDS_Face> cylinderFaces;
+                CollectAdjacentFaces(edgeToFaces, transitionBoundary.edge, cylinderFaces, &planeFace);
+
+                for (const auto& candidateCylinderFace : cylinderFaces) {
+                    if (candidateCylinderFace.IsSame(primary.face)) {
+                        continue;
+                    }
+
+                    BRepAdaptor_Surface candidateSurface(candidateCylinderFace, false);
+                    if (candidateSurface.GetType() != GeomAbs_Cylinder) {
+                        continue;
+                    }
+
+                    HoleCylinderDescriptor secondary;
+                    lifecycle = ResolveHoleCylinderDescriptor(geometryShape, candidateCylinderFace, secondary);
+                    if (!lifecycle.ok) {
+                        continue;
+                    }
+
+                    if (!IsSameAxis(
+                            primary.cylinder.Location(),
+                            primary.axisDirection,
+                            secondary.cylinder.Location(),
+                            secondary.axisDirection)) {
+                        continue;
+                    }
+
+                    const CircularBoundaryInfo* secondaryTransition = FindMatchingBoundary(
+                        secondary.boundaries,
+                        transitionBoundary.center,
+                        transitionBoundary.radius
+                    );
+                    if (secondaryTransition == nullptr) {
+                        continue;
+                    }
+
+                    const CircularBoundaryInfo* primaryFar = FindOtherBoundary(
+                        primary.boundaries,
+                        primaryBoundary.center,
+                        primaryBoundary.radius
+                    );
+                    const CircularBoundaryInfo* secondaryFar = FindOtherBoundary(
+                        secondary.boundaries,
+                        secondaryTransition->center,
+                        secondaryTransition->radius
+                    );
+                    if (primaryFar == nullptr || secondaryFar == nullptr) {
+                        continue;
+                    }
+
+                    const bool primaryIsLarger = primary.cylinder.Radius() > secondary.cylinder.Radius();
+                    if (std::abs(primary.cylinder.Radius() - secondary.cylinder.Radius()) <= Precision::Confusion()) {
+                        continue;
+                    }
+
+                    const HoleCylinderDescriptor& larger = primaryIsLarger ? primary : secondary;
+                    const HoleCylinderDescriptor& smaller = primaryIsLarger ? secondary : primary;
+                    const CircularBoundaryInfo& largerTransition = primaryIsLarger ? primaryBoundary : *secondaryTransition;
+                    const CircularBoundaryInfo& smallerTransition = primaryIsLarger ? *secondaryTransition : primaryBoundary;
+                    const CircularBoundaryInfo& largerFar = primaryIsLarger ? *primaryFar : *secondaryFar;
+                    const CircularBoundaryInfo& smallerFar = primaryIsLarger ? *secondaryFar : *primaryFar;
+
+                    const double transitionParameter = AxisParameterOnLine(axisOrigin, axisDirection, largerTransition.center);
+                    const double largerFarParameter = AxisParameterOnLine(axisOrigin, axisDirection, largerFar.center);
+                    const double smallerFarParameter = AxisParameterOnLine(axisOrigin, axisDirection, smallerFar.center);
+                    if ((largerFarParameter - transitionParameter) * (smallerFarParameter - transitionParameter) >= 0.0) {
+                        continue;
+                    }
+                    if (!largerFar.isOpen) {
+                        continue;
+                    }
+
+                    gp_Dir semanticAxis = axisDirection;
+                    TryMakeDirection(largerFar.center, smallerFar.center, semanticAxis);
+
+                    const gp_Dir preferredX = primaryIsLarger ? primary.radialDirection : secondary.radialDirection;
+                    const gp_Pnt origin = Midpoint(largerFar.center, smallerFar.center);
+
+                    OcctExactCompoundHoleResult candidate;
+                    candidate.ok = true;
+                    candidate.kind = "compound-hole";
+                    candidate.family = "counterbore";
+                    candidate.holeDiameter = smaller.cylinder.Radius() * 2.0;
+                    candidate.hasHoleDepth = true;
+                    candidate.holeDepth = std::abs(largerFarParameter - smallerFarParameter);
+                    candidate.hasIsThrough = true;
+                    candidate.isThrough = smallerFar.isOpen;
+                    candidate.hasAxisDirection = true;
+                    candidate.axisDirection = ToArray(semanticAxis);
+                    candidate.hasCounterboreDiameter = true;
+                    candidate.counterboreDiameter = larger.cylinder.Radius() * 2.0;
+                    candidate.hasCounterboreDepth = true;
+                    candidate.counterboreDepth = std::abs(largerFarParameter - transitionParameter);
+                    if (!BuildFrameFromNormalAndX(origin, semanticAxis, preferredX, candidate.frame)) {
+                        continue;
+                    }
+                    candidate.hasFrame = true;
+                    AddCompoundHoleAnchor(candidate, "entry", largerFar.center);
+                    AddCompoundHoleAnchor(candidate, "anchor", smallerTransition.center);
+                    AddCompoundHoleAnchor(candidate, candidate.isThrough ? "exit" : "bottom", smallerFar.center);
+                    result = candidate;
+
+                    OcctLifecycleResult ok;
+                    ok.ok = true;
+                    return ok;
+                }
+            }
+        }
+    }
+
+    return MakeFailure<OcctLifecycleResult>("unsupported-geometry", kCompoundHoleUnsupportedMessage);
+}
+
+OcctLifecycleResult TryDescribeExactCountersinkFromCone(
+    const TopoDS_Shape& geometryShape,
+    const TopoDS_Face& coneFace,
+    OcctExactCompoundHoleResult& result)
+{
+    BRepAdaptor_Surface coneSurface(coneFace, false);
+    if (coneSurface.GetType() != GeomAbs_Cone) {
+        return MakeFailure<OcctLifecycleResult>("unsupported-geometry", kCompoundHoleUnsupportedMessage);
+    }
+
+    const gp_Cone cone = coneSurface.Cone();
+    const gp_Dir axisDirection = cone.Axis().Direction();
+    std::vector<CircularBoundaryInfo> coneBoundaries;
+    OcctLifecycleResult lifecycle = CollectCoaxialCircularBoundaryInfo(
+        coneFace,
+        cone.Apex(),
+        axisDirection,
+        coneBoundaries
+    );
+    if (!lifecycle.ok || coneBoundaries.size() != 2) {
+        return MakeFailure<OcctLifecycleResult>("unsupported-geometry", kCompoundHoleUnsupportedMessage);
+    }
+
+    lifecycle = ResolveBoundaryOpenStates(geometryShape, axisDirection, coneBoundaries);
+    if (!lifecycle.ok) {
+        return lifecycle;
+    }
+
+    const CircularBoundaryInfo& largerBoundary =
+        coneBoundaries[0].radius >= coneBoundaries[1].radius ? coneBoundaries[0] : coneBoundaries[1];
+    const CircularBoundaryInfo& smallerBoundary =
+        coneBoundaries[0].radius >= coneBoundaries[1].radius ? coneBoundaries[1] : coneBoundaries[0];
+    if (std::abs(largerBoundary.radius - smallerBoundary.radius) <= Precision::Confusion()) {
+        return MakeFailure<OcctLifecycleResult>("unsupported-geometry", kCompoundHoleUnsupportedMessage);
+    }
+    if (!largerBoundary.isOpen) {
+        return MakeFailure<OcctLifecycleResult>("unsupported-geometry", kCompoundHoleUnsupportedMessage);
+    }
+
+    TopTools_IndexedDataMapOfShapeListOfShape edgeToFaces;
+    TopExp::MapShapesAndAncestors(geometryShape, TopAbs_EDGE, TopAbs_FACE, edgeToFaces);
+
+    std::vector<TopoDS_Face> cylinderFaces;
+    CollectAdjacentFaces(edgeToFaces, smallerBoundary.edge, cylinderFaces, &coneFace);
+    for (const auto& cylinderFace : cylinderFaces) {
+        BRepAdaptor_Surface cylinderSurface(cylinderFace, false);
+        if (cylinderSurface.GetType() != GeomAbs_Cylinder) {
+            continue;
+        }
+
+        HoleCylinderDescriptor cylinder;
+        lifecycle = ResolveHoleCylinderDescriptor(geometryShape, cylinderFace, cylinder);
+        if (!lifecycle.ok) {
+            continue;
+        }
+
+        if (!IsSameAxis(cone.Apex(), axisDirection, cylinder.cylinder.Location(), cylinder.axisDirection)) {
+            continue;
+        }
+
+        const CircularBoundaryInfo* sharedBoundary = FindMatchingBoundary(
+            cylinder.boundaries,
+            smallerBoundary.center,
+            smallerBoundary.radius
+        );
+        const CircularBoundaryInfo* farBoundary = FindOtherBoundary(
+            cylinder.boundaries,
+            smallerBoundary.center,
+            smallerBoundary.radius
+        );
+        if (sharedBoundary == nullptr || farBoundary == nullptr) {
+            continue;
+        }
+
+        gp_Dir semanticAxis = axisDirection;
+        TryMakeDirection(largerBoundary.center, farBoundary->center, semanticAxis);
+
+        const gp_Pnt samplePoint = SampleFacePoint(coneFace, coneSurface);
+        const double sampleParameter = AxisParameterOnLine(cone.Apex(), axisDirection, samplePoint);
+        const gp_Pnt axisPoint = cone.Apex().Translated(gp_Vec(axisDirection) * sampleParameter);
+        gp_Dir radialDirection;
+        if (!TryMakeDirection(axisPoint, samplePoint, radialDirection)) {
+            continue;
+        }
+
+        OcctExactCompoundHoleResult candidate;
+        candidate.ok = true;
+        candidate.kind = "compound-hole";
+        candidate.family = "countersink";
+        candidate.holeDiameter = cylinder.cylinder.Radius() * 2.0;
+        candidate.hasHoleDepth = true;
+        candidate.holeDepth = std::abs(
+            AxisParameterOnLine(cone.Apex(), semanticAxis, largerBoundary.center)
+            - AxisParameterOnLine(cone.Apex(), semanticAxis, farBoundary->center)
+        );
+        candidate.hasIsThrough = true;
+        candidate.isThrough = farBoundary->isOpen;
+        candidate.hasAxisDirection = true;
+        candidate.axisDirection = ToArray(semanticAxis);
+        candidate.hasCountersinkDiameter = true;
+        candidate.countersinkDiameter = largerBoundary.radius * 2.0;
+        const double countersinkAngle = 2.0 * std::abs(cone.SemiAngle());
+        if (countersinkAngle <= Precision::Angular()) {
+            continue;
+        }
+        candidate.hasCountersinkAngle = true;
+        candidate.countersinkAngle = countersinkAngle;
+        const gp_Pnt origin = Midpoint(largerBoundary.center, farBoundary->center);
+        if (!BuildFrameFromNormalAndX(origin, semanticAxis, radialDirection, candidate.frame)) {
+            continue;
+        }
+        candidate.hasFrame = true;
+        AddCompoundHoleAnchor(candidate, "entry", largerBoundary.center);
+        AddCompoundHoleAnchor(candidate, "anchor", smallerBoundary.center);
+        AddCompoundHoleAnchor(candidate, candidate.isThrough ? "exit" : "bottom", farBoundary->center);
+        result = candidate;
+
+        OcctLifecycleResult ok;
+        ok.ok = true;
+        return ok;
+    }
+
+    return MakeFailure<OcctLifecycleResult>("unsupported-geometry", kCompoundHoleUnsupportedMessage);
+}
+
+OcctLifecycleResult TryDescribeExactCountersinkFromCylinder(
+    const TopoDS_Shape& geometryShape,
+    const TopoDS_Face& cylinderFace,
+    OcctExactCompoundHoleResult& result)
+{
+    HoleCylinderDescriptor cylinder;
+    OcctLifecycleResult lifecycle = ResolveHoleCylinderDescriptor(geometryShape, cylinderFace, cylinder);
+    if (!lifecycle.ok) {
+        return lifecycle;
+    }
+
+    TopTools_IndexedDataMapOfShapeListOfShape edgeToFaces;
+    TopExp::MapShapesAndAncestors(geometryShape, TopAbs_EDGE, TopAbs_FACE, edgeToFaces);
+
+    for (const auto& boundary : cylinder.boundaries) {
+        std::vector<TopoDS_Face> adjacentFaces;
+        CollectAdjacentFaces(edgeToFaces, boundary.edge, adjacentFaces, &cylinder.face);
+        for (const auto& adjacentFace : adjacentFaces) {
+            BRepAdaptor_Surface adjacentSurface(adjacentFace, false);
+            if (adjacentSurface.GetType() != GeomAbs_Cone) {
+                continue;
+            }
+
+            lifecycle = TryDescribeExactCountersinkFromCone(geometryShape, adjacentFace, result);
+            if (lifecycle.ok) {
+                return lifecycle;
+            }
+            if (lifecycle.code != "unsupported-geometry") {
+                return lifecycle;
+            }
+        }
+    }
+
+    return MakeFailure<OcctLifecycleResult>("unsupported-geometry", kCompoundHoleUnsupportedMessage);
+}
+
+OcctLifecycleResult CollectCompoundHoleCandidateFaces(
+    int exactModelId,
+    int exactShapeHandle,
+    const std::string& kind,
+    int elementId,
+    TopoDS_Shape& geometryShape,
+    std::vector<TopoDS_Face>& candidateFaces)
+{
+    candidateFaces.clear();
+
+    OcctLifecycleResult lifecycle = LookupGeometryShape(exactModelId, exactShapeHandle, geometryShape);
+    if (!lifecycle.ok) {
+        return lifecycle;
+    }
+
+    const std::string normalizedKind = NormalizeKind(kind);
+    if (normalizedKind == "face") {
+        TopoDS_Face face;
+        lifecycle = ResolveFace(exactModelId, exactShapeHandle, elementId, face);
+        if (!lifecycle.ok) {
+            return lifecycle;
+        }
+
+        BRepAdaptor_Surface surface(face, false);
+        if (surface.GetType() == GeomAbs_Cylinder || surface.GetType() == GeomAbs_Cone) {
+            candidateFaces.push_back(face);
+            OcctLifecycleResult ok;
+            ok.ok = true;
+            return ok;
+        }
+
+        return MakeFailure<OcctLifecycleResult>("unsupported-geometry", kCompoundHoleUnsupportedMessage);
+    }
+
+    if (normalizedKind != "edge") {
+        return MakeFailure<OcctLifecycleResult>("unsupported-kind", "Exact compound-hole helper only supports edge or face refs.");
+    }
+
+    TopoDS_Edge edge;
+    lifecycle = ResolveEdge(exactModelId, exactShapeHandle, elementId, edge);
+    if (!lifecycle.ok) {
+        return lifecycle;
+    }
+
+    BRepAdaptor_Curve curve(edge);
+    if (curve.GetType() != GeomAbs_Circle) {
+        return MakeFailure<OcctLifecycleResult>("unsupported-geometry", kCompoundHoleUnsupportedMessage);
+    }
+
+    TopTools_IndexedDataMapOfShapeListOfShape edgeToFaces;
+    TopExp::MapShapesAndAncestors(geometryShape, TopAbs_EDGE, TopAbs_FACE, edgeToFaces);
+    CollectAdjacentFaces(edgeToFaces, edge, candidateFaces);
+    candidateFaces.erase(
+        std::remove_if(candidateFaces.begin(), candidateFaces.end(), [](const TopoDS_Face& face) {
+            BRepAdaptor_Surface surface(face, false);
+            return surface.GetType() != GeomAbs_Cylinder && surface.GetType() != GeomAbs_Cone;
+        }),
+        candidateFaces.end()
+    );
+    if (candidateFaces.empty()) {
+        return MakeFailure<OcctLifecycleResult>("unsupported-geometry", kCompoundHoleUnsupportedMessage);
     }
 
     OcctLifecycleResult ok;
@@ -1603,15 +2245,41 @@ OcctExactDistanceResult MeasureExactDistance(
     const gp_Trsf& transformA,
     const gp_Trsf& transformB)
 {
+    return MeasureExactDistanceCrossModel(
+        exactModelId,
+        exactShapeHandleA,
+        kindA,
+        elementIdA,
+        transformA,
+        exactModelId,
+        exactShapeHandleB,
+        kindB,
+        elementIdB,
+        transformB
+    );
+}
+
+OcctExactDistanceResult MeasureExactDistanceCrossModel(
+    int exactModelIdA,
+    int exactShapeHandleA,
+    const std::string& kindA,
+    int elementIdA,
+    const gp_Trsf& transformA,
+    int exactModelIdB,
+    int exactShapeHandleB,
+    const std::string& kindB,
+    int elementIdB,
+    const gp_Trsf& transformB)
+{
     try {
         TopoDS_Shape shapeA;
-        OcctLifecycleResult lifecycle = ResolveElementShape(exactModelId, exactShapeHandleA, kindA, elementIdA, shapeA);
+        OcctLifecycleResult lifecycle = ResolveElementShape(exactModelIdA, exactShapeHandleA, kindA, elementIdA, shapeA);
         if (!lifecycle.ok) {
             return ConvertFailure<OcctExactDistanceResult>(lifecycle);
         }
 
         TopoDS_Shape shapeB;
-        lifecycle = ResolveElementShape(exactModelId, exactShapeHandleB, kindB, elementIdB, shapeB);
+        lifecycle = ResolveElementShape(exactModelIdB, exactShapeHandleB, kindB, elementIdB, shapeB);
         if (!lifecycle.ok) {
             return ConvertFailure<OcctExactDistanceResult>(lifecycle);
         }
@@ -1668,18 +2336,44 @@ OcctExactAngleResult MeasureExactAngle(
     const gp_Trsf& transformA,
     const gp_Trsf& transformB)
 {
+    return MeasureExactAngleCrossModel(
+        exactModelId,
+        exactShapeHandleA,
+        kindA,
+        elementIdA,
+        transformA,
+        exactModelId,
+        exactShapeHandleB,
+        kindB,
+        elementIdB,
+        transformB
+    );
+}
+
+OcctExactAngleResult MeasureExactAngleCrossModel(
+    int exactModelIdA,
+    int exactShapeHandleA,
+    const std::string& kindA,
+    int elementIdA,
+    const gp_Trsf& transformA,
+    int exactModelIdB,
+    int exactShapeHandleB,
+    const std::string& kindB,
+    int elementIdB,
+    const gp_Trsf& transformB)
+{
     try {
         const std::string normalizedKindA = NormalizeKind(kindA);
         const std::string normalizedKindB = NormalizeKind(kindB);
         if (normalizedKindA == "edge" && normalizedKindB == "edge") {
             TopoDS_Edge edgeA;
-            OcctLifecycleResult lifecycle = ResolveEdge(exactModelId, exactShapeHandleA, elementIdA, edgeA);
+            OcctLifecycleResult lifecycle = ResolveEdge(exactModelIdA, exactShapeHandleA, elementIdA, edgeA);
             if (!lifecycle.ok) {
                 return ConvertFailure<OcctExactAngleResult>(lifecycle);
             }
 
             TopoDS_Edge edgeB;
-            lifecycle = ResolveEdge(exactModelId, exactShapeHandleB, elementIdB, edgeB);
+            lifecycle = ResolveEdge(exactModelIdB, exactShapeHandleB, elementIdB, edgeB);
             if (!lifecycle.ok) {
                 return ConvertFailure<OcctExactAngleResult>(lifecycle);
             }
@@ -1732,13 +2426,13 @@ OcctExactAngleResult MeasureExactAngle(
 
         if (normalizedKindA == "face" && normalizedKindB == "face") {
             TopoDS_Face faceA;
-            OcctLifecycleResult lifecycle = ResolveFace(exactModelId, exactShapeHandleA, elementIdA, faceA);
+            OcctLifecycleResult lifecycle = ResolveFace(exactModelIdA, exactShapeHandleA, elementIdA, faceA);
             if (!lifecycle.ok) {
                 return ConvertFailure<OcctExactAngleResult>(lifecycle);
             }
 
             TopoDS_Face faceB;
-            lifecycle = ResolveFace(exactModelId, exactShapeHandleB, elementIdB, faceB);
+            lifecycle = ResolveFace(exactModelIdB, exactShapeHandleB, elementIdB, faceB);
             if (!lifecycle.ok) {
                 return ConvertFailure<OcctExactAngleResult>(lifecycle);
             }
@@ -1812,6 +2506,32 @@ OcctExactThicknessResult MeasureExactThickness(
     const gp_Trsf& transformA,
     const gp_Trsf& transformB)
 {
+    return MeasureExactThicknessCrossModel(
+        exactModelId,
+        exactShapeHandleA,
+        kindA,
+        elementIdA,
+        transformA,
+        exactModelId,
+        exactShapeHandleB,
+        kindB,
+        elementIdB,
+        transformB
+    );
+}
+
+OcctExactThicknessResult MeasureExactThicknessCrossModel(
+    int exactModelIdA,
+    int exactShapeHandleA,
+    const std::string& kindA,
+    int elementIdA,
+    const gp_Trsf& transformA,
+    int exactModelIdB,
+    int exactShapeHandleB,
+    const std::string& kindB,
+    int elementIdB,
+    const gp_Trsf& transformB)
+{
     try {
         const std::string normalizedKindA = NormalizeKind(kindA);
         const std::string normalizedKindB = NormalizeKind(kindB);
@@ -1820,13 +2540,13 @@ OcctExactThicknessResult MeasureExactThickness(
         }
 
         TopoDS_Face faceA;
-        OcctLifecycleResult lifecycle = ResolveFace(exactModelId, exactShapeHandleA, elementIdA, faceA);
+        OcctLifecycleResult lifecycle = ResolveFace(exactModelIdA, exactShapeHandleA, elementIdA, faceA);
         if (!lifecycle.ok) {
             return ConvertFailure<OcctExactThicknessResult>(lifecycle);
         }
 
         TopoDS_Face faceB;
-        lifecycle = ResolveFace(exactModelId, exactShapeHandleB, elementIdB, faceB);
+        lifecycle = ResolveFace(exactModelIdB, exactShapeHandleB, elementIdB, faceB);
         if (!lifecycle.ok) {
             return ConvertFailure<OcctExactThicknessResult>(lifecycle);
         }
@@ -1892,19 +2612,45 @@ OcctExactRelationResult ClassifyExactRelation(
     const gp_Trsf& transformA,
     const gp_Trsf& transformB)
 {
+    return ClassifyExactRelationCrossModel(
+        exactModelId,
+        exactShapeHandleA,
+        kindA,
+        elementIdA,
+        transformA,
+        exactModelId,
+        exactShapeHandleB,
+        kindB,
+        elementIdB,
+        transformB
+    );
+}
+
+OcctExactRelationResult ClassifyExactRelationCrossModel(
+    int exactModelIdA,
+    int exactShapeHandleA,
+    const std::string& kindA,
+    int elementIdA,
+    const gp_Trsf& transformA,
+    int exactModelIdB,
+    int exactShapeHandleB,
+    const std::string& kindB,
+    int elementIdB,
+    const gp_Trsf& transformB)
+{
     try {
         const std::string normalizedKindA = NormalizeKind(kindA);
         const std::string normalizedKindB = NormalizeKind(kindB);
 
         if (normalizedKindA == "edge" && normalizedKindB == "edge") {
             TopoDS_Edge edgeA;
-            OcctLifecycleResult lifecycle = ResolveEdge(exactModelId, exactShapeHandleA, elementIdA, edgeA);
+            OcctLifecycleResult lifecycle = ResolveEdge(exactModelIdA, exactShapeHandleA, elementIdA, edgeA);
             if (!lifecycle.ok) {
                 return ConvertFailure<OcctExactRelationResult>(lifecycle);
             }
 
             TopoDS_Edge edgeB;
-            lifecycle = ResolveEdge(exactModelId, exactShapeHandleB, elementIdB, edgeB);
+            lifecycle = ResolveEdge(exactModelIdB, exactShapeHandleB, elementIdB, edgeB);
             if (!lifecycle.ok) {
                 return ConvertFailure<OcctExactRelationResult>(lifecycle);
             }
@@ -1929,13 +2675,13 @@ OcctExactRelationResult ClassifyExactRelation(
 
         if (normalizedKindA == "face" && normalizedKindB == "face") {
             TopoDS_Face faceA;
-            OcctLifecycleResult lifecycle = ResolveFace(exactModelId, exactShapeHandleA, elementIdA, faceA);
+            OcctLifecycleResult lifecycle = ResolveFace(exactModelIdA, exactShapeHandleA, elementIdA, faceA);
             if (!lifecycle.ok) {
                 return ConvertFailure<OcctExactRelationResult>(lifecycle);
             }
 
             TopoDS_Face faceB;
-            lifecycle = ResolveFace(exactModelId, exactShapeHandleB, elementIdB, faceB);
+            lifecycle = ResolveFace(exactModelIdB, exactShapeHandleB, elementIdB, faceB);
             if (!lifecycle.ok) {
                 return ConvertFailure<OcctExactRelationResult>(lifecycle);
             }
@@ -1957,13 +2703,13 @@ OcctExactRelationResult ClassifyExactRelation(
 
         if (normalizedKindA == "edge" && normalizedKindB == "face") {
             TopoDS_Edge edgeA;
-            OcctLifecycleResult lifecycle = ResolveEdge(exactModelId, exactShapeHandleA, elementIdA, edgeA);
+            OcctLifecycleResult lifecycle = ResolveEdge(exactModelIdA, exactShapeHandleA, elementIdA, edgeA);
             if (!lifecycle.ok) {
                 return ConvertFailure<OcctExactRelationResult>(lifecycle);
             }
 
             TopoDS_Face faceB;
-            lifecycle = ResolveFace(exactModelId, exactShapeHandleB, elementIdB, faceB);
+            lifecycle = ResolveFace(exactModelIdB, exactShapeHandleB, elementIdB, faceB);
             if (!lifecycle.ok) {
                 return ConvertFailure<OcctExactRelationResult>(lifecycle);
             }
@@ -1975,13 +2721,13 @@ OcctExactRelationResult ClassifyExactRelation(
 
         if (normalizedKindA == "face" && normalizedKindB == "edge") {
             TopoDS_Face faceA;
-            OcctLifecycleResult lifecycle = ResolveFace(exactModelId, exactShapeHandleA, elementIdA, faceA);
+            OcctLifecycleResult lifecycle = ResolveFace(exactModelIdA, exactShapeHandleA, elementIdA, faceA);
             if (!lifecycle.ok) {
                 return ConvertFailure<OcctExactRelationResult>(lifecycle);
             }
 
             TopoDS_Edge edgeB;
-            lifecycle = ResolveEdge(exactModelId, exactShapeHandleB, elementIdB, edgeB);
+            lifecycle = ResolveEdge(exactModelIdB, exactShapeHandleB, elementIdB, edgeB);
             if (!lifecycle.ok) {
                 return ConvertFailure<OcctExactRelationResult>(lifecycle);
             }
@@ -2014,15 +2760,42 @@ OcctExactPlacementResult SuggestExactDistancePlacement(
     const gp_Trsf& transformA,
     const gp_Trsf& transformB)
 {
-    const OcctExactDistanceResult distance = MeasureExactDistance(
+    return SuggestExactDistancePlacementCrossModel(
         exactModelId,
         exactShapeHandleA,
         kindA,
         elementIdA,
+        transformA,
+        exactModelId,
         exactShapeHandleB,
         kindB,
         elementIdB,
+        transformB
+    );
+}
+
+OcctExactPlacementResult SuggestExactDistancePlacementCrossModel(
+    int exactModelIdA,
+    int exactShapeHandleA,
+    const std::string& kindA,
+    int elementIdA,
+    const gp_Trsf& transformA,
+    int exactModelIdB,
+    int exactShapeHandleB,
+    const std::string& kindB,
+    int elementIdB,
+    const gp_Trsf& transformB)
+{
+    const OcctExactDistanceResult distance = MeasureExactDistanceCrossModel(
+        exactModelIdA,
+        exactShapeHandleA,
+        kindA,
+        elementIdA,
         transformA,
+        exactModelIdB,
+        exactShapeHandleB,
+        kindB,
+        elementIdB,
         transformB
     );
     if (!distance.ok) {
@@ -2064,15 +2837,42 @@ OcctExactPlacementResult SuggestExactAnglePlacement(
     const gp_Trsf& transformA,
     const gp_Trsf& transformB)
 {
-    const OcctExactAngleResult angle = MeasureExactAngle(
+    return SuggestExactAnglePlacementCrossModel(
         exactModelId,
         exactShapeHandleA,
         kindA,
         elementIdA,
+        transformA,
+        exactModelId,
         exactShapeHandleB,
         kindB,
         elementIdB,
+        transformB
+    );
+}
+
+OcctExactPlacementResult SuggestExactAnglePlacementCrossModel(
+    int exactModelIdA,
+    int exactShapeHandleA,
+    const std::string& kindA,
+    int elementIdA,
+    const gp_Trsf& transformA,
+    int exactModelIdB,
+    int exactShapeHandleB,
+    const std::string& kindB,
+    int elementIdB,
+    const gp_Trsf& transformB)
+{
+    const OcctExactAngleResult angle = MeasureExactAngleCrossModel(
+        exactModelIdA,
+        exactShapeHandleA,
+        kindA,
+        elementIdA,
         transformA,
+        exactModelIdB,
+        exactShapeHandleB,
+        kindB,
+        elementIdB,
         transformB
     );
     if (!angle.ok) {
@@ -2128,15 +2928,42 @@ OcctExactPlacementResult SuggestExactThicknessPlacement(
     const gp_Trsf& transformA,
     const gp_Trsf& transformB)
 {
-    const OcctExactThicknessResult thickness = MeasureExactThickness(
+    return SuggestExactThicknessPlacementCrossModel(
         exactModelId,
         exactShapeHandleA,
         kindA,
         elementIdA,
+        transformA,
+        exactModelId,
         exactShapeHandleB,
         kindB,
         elementIdB,
+        transformB
+    );
+}
+
+OcctExactPlacementResult SuggestExactThicknessPlacementCrossModel(
+    int exactModelIdA,
+    int exactShapeHandleA,
+    const std::string& kindA,
+    int elementIdA,
+    const gp_Trsf& transformA,
+    int exactModelIdB,
+    int exactShapeHandleB,
+    const std::string& kindB,
+    int elementIdB,
+    const gp_Trsf& transformB)
+{
+    const OcctExactThicknessResult thickness = MeasureExactThicknessCrossModel(
+        exactModelIdA,
+        exactShapeHandleA,
+        kindA,
+        elementIdA,
         transformA,
+        exactModelIdB,
+        exactShapeHandleB,
+        kindB,
+        elementIdB,
         transformB
     );
     if (!thickness.ok) {
@@ -2293,97 +3120,13 @@ OcctExactHoleResult DescribeExactHole(
             return MakeFailure<OcctExactHoleResult>(lifecycle.code, lifecycle.message);
         }
 
-        BRepAdaptor_Surface surface(holeFace, false);
-        if (surface.GetType() != GeomAbs_Cylinder) {
-            return MakeFailure<OcctExactHoleResult>(
-                "unsupported-geometry",
-                "Exact hole helper only supports cylindrical face refs or circular edge refs adjacent to one cylindrical face."
-            );
-        }
-
-        const gp_Cylinder cylinder = surface.Cylinder();
-        const gp_Dir axisDirection = cylinder.Axis().Direction();
-        const gp_Pnt samplePoint = SampleFacePoint(holeFace, surface);
-        const gp_Vec axialOffset(cylinder.Location(), samplePoint);
-        const gp_Pnt axisPoint = cylinder.Location().Translated(gp_Vec(axisDirection) * axialOffset.Dot(gp_Vec(axisDirection)));
-        gp_Dir radialDirection;
-        if (!TryMakeDirection(axisPoint, samplePoint, radialDirection)) {
-            return MakeFailure<OcctExactHoleResult>(
-                "unsupported-geometry",
-                "Exact hole helper requires cylindrical geometry with a stable radial direction."
-            );
-        }
-
-        const double radialProbeDistance = std::max(Precision::Confusion() * 100.0, std::min(cylinder.Radius() * 0.25, 0.5));
-        const gp_Pnt inwardProbe = samplePoint.Translated(gp_Vec(radialDirection) * (-radialProbeDistance));
-        TopAbs_State inwardState = TopAbs_UNKNOWN;
-        lifecycle = ClassifyPointInShape(geometryShape, inwardProbe, inwardState);
-        if (!lifecycle.ok) {
-            return MakeFailure<OcctExactHoleResult>(lifecycle.code, lifecycle.message);
-        }
-        if (!IsOutsideState(inwardState)) {
-            return MakeFailure<OcctExactHoleResult>(
-                "unsupported-geometry",
-                "Selected cylindrical geometry does not bound a supported hole cavity."
-            );
-        }
-
-        std::vector<HoleBoundaryInfo> boundaries;
-        lifecycle = CollectHoleBoundaryInfo(holeFace, cylinder, axisDirection, boundaries);
+        HoleCylinderDescriptor descriptor;
+        lifecycle = ResolveHoleCylinderDescriptor(geometryShape, holeFace, descriptor);
         if (!lifecycle.ok) {
             return MakeFailure<OcctExactHoleResult>(lifecycle.code, lifecycle.message);
         }
 
-        lifecycle = ResolveHoleBoundaryOpenStates(geometryShape, axisDirection, boundaries);
-        if (!lifecycle.ok) {
-            return MakeFailure<OcctExactHoleResult>(lifecycle.code, lifecycle.message);
-        }
-
-        const bool openFirst = boundaries[0].isOpen;
-        const bool openSecond = boundaries[1].isOpen;
-        if (!openFirst && !openSecond) {
-            return MakeFailure<OcctExactHoleResult>(
-                "unsupported-geometry",
-                "Exact hole helper requires at least one open circular boundary."
-            );
-        }
-
-        const gp_Pnt centerPoint = Midpoint(boundaries[0].center, boundaries[1].center);
-        const double depth = std::abs(boundaries[1].axisParameter - boundaries[0].axisParameter);
-
-        OcctExactHoleResult result;
-        result.ok = true;
-        result.kind = "hole";
-        result.profile = "cylindrical";
-        result.radius = cylinder.Radius();
-        result.diameter = result.radius * 2.0;
-        result.hasAxisDirection = true;
-        result.axisDirection = ToArray(axisDirection);
-        result.hasDepth = true;
-        result.depth = depth;
-        result.hasIsThrough = true;
-        result.isThrough = openFirst && openSecond;
-        if (!BuildFrameFromNormalAndX(centerPoint, axisDirection, radialDirection, result.frame)) {
-            return MakeFailure<OcctExactHoleResult>(
-                "unsupported-geometry",
-                "Exact hole helper requires a stable working frame."
-            );
-        }
-        result.hasFrame = true;
-
-        AddHoleAnchor(result, "center", centerPoint);
-        if (result.isThrough) {
-            AddHoleAnchor(result, "entry", boundaries[0].center);
-            AddHoleAnchor(result, "exit", boundaries[1].center);
-        } else if (openFirst) {
-            AddHoleAnchor(result, "entry", boundaries[0].center);
-            AddHoleAnchor(result, "bottom", boundaries[1].center);
-        } else {
-            AddHoleAnchor(result, "entry", boundaries[1].center);
-            AddHoleAnchor(result, "bottom", boundaries[0].center);
-        }
-
-        return result;
+        return BuildHoleResult(descriptor);
     } catch (const Standard_Failure& failure) {
         return MakeFailure<OcctExactHoleResult>(
             "internal-error",
@@ -2493,6 +3236,74 @@ OcctExactChamferResult DescribeExactChamfer(
         return MakeFailure<OcctExactChamferResult>(
             "internal-error",
             failure.GetMessageString() != nullptr ? failure.GetMessageString() : "OCCT exact chamfer query failed."
+        );
+    }
+}
+
+OcctExactCompoundHoleResult DescribeExactCompoundHole(
+    int exactModelId,
+    int exactShapeHandle,
+    const std::string& kind,
+    int elementId)
+{
+    try {
+        TopoDS_Shape geometryShape;
+        std::vector<TopoDS_Face> candidateFaces;
+        OcctLifecycleResult lifecycle = CollectCompoundHoleCandidateFaces(
+            exactModelId,
+            exactShapeHandle,
+            kind,
+            elementId,
+            geometryShape,
+            candidateFaces
+        );
+        if (!lifecycle.ok) {
+            return MakeFailure<OcctExactCompoundHoleResult>(lifecycle.code, lifecycle.message);
+        }
+
+        for (const auto& face : candidateFaces) {
+            BRepAdaptor_Surface surface(face, false);
+            if (surface.GetType() == GeomAbs_Cylinder) {
+                OcctExactCompoundHoleResult counterbore;
+                lifecycle = TryDescribeExactCounterboreFromCylinder(geometryShape, face, counterbore);
+                if (lifecycle.ok) {
+                    return counterbore;
+                }
+                if (lifecycle.code != "unsupported-geometry") {
+                    return MakeFailure<OcctExactCompoundHoleResult>(lifecycle.code, lifecycle.message);
+                }
+
+                OcctExactCompoundHoleResult countersink;
+                lifecycle = TryDescribeExactCountersinkFromCylinder(geometryShape, face, countersink);
+                if (lifecycle.ok) {
+                    return countersink;
+                }
+                if (lifecycle.code != "unsupported-geometry") {
+                    return MakeFailure<OcctExactCompoundHoleResult>(lifecycle.code, lifecycle.message);
+                }
+                continue;
+            }
+
+            if (surface.GetType() == GeomAbs_Cone) {
+                OcctExactCompoundHoleResult countersink;
+                lifecycle = TryDescribeExactCountersinkFromCone(geometryShape, face, countersink);
+                if (lifecycle.ok) {
+                    return countersink;
+                }
+                if (lifecycle.code != "unsupported-geometry") {
+                    return MakeFailure<OcctExactCompoundHoleResult>(lifecycle.code, lifecycle.message);
+                }
+            }
+        }
+
+        return MakeFailure<OcctExactCompoundHoleResult>(
+            "unsupported-geometry",
+            kCompoundHoleUnsupportedMessage
+        );
+    } catch (const Standard_Failure& failure) {
+        return MakeFailure<OcctExactCompoundHoleResult>(
+            "internal-error",
+            failure.GetMessageString() != nullptr ? failure.GetMessageString() : "OCCT exact compound-hole query failed."
         );
     }
 }

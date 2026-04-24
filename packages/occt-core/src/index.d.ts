@@ -1,8 +1,16 @@
 import type {
   OcctFormat,
+  OcctJSCompositeShapeBuildOptions,
+  OcctJSCompositeShapeBuildResult,
+  OcctJSCompositeShapeSpec,
+  OcctJSCompositeShapeValidationResult,
   OcctJSExactExtrudedShapeOpenResult,
+  OcctJSExactCompositeShapeOpenResult,
   OcctJSGeneratedRevolvedShapeFaceBinding,
   OcctJSGeneratedExtrudedShapeFaceBinding,
+  OcctJSGeneratedHelicalSweepFaceBinding,
+  OcctJSGeneratedCompositeShapeMetadata,
+  OcctJSGeneratedHelicalSweepMetadata,
   OcctJSGeneratedExtrudedShapeMetadata,
   OcctJSGeneratedExtrudedShapeSegmentDescriptor,
   OcctJSGeneratedRevolvedShapeMetadata,
@@ -13,6 +21,7 @@ import type {
   OcctJSExactChamferResult,
   OcctJSExactElementKind,
   OcctJSExactRevolvedShapeOpenResult,
+  OcctJSExactHelicalSweepOpenResult,
   OcctJSExactGeometryFamily,
   OcctJSExactHoleResult,
   OcctJSExactModelDiagnostics,
@@ -26,6 +35,10 @@ import type {
   OcctJSExtrudedShapeBuildResult,
   OcctJSExtrudedShapeSpec,
   OcctJSExtrudedShapeValidationResult,
+  OcctJSHelicalSweepBuildOptions,
+  OcctJSHelicalSweepBuildResult,
+  OcctJSHelicalSweepSpec,
+  OcctJSHelicalSweepValidationResult,
   OcctJSLifecycleResult,
   OcctJSModule,
   OcctJSOrientationResult,
@@ -40,10 +53,14 @@ import type {
 export type OcctPoint3 = [number, number, number];
 export type OcctGeneratedRevolvedShapeSourceFormat = "generated-revolved-shape";
 export type OcctGeneratedExtrudedShapeSourceFormat = "generated-extruded-shape";
+export type OcctGeneratedHelicalSweepSourceFormat = "generated-helical-sweep";
+export type OcctGeneratedCompositeShapeSourceFormat = "generated-composite-shape";
 export type OcctNormalizedSourceFormat =
   | OcctFormat
   | OcctGeneratedRevolvedShapeSourceFormat
-  | OcctGeneratedExtrudedShapeSourceFormat;
+  | OcctGeneratedExtrudedShapeSourceFormat
+  | OcctGeneratedHelicalSweepSourceFormat
+  | OcctGeneratedCompositeShapeSourceFormat;
 
 export type OcctMatrix4 = [
   number, number, number, number,
@@ -177,6 +194,16 @@ export interface OcctNormalizedExtrudedShapeMetadata extends Omit<OcctJSGenerate
   faceBindings?: OcctNormalizedExtrudedShapeFaceBinding[];
 }
 
+export interface OcctNormalizedHelicalSweepFaceBinding extends OcctJSGeneratedHelicalSweepFaceBinding {
+  geometryId?: string;
+}
+
+export interface OcctNormalizedHelicalSweepMetadata extends Omit<OcctJSGeneratedHelicalSweepMetadata, "faceBindings"> {
+  faceBindings?: OcctNormalizedHelicalSweepFaceBinding[];
+}
+
+export interface OcctNormalizedCompositeShapeMetadata extends OcctJSGeneratedCompositeShapeMetadata {}
+
 export interface OcctNormalizedResult {
   sourceFormat: OcctNormalizedSourceFormat;
   sourceFileName?: string;
@@ -189,6 +216,8 @@ export interface OcctNormalizedResult {
   stats: OcctNormalizedStats;
   revolvedShape?: OcctNormalizedRevolvedShapeMetadata;
   extrudedShape?: OcctNormalizedExtrudedShapeMetadata;
+  helicalSweep?: OcctNormalizedHelicalSweepMetadata;
+  compositeShape?: OcctNormalizedCompositeShapeMetadata;
 }
 
 export interface OcctNormalizedExactGeometryBinding {
@@ -425,6 +454,38 @@ export interface OcctExactChamferSuccess {
 
 export type OcctExactChamferDescriptionResult = OcctExactChamferSuccess | OcctJSExactQueryFailure;
 
+export interface OcctExactCounterboreSuccess {
+  ok: true;
+  kind: "counterbore";
+  holeDiameter: number;
+  holeDepth?: number;
+  isThrough?: boolean;
+  frame?: OcctJSExactPlacementFrame;
+  anchors?: OcctJSExactPlacementAnchor[];
+  axisDirection?: OcctPoint3;
+  counterboreDiameter: number;
+  counterboreDepth: number;
+  ref: OcctExactRef;
+}
+
+export type OcctExactCounterboreDescriptionResult = OcctExactCounterboreSuccess | OcctJSExactQueryFailure;
+
+export interface OcctExactCountersinkSuccess {
+  ok: true;
+  kind: "countersink";
+  holeDiameter: number;
+  holeDepth?: number;
+  isThrough?: boolean;
+  frame?: OcctJSExactPlacementFrame;
+  anchors?: OcctJSExactPlacementAnchor[];
+  axisDirection?: OcctPoint3;
+  countersinkDiameter: number;
+  countersinkAngle: number;
+  ref: OcctExactRef;
+}
+
+export type OcctExactCountersinkDescriptionResult = OcctExactCountersinkSuccess | OcctJSExactQueryFailure;
+
 export interface OcctExactMidpointPlacementSuccess {
   ok: true;
   kind: "midpoint";
@@ -495,10 +556,16 @@ export declare class OcctCoreClient {
   validateProfile2DSpec(spec: OcctJSProfile2DSpec): Promise<OcctJSProfile2DValidationResult>;
   validateRevolvedShapeSpec(spec: OcctJSRevolvedShapeSpec): Promise<OcctJSRevolvedShapeValidationResult>;
   validateExtrudedShapeSpec(spec: OcctJSExtrudedShapeSpec): Promise<OcctJSExtrudedShapeValidationResult>;
+  validateHelicalSweepSpec(spec: OcctJSHelicalSweepSpec): Promise<OcctJSHelicalSweepValidationResult>;
+  validateCompositeShapeSpec(spec: OcctJSCompositeShapeSpec): Promise<OcctJSCompositeShapeValidationResult>;
   buildRevolvedShape(spec: OcctJSRevolvedShapeSpec, options?: OcctJSRevolvedShapeBuildOptions): Promise<OcctJSRevolvedShapeBuildResult>;
   openExactRevolvedShape(spec: OcctJSRevolvedShapeSpec, options?: OcctJSRevolvedShapeBuildOptions): Promise<OcctJSExactRevolvedShapeOpenResult>;
   buildExtrudedShape(spec: OcctJSExtrudedShapeSpec, options?: OcctJSExtrudedShapeBuildOptions): Promise<OcctJSExtrudedShapeBuildResult>;
   openExactExtrudedShape(spec: OcctJSExtrudedShapeSpec, options?: OcctJSExtrudedShapeBuildOptions): Promise<OcctJSExactExtrudedShapeOpenResult>;
+  buildHelicalSweep(spec: OcctJSHelicalSweepSpec, options?: OcctJSHelicalSweepBuildOptions): Promise<OcctJSHelicalSweepBuildResult>;
+  openExactHelicalSweep(spec: OcctJSHelicalSweepSpec, options?: OcctJSHelicalSweepBuildOptions): Promise<OcctJSExactHelicalSweepOpenResult>;
+  buildCompositeShape(spec: OcctJSCompositeShapeSpec, options?: OcctJSCompositeShapeBuildOptions): Promise<OcctJSCompositeShapeBuildResult>;
+  openExactCompositeShape(spec: OcctJSCompositeShapeSpec, options?: OcctJSCompositeShapeBuildOptions): Promise<OcctJSExactCompositeShapeOpenResult>;
   retainExactModel(exactModelId: number): Promise<OcctJSLifecycleResult>;
   releaseExactModel(exactModelId: number): Promise<OcctJSLifecycleResult>;
   getExactModelDiagnostics(): Promise<OcctJSExactModelDiagnostics>;
@@ -514,6 +581,8 @@ export declare class OcctCoreClient {
   suggestExactDiameterPlacement(ref: OcctExactRef): Promise<OcctExactSinglePlacementResult>;
   describeExactHole(ref: OcctExactRef): Promise<OcctExactHoleDescriptionResult>;
   describeExactChamfer(ref: OcctExactRef): Promise<OcctExactChamferDescriptionResult>;
+  describeExactCounterbore(ref: OcctExactRef): Promise<OcctExactCounterboreDescriptionResult>;
+  describeExactCountersink(ref: OcctExactRef): Promise<OcctExactCountersinkDescriptionResult>;
   suggestExactMidpointPlacement(refA: OcctExactRef, refB: OcctExactRef): Promise<OcctExactMidpointPlacementResult>;
   describeExactEqualDistance(refA: OcctExactRef, refB: OcctExactRef, refC: OcctExactRef, refD: OcctExactRef, options?: OcctExactEqualDistanceOptions): Promise<OcctExactEqualDistanceResult>;
   suggestExactSymmetryPlacement(refA: OcctExactRef, refB: OcctExactRef): Promise<OcctExactSymmetryPlacementResult>;
@@ -557,8 +626,10 @@ export type {
   OcctJSImportColorMode,
   OcctJSColor,
   OcctJSExactChamferResult,
+  OcctJSExactCompositeShapeOpenResult,
   OcctJSExactElementKind,
   OcctJSExactExtrudedShapeOpenResult,
+  OcctJSExactHelicalSweepOpenResult,
   OcctJSExactGeometryFamily,
   OcctJSExactHoleResult,
   OcctJSExactModelDiagnostics,
@@ -568,10 +639,18 @@ export type {
   OcctJSExactPlacementFrame,
   OcctJSExactQueryFailure,
   OcctJSExactRelationKind,
+  OcctJSCompositeShapeBuildOptions,
+  OcctJSCompositeShapeBuildResult,
+  OcctJSCompositeShapeSpec,
+  OcctJSCompositeShapeValidationResult,
   OcctJSExtrudedShapeBuildOptions,
   OcctJSExtrudedShapeBuildResult,
   OcctJSExtrudedShapeSpec,
   OcctJSExtrudedShapeValidationResult,
+  OcctJSHelicalSweepBuildOptions,
+  OcctJSHelicalSweepBuildResult,
+  OcctJSHelicalSweepSpec,
+  OcctJSHelicalSweepValidationResult,
   OcctJSLifecycleResult,
   OcctJSModule,
   OcctJSOrientationResult,
@@ -582,9 +661,12 @@ export type {
   OcctJSRevolvedShapeSpec,
   OcctJSRevolvedShapeValidationResult,
   OcctJSExactRevolvedShapeOpenResult,
+  OcctJSGeneratedCompositeShapeMetadata,
   OcctJSGeneratedExtrudedShapeMetadata,
   OcctJSGeneratedExtrudedShapeFaceBinding,
   OcctJSGeneratedExtrudedShapeSegmentDescriptor,
+  OcctJSGeneratedHelicalSweepMetadata,
+  OcctJSGeneratedHelicalSweepFaceBinding,
   OcctJSGeneratedRevolvedShapeMetadata,
   OcctJSGeneratedRevolvedShapeFaceBinding,
   OcctJSGeneratedRevolvedShapeSegmentDescriptor,

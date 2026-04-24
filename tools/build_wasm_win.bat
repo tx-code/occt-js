@@ -41,6 +41,8 @@ call emmake mingw32-make -C build\wasm -j%BUILD_JOBS% >> "%LOG_FILE%" 2>&1 || go
 if not exist "%DIST_JS%" goto :error_artifacts
 if not exist "%DIST_WASM%" goto :error_artifacts
 
+node tools\generate_esm_runtime_entry.mjs >> "%LOG_FILE%" 2>&1 || goto :error_artifacts
+
 echo Build Succeeded.
 echo Build log: %LOG_FILE%
 popd

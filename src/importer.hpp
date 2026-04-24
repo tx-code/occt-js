@@ -285,6 +285,32 @@ struct OcctExactChamferResult {
     bool hasSupportNormalB = false;
 };
 
+struct OcctExactCompoundHoleResult {
+    bool ok = false;
+    std::string code;
+    std::string message;
+    std::string kind;
+    std::string family;
+    double holeDiameter = 0.0;
+    double holeDepth = 0.0;
+    bool hasHoleDepth = false;
+    bool isThrough = false;
+    bool hasIsThrough = false;
+    OcctExactPlacementFrame frame;
+    bool hasFrame = false;
+    std::vector<OcctExactPlacementAnchor> anchors;
+    std::array<double, 3> axisDirection = { 0.0, 0.0, 0.0 };
+    bool hasAxisDirection = false;
+    double counterboreDiameter = 0.0;
+    bool hasCounterboreDiameter = false;
+    double counterboreDepth = 0.0;
+    bool hasCounterboreDepth = false;
+    double countersinkDiameter = 0.0;
+    bool hasCountersinkDiameter = false;
+    double countersinkAngle = 0.0;
+    bool hasCountersinkAngle = false;
+};
+
 struct OcctProfile2DDiagnostic {
     std::string code;
     std::string message;
@@ -472,6 +498,100 @@ struct OcctExtrudedShapeBuildResult {
     std::vector<TopoDS_Shape> exactGeometryShapes;
     OcctGeneratedExtrudedShapeMetadata extrudedShape;
     bool hasExtrudedShape = false;
+};
+
+using OcctHelicalSweepDiagnostic = OcctProfile2DDiagnostic;
+
+struct OcctHelicalSweepPath {
+    double radius = 0.0;
+    double pitch = 0.0;
+    double turns = 0.0;
+    std::string handedness = "right";
+};
+
+struct OcctHelicalSweepSection {
+    std::string kind = "circle";
+    double radius = 0.0;
+    int segments = 24;
+    std::vector<std::array<double, 2>> points;
+};
+
+struct OcctHelicalSweepSpec {
+    int version = 1;
+    std::string units;
+    OcctHelicalSweepPath helix;
+    OcctHelicalSweepSection section;
+};
+
+struct OcctHelicalSweepValidationResult {
+    bool ok = false;
+    std::vector<OcctHelicalSweepDiagnostic> diagnostics;
+    OcctHelicalSweepSpec spec;
+    bool hasSpec = false;
+};
+
+struct OcctGeneratedHelicalSweepMetadata {
+    int version = 1;
+    std::string units;
+    double helixRadius = 0.0;
+    double pitch = 0.0;
+    double turns = 0.0;
+    double height = 0.0;
+    std::string handedness = "right";
+    std::string sectionKind = "circle";
+    double sectionRadius = 0.0;
+    int sectionSegments = 24;
+    int sectionPointCount = 0;
+    bool hasStableFaceBindings = false;
+    bool hasShapeValidation = false;
+    std::vector<OcctGeneratedShapeFaceBinding> faceBindings;
+    OcctGeneratedShapeShapeValidation shapeValidation;
+};
+
+struct OcctHelicalSweepBuildResult {
+    bool success = false;
+    std::string error;
+    std::vector<OcctHelicalSweepDiagnostic> diagnostics;
+    OcctSceneData scene;
+    TopoDS_Shape exactShape;
+    std::vector<TopoDS_Shape> exactGeometryShapes;
+    OcctGeneratedHelicalSweepMetadata helicalSweep;
+    bool hasHelicalSweep = false;
+};
+
+using OcctCompositeShapeDiagnostic = OcctProfile2DDiagnostic;
+
+struct OcctCompositeShapeValidationResult {
+    bool ok = false;
+    std::vector<OcctCompositeShapeDiagnostic> diagnostics;
+};
+
+struct OcctGeneratedCompositeShapeOperationDescriptor {
+    int index = 0;
+    std::string op;
+    std::string family;
+    bool hasTransform = false;
+};
+
+struct OcctGeneratedCompositeShapeMetadata {
+    int version = 1;
+    std::string units;
+    std::string seedFamily;
+    int stepCount = 0;
+    bool hasShapeValidation = false;
+    std::vector<OcctGeneratedCompositeShapeOperationDescriptor> operations;
+    OcctGeneratedShapeShapeValidation shapeValidation;
+};
+
+struct OcctCompositeShapeBuildResult {
+    bool success = false;
+    std::string error;
+    std::vector<OcctCompositeShapeDiagnostic> diagnostics;
+    OcctSceneData scene;
+    TopoDS_Shape exactShape;
+    std::vector<TopoDS_Shape> exactGeometryShapes;
+    OcctGeneratedCompositeShapeMetadata compositeShape;
+    bool hasCompositeShape = false;
 };
 
 struct ImportParams {

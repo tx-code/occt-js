@@ -127,6 +127,78 @@ Profile-solid wrapper rules:
 - `normalizeOcctResult(...)` and `normalizeExactOpenResult(...)` preserve additive `generated-extruded-shape` metadata when callers want canonical `geometryId` / `nodeId` attachment on top of raw root payloads.
 - Upstream apps still own tool-library schemas, vendor adapters, and any translation into shared `Profile2D` or extruded-shape specs.
 
+`@tx-code/occt-core` also mirrors the generic helical sweep lane exposed by the root runtime:
+
+```js
+const helicalSpec = {
+  version: 1,
+  units: "mm",
+  helix: {
+    radius: 8,
+    pitch: 3,
+    turns: 4,
+    handedness: "right",
+  },
+  section: {
+    kind: "circle",
+    radius: 0.8,
+    segments: 24,
+  },
+};
+
+const helicalValidation = await core.validateHelicalSweepSpec(helicalSpec);
+const helicalBuilt = await core.buildHelicalSweep(helicalSpec, {
+  linearDeflectionType: "bounding_box_ratio",
+  linearDeflection: 0.001,
+  angularDeflection: 0.5,
+});
+const helicalExact = await core.openExactHelicalSweep(helicalSpec);
+```
+
+Generic helical sweep wrapper rules:
+
+- `validateHelicalSweepSpec(spec)` forwards the typed helical sweep validation lane unchanged.
+- `buildHelicalSweep(spec, options?)` returns the root `generated-helical-sweep` payload, including additive `helicalSweep.faceBindings`.
+- `openExactHelicalSweep(spec, options?)` returns retained exact handles for the same generated helical sweep.
+
+## Generic Composite Shape SDK
+
+`@tx-code/occt-core` also exposes package-first wrappers for generic boolean composition over generated operands:
+
+```js
+const compositeSpec = {
+  version: 1,
+  units: "mm",
+  seed: {
+    family: "revolved",
+    spec,
+  },
+  steps: [
+    {
+      op: "cut",
+      operand: {
+        family: "helical-sweep",
+        spec: helicalSpec,
+      },
+    },
+  ],
+};
+
+const compositeValidation = await core.validateCompositeShapeSpec(compositeSpec);
+const compositeBuilt = await core.buildCompositeShape(compositeSpec, {
+  linearDeflectionType: "bounding_box_ratio",
+  linearDeflection: 0.001,
+  angularDeflection: 0.5,
+});
+const compositeExact = await core.openExactCompositeShape(compositeSpec);
+```
+
+Generic composite-shape wrapper rules:
+
+- `validateCompositeShapeSpec(spec)` validates a generic seed + boolean-step pipeline over `revolved`, `extruded`, and `helical-sweep` operands.
+- `buildCompositeShape(spec, options?)` returns the root `generated-composite-shape` payload with additive `compositeShape` metadata.
+- `openExactCompositeShape(spec, options?)` returns retained exact handles for the same generated composite body.
+
 ## Generated Revolved Shape SDK
 
 `@tx-code/occt-core` also exposes package-first wrappers for the generated revolved-shape Wasm surface:
@@ -219,6 +291,7 @@ Shipped helper boundaries stay intentionally narrow:
 If you need the raw carrier directly, the underlying root Wasm entrypoints are `MeasureExactDistance`, `MeasureExactAngle`, `MeasureExactThickness`, `SuggestExactDistancePlacement`, `SuggestExactAnglePlacement`, `SuggestExactThicknessPlacement`, `SuggestExactRadiusPlacement`, `SuggestExactDiameterPlacement`, `ClassifyExactRelation`, `DescribeExactHole`, and `DescribeExactChamfer`.
 
 For a longer package-first walkthrough, see [`docs/sdk/measurement.md`](../../docs/sdk/measurement.md).
+The downstream browser demo remains a simplified integration sample and keeps supported exact action routing, overlay rendering, and current-result session behavior in app code without turning those UI decisions into package behavior. For the current `v1.13` CAM sample, demo-owned workflow names (`clearance / step depth`, `center-to-center`, and `surface-to-center`) compose over shipped exact primitives and do not become package API names.
 
 ## Exact Lifecycle and Performance Guidance
 

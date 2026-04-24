@@ -39,6 +39,7 @@ test("root package publishes only the canonical packaged runtime surface", () =>
     "README.md",
     "dist/occt-js.d.ts",
     "dist/occt-js.js",
+    "dist/occt-js.mjs",
     "dist/occt-js.wasm",
     "package.json",
   ]);
@@ -52,10 +53,13 @@ test("root package exports the canonical entrypoints needed by vendored consumer
   assert.deepEqual(packageJson.exports, {
     ".": {
       types: "./dist/occt-js.d.ts",
+      node: "./dist/occt-js.js",
       require: "./dist/occt-js.js",
-      default: "./dist/occt-js.js",
+      import: "./dist/occt-js.mjs",
+      default: "./dist/occt-js.mjs",
     },
     "./dist/occt-js.js": "./dist/occt-js.js",
+    "./dist/occt-js.mjs": "./dist/occt-js.mjs",
     "./dist/occt-js.wasm": "./dist/occt-js.wasm",
     "./dist/occt-js.d.ts": "./dist/occt-js.d.ts",
     "./package.json": "./package.json",
@@ -65,11 +69,14 @@ test("root package exports the canonical entrypoints needed by vendored consumer
 test("published typings and runtime agree on wasm initialization hooks", () => {
   const typesSource = readRepoText("dist/occt-js.d.ts");
   const runtimeSource = readRepoText("dist/occt-js.js");
+  const esmRuntimeSource = readRepoText("dist/occt-js.mjs");
 
   assert.match(typesSource, /locateFile\?: \(filename: string, scriptDirectory\?: string\) => string;/);
   assert.match(typesSource, /wasmBinary\?: ArrayBuffer \| Uint8Array;/);
   assert.match(runtimeSource, /function locateFile\(path\)\{if\(Module\["locateFile"\]\)\{return Module\["locateFile"\]\(path,scriptDirectory\)\}/);
   assert.match(runtimeSource, /var wasmBinary=Module\["wasmBinary"\];/);
+  assert.match(esmRuntimeSource, /if \(!_scriptName && typeof import\.meta === "object" && typeof import\.meta\.url === "string"\) _scriptName = import\.meta\.url;/);
+  assert.match(esmRuntimeSource, /export default OcctJS;/);
 });
 
 test("packed root package ships appearance typings needed by downstream consumers", () => {
@@ -147,6 +154,20 @@ test("packed root package profile-solid docs and typings stay aligned with the s
   assert.match(typesSource, /ValidateExtrudedShapeSpec/);
   assert.match(typesSource, /BuildExtrudedShape/);
   assert.match(typesSource, /OpenExactExtrudedShape/);
+  assert.match(readme, /BuildHelicalSweep/);
+  assert.match(readme, /OpenExactHelicalSweep/);
+  assert.match(readme, /BuildCompositeShape/);
+  assert.match(readme, /OpenExactCompositeShape/);
+  assert.match(typesSource, /export interface OcctJSHelicalSweepSpec/);
+  assert.match(typesSource, /export interface OcctJSGeneratedHelicalSweepMetadata/);
+  assert.match(typesSource, /ValidateHelicalSweepSpec/);
+  assert.match(typesSource, /BuildHelicalSweep/);
+  assert.match(typesSource, /OpenExactHelicalSweep/);
+  assert.match(typesSource, /export interface OcctJSCompositeShapeSpec/);
+  assert.match(typesSource, /export interface OcctJSGeneratedCompositeShapeMetadata/);
+  assert.match(typesSource, /ValidateCompositeShapeSpec/);
+  assert.match(typesSource, /BuildCompositeShape/);
+  assert.match(typesSource, /OpenExactCompositeShape/);
 });
 
 test("package contract keeps import appearance package-first and independent of viewer surfaces", () => {

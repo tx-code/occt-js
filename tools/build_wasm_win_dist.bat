@@ -23,6 +23,8 @@ if not exist "%DIST_WASM%" (
     goto :error
 )
 
+node tools\generate_esm_runtime_entry.mjs || goto :error
+
 node tools\check_wasm_prereqs.mjs dist-types || goto :error
 
 echo Build Succeeded.

@@ -98,6 +98,48 @@ test("authoritative root release and docs include shared profile and extruded-sh
   assert.match(occtCoreReadme, /openExactExtrudedShape/);
 });
 
+test("authoritative root release and docs include generated helical-sweep coverage", () => {
+  const packageJson = readRepoJson("package.json");
+  const releaseCommand = packageJson.scripts?.["test:release:root"] ?? "";
+  const testCommand = packageJson.scripts?.test ?? "";
+  const readme = readRepoText("README.md");
+  const occtCoreReadme = readRepoText("packages/occt-core/README.md");
+
+  assert.match(releaseCommand, /test\/helical_sweep_spec_contract\.test\.mjs/);
+  assert.match(releaseCommand, /test\/generated_helical_sweep_contract\.test\.mjs/);
+  assert.match(releaseCommand, /test\/exact_generated_helical_sweep_contract\.test\.mjs/);
+  assert.match(testCommand, /test\/helical_sweep_spec_contract\.test\.mjs/);
+  assert.match(testCommand, /test\/generated_helical_sweep_contract\.test\.mjs/);
+  assert.match(testCommand, /test\/exact_generated_helical_sweep_contract\.test\.mjs/);
+  assert.match(readme, /ValidateHelicalSweepSpec/);
+  assert.match(readme, /BuildHelicalSweep/);
+  assert.match(readme, /OpenExactHelicalSweep/);
+  assert.match(occtCoreReadme, /validateHelicalSweepSpec/);
+  assert.match(occtCoreReadme, /buildHelicalSweep/);
+  assert.match(occtCoreReadme, /openExactHelicalSweep/);
+});
+
+test("authoritative root release and docs include generated composite-shape coverage", () => {
+  const packageJson = readRepoJson("package.json");
+  const releaseCommand = packageJson.scripts?.["test:release:root"] ?? "";
+  const testCommand = packageJson.scripts?.test ?? "";
+  const readme = readRepoText("README.md");
+  const occtCoreReadme = readRepoText("packages/occt-core/README.md");
+
+  assert.match(releaseCommand, /test\/composite_shape_spec_contract\.test\.mjs/);
+  assert.match(releaseCommand, /test\/generated_composite_shape_contract\.test\.mjs/);
+  assert.match(releaseCommand, /test\/exact_generated_composite_shape_contract\.test\.mjs/);
+  assert.match(testCommand, /test\/composite_shape_spec_contract\.test\.mjs/);
+  assert.match(testCommand, /test\/generated_composite_shape_contract\.test\.mjs/);
+  assert.match(testCommand, /test\/exact_generated_composite_shape_contract\.test\.mjs/);
+  assert.match(readme, /ValidateCompositeShapeSpec/);
+  assert.match(readme, /BuildCompositeShape/);
+  assert.match(readme, /OpenExactCompositeShape/);
+  assert.match(occtCoreReadme, /validateCompositeShapeSpec/);
+  assert.match(occtCoreReadme, /buildCompositeShape/);
+  assert.match(occtCoreReadme, /openExactCompositeShape/);
+});
+
 test("release governance keeps packaged appearance contract coverage on the authoritative root gate", () => {
   const packageJson = readRepoJson("package.json");
   const releaseCommand = packageJson.scripts?.["test:release:root"] ?? "";
@@ -131,12 +173,13 @@ test("authoritative root release command surface keeps perf and soak lanes optio
   assert.equal(releaseCommand.includes("test:soak:exact"), false);
 });
 
-test("demo fallback CDN derives its semver from the root package instead of a hardcoded version", () => {
+test("demo browser runtime does not depend on CDN package publishing", () => {
   const demoHook = readRepoText("demo/src/hooks/useOcct.js");
 
-  assert.match(demoHook, /import packageJson from "\.\.\/\.\.\/\.\.\/package\.json";/);
-  assert.match(demoHook, /https:\/\/unpkg\.com\/@tx-code\/occt-js@\$\{packageJson\.version\}\/dist\//);
-  assert.doesNotMatch(demoHook, /https:\/\/unpkg\.com\/@tx-code\/occt-js@0\.\d+\.\d+\/dist\//);
+  assert.match(demoHook, /import\("@tx-code\/occt-js"\)/);
+  assert.match(demoHook, /import\("@tx-code\/occt-js\/dist\/occt-js\.wasm\?url"\)/);
+  assert.doesNotMatch(demoHook, /unpkg\.com/);
+  assert.doesNotMatch(demoHook, /packageJson\.version/);
 });
 
 test("release docs keep the root Wasm carrier authoritative", () => {
@@ -209,9 +252,14 @@ test("release docs describe the helper SDK package-first while keeping deeper fe
   const readme = readRepoText("README.md");
   const occtCoreReadme = readRepoText("packages/occt-core/README.md");
   const sdkGuide = readRepoText("docs/sdk/measurement.md");
+  const secondaryContract = readRepoText("test/secondary_surface_contract.test.mjs");
+  const packageJson = readRepoJson("package.json");
+  const releaseCommand = packageJson.scripts?.["test:release:root"] ?? "";
+  const secondaryCommand = packageJson.scripts?.["test:secondary:contracts"] ?? "";
 
   assert.match(readme, /## Exact Measurement and Helper SDK/);
   assert.match(readme, /@tx-code\/occt-core/);
+  assert.match(readme, /simplified integration sample/i);
   assert.match(readme, /describeExactHole/);
   assert.match(readme, /describeExactChamfer/);
   assert.match(readme, /suggestExactMidpointPlacement/);
@@ -220,6 +268,10 @@ test("release docs describe the helper SDK package-first while keeping deeper fe
   assert.match(readme, /SuggestExactDistancePlacement/);
   assert.match(readme, /ClassifyExactRelation/);
   assert.match(readme, /docs\/sdk\/measurement\.md/);
+  assert.match(readme, /demo-owned/i);
+  assert.match(readme, /clearance \/ step depth/i);
+  assert.match(readme, /center-to-center/i);
+  assert.match(readme, /surface-to-center/i);
   assert.match(readme, /supported cylindrical hole/i);
   assert.match(readme, /supported planar chamfer face/i);
   assert.match(readme, /midplane-style symmetry helper/i);
@@ -239,8 +291,19 @@ test("release docs describe the helper SDK package-first while keeping deeper fe
   assert.match(occtCoreReadme, /midplane-style symmetry helper/i);
   assert.match(occtCoreReadme, /feature discovery/i);
   assert.match(occtCoreReadme, /viewer policy/i);
+  assert.match(occtCoreReadme, /demo-owned/i);
+  assert.match(occtCoreReadme, /clearance \/ step depth/i);
+  assert.match(occtCoreReadme, /center-to-center/i);
+  assert.match(occtCoreReadme, /surface-to-center/i);
+  assert.match(occtCoreReadme, /supported exact action routing/i);
+  assert.match(occtCoreReadme, /current-result session behavior/i);
+  assert.doesNotMatch(occtCoreReadme, /selection-to-measure mapping/i);
+  assert.doesNotMatch(occtCoreReadme, /transient run history/i);
+  assert.doesNotMatch(occtCoreReadme, /runDemoMeasurementAction/);
+  assert.doesNotMatch(occtCoreReadme, /deriveDemoMeasurementActions/);
   assert.match(sdkGuide, /# Exact Measurement and Helper SDK/);
   assert.match(sdkGuide, /Package-First Workflow/);
+  assert.match(sdkGuide, /simplified integration sample/i);
   assert.match(sdkGuide, /suggestExactDistancePlacement/);
   assert.match(sdkGuide, /suggestExactRadiusPlacement/);
   assert.match(sdkGuide, /classifyExactRelation/);
@@ -255,6 +318,16 @@ test("release docs describe the helper SDK package-first while keeping deeper fe
   assert.match(sdkGuide, /midplane-style symmetry helper/i);
   assert.match(sdkGuide, /feature discovery/i);
   assert.match(sdkGuide, /viewer policy/i);
+  assert.match(sdkGuide, /demo-owned/i);
+  assert.match(sdkGuide, /clearance \/ step depth/i);
+  assert.match(sdkGuide, /center-to-center/i);
+  assert.match(sdkGuide, /surface-to-center/i);
+  assert.match(secondaryContract, /measurement-action-clearance/);
+  assert.match(secondaryContract, /measurement-action-step-depth/);
+  assert.match(secondaryContract, /measurement-action-surface-to-center/);
+  assert.equal(secondaryCommand, "node --test test/secondary_surface_contract.test.mjs");
+  assert.equal(releaseCommand.includes("secondary_surface_contract"), false);
+  assert.equal(releaseCommand.includes("test:secondary:contracts"), false);
 });
 
 test("release docs describe package-first lifecycle ownership diagnostics and stress lanes", () => {

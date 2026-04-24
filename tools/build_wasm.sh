@@ -33,7 +33,11 @@ if [ -f "$BUILD_DIR/occt-js.wasm" ]; then
     cp "$BUILD_DIR/occt-js.wasm" "$DIST_DIR/"
 fi
 
+echo "=== Generating ESM runtime entry ==="
+node "$PROJECT_DIR/tools/generate_esm_runtime_entry.mjs"
+
 echo "=== Build complete ==="
 echo "Output: $DIST_DIR/occt-js.js"
+echo "Output: $DIST_DIR/occt-js.mjs"
 echo "Output: $DIST_DIR/occt-js.wasm"
 echo "Tracked types: $DIST_DIR/occt-js.d.ts"

@@ -5,13 +5,6 @@ const IDENTITY_MATRIX = [
   0, 0, 0, 1,
 ];
 
-const ANALYSIS_Z_UP_TO_BABYLON_Y_UP = [
-  1, 0, 0, 0,
-  0, 0, -1, 0,
-  0, 1, 0, 0,
-  0, 0, 0, 1,
-];
-
 function multiplyMatrices(a, b) {
   const out = new Array(16).fill(0);
   for (let row = 0; row < 4; row += 1) {
@@ -24,18 +17,6 @@ function multiplyMatrices(a, b) {
     }
   }
   return out;
-}
-
-function normalizeOrientationForBabylon(orientation) {
-  const transform = orientation?.transform;
-  if (!Array.isArray(transform) || transform.length !== 16) {
-    return null;
-  }
-
-  return {
-    ...orientation,
-    transform: multiplyMatrices(ANALYSIS_Z_UP_TO_BABYLON_Y_UP, transform),
-  };
 }
 
 export function applyOrientationToModel(model, orientation) {
@@ -75,5 +56,5 @@ export async function resolveAutoOrientedModel({
     return model;
   }
 
-  return applyOrientationToModel(model, normalizeOrientationForBabylon(orientation));
+  return applyOrientationToModel(model, orientation);
 }
