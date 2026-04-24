@@ -1,7 +1,9 @@
 import { useRef, useEffect, useCallback } from "react";
 import { convertFileSrc, isTauri } from "@tauri-apps/api/core";
 import { resolveResource } from "@tauri-apps/api/path";
+import OcctJS from "@tx-code/occt-js";
 import { createOcctCore, normalizeExactOpenResult, normalizeOcctResult } from "@tx-code/occt-core";
+import occtWasmUrl from "../../../dist/occt-js.wasm?url";
 import { getOcctFormatFromFileName, resolveAutoOrientedResult } from "../lib/auto-orient";
 import { createDemoExactSession } from "../lib/exact-session";
 import { useViewerStore } from "../store/viewerStore.js";
@@ -46,18 +48,13 @@ function loadScript(url) {
 }
 
 async function loadWebOcctModule() {
-  const [{ default: OcctJS }, { default: wasmUrl }] = await Promise.all([
-    import("@tx-code/occt-js"),
-    import("@tx-code/occt-js/dist/occt-js.wasm?url"),
-  ]);
-
   if (typeof OcctJS !== "function") {
     throw new TypeError("default export must be a factory function");
   }
 
   return OcctJS({
     locateFile(fileName) {
-      return fileName.endsWith(".wasm") ? wasmUrl : fileName;
+      return fileName.endsWith(".wasm") ? occtWasmUrl : fileName;
     },
   });
 }

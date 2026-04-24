@@ -41,8 +41,8 @@ test("demo useOcct hook keeps Tauri on dist resources and web on bundled ESM imp
 
   assert.ok(hookSource.includes('resolveResource("dist/occt-js.js")'));
   assert.ok(hookSource.includes('resolveResource("dist/occt-js.wasm")'));
-  assert.ok(hookSource.includes('import("@tx-code/occt-js")'));
-  assert.ok(hookSource.includes('import("@tx-code/occt-js/dist/occt-js.wasm?url")'));
+  assert.ok(hookSource.includes('import OcctJS from "@tx-code/occt-js";'));
+  assert.ok(hookSource.includes('import occtWasmUrl from "../../../dist/occt-js.wasm?url";'));
   assert.doesNotMatch(hookSource, /new URL\(\s*\/\*\s*@vite-ignore\s*\*\/\s*"\.\.\/\.\.\/\.\.\/dist\/",\s*import\.meta\.url\s*\)/);
   assert.doesNotMatch(hookSource, /new URL\(\s*"\.\.\/\.\.\/\.\.\/dist\/",\s*import\.meta\.url\s*\)/);
   assert.equal(hookSource.includes("build/wasm"), false);

@@ -8,9 +8,9 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const useOcctSource = readFileSync(resolve(__dirname, "..", "src", "hooks", "useOcct.js"), "utf8");
 const useViewerActionsSource = readFileSync(resolve(__dirname, "..", "src", "hooks", "useViewerActions.js"), "utf8");
 
-test("web runtime imports the package ESM factory and wasm URL without CDN fallbacks", () => {
-  assert.match(useOcctSource, /import\("@tx-code\/occt-js"\)/);
-  assert.match(useOcctSource, /import\("@tx-code\/occt-js\/dist\/occt-js\.wasm\?url"\)/);
+test("web runtime imports the package ESM factory and repo-local wasm URL without CDN fallbacks", () => {
+  assert.match(useOcctSource, /import OcctJS from "@tx-code\/occt-js";/);
+  assert.match(useOcctSource, /import occtWasmUrl from "\.\.\/\.\.\/\.\.\/dist\/occt-js\.wasm\?url";/);
   assert.match(useOcctSource, /default export must be a factory function/);
   assert.doesNotMatch(useOcctSource, /unpkg\.com/);
   assert.doesNotMatch(useOcctSource, /fallbackModuleUrl/);
