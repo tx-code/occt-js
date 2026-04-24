@@ -76,6 +76,10 @@ function applyCadShadingToResources(resources) {
   }
 }
 
+function getPlanarAxisHelper(gridHelpers) {
+  return gridHelpers?.yAxis ?? gridHelpers?.zAxis ?? null;
+}
+
 export function createOcctBabylonViewer(scene, options = {}) {
   assertScene(scene);
 
@@ -165,14 +169,17 @@ export function createOcctBabylonViewer(scene, options = {}) {
 
     gridHelpers.ground.isVisible = sceneState.gridVisible;
     gridHelpers.xAxis.isVisible = sceneState.axesVisible;
-    gridHelpers.zAxis.isVisible = sceneState.axesVisible;
+    const planarAxisHelper = getPlanarAxisHelper(gridHelpers);
+    if (planarAxisHelper) {
+      planarAxisHelper.isVisible = sceneState.axesVisible;
+    }
   }
 
   function replaceGridHelpers(bounds = getSceneBounds()) {
     if (gridHelpers) {
       gridHelpers.ground.dispose(false, true);
       gridHelpers.xAxis.dispose(false, true);
-      gridHelpers.zAxis.dispose(false, true);
+      getPlanarAxisHelper(gridHelpers)?.dispose(false, true);
     }
 
     gridHelpers = createGridHelpers(scene, bounds, { theme: sceneState.theme });
@@ -333,7 +340,7 @@ export function createOcctBabylonViewer(scene, options = {}) {
       if (gridHelpers) {
         gridHelpers.ground.dispose(false, true);
         gridHelpers.xAxis.dispose(false, true);
-        gridHelpers.zAxis.dispose(false, true);
+        getPlanarAxisHelper(gridHelpers)?.dispose(false, true);
         gridHelpers = null;
       }
       if (lights) {

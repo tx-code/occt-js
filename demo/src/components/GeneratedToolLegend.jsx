@@ -27,7 +27,7 @@ export default function GeneratedToolLegend() {
     return null;
   }
 
-  const summaryParts = [legend.units?.toUpperCase(), legend.angleLabel, legend.closure].filter(Boolean);
+  const summaryParts = [legend.units?.toUpperCase(), legend.angleLabel, legend.closure, legend.helicalLabel].filter(Boolean);
   const activeKeys = resolveGeneratedToolLegendActiveKeys(legend, selectedDetail);
 
   const handleEntryClick = (entry, event) => {

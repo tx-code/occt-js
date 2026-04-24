@@ -96,3 +96,42 @@ test("resolveGeneratedToolLegendActiveKeys marks rows that correspond to selecte
   assert.equal(activeKeys.size, 1);
   assert.equal(activeKeys.has(legend.entries[1].key), true);
 });
+
+test("buildGeneratedToolLegend supports helical sweep metadata with sweep/cap semantics", () => {
+  const legend = buildGeneratedToolLegend({
+    sourceFormat: "generated-helical-sweep",
+    geometries: [{
+      id: "geo_0",
+      color: [0.8, 0.82, 0.86, 1],
+      faces: [
+        { id: 1, color: [0.84, 0.66, 0.24, 1] },
+        { id: 2, color: [0.26, 0.63, 0.88, 1] },
+      ],
+    }],
+    helicalSweep: {
+      units: "mm",
+      pitch: 1,
+      turns: 8,
+      sectionKind: "polyline",
+      faceBindings: [
+        {
+          geometryIndex: 0,
+          geometryId: "geo_0",
+          faceId: 1,
+          systemRole: "sweep",
+        },
+        {
+          geometryIndex: 0,
+          geometryId: "geo_0",
+          faceId: 2,
+          systemRole: "start_cap",
+        },
+      ],
+    },
+  });
+
+  assert.equal(legend.units, "mm");
+  assert.equal(legend.entries.length, 2);
+  assert.equal(legend.entries[0].label, "Sweep");
+  assert.equal(legend.entries[1].label, "Start Cap");
+});

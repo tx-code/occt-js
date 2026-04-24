@@ -1,6 +1,8 @@
 const ROLE_ORDER = Object.freeze({
   profile: 0,
+  wall: 5,
   closure: 10,
+  sweep: 15,
   axis: 20,
   start_cap: 30,
   end_cap: 40,
@@ -17,7 +19,9 @@ const TAG_ORDER = Object.freeze({
 
 const ROLE_LABEL = Object.freeze({
   profile: "Profile",
+  wall: "Wall",
   closure: "Closure",
+  sweep: "Sweep",
   axis: "Axis",
   start_cap: "Start Cap",
   end_cap: "End Cap",
@@ -130,11 +134,37 @@ function formatAngle(angleDeg) {
   return Number.isInteger(numeric) ? `${numeric}\u00b0` : `${numeric.toFixed(1)}\u00b0`;
 }
 
-export function buildGeneratedToolLegend(model) {
-  const metadata = model?.revolvedShape;
-  if (!metadata || !Array.isArray(metadata.faceBindings) || metadata.faceBindings.length === 0) {
+function formatNumber(value, decimals = 3) {
+  if (!Number.isFinite(Number(value))) {
     return null;
   }
+  const numeric = Number(value);
+  if (Number.isInteger(numeric)) {
+    return String(numeric);
+  }
+  return numeric.toFixed(decimals).replace(/\.?0+$/, "");
+}
+
+function resolveGeneratedShapeLegendMetadata(model) {
+  const candidates = [
+    { kind: "revolved", metadata: model?.revolvedShape },
+    { kind: "helical", metadata: model?.helicalSweep },
+    { kind: "extruded", metadata: model?.extrudedShape },
+    { kind: "composite", metadata: model?.compositeShape },
+  ];
+  return candidates.find((entry) => (
+    entry.metadata
+    && Array.isArray(entry.metadata.faceBindings)
+    && entry.metadata.faceBindings.length > 0
+  )) ?? null;
+}
+
+export function buildGeneratedToolLegend(model) {
+  const resolved = resolveGeneratedShapeLegendMetadata(model);
+  if (!resolved) {
+    return null;
+  }
+  const { kind, metadata } = resolved;
 
   const entries = new Map();
   for (const binding of metadata.faceBindings) {
@@ -172,9 +202,19 @@ export function buildGeneratedToolLegend(model) {
   }
 
   return {
+    kind,
     units: typeof metadata.units === "string" ? metadata.units : null,
-    angleLabel: formatAngle(metadata.angleDeg),
-    closure: typeof metadata.closure === "string" ? titleCaseToken(metadata.closure) : null,
+    angleLabel: kind === "revolved" ? formatAngle(metadata.angleDeg) : null,
+    closure: kind === "revolved" && typeof metadata.closure === "string"
+      ? titleCaseToken(metadata.closure)
+      : null,
+    helicalLabel: kind === "helical"
+      ? [
+          Number.isFinite(Number(metadata.pitch)) ? `P${formatNumber(metadata.pitch)}` : null,
+          Number.isFinite(Number(metadata.turns)) ? `${formatNumber(metadata.turns)}T` : null,
+          typeof metadata.sectionKind === "string" ? titleCaseToken(metadata.sectionKind) : null,
+        ].filter(Boolean).join(" · ")
+      : null,
     entries: resolvedEntries,
   };
 }

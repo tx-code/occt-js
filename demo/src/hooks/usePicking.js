@@ -1,5 +1,6 @@
 // demo/src/hooks/usePicking.js
 import { useEffect, useRef, useCallback } from "react";
+import { resolveExactElementRef } from "@tx-code/occt-core";
 import {
   createPointerClickTracker,
   createOcctVertexPreviewPoints,
@@ -7,11 +8,18 @@ import {
   getOcctVertexCoords,
   pickOcctClosestVertex,
 } from "@tx-code/occt-babylon-viewer";
-import { useViewerStore } from "../store/viewerStore";
+import { useViewerStore } from "../store/viewerStore.js";
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
+const IDENTITY_MATRIX = Object.freeze([
+  1, 0, 0, 0,
+  0, 1, 0, 0,
+  0, 0, 1, 0,
+  0, 0, 0, 1,
+]);
+
 const PICK_COLORS = {
   select: null,       // lazily initialized (needs BABYLON)
   selectEmissive: null,
@@ -45,6 +53,128 @@ const HIGHLIGHT_STYLE = Object.freeze({
     edgeXrayAlpha: 0,
   }),
 });
+
+function cloneMatrix(matrix) {
+  return Array.isArray(matrix) && matrix.length === 16
+    ? matrix.slice()
+    : IDENTITY_MATRIX.slice();
+}
+
+function multiplyMatrices(left, right) {
+  const output = new Array(16).fill(0);
+  for (let row = 0; row < 4; row += 1) {
+    for (let column = 0; column < 4; column += 1) {
+      let sum = 0;
+      for (let index = 0; index < 4; index += 1) {
+        sum += left[index * 4 + row] * right[column * 4 + index];
+      }
+      output[column * 4 + row] = sum;
+    }
+  }
+  return output;
+}
+
+function makeSelectionFailure(code, message) {
+  return {
+    ok: false,
+    code,
+    message,
+  };
+}
+
+function parseActorScopedIdentifier(value) {
+  if (typeof value !== "string" || !value.startsWith("actor:")) {
+    return null;
+  }
+  const actorStart = "actor:".length;
+  const actorEnd = value.indexOf(":", actorStart);
+  if (actorEnd < 0) {
+    return null;
+  }
+  const actorId = value.slice(actorStart, actorEnd);
+  const localId = value.slice(actorEnd + 1);
+  if (!actorId || !localId) {
+    return null;
+  }
+  return { actorId, localId };
+}
+
+function resolveActorPoseTransform(actor) {
+  return cloneMatrix(actor?.actorPose?.matrix);
+}
+
+function attachSelectionContext(detail, selectionContext) {
+  if (!selectionContext || selectionContext.ok !== true) {
+    return detail;
+  }
+
+  return {
+    ...detail,
+    actorId: selectionContext.actorId,
+    actorRole: selectionContext.actorRole,
+    actorLabel: selectionContext.actorLabel,
+    nodeId: selectionContext.workspaceNodeId,
+    actorNodeId: selectionContext.actorNodeId,
+    actorGeometryId: selectionContext.actorGeometryId,
+    exactRef: selectionContext.exactRef,
+  };
+}
+
+export function resolveActorScopedSelectionContext({
+  workspaceActors,
+  workspaceNodeId,
+  workspaceGeometryId,
+  kind,
+  elementId,
+} = {}) {
+  const scopedNode = parseActorScopedIdentifier(workspaceNodeId);
+  const scopedGeometry = parseActorScopedIdentifier(workspaceGeometryId);
+  if (!scopedNode || !scopedGeometry) {
+    return makeSelectionFailure("invalid-id", "Workspace selection requires actor-scoped nodeId and geometryId.");
+  }
+  if (scopedNode.actorId !== scopedGeometry.actorId) {
+    return makeSelectionFailure("actor-mismatch", "Workspace nodeId and geometryId must resolve to the same actorId.");
+  }
+
+  const actorId = scopedNode.actorId;
+  const actor = workspaceActors?.[actorId];
+  if (!actor) {
+    return makeSelectionFailure("invalid-id", `Unknown workspace actor "${actorId}".`);
+  }
+  if (!actor?.exactSession?.exactModel) {
+    return makeSelectionFailure("missing-exact-session", `Actor "${actorId}" does not have a live exact session.`);
+  }
+
+  const resolvedRef = resolveExactElementRef(actor.exactSession.exactModel, {
+    nodeId: scopedNode.localId,
+    geometryId: scopedGeometry.localId,
+    kind,
+    elementId,
+  });
+  if (resolvedRef?.ok !== true) {
+    return resolvedRef;
+  }
+
+  const actorPoseTransform = resolveActorPoseTransform(actor);
+  const occurrenceTransform = cloneMatrix(resolvedRef.transform);
+
+  return {
+    ok: true,
+    actorId,
+    actorRole: actor.actorRole ?? null,
+    actorLabel: actor.label || actor.fileName || actorId,
+    workspaceNodeId,
+    workspaceGeometryId,
+    actorNodeId: scopedNode.localId,
+    actorGeometryId: scopedGeometry.localId,
+    actorPoseTransform,
+    occurrenceTransform,
+    exactRef: {
+      ...resolvedRef,
+      transform: multiplyMatrices(actorPoseTransform, occurrenceTransform),
+    },
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Geometry math helpers
@@ -120,6 +250,23 @@ function resolveGeometryIdForMesh(mesh) {
   const metadata = (mesh?.metadata && typeof mesh.metadata === "object" ? mesh.metadata : null)
     || (sourceMesh?.metadata && typeof sourceMesh.metadata === "object" ? sourceMesh.metadata : null);
   return typeof metadata?.occt?.geometryId === "string" ? metadata.occt.geometryId : null;
+}
+
+function resolveNodeIdForMesh(mesh) {
+  const sourceMesh = getSourceMesh(mesh);
+  const metadata = (mesh?.metadata && typeof mesh.metadata === "object" ? mesh.metadata : null)
+    || (sourceMesh?.metadata && typeof sourceMesh.metadata === "object" ? sourceMesh.metadata : null);
+  return typeof metadata?.occt?.nodeId === "string" ? metadata.occt.nodeId : null;
+}
+
+function resolveSelectionContextForMesh(pickedMesh, kind, elementId) {
+  return resolveActorScopedSelectionContext({
+    workspaceActors: useViewerStore.getState().workspaceActors ?? {},
+    workspaceNodeId: resolveNodeIdForMesh(pickedMesh),
+    workspaceGeometryId: resolveGeometryIdForMesh(pickedMesh),
+    kind,
+    elementId,
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -473,7 +620,7 @@ function createVertexHighlight(scene, pickedMesh, geo, vertexIndex, camera, BABY
 // ---------------------------------------------------------------------------
 // Build detail info for store
 // ---------------------------------------------------------------------------
-function buildFaceDetail(geo, faceId, meshUniqueId) {
+export function buildFaceDetail(geo, faceId, meshUniqueId, selectionContext = null) {
   const face = geo.faces[faceId - 1]; // faceId is 1-based
   if (!face) return null;
   const info = {
@@ -484,31 +631,37 @@ function buildFaceDetail(geo, faceId, meshUniqueId) {
     color: face.color || geo.color || null,
     adjacentFaces: face.adjacentFaces || [],
   };
-  return {
+  return attachSelectionContext({
     mode: "face",
     id: `face:${meshUniqueId}:${faceId}`,
     meshUniqueId,
     geometryId: geo?.id,
     faceId,
     info,
-  };
+  }, selectionContext);
 }
 
-function buildEdgeDetail(geo, edgeIndex, meshUniqueId) {
+export function buildEdgeDetail(geo, edgeIndex, meshUniqueId, selectionContext = null) {
   const edge = geo.edges[edgeIndex];
   if (!edge) return null;
   const ownerFaces = toIntArray(edge.ownerFaceIds ?? edge.ownerFaces);
   const freeEdge = edge.isFreeEdge ?? edge.freeEdge ?? false;
   const info = {
-    edgeId: edgeIndex,
+    edgeId: Number.isFinite(edge.id) ? edge.id : edgeIndex,
     pointCount: edge.points ? edge.points.length / 3 : 0,
     freeEdge: !!freeEdge,
     ownerFaces,
   };
-  return { mode: "edge", id: `edge:${meshUniqueId}:${edgeIndex}`, meshUniqueId, info };
+  return attachSelectionContext({
+    mode: "edge",
+    id: `edge:${meshUniqueId}:${edgeIndex}`,
+    meshUniqueId,
+    geometryId: geo?.id,
+    info,
+  }, selectionContext);
 }
 
-function buildVertexDetail(geo, vertexIndex, meshUniqueId) {
+export function buildVertexDetail(geo, vertexIndex, meshUniqueId, selectionContext = null) {
   const v = geo.vertices[vertexIndex];
   if (!v) return null;
   const coords = getOcctVertexCoords(v);
@@ -519,7 +672,13 @@ function buildVertexDetail(geo, vertexIndex, meshUniqueId) {
     y: coords.y,
     z: coords.z,
   };
-  return { mode: "vertex", id: `vertex:${meshUniqueId}:${vertexIndex}`, meshUniqueId, info };
+  return attachSelectionContext({
+    mode: "vertex",
+    id: `vertex:${meshUniqueId}:${vertexIndex}`,
+    meshUniqueId,
+    geometryId: geo?.id,
+    info,
+  }, selectionContext);
 }
 
 // ---------------------------------------------------------------------------
@@ -599,7 +758,15 @@ export function usePicking(viewerRefs) {
       function pushToStore() {
         const items = [];
         for (const entry of selectionSetRef.current.values()) {
-          items.push({ mode: entry.mode, id: entry.id, meshUniqueId: entry.meshUniqueId });
+          items.push({
+            mode: entry.mode,
+            id: entry.id,
+            meshUniqueId: entry.meshUniqueId,
+            actorId: entry.detail?.actorId ?? null,
+            geometryId: entry.detail?.geometryId ?? null,
+            actorGeometryId: entry.detail?.actorGeometryId ?? null,
+            exactRef: entry.detail?.exactRef ?? null,
+          });
         }
         useViewerStore.getState().setSelectedItems(items);
 
@@ -641,6 +808,11 @@ export function usePicking(viewerRefs) {
           return key;
         }
 
+        const selectionContext = resolveSelectionContextForMesh(pickedMesh, "face", faceId);
+        if (selectionContext?.ok !== true) {
+          return null;
+        }
+
         const disposables = createFaceHighlight(
           viewerRefs,
           pickedMesh,
@@ -649,7 +821,7 @@ export function usePicking(viewerRefs) {
           BABYLON,
           faceTintStateRef.current,
         );
-        const detail = buildFaceDetail(geo, faceId, pickedMesh.uniqueId);
+        const detail = buildFaceDetail(geo, faceId, pickedMesh.uniqueId, selectionContext);
         selectionSetRef.current.set(key, {
           mode: "face",
           id: key,
@@ -756,19 +928,22 @@ export function usePicking(viewerRefs) {
         if (!result) return;
 
         const key = `edge:${pickedMesh.uniqueId}:${result.index}`;
+        const edgeId = Number.isFinite(result.edge?.id) ? result.edge.id : result.index;
+        const selectionContext = resolveSelectionContextForMesh(pickedMesh, "edge", edgeId);
+        if (selectionContext?.ok !== true) return;
 
         if (ctrlKey) {
           if (selectionSetRef.current.has(key)) {
             removeSelection(key);
           } else {
             const disposables = createEdgeHighlight(viewerRefs, "select", pickedMesh, geo, result.index, BABYLON);
-            const detail = buildEdgeDetail(geo, result.index, pickedMesh.uniqueId);
+            const detail = buildEdgeDetail(geo, result.index, pickedMesh.uniqueId, selectionContext);
             selectionSetRef.current.set(key, { mode: "edge", id: key, meshUniqueId: pickedMesh.uniqueId, disposables, detail });
           }
         } else {
           clearAll();
           const disposables = createEdgeHighlight(viewerRefs, "select", pickedMesh, geo, result.index, BABYLON);
-          const detail = buildEdgeDetail(geo, result.index, pickedMesh.uniqueId);
+          const detail = buildEdgeDetail(geo, result.index, pickedMesh.uniqueId, selectionContext);
           selectionSetRef.current.set(key, { mode: "edge", id: key, meshUniqueId: pickedMesh.uniqueId, disposables, detail });
         }
         pushToStore();
@@ -800,19 +975,23 @@ export function usePicking(viewerRefs) {
         if (!result) return;
 
         const key = `vertex:${pickedMesh.uniqueId}:${result.index}`;
+        const vertex = geo.vertices[result.index];
+        const vertexId = Number.isFinite(vertex?.id) ? vertex.id : result.index;
+        const selectionContext = resolveSelectionContextForMesh(pickedMesh, "vertex", vertexId);
+        if (selectionContext?.ok !== true) return;
 
         if (ctrlKey) {
           if (selectionSetRef.current.has(key)) {
             removeSelection(key);
           } else {
             const disposables = createVertexHighlight(scene, pickedMesh, geo, result.index, camera, BABYLON);
-            const detail = buildVertexDetail(geo, result.index, pickedMesh.uniqueId);
+            const detail = buildVertexDetail(geo, result.index, pickedMesh.uniqueId, selectionContext);
             selectionSetRef.current.set(key, { mode: "vertex", id: key, meshUniqueId: pickedMesh.uniqueId, disposables, detail });
           }
         } else {
           clearAll();
           const disposables = createVertexHighlight(scene, pickedMesh, geo, result.index, camera, BABYLON);
-          const detail = buildVertexDetail(geo, result.index, pickedMesh.uniqueId);
+          const detail = buildVertexDetail(geo, result.index, pickedMesh.uniqueId, selectionContext);
           selectionSetRef.current.set(key, { mode: "vertex", id: key, meshUniqueId: pickedMesh.uniqueId, disposables, detail });
         }
         pushToStore();

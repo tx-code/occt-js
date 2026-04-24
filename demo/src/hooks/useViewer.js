@@ -3,6 +3,11 @@ import { useRef, useEffect, useCallback } from "react";
 import { useViewerStore } from "../store/viewerStore";
 import { getCameraAttachOptions } from "../lib/camera-input.js";
 import { createMockToolpathBatches } from "../lib/mock-toolpath.js";
+import {
+  buildMeasurementOverlayState,
+  MEASUREMENT_OVERLAY_LAYER_STYLES,
+  resolveActiveMeasurementOverlay,
+} from "../lib/measurement-overlay.js";
 import { buildOcctScene } from "@tx-code/occt-babylon-loader";
 import {
   buildOcctEdgeLinePassBatch,
@@ -174,6 +179,7 @@ export function useViewer(canvasRef) {
   const edgeLinesRef = useRef([]);
   const linePassRef = useRef(null);
   const cadEdgeBatchesRef = useRef([]);
+  const measurementOverlayBatchesRef = useRef([]);
   const edgeHighlightBatchesRef = useRef({
     hover: new Map(),
     select: new Map(),
@@ -206,6 +212,7 @@ export function useViewer(canvasRef) {
     }
 
     const batches = [...cadEdgeBatchesRef.current];
+    batches.push(...measurementOverlayBatchesRef.current);
     for (const highlightMap of [edgeHighlightBatchesRef.current.select, edgeHighlightBatchesRef.current.hover]) {
       for (const highlightBatches of highlightMap.values()) {
         batches.push(...highlightBatches);
@@ -228,6 +235,7 @@ export function useViewer(canvasRef) {
     linePassRef.current?.dispose?.();
     linePassRef.current = null;
     cadEdgeBatchesRef.current = [];
+    measurementOverlayBatchesRef.current = [];
     edgeHighlightBatchesRef.current.hover.clear();
     edgeHighlightBatchesRef.current.select.clear();
 
@@ -346,6 +354,33 @@ export function useViewer(canvasRef) {
     return unsub;
   }, [applyLinePassBatches]);
 
+  useEffect(() => {
+    const applyMeasurementOverlay = ({ currentMeasurement }) => {
+      const overlay = currentMeasurement
+        ? (currentMeasurement.overlay ?? buildMeasurementOverlayState(currentMeasurement))
+        : resolveActiveMeasurementOverlay({});
+      measurementOverlayBatchesRef.current = overlay.ok ? overlay.batches : [];
+      applyLinePassBatches();
+    };
+
+    applyMeasurementOverlay({
+      currentMeasurement: useViewerStore.getState().currentMeasurement,
+    });
+
+    const unsub = useViewerStore.subscribe(
+      (state) => ({
+        currentMeasurement: state.currentMeasurement,
+      }),
+      applyMeasurementOverlay,
+      {
+        equalityFn: (left, right) =>
+          left.currentMeasurement === right.currentMeasurement,
+      },
+    );
+
+    return unsub;
+  }, [applyLinePassBatches]);
+
   // Build scene from normalized OCCT model.
   const buildScene = useCallback((result) => {
     const scene = sceneRef.current;
@@ -358,7 +393,10 @@ export function useViewer(canvasRef) {
 
     linePassRef.current = createViewerLinePass(scene, {
       theme: useViewerStore.getState().theme,
-      layerStyles: LINE_PASS_LAYER_STYLES,
+      layerStyles: {
+        ...LINE_PASS_LAYER_STYLES,
+        ...MEASUREMENT_OVERLAY_LAYER_STYLES,
+      },
     });
 
     const loaded = viewerRuntime.loadOcctModel(result, {
@@ -440,12 +478,12 @@ export function useViewer(canvasRef) {
     const fov = camera.fov || 0.8;
     const radius = Math.max((modelSize * 0.5) / Math.tan(fov * 0.5) * 1.2, 1);
 
-    // ArcRotateCamera: alpha = rotation around Y from +X, beta = angle from +Y
+    // ArcRotateCamera with Z-up: alpha rotates in the XY plane from +X, beta measures from +Z.
     const views = {
-      front:  { alpha: -Math.PI / 2, beta: Math.PI / 2 },
-      back:   { alpha: Math.PI / 2,  beta: Math.PI / 2 },
-      top:    { alpha: -Math.PI / 2, beta: 0.01 },
-      bottom: { alpha: -Math.PI / 2, beta: Math.PI - 0.01 },
+      front:  { alpha: Math.PI / 2,  beta: Math.PI / 2 },
+      back:   { alpha: -Math.PI / 2, beta: Math.PI / 2 },
+      top:    { alpha: 0,            beta: 0.01 },
+      bottom: { alpha: 0,            beta: Math.PI - 0.01 },
       left:   { alpha: Math.PI,      beta: Math.PI / 2 },
       right:  { alpha: 0,            beta: Math.PI / 2 },
       iso:    { alpha: Math.PI / 4,  beta: Math.PI / 3 },

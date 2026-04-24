@@ -1,32 +1,65 @@
 import { useRef, useEffect, useCallback } from "react";
 import { convertFileSrc, isTauri } from "@tauri-apps/api/core";
 import { resolveResource } from "@tauri-apps/api/path";
-import { createOcctCore, normalizeOcctResult } from "@tx-code/occt-core";
-import packageJson from "../../../package.json";
+import { createOcctCore, normalizeExactOpenResult, normalizeOcctResult } from "@tx-code/occt-core";
 import { getOcctFormatFromFileName, resolveAutoOrientedResult } from "../lib/auto-orient";
 import { createDemoExactSession } from "../lib/exact-session";
-import { useViewerStore } from "../store/viewerStore";
+import { useViewerStore } from "../store/viewerStore.js";
 
-const CDN = `https://unpkg.com/@tx-code/occt-js@${packageJson.version}/dist/`;
 const DEFAULT_IMPORT_PARAMS = Object.freeze({
   readColors: true,
   readNames: true,
   rootMode: "multiple-shapes",
 });
+const GENERATED_SHAPE_FAMILY = Object.freeze({
+  REVOLVED: "revolved",
+  HELICAL: "helical",
+  COMPOSITE: "composite",
+});
 
-function getWebRuntime() {
-  if (import.meta.env.DEV) {
-    const moduleUrl = new URL("../../../dist/occt-js.js", import.meta.url).href;
-    const wasmUrl = new URL("../../../dist/occt-js.wasm", import.meta.url).href;
-    return {
-      moduleUrl,
-      locateFile: () => wasmUrl,
-    };
+function normalizeGeneratedShapeFamily(family) {
+  if (family === GENERATED_SHAPE_FAMILY.COMPOSITE) {
+    return GENERATED_SHAPE_FAMILY.COMPOSITE;
   }
-  return {
-    moduleUrl: CDN + "occt-js.js",
-    locateFile: (fileName) => CDN + fileName,
-  };
+  return family === GENERATED_SHAPE_FAMILY.HELICAL
+    ? GENERATED_SHAPE_FAMILY.HELICAL
+    : GENERATED_SHAPE_FAMILY.REVOLVED;
+}
+
+function resolveGeneratedShapeSourceFormat(family) {
+  if (family === GENERATED_SHAPE_FAMILY.COMPOSITE) {
+    return "generated-composite-shape";
+  }
+  return family === GENERATED_SHAPE_FAMILY.HELICAL
+    ? "generated-helical-sweep"
+    : "generated-revolved-shape";
+}
+
+function loadScript(url) {
+  return new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = url;
+    script.onload = resolve;
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+}
+
+async function loadWebOcctModule() {
+  const [{ default: OcctJS }, { default: wasmUrl }] = await Promise.all([
+    import("@tx-code/occt-js"),
+    import("@tx-code/occt-js/dist/occt-js.wasm?url"),
+  ]);
+
+  if (typeof OcctJS !== "function") {
+    throw new TypeError("default export must be a factory function");
+  }
+
+  return OcctJS({
+    locateFile(fileName) {
+      return fileName.endsWith(".wasm") ? wasmUrl : fileName;
+    },
+  });
 }
 
 export function useOcct() {
@@ -56,13 +89,7 @@ export function useOcct() {
         };
       }
 
-      const webRuntime = getWebRuntime();
-      return {
-        moduleUrl: webRuntime.moduleUrl,
-        locateFile: webRuntime.locateFile,
-        fallbackModuleUrl: CDN + "occt-js.js",
-        fallbackLocateFile: (fileName) => CDN + fileName,
-      };
+      return null;
     })()
       .then((runtime) => {
         runtimeRef.current = runtime;
@@ -81,30 +108,18 @@ export function useOcct() {
     if (modulePromiseRef.current) return modulePromiseRef.current;
 
     modulePromiseRef.current = (async () => {
-      const runtime = await ensureRuntime();
+      let module;
 
-      if (!window.OcctJS) {
-        const loadScript = (url) =>
-          new Promise((resolve, reject) => {
-            const script = document.createElement("script");
-            script.src = url;
-            script.onload = resolve;
-            script.onerror = reject;
-            document.head.appendChild(script);
-          });
-
-        try {
+      if (isTauri()) {
+        const runtime = await ensureRuntime();
+        if (!window.OcctJS) {
           await loadScript(runtime.moduleUrl);
-        } catch (error) {
-          if (!runtime.fallbackModuleUrl) {
-            throw error;
-          }
-          await loadScript(runtime.fallbackModuleUrl);
-          runtime.locateFile = runtime.fallbackLocateFile;
         }
+        module = await window.OcctJS({ locateFile: runtime.locateFile });
+      } else {
+        module = await loadWebOcctModule();
       }
 
-      const module = await window.OcctJS({ locateFile: runtime.locateFile });
       moduleRef.current = module;
       return module;
     })().catch((error) => {
@@ -181,8 +196,13 @@ export function useOcct() {
         format,
         importParams: DEFAULT_IMPORT_PARAMS,
       });
+      const normalizedExactModel = normalizeExactOpenResult(managedExactModel.exactModel, {
+        sourceFormat: format,
+        sourceFileName: file.name,
+        importParams: DEFAULT_IMPORT_PARAMS,
+      });
       nextExactSession = createDemoExactSession({
-        exactModel: managedExactModel.exactModel,
+        exactModel: normalizedExactModel,
         dispose: () => managedExactModel.dispose(),
         sourceFormat: format,
         label: file.name,
@@ -237,12 +257,20 @@ export function useOcct() {
     }
   }, [ensureModule, replaceActorExactSession, setLoading, setLoadingMessage, upsertWorkpieceActor]);
 
-  const validateGeneratedToolSpec = useCallback(async (spec) => {
+  const validateGeneratedToolSpec = useCallback(async (spec, family = GENERATED_SHAPE_FAMILY.REVOLVED) => {
     const occt = await ensureModule();
+    const normalizedFamily = normalizeGeneratedShapeFamily(family);
+    if (normalizedFamily === GENERATED_SHAPE_FAMILY.COMPOSITE) {
+      return occt.ValidateCompositeShapeSpec(spec);
+    }
+    if (normalizedFamily === GENERATED_SHAPE_FAMILY.HELICAL) {
+      return occt.ValidateHelicalSweepSpec(spec);
+    }
     return occt.ValidateRevolvedShapeSpec(spec);
   }, [ensureModule]);
 
   const buildGeneratedTool = useCallback(async ({
+    family = GENERATED_SHAPE_FAMILY.REVOLVED,
     spec,
     options = {},
     label = "Generated Tool",
@@ -254,32 +282,63 @@ export function useOcct() {
       const core = createOcctCore({
         factory: async () => occt,
       });
+      const normalizedFamily = normalizeGeneratedShapeFamily(family);
+      const sourceFormat = resolveGeneratedShapeSourceFormat(normalizedFamily);
+      const isHelical = normalizedFamily === GENERATED_SHAPE_FAMILY.HELICAL;
+      const isComposite = normalizedFamily === GENERATED_SHAPE_FAMILY.COMPOSITE;
 
-      setLoadingMessage("Validating revolved shape...");
-      const validation = occt.ValidateRevolvedShapeSpec(spec);
+      setLoadingMessage(
+        isComposite
+          ? "Validating composite shape..."
+          : (isHelical ? "Validating helical sweep..." : "Validating revolved shape..."),
+      );
+      const validation = isComposite
+        ? occt.ValidateCompositeShapeSpec(spec)
+        : (isHelical
+          ? occt.ValidateHelicalSweepSpec(spec)
+          : occt.ValidateRevolvedShapeSpec(spec));
       if (!validation?.ok) {
-        const error = new Error(validation?.diagnostics?.[0]?.message || "Revolved shape spec validation failed.");
+        const error = new Error(validation?.diagnostics?.[0]?.message || (
+          isComposite
+            ? "Composite shape spec validation failed."
+            : (isHelical ? "Helical sweep spec validation failed." : "Revolved shape spec validation failed.")
+        ));
         error.diagnostics = validation?.diagnostics ?? [];
         throw error;
       }
 
-      setLoadingMessage("Opening exact revolved shape...");
-      const rawResult = await core.openExactRevolvedShape(spec, options);
+      setLoadingMessage(
+        isComposite
+          ? "Opening exact composite shape..."
+          : (isHelical ? "Opening exact helical sweep..." : "Opening exact revolved shape..."),
+      );
+      const rawResult = isComposite
+        ? await core.openExactCompositeShape(spec, options)
+        : (isHelical
+          ? await core.openExactHelicalSweep(spec, options)
+          : await core.openExactRevolvedShape(spec, options));
       if (!rawResult?.success) {
-        const error = new Error(rawResult?.error || rawResult?.diagnostics?.[0]?.message || "Generated revolved shape build failed.");
+        const error = new Error(rawResult?.error || rawResult?.diagnostics?.[0]?.message || (
+          isComposite
+            ? "Generated composite shape build failed."
+            : (isHelical ? "Generated helical sweep build failed." : "Generated revolved shape build failed.")
+        ));
         error.diagnostics = rawResult?.diagnostics ?? [];
         error.result = rawResult;
         throw error;
       }
+      const normalizedExactModel = normalizeExactOpenResult(rawResult, {
+        sourceFormat,
+      });
       nextExactSession = createDemoExactSession({
-        exactModel: rawResult,
+        exactModel: normalizedExactModel,
         dispose: () => core.releaseExactModel(rawResult.exactModelId),
-        sourceFormat: "generated-revolved-shape",
+        sourceFormat,
         label,
       });
 
       const normalizedResult = normalizeOcctResult(rawResult, {
-        sourceFormat: "generated-revolved-shape",
+        sourceFormat,
       });
 
       await replaceActorExactSession({

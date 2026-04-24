@@ -31,6 +31,7 @@ test("demo manifest exposes explicit non-Tauri node and browser verification com
   assert.equal(demoPackage.scripts?.test, "node --test tests/*.test.mjs");
   assert.match(demoPackage.scripts?.["test:e2e"] ?? "", /playwright test/);
   assert.match(demoPackage.scripts?.["test:e2e"] ?? "", /demo\/tests\/app-home\.spec\.mjs/);
+  assert.match(demoPackage.scripts?.["test:e2e"] ?? "", /demo\/tests\/demo\.spec\.mjs/);
   assert.equal((demoPackage.scripts?.test ?? "").includes("tauri"), false);
   assert.equal((demoPackage.scripts?.["test:e2e"] ?? "").includes("tauri"), false);
 });
@@ -54,6 +55,7 @@ test("secondary-surface docs publish the touched-path verification matrix", () =
   assert.match(readme, /outside the root release gate/i);
   assert.match(readme, /npm --prefix demo test/);
   assert.match(readme, /npm --prefix demo run test:e2e/);
+  assert.match(readme, /measurement interaction/i);
   assert.match(readme, /npm --prefix demo run tauri:build/);
   assert.match(readme, /npm --prefix packages\/occt-babylon-loader test/);
   assert.match(readme, /npm --prefix packages\/occt-babylon-viewer test/);
@@ -63,10 +65,61 @@ test("secondary-surface docs publish the touched-path verification matrix", () =
   assert.match(agents, /conditional secondary-surface verification/i);
   assert.match(agents, /npm --prefix demo test/);
   assert.match(agents, /npm --prefix demo run test:e2e/);
+  assert.match(agents, /measurement interaction/i);
   assert.match(agents, /npm --prefix demo run tauri:build/);
   assert.match(agents, /npm --prefix packages\/occt-babylon-loader test/);
   assert.match(agents, /npm --prefix packages\/occt-babylon-viewer test/);
   assert.match(agents, /npm --prefix packages\/occt-babylon-widgets test/);
+});
+
+test("secondary-surface docs keep measurement ownership explicit without publishing demo workflow files", () => {
+  const readme = readRepoText("README.md");
+  const occtCoreReadme = readRepoText("packages/occt-core/README.md");
+  const sdkGuide = readRepoText("docs/sdk/measurement.md");
+  assert.doesNotMatch(readme, /docs\/demo\/exact-measurement-workflow\.md/);
+  assert.doesNotMatch(occtCoreReadme, /docs\/demo\/exact-measurement-workflow\.md/);
+  assert.doesNotMatch(sdkGuide, /docs\/demo\/exact-measurement-workflow\.md/);
+  assert.match(readme, /simplified integration sample/i);
+  assert.match(sdkGuide, /simplified integration sample/i);
+  assert.match(readme, /supported exact action routing/i);
+  assert.match(occtCoreReadme, /supported exact action routing/i);
+  assert.match(sdkGuide, /supported exact action routing/i);
+  assert.match(readme, /current-result session behavior/i);
+  assert.match(occtCoreReadme, /current-result session behavior/i);
+  assert.match(sdkGuide, /current-result session behavior/i);
+  assert.match(readme, /demo-owned/i);
+  assert.match(occtCoreReadme, /demo-owned/i);
+  assert.match(sdkGuide, /demo-owned/i);
+  assert.match(readme, /clearance \/ step depth/i);
+  assert.match(occtCoreReadme, /clearance \/ step depth/i);
+  assert.match(sdkGuide, /clearance \/ step depth/i);
+  assert.match(readme, /center-to-center/i);
+  assert.match(occtCoreReadme, /center-to-center/i);
+  assert.match(sdkGuide, /center-to-center/i);
+  assert.match(readme, /surface-to-center/i);
+  assert.match(occtCoreReadme, /surface-to-center/i);
+  assert.match(sdkGuide, /surface-to-center/i);
+  assert.doesNotMatch(readme, /selection-to-measure mapping/i);
+  assert.doesNotMatch(occtCoreReadme, /selection-to-measure mapping/i);
+  assert.doesNotMatch(sdkGuide, /selection-to-measure mapping/i);
+  assert.doesNotMatch(readme, /transient run history/i);
+  assert.doesNotMatch(occtCoreReadme, /transient run history/i);
+  assert.doesNotMatch(sdkGuide, /transient run history/i);
+});
+
+test("secondary-surface governance keeps the maintained browser lane tied to the demo measurement loop", () => {
+  const demoPackage = readRepoJson("demo/package.json");
+  const browserSpec = readRepoText("demo/tests/demo.spec.mjs");
+
+  assert.match(demoPackage.scripts?.["test:e2e"] ?? "", /demo\/tests\/demo\.spec\.mjs/);
+  assert.match(browserSpec, /measurement-action-clearance/);
+  assert.match(browserSpec, /measurement-action-step-depth/);
+  assert.match(browserSpec, /measurement-action-surface-to-center/);
+  assert.match(browserSpec, /measurement-action-midpoint/);
+  assert.match(browserSpec, /tool-pose-nudge/);
+  assert.doesNotMatch(browserSpec, /measurement-rerun-active/);
+  assert.doesNotMatch(browserSpec, /measurement-export-pinned/);
+  assert.doesNotMatch(browserSpec, /measurement-pin-active/);
 });
 
 test("Babylon package READMEs surface their package-local verification commands", () => {

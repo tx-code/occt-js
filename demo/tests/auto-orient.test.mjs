@@ -34,6 +34,20 @@ function makeIdentity() {
   ];
 }
 
+function multiplyMatrices(left, right) {
+  const out = new Array(16).fill(0);
+  for (let row = 0; row < 4; row += 1) {
+    for (let column = 0; column < 4; column += 1) {
+      let sum = 0;
+      for (let index = 0; index < 4; index += 1) {
+        sum += left[index * 4 + row] * right[column * 4 + index];
+      }
+      out[column * 4 + row] = sum;
+    }
+  }
+  return out;
+}
+
 test("getOcctFormatFromFileName maps supported CAD extensions", () => {
   assert.equal(getOcctFormatFromFileName("part.step"), "step");
   assert.equal(getOcctFormatFromFileName("part.STP"), "step");
@@ -57,7 +71,7 @@ test("applyOrientationToResult pre-multiplies root node transforms", () => {
   assert.deepEqual(result.rootNodes[0].transform, makeTranslation(1, 2, 3));
 });
 
-test("resolveAutoOrientedResult compensates analysis z-up transforms for Babylon y-up", async () => {
+test("resolveAutoOrientedResult keeps orientation transforms in manufacturing Z-up coordinates", async () => {
   const result = {
     rootNodes: [
       { id: "root", transform: makeIdentity(), children: [], meshes: [] },
@@ -70,7 +84,7 @@ test("resolveAutoOrientedResult compensates analysis z-up transforms for Babylon
     result,
   });
 
-  assert.deepEqual(oriented.rootNodes[0].transform, makeIdentity());
+  assert.deepEqual(oriented.rootNodes[0].transform, makeRotationX90());
 });
 
 test("resolveAutoOrientedResult returns raw result when orientation API is unavailable", async () => {
@@ -105,10 +119,13 @@ test("resolveAutoOrientedResult applies successful orientation analysis", async 
     result,
   });
 
-  assert.deepEqual(oriented.rootNodes[0].transform, makeTranslation(1, 2, 3));
+  assert.deepEqual(
+    oriented.rootNodes[0].transform,
+    multiplyMatrices(makeRotationX90(), makeTranslation(1, 2, 3)),
+  );
 });
 
-test("resolveAutoOrientedResult keeps simple_part upright for Babylon's Y-up world", async () => {
+test("resolveAutoOrientedResult preserves the exact manufacturing orientation transform for simple_part", async () => {
   const occt = await loadOcctFactory()();
   const bytes = new Uint8Array(readFileSync(simplePartPath));
   const result = {
@@ -116,6 +133,8 @@ test("resolveAutoOrientedResult keeps simple_part upright for Babylon's Y-up wor
       { id: "root", transform: makeIdentity(), children: [], meshes: [] },
     ],
   };
+  const analysis = occt.AnalyzeOptimalOrientation("step", bytes, { mode: "manufacturing" });
+  assert.equal(analysis?.success, true);
 
   const oriented = await resolveAutoOrientedResult({
     occt,
@@ -126,7 +145,5 @@ test("resolveAutoOrientedResult keeps simple_part upright for Babylon's Y-up wor
 
   const transform = oriented.rootNodes[0].transform;
   assert.equal(transform.length, 16);
-  assert(Math.abs(transform[4]) < 1e-6, "viewer X basis should not leak into Y axis");
-  assert(Math.abs(transform[5] - 1) < 1e-6, "viewer up should stay aligned with Babylon Y");
-  assert(Math.abs(transform[6]) < 1e-6, "viewer Z basis should not leak into Y axis");
+  assert.deepEqual(transform, Array.from(analysis.transform));
 });

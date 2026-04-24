@@ -116,7 +116,7 @@ export default function Toolbar({
             Open
           </Button>
           <Button size="sm" variant="ghost" onClick={onOpenGenerator} data-testid="open-generated-tool-panel-toolbar">
-            Generate
+            Optional Tool
           </Button>
           <OrientationModeToggle
             rawTestId="orientation-mode-raw-toolbar"
@@ -142,8 +142,15 @@ export default function Toolbar({
           <Button size="sm" variant="ghost" onClick={onOpenFile} data-testid="open-file">
             Open
           </Button>
-          <Button size="sm" variant="ghost" onClick={onOpenGenerator} data-testid="open-generated-tool-panel-toolbar">
-            Tool
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={onOpenGenerator}
+            data-testid="open-generated-tool-panel-toolbar"
+            aria-label="Optional Tool"
+            title="Optional Tool"
+          >
+            Gen Tool
           </Button>
           <Button size="sm" variant="ghost" onClick={onFitAll} data-testid="fit-all">
             Fit

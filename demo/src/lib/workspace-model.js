@@ -92,15 +92,15 @@ function prefixMaterial(material, prefix, index = 0) {
   };
 }
 
-function prefixRevolvedShapeMetadata(revolvedShape, prefix) {
-  if (!revolvedShape || typeof revolvedShape !== "object") {
+function prefixGeneratedShapeMetadata(metadata, prefix) {
+  if (!metadata || typeof metadata !== "object") {
     return null;
   }
 
   return {
-    ...revolvedShape,
-    faceBindings: Array.isArray(revolvedShape.faceBindings)
-      ? revolvedShape.faceBindings.map((binding) => ({
+    ...metadata,
+    faceBindings: Array.isArray(metadata.faceBindings)
+      ? metadata.faceBindings.map((binding) => ({
         ...binding,
         geometryId: typeof binding?.geometryId === "string"
           ? `${prefix}${binding.geometryId}`
@@ -221,6 +221,8 @@ export function buildWorkspaceModel(workspaceActors = {}, orientationMode = "aut
   const warnings = [];
   const actorModels = [];
   let revolvedShape = null;
+  let helicalSweep = null;
+  let compositeShape = null;
 
   for (const { actor, model } of orderedActors) {
     const actorPrefix = `actor:${actor.actorId}:`;
@@ -252,7 +254,13 @@ export function buildWorkspaceModel(workspaceActors = {}, orientationMode = "aut
     });
 
     if (actor.actorRole === "tool" && !revolvedShape) {
-      revolvedShape = prefixRevolvedShapeMetadata(model.revolvedShape, actorPrefix);
+      revolvedShape = prefixGeneratedShapeMetadata(model.revolvedShape, actorPrefix);
+    }
+    if (actor.actorRole === "tool" && !helicalSweep) {
+      helicalSweep = prefixGeneratedShapeMetadata(model.helicalSweep, actorPrefix);
+    }
+    if (actor.actorRole === "tool" && !compositeShape) {
+      compositeShape = prefixGeneratedShapeMetadata(model.compositeShape, actorPrefix);
     }
   }
 
@@ -266,5 +274,7 @@ export function buildWorkspaceModel(workspaceActors = {}, orientationMode = "aut
     warnings,
     stats: sumStats(actorModels),
     revolvedShape,
+    helicalSweep,
+    compositeShape,
   };
 }

@@ -135,6 +135,7 @@ test("generated tool presets expose stable group ids, labels, and parameter summ
   assert.deepEqual(
     GENERATED_TOOL_PRESETS.map((preset) => ({
       id: preset.id,
+      family: preset.family,
       groupId: preset.groupId,
       label: preset.label,
       parameterLabels: preset.parameters.map((parameter) => parameter.label),
@@ -142,51 +143,66 @@ test("generated tool presets expose stable group ids, labels, and parameter summ
     [
       {
         id: "endmill",
+        family: "revolved",
         groupId: "freecad-aligned",
         label: "Endmill D6",
         parameterLabels: ["Diameter", "CuttingEdgeHeight", "ShankDiameter", "Length"],
       },
       {
         id: "bullnose",
+        family: "revolved",
         groupId: "freecad-aligned",
         label: "Bullnose D8 R0.8",
         parameterLabels: ["Diameter", "CornerRadius", "CuttingEdgeHeight", "ShankDiameter", "Length"],
       },
       {
         id: "ballend",
+        family: "revolved",
         groupId: "freecad-aligned",
         label: "Ballend D8",
         parameterLabels: ["Diameter", "CuttingEdgeHeight", "ShankDiameter", "Length"],
       },
       {
         id: "taper-flat",
+        family: "revolved",
         groupId: "common-derived",
         label: "Taper Flat D1-D6",
         parameterLabels: ["TipDiameter", "Diameter", "CuttingEdgeHeight", "ShankDiameter", "Length"],
       },
       {
         id: "taper-ball",
+        family: "revolved",
         groupId: "freecad-aligned",
         label: "Tapered Ball Nose D2 TD6",
         parameterLabels: ["Diameter", "TaperDiameter", "CuttingEdgeHeight", "ShankDiameter", "Length"],
       },
       {
         id: "barrel",
+        family: "revolved",
         groupId: "common-derived",
         label: "Barrel D8 Neck4",
         parameterLabels: ["Diameter", "NeckDiameter", "CuttingEdgeHeight", "ShankDiameter", "Length"],
       },
       {
         id: "lollipop",
+        family: "revolved",
         groupId: "common-derived",
         label: "Lollipop D6 Neck4",
         parameterLabels: ["Diameter", "NeckDiameter", "Length"],
       },
       {
         id: "drill",
+        family: "revolved",
         groupId: "freecad-aligned",
         label: "Drill D6 118deg",
         parameterLabels: ["Diameter", "TipAngle", "Length"],
+      },
+      {
+        id: "thread-mill-m6x1",
+        family: "composite",
+        groupId: "common-derived",
+        label: "Thread Mill M6×1",
+        parameterLabels: ["Diameter", "Crest", "NeckDiameter", "NeckLength", "ShankDiameter", "Length", "CuttingAngle", "Flutes"],
       },
     ],
   );
@@ -205,7 +221,7 @@ test("generated tool preset catalog groups presets into FreeCAD-aligned and comm
       },
       {
         id: "common-derived",
-        presetIds: ["taper-flat", "barrel", "lollipop"],
+        presetIds: ["taper-flat", "barrel", "lollipop", "thread-mill-m6x1"],
       },
     ],
   );
@@ -219,14 +235,32 @@ test("demo preset catalog builds watertight closed solids through the root runti
     wasmBinary,
   });
 
-  for (const preset of GENERATED_TOOL_PRESETS) {
-    const validation = await core.validateRevolvedShapeSpec(preset.spec);
-    assert.equal(validation.ok, true, `${preset.id}: spec should validate`);
+  assert.equal(
+    GENERATED_TOOL_PRESETS.some((preset) => preset.family === "composite"),
+    true,
+    "preset catalog should include at least one composite family sample",
+  );
 
-    const result = await core.buildRevolvedShape(preset.spec, preset.buildOptions);
+  for (const preset of GENERATED_TOOL_PRESETS) {
+    const validation = preset.family === "helical"
+      ? await core.validateHelicalSweepSpec(preset.spec)
+      : (preset.family === "composite"
+        ? await core.validateCompositeShapeSpec(preset.spec)
+        : await core.validateRevolvedShapeSpec(preset.spec));
+    assert.equal(validation.ok, true, `${preset.id}: ${preset.family} spec should validate`);
+
+    const result = preset.family === "helical"
+      ? await core.buildHelicalSweep(preset.spec, preset.buildOptions)
+      : (preset.family === "composite"
+        ? await core.buildCompositeShape(preset.spec, preset.buildOptions)
+        : await core.buildRevolvedShape(preset.spec, preset.buildOptions));
     assert.equal(result.success, true, `${preset.id}: build should succeed`);
 
-    const shapeValidation = result.revolvedShape?.shapeValidation;
+    const shapeValidation = preset.family === "helical"
+      ? result.helicalSweep?.shapeValidation
+      : (preset.family === "composite"
+        ? result.compositeShape?.shapeValidation
+        : result.revolvedShape?.shapeValidation);
     assert.ok(shapeValidation, `${preset.id}: shapeValidation should be present`);
     assert.equal(shapeValidation.exact.isValid, true, `${preset.id}: exact shape should be valid`);
     assert.equal(shapeValidation.exact.isClosed, true, `${preset.id}: exact shape should be closed`);

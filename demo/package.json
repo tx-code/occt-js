@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "test": "node --test tests/*.test.mjs",
-    "test:e2e": "cd .. && npx playwright test --config playwright.config.mjs demo/tests/app-home.spec.mjs",
+    "test:e2e": "cd .. && npx playwright test --config playwright.config.mjs demo/tests/app-home.spec.mjs demo/tests/demo.spec.mjs",
     "preview": "vite preview",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build"
@@ -18,6 +18,7 @@
     "@tauri-apps/api": "^2.10.1",
     "@tauri-apps/plugin-dialog": "^2.6.0",
     "@tauri-apps/plugin-fs": "^2.4.5",
+    "@tx-code/occt-js": "file:..",
     "@tx-code/occt-babylon-loader": "file:../packages/occt-babylon-loader",
     "@tx-code/occt-babylon-widgets": "file:../packages/occt-babylon-widgets",
     "@tx-code/occt-babylon-viewer": "file:../packages/occt-babylon-viewer",

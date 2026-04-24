@@ -42,7 +42,7 @@ export default function DropZone({ onFile, onOpenGenerator, visible }) {
           <p className={`text-[11px] uppercase tracking-[0.28em] ${isLight ? "text-zinc-500" : "text-zinc-500"}`}>Import CAD</p>
           <h2 className={`text-2xl font-semibold ${isLight ? "text-zinc-900" : "text-zinc-100"}`}>Open STEP, IGES, or BREP</h2>
           <p className={`mx-auto max-w-md text-sm leading-6 ${isLight ? "text-zinc-600" : "text-zinc-500"}`}>
-            Choose how the model should land in the viewer, then browse or drop a file.
+            Most CAM samples start with a workpiece. Generate an optional tool whenever you need a second actor or want to inspect the tool by itself.
           </p>
         </div>
         <div className="mt-6 flex justify-center">
@@ -57,7 +57,7 @@ export default function DropZone({ onFile, onOpenGenerator, visible }) {
             Browse Files
           </Button>
           <Button variant="ghost" onClick={onOpenGenerator} data-testid="open-generated-tool-panel-empty">
-            Tool MVP
+            Generate Optional Tool
           </Button>
         </div>
         <input
@@ -69,7 +69,7 @@ export default function DropZone({ onFile, onOpenGenerator, visible }) {
           data-testid="file-input"
         />
         <p className={`mt-4 text-xs ${isLight ? "text-zinc-500" : "text-zinc-600"}`}>
-          Drag and drop is supported too. Or generate a revolved tool directly from JSON.
+          Drag and drop is supported too. Keep the sample manual: import a workpiece, add an optional tool, then run one exact action or CAM sample check.
         </p>
       </div>
     </div>

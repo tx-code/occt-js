@@ -136,6 +136,8 @@ The shipped helper boundaries stay intentionally narrow:
 - `suggestExactSymmetryPlacement(refA, refB)` is a midplane-style symmetry helper for supported parallel pairs.
 - `suggestExactMidpointPlacement(...)` and `describeExactEqualDistance(...)` stay package-first compositions over the shipped placement and pairwise measurement primitives.
 
+The shipped browser demo consumes the same measurement and helper methods as a simplified integration sample, but supported exact action routing, overlay rendering, and current-result session behavior remain downstream app concerns rather than package APIs. For the current `v1.13` CAM sample, demo-owned workflow names (`clearance / step depth`, `center-to-center`, and `surface-to-center`) compose over shipped exact primitives instead of becoming package API names.
+
 ## Lifecycle and Performance Discipline
 
 For retained exact models, package-first lifecycle management should use managed wrappers:

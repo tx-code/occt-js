@@ -40,6 +40,7 @@ export const GENERATED_TOOL_PRESET_GROUPS = [
 ];
 
 function createGeneratedToolPreset({
+  family = "revolved",
   groupId,
   id,
   label,
@@ -47,20 +48,23 @@ function createGeneratedToolPreset({
   parameters,
   buildOptions,
   definition,
+  spec,
 }) {
   return {
+    family,
     groupId,
     id,
     label,
     description,
     parameters,
     buildOptions,
-    spec: buildGeneratedToolDemoSpec(definition),
+    spec: spec ?? buildGeneratedToolDemoSpec(definition),
   };
 }
 
 export const GENERATED_TOOL_PRESETS = [
   createGeneratedToolPreset({
+    family: "revolved",
     groupId: "freecad-aligned",
     id: "endmill",
     label: "Endmill D6",
@@ -86,6 +90,7 @@ export const GENERATED_TOOL_PRESETS = [
     },
   }),
   createGeneratedToolPreset({
+    family: "revolved",
     groupId: "freecad-aligned",
     id: "bullnose",
     label: "Bullnose D8 R0.8",
@@ -113,6 +118,7 @@ export const GENERATED_TOOL_PRESETS = [
     },
   }),
   createGeneratedToolPreset({
+    family: "revolved",
     groupId: "freecad-aligned",
     id: "ballend",
     label: "Ballend D8",
@@ -138,6 +144,7 @@ export const GENERATED_TOOL_PRESETS = [
     },
   }),
   createGeneratedToolPreset({
+    family: "revolved",
     groupId: "common-derived",
     id: "taper-flat",
     label: "Taper Flat D1-D6",
@@ -165,6 +172,7 @@ export const GENERATED_TOOL_PRESETS = [
     },
   }),
   createGeneratedToolPreset({
+    family: "revolved",
     groupId: "freecad-aligned",
     id: "taper-ball",
     label: "Tapered Ball Nose D2 TD6",
@@ -192,6 +200,7 @@ export const GENERATED_TOOL_PRESETS = [
     },
   }),
   createGeneratedToolPreset({
+    family: "revolved",
     groupId: "common-derived",
     id: "barrel",
     label: "Barrel D8 Neck4",
@@ -219,6 +228,7 @@ export const GENERATED_TOOL_PRESETS = [
     },
   }),
   createGeneratedToolPreset({
+    family: "revolved",
     groupId: "common-derived",
     id: "lollipop",
     label: "Lollipop D6 Neck4",
@@ -242,6 +252,7 @@ export const GENERATED_TOOL_PRESETS = [
     },
   }),
   createGeneratedToolPreset({
+    family: "revolved",
     groupId: "freecad-aligned",
     id: "drill",
     label: "Drill D6 118deg",
@@ -262,6 +273,59 @@ export const GENERATED_TOOL_PRESETS = [
       diameter: 6,
       tipAngle: 118,
       length: 38,
+    },
+  }),
+  createGeneratedToolPreset({
+    family: "composite",
+    groupId: "common-derived",
+    id: "thread-mill-m6x1",
+    label: "Thread Mill M6\u00d71",
+    description: "FreeCAD-aligned thread-mill proxy: composite seed uses a revolved profile body, while downstream CAM thread semantics stay operation-side.",
+    parameters: [
+      lengthParameter("Diameter", 5),
+      lengthParameter("Crest", 0.1),
+      lengthParameter("NeckDiameter", 3),
+      lengthParameter("NeckLength", 20),
+      lengthParameter("ShankDiameter", 5),
+      lengthParameter("Length", 50),
+      angleParameter("CuttingAngle", 60),
+      { label: "Flutes", value: "4 (metadata)" },
+    ],
+    buildOptions: {
+      linearDeflectionType: "bounding_box_ratio",
+      linearDeflection: 0.0009,
+      angularDeflection: 0.25,
+    },
+    spec: {
+      version: 1,
+      units: "mm",
+      seed: {
+        family: "revolved",
+        spec: {
+          version: 1,
+          units: "mm",
+          profile: {
+            plane: "XZ",
+            start: [0, 0],
+            closure: "explicit",
+            segments: [
+              { kind: "line", id: "tip-core", tag: "tip", end: [1.5, 0] },
+              { kind: "line", id: "tooth-flank-lower", tag: "cutting", end: [2.5, 0.5773502692] },
+              { kind: "line", id: "tooth-crest", tag: "cutting", end: [2.5, 0.6773502692] },
+              { kind: "line", id: "tooth-flank-upper", tag: "cutting", end: [1.5, 1.2547005384] },
+              { kind: "line", id: "neck", tag: "neck", end: [1.5, 20] },
+              { kind: "line", id: "neck-shoulder", tag: "shank", end: [2.5, 20.01] },
+              { kind: "line", id: "shank", tag: "shank", end: [2.5, 50] },
+              { kind: "line", id: "axis-top", tag: "closure", end: [0, 50] },
+              { kind: "line", id: "axis-bottom", tag: "closure", end: [0, 0] },
+            ],
+          },
+          revolve: {
+            angleDeg: 360,
+          },
+        },
+      },
+      steps: [],
     },
   }),
 ];

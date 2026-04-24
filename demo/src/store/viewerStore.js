@@ -17,6 +17,12 @@ function clearSelectionState() {
   };
 }
 
+function clearMeasurementState() {
+  return {
+    currentMeasurement: null,
+  };
+}
+
 function resolveOrientationMode(workspaceActors, orientationMode) {
   const actorCount = Object.keys(workspaceActors ?? {}).length;
   const workpieceActor = workspaceActors?.workpiece ?? null;
@@ -78,6 +84,9 @@ export const useViewerStore = create(subscribeWithSelector((set, get) => ({
   selectionRequest: null,
   selectionRequestSeq: 0,
 
+  // Measurement state
+  currentMeasurement: null,
+
   // Workspace actions
   upsertWorkpieceActor: ({
     rawModel,
@@ -102,6 +111,7 @@ export const useViewerStore = create(subscribeWithSelector((set, get) => ({
     return {
       ...deriveWorkspaceState(nextWorkspaceActors, state.orientationMode),
       ...clearSelectionState(),
+      ...clearMeasurementState(),
     };
   }),
   upsertToolActor: ({
@@ -127,12 +137,14 @@ export const useViewerStore = create(subscribeWithSelector((set, get) => ({
     return {
       ...deriveWorkspaceState(nextWorkspaceActors, state.orientationMode),
       ...clearSelectionState(),
+      ...clearMeasurementState(),
     };
   }),
   clearWorkspaceActors: () => set((state) => ({
     ...INITIAL_MODEL_STATE,
     orientationMode: resolveOrientationMode({}, state.orientationMode),
     ...clearSelectionState(),
+    ...clearMeasurementState(),
   })),
   setActorPose: (actorId, patch) => set((state) => {
     const actor = state.workspaceActors?.[actorId];
@@ -151,6 +163,7 @@ export const useViewerStore = create(subscribeWithSelector((set, get) => ({
     return {
       ...deriveWorkspaceState(nextWorkspaceActors, state.orientationMode),
       ...clearSelectionState(),
+      ...clearMeasurementState(),
     };
   }),
   nudgeActorPose: (actorId, translationDelta) => set((state) => {
@@ -170,6 +183,7 @@ export const useViewerStore = create(subscribeWithSelector((set, get) => ({
     return {
       ...deriveWorkspaceState(nextWorkspaceActors, state.orientationMode),
       ...clearSelectionState(),
+      ...clearMeasurementState(),
     };
   }),
 
@@ -217,6 +231,10 @@ export const useViewerStore = create(subscribeWithSelector((set, get) => ({
   toggleTheme: () => set((state) => ({ theme: state.theme === "dark" ? "light" : "dark" })),
   setSelectedItems: (items) => set({ selectedItems: items }),
   setSelectedDetail: (detail) => set({ selectedDetail: detail }),
+  setCurrentMeasurement: (measurement) => set({
+    currentMeasurement: measurement ?? null,
+  }),
+  clearMeasurements: () => set(clearMeasurementState()),
   requestSelection: (selectionRequest) => set((state) => ({
     selectionRequest,
     selectionRequestSeq: state.selectionRequestSeq + 1,
@@ -228,5 +246,6 @@ export const useViewerStore = create(subscribeWithSelector((set, get) => ({
     selectedDetail: null,
     selectionRequest: null,
     selectionRequestSeq: 0,
+    ...clearMeasurementState(),
   }),
 })));

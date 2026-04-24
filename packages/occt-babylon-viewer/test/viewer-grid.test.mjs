@@ -25,16 +25,17 @@ test("grid helpers are centered around supplied bounds", () => {
     max: new Vector3(14, 6, 30),
   };
   const expectedCenterX = (bounds.min.x + bounds.max.x) * 0.5;
-  const expectedCenterZ = (bounds.min.z + bounds.max.z) * 0.5;
+  const expectedCenterY = (bounds.min.y + bounds.max.y) * 0.5;
 
   const helpers = createGridHelpers(scene, bounds);
   const xAxisCenter = helpers.xAxis.getBoundingInfo().boundingBox.center;
-  const zAxisCenter = helpers.zAxis.getBoundingInfo().boundingBox.center;
+  const yAxisCenter = helpers.yAxis.getBoundingInfo().boundingBox.center;
 
   assert.equal(helpers.ground.position.x, expectedCenterX);
-  assert.equal(helpers.ground.position.z, expectedCenterZ);
+  assert.equal(helpers.ground.position.y, expectedCenterY);
+  assert.equal(helpers.ground.position.z, bounds.min.z - 0.01);
   assert.equal(xAxisCenter.x, expectedCenterX);
-  assert.equal(xAxisCenter.z, expectedCenterZ);
-  assert.equal(zAxisCenter.x, expectedCenterX);
-  assert.equal(zAxisCenter.z, expectedCenterZ);
+  assert.equal(xAxisCenter.y, expectedCenterY);
+  assert.equal(yAxisCenter.x, expectedCenterX);
+  assert.equal(yAxisCenter.y, expectedCenterY);
 });

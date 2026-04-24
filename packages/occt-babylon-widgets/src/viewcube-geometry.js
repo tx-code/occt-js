@@ -1,32 +1,32 @@
 const PI = Math.PI;
 
 export const VIEWS = {
-  front: { alpha: -PI / 2, beta: PI / 2 },
-  back: { alpha: PI / 2, beta: PI / 2 },
-  top: { alpha: -PI / 2, beta: 0.01 },
-  bottom: { alpha: -PI / 2, beta: PI - 0.01 },
+  front: { alpha: PI / 2, beta: PI / 2 },
+  back: { alpha: -PI / 2, beta: PI / 2 },
+  top: { alpha: 0, beta: 0.01 },
+  bottom: { alpha: 0, beta: PI - 0.01 },
   left: { alpha: PI, beta: PI / 2 },
   right: { alpha: 0, beta: PI / 2 },
-  "front-top": { alpha: -PI / 2, beta: PI / 4 },
-  "front-bottom": { alpha: -PI / 2, beta: (3 * PI) / 4 },
-  "front-left": { alpha: (-3 * PI) / 4, beta: PI / 2 },
-  "front-right": { alpha: -PI / 4, beta: PI / 2 },
-  "back-top": { alpha: PI / 2, beta: PI / 4 },
-  "back-bottom": { alpha: PI / 2, beta: (3 * PI) / 4 },
-  "back-left": { alpha: (3 * PI) / 4, beta: PI / 2 },
-  "back-right": { alpha: PI / 4, beta: PI / 2 },
+  "front-top": { alpha: PI / 2, beta: PI / 4 },
+  "front-bottom": { alpha: PI / 2, beta: (3 * PI) / 4 },
+  "front-left": { alpha: (3 * PI) / 4, beta: PI / 2 },
+  "front-right": { alpha: PI / 4, beta: PI / 2 },
+  "back-top": { alpha: -PI / 2, beta: PI / 4 },
+  "back-bottom": { alpha: -PI / 2, beta: (3 * PI) / 4 },
+  "back-left": { alpha: (-3 * PI) / 4, beta: PI / 2 },
+  "back-right": { alpha: -PI / 4, beta: PI / 2 },
   "top-left": { alpha: PI, beta: PI / 4 },
   "top-right": { alpha: 0, beta: PI / 4 },
   "bottom-left": { alpha: PI, beta: (3 * PI) / 4 },
   "bottom-right": { alpha: 0, beta: (3 * PI) / 4 },
-  "front-top-left": { alpha: (-3 * PI) / 4, beta: PI / 4 },
-  "front-top-right": { alpha: -PI / 4, beta: PI / 4 },
-  "front-bottom-left": { alpha: (-3 * PI) / 4, beta: (3 * PI) / 4 },
-  "front-bottom-right": { alpha: -PI / 4, beta: (3 * PI) / 4 },
-  "back-top-left": { alpha: (3 * PI) / 4, beta: PI / 4 },
-  "back-top-right": { alpha: PI / 4, beta: PI / 4 },
-  "back-bottom-left": { alpha: (3 * PI) / 4, beta: (3 * PI) / 4 },
-  "back-bottom-right": { alpha: PI / 4, beta: (3 * PI) / 4 },
+  "front-top-left": { alpha: (3 * PI) / 4, beta: PI / 4 },
+  "front-top-right": { alpha: PI / 4, beta: PI / 4 },
+  "front-bottom-left": { alpha: (3 * PI) / 4, beta: (3 * PI) / 4 },
+  "front-bottom-right": { alpha: PI / 4, beta: (3 * PI) / 4 },
+  "back-top-left": { alpha: (-3 * PI) / 4, beta: PI / 4 },
+  "back-top-right": { alpha: -PI / 4, beta: PI / 4 },
+  "back-bottom-left": { alpha: (-3 * PI) / 4, beta: (3 * PI) / 4 },
+  "back-bottom-right": { alpha: -PI / 4, beta: (3 * PI) / 4 },
 };
 
 const VERTICES = [
@@ -41,19 +41,19 @@ const VERTICES = [
 ];
 
 const FACE_INDICES = [
-  [0, 2, 3, 1],
-  [5, 7, 6, 4],
-  [2, 6, 7, 3],
   [0, 1, 5, 4],
+  [3, 2, 6, 7],
+  [4, 5, 7, 6],
+  [0, 2, 3, 1],
   [0, 4, 6, 2],
   [1, 3, 7, 5],
 ];
 
 const FACE_NORMALS = [
-  [0, 0, -1],
-  [0, 0, 1],
-  [0, 1, 0],
   [0, -1, 0],
+  [0, 1, 0],
+  [0, 0, 1],
+  [0, 0, -1],
   [-1, 0, 0],
   [1, 0, 0],
 ];
@@ -61,18 +61,18 @@ const FACE_NORMALS = [
 export const FACE_LABELS = ["FRONT", "BACK", "TOP", "BOTTOM", "LEFT", "RIGHT"];
 
 export const EDGE_DEFS = [
-  [2, 3, 0, 2],
+  [4, 5, 0, 2],
   [0, 1, 0, 3],
-  [0, 2, 0, 4],
-  [1, 3, 0, 5],
+  [0, 4, 0, 4],
+  [1, 5, 0, 5],
   [6, 7, 1, 2],
-  [4, 5, 1, 3],
-  [4, 6, 1, 4],
-  [5, 7, 1, 5],
-  [2, 6, 4, 2],
-  [3, 7, 5, 2],
-  [0, 4, 4, 3],
-  [1, 5, 5, 3],
+  [2, 3, 1, 3],
+  [2, 6, 1, 4],
+  [3, 7, 1, 5],
+  [4, 6, 2, 4],
+  [5, 7, 2, 5],
+  [0, 2, 3, 4],
+  [1, 3, 3, 5],
 ];
 
 export const EDGE_NAMES = [
@@ -93,10 +93,10 @@ export const EDGE_NAMES = [
 export const CORNER_ADJ_FACES = [
   [0, 3, 4],
   [0, 3, 5],
-  [0, 2, 4],
-  [0, 2, 5],
   [1, 3, 4],
   [1, 3, 5],
+  [0, 2, 4],
+  [0, 2, 5],
   [1, 2, 4],
   [1, 2, 5],
 ];
@@ -104,10 +104,10 @@ export const CORNER_ADJ_FACES = [
 export const CORNER_NAMES = [
   "front-bottom-left",
   "front-bottom-right",
-  "front-top-left",
-  "front-top-right",
   "back-bottom-left",
   "back-bottom-right",
+  "front-top-left",
+  "front-top-right",
   "back-top-left",
   "back-top-right",
 ];

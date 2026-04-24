@@ -17,19 +17,13 @@ import DesktopChrome from "./components/DesktopChrome";
 import GeneratedToolPanel from "./components/GeneratedToolPanel";
 import { shouldUseWindowsCustomChrome } from "./lib/desktop-runtime";
 import { getAppShellLayout } from "./lib/app-shell";
-
-function canAutoLoadSample() {
-  if (typeof navigator !== "undefined" && navigator.webdriver) {
-    return false;
-  }
-  return true;
-}
+import { shouldAutoLoadSample } from "./lib/sample-autoload";
 
 export default function App() {
   const canvasRef = useRef(null);
   const model = useViewerStore((s) => s.model);
   const loading = useViewerStore((s) => s.loading);
-  const { importFile, clearExactSession, validateGeneratedToolSpec, buildGeneratedTool } = useOcct();
+  const { importFile, clearExactSession, ensureModule, validateGeneratedToolSpec, buildGeneratedTool } = useOcct();
   const viewerRefs = useViewer(canvasRef);
   const { buildScene, clearScene, fitAll, setCameraView, takeSnapshot } = viewerRefs;
   usePicking(viewerRefs);
@@ -65,7 +59,7 @@ export default function App() {
 
   useEffect(() => {
     if (sampleBootstrappedRef.current) return;
-    if (!canAutoLoadSample()) return;
+    if (!shouldAutoLoadSample()) return;
     if (model || loading) return;
     sampleBootstrappedRef.current = true;
     openSample();
@@ -118,7 +112,7 @@ export default function App() {
           />
           <GeneratedToolLegend />
           <StatsPanel />
-          <SelectionPanel />
+          <SelectionPanel ensureModule={ensureModule} />
           <ModelTreeDrawer />
           <ViewCube onCameraView={setCameraView} cameraRef={viewerRefs.cameraRef} />
           <GeneratedToolPanel

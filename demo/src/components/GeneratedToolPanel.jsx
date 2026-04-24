@@ -41,6 +41,24 @@ function renderPresetParameter(parameter, isLight) {
   );
 }
 
+function resolvePresetSourceFormat(preset) {
+  if (preset?.family === "composite") {
+    return "generated-composite-shape";
+  }
+  return preset?.family === "helical"
+    ? "generated-helical-sweep"
+    : "generated-revolved-shape";
+}
+
+function resolvePresetSpecLabel(preset) {
+  if (preset?.family === "composite") {
+    return "CompositeShapeSpec JSON";
+  }
+  return preset?.family === "helical"
+    ? "HelicalSweepSpec JSON"
+    : "RevolvedShapeSpec JSON";
+}
+
 export default function GeneratedToolPanel({
   open,
   onClose,
@@ -86,7 +104,7 @@ export default function GeneratedToolPanel({
     setStatus("");
     try {
       const spec = parseSpec();
-      const result = await validateGeneratedToolSpec(spec);
+      const result = await validateGeneratedToolSpec(spec, preset.family);
       setDiagnostics(result?.diagnostics ?? []);
       if (result?.ok) {
         setStatus("Spec is valid. Runtime validation passed.");
@@ -108,6 +126,7 @@ export default function GeneratedToolPanel({
     try {
       const spec = parseSpec();
       const { result } = await buildGeneratedTool({
+        family: preset.family,
         spec,
         options: cloneGeneratedToolPresetOptions(presetId),
         label: `Generated · ${preset.label}`,
@@ -133,7 +152,7 @@ export default function GeneratedToolPanel({
     >
       <div
         className={cn(
-          "grid max-h-[min(90vh,54rem)] w-[min(96vw,72rem)] gap-4 overflow-hidden rounded-[2rem] border shadow-2xl md:grid-cols-[17rem,minmax(0,1fr)]",
+          "grid h-[min(90vh,54rem)] w-[min(96vw,72rem)] gap-4 overflow-hidden rounded-[2rem] border shadow-2xl md:grid-cols-[17rem_minmax(0,1fr)]",
           isLight
             ? "border-zinc-300 bg-white text-zinc-900 shadow-zinc-300/40"
             : "border-zinc-800 bg-zinc-950 text-zinc-100 shadow-black/40",
@@ -147,16 +166,16 @@ export default function GeneratedToolPanel({
         >
           <div className="space-y-2">
             <p className="text-[11px] uppercase tracking-[0.26em] text-cyan-400">Generated Tool MVP</p>
-            <h2 className="text-xl font-semibold">Revolved Tool Builder</h2>
+            <h2 className="text-xl font-semibold">Generated Shape Builder</h2>
             <p className={cn("text-sm leading-6", isLight ? "text-zinc-600" : "text-zinc-400")}>
-              This demo calls the root Wasm runtime directly through <code>ValidateRevolvedShapeSpec</code> and the retained exact-open lane for generated revolved shapes.
+              This demo calls the root Wasm runtime directly through <code>ValidateRevolvedShapeSpec</code>/<code>ValidateHelicalSweepSpec</code>/<code>ValidateCompositeShapeSpec</code> and the retained exact-open lane for generated shapes.
             </p>
             <p className={cn("text-[11px] leading-5", isLight ? "text-zinc-500" : "text-zinc-500")}>
               Preset catalog is split between FreeCAD-aligned samples and common demo-only families.
             </p>
           </div>
 
-          <div className="mt-5 flex-1 space-y-4 overflow-y-auto pr-1">
+          <div className="mt-5 min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
             {presetCatalog.map((group) => (
               <section key={group.id} className="space-y-2" data-testid={`generated-tool-group-${group.id}`}>
                 <div className="px-1">
@@ -184,7 +203,11 @@ export default function GeneratedToolPanel({
                       <div className="flex items-center justify-between gap-3">
                         <span className="font-medium">{entry.label}</span>
                         <span className={cn("text-[10px] uppercase tracking-[0.18em]", isLight ? "text-zinc-500" : "text-zinc-500")}>
-                          {entry.spec.revolve?.angleDeg === 360 ? "full" : "partial"}
+                          {entry.family === "helical"
+                            ? "helical"
+                            : (entry.family === "composite"
+                              ? "composite"
+                              : (entry.spec.revolve?.angleDeg === 360 ? "full" : "partial"))}
                         </span>
                       </div>
                       <p className={cn("mt-1 text-xs leading-5", isLight ? "text-zinc-600" : "text-zinc-400")}>
@@ -230,7 +253,7 @@ export default function GeneratedToolPanel({
                 {preset.description}
               </p>
               <p className={cn("mt-2 text-[11px] leading-5", isLight ? "text-zinc-500" : "text-zinc-500")}>
-                Edit the normalized revolved-shape spec directly. Presets are starter payloads, not runtime-owned tool types.
+                Edit the normalized generated-shape spec directly. Presets are starter payloads, not runtime-owned tool types.
               </p>
               <div className="mt-3 flex flex-wrap gap-1.5">
                 {(preset.parameters ?? []).map((parameter) => renderPresetParameter(parameter, isLight))}
@@ -241,9 +264,9 @@ export default function GeneratedToolPanel({
             </Button>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-5">
+          <div className="min-h-0 flex-1 overflow-y-auto p-5">
             <label className="mb-2 block text-[11px] uppercase tracking-[0.22em] text-zinc-500" htmlFor="generated-tool-json">
-              RevolvedShapeSpec JSON
+              {resolvePresetSpecLabel(preset)}
             </label>
             <textarea
               id="generated-tool-json"
@@ -284,7 +307,7 @@ export default function GeneratedToolPanel({
                 Reset Preset
               </Button>
               <span className={cn("text-xs", isLight ? "text-zinc-500" : "text-zinc-500")}>
-                Output sourceFormat: <code>generated-revolved-shape</code>
+                Output sourceFormat: <code>{resolvePresetSourceFormat(preset)}</code>
               </span>
             </div>
 

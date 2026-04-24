@@ -8,16 +8,21 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const useOcctSource = readFileSync(resolve(__dirname, "..", "src", "hooks", "useOcct.js"), "utf8");
 const useViewerActionsSource = readFileSync(resolve(__dirname, "..", "src", "hooks", "useViewerActions.js"), "utf8");
 
-test("dev local dist lookup targets concrete repo-root runtime files instead of a directory base", () => {
-  assert.match(useOcctSource, /new URL\(\s*"\.\.\/\.\.\/\.\.\/dist\/occt-js\.js",\s*import\.meta\.url\s*\)/);
-  assert.match(useOcctSource, /new URL\(\s*"\.\.\/\.\.\/\.\.\/dist\/occt-js\.wasm",\s*import\.meta\.url\s*\)/);
-  assert.doesNotMatch(useOcctSource, /new URL\(\s*\/\*\s*@vite-ignore\s*\*\/\s*"\.\.\/\.\.\/\.\.\/dist\/"/);
-  assert.doesNotMatch(useOcctSource, /new URL\(\s*"\.\.\/\.\.\/\.\.\/dist\/",\s*import\.meta\.url\s*\)/);
+test("web runtime imports the package ESM factory and wasm URL without CDN fallbacks", () => {
+  assert.match(useOcctSource, /import\("@tx-code\/occt-js"\)/);
+  assert.match(useOcctSource, /import\("@tx-code\/occt-js\/dist\/occt-js\.wasm\?url"\)/);
+  assert.match(useOcctSource, /default export must be a factory function/);
+  assert.doesNotMatch(useOcctSource, /unpkg\.com/);
+  assert.doesNotMatch(useOcctSource, /fallbackModuleUrl/);
 });
 
 test("demo runtime hook wires generated tool MVP methods to the retained exact-open lane", () => {
   assert.match(useOcctSource, /ValidateRevolvedShapeSpec/);
+  assert.match(useOcctSource, /ValidateHelicalSweepSpec/);
+  assert.match(useOcctSource, /ValidateCompositeShapeSpec/);
   assert.match(useOcctSource, /openExactRevolvedShape/);
+  assert.match(useOcctSource, /openExactHelicalSweep/);
+  assert.match(useOcctSource, /openExactCompositeShape/);
   assert.match(useOcctSource, /const buildGeneratedTool = useCallback/);
   assert.match(useOcctSource, /const validateGeneratedToolSpec = useCallback/);
 });
@@ -25,6 +30,8 @@ test("demo runtime hook wires generated tool MVP methods to the retained exact-o
 test("demo runtime hook provisions one exact-session contract across imported and generated model flows", () => {
   assert.match(useOcctSource, /openManagedExactModel/);
   assert.match(useOcctSource, /openExactRevolvedShape/);
+  assert.match(useOcctSource, /openExactHelicalSweep/);
+  assert.match(useOcctSource, /openExactCompositeShape/);
   assert.match(useOcctSource, /upsertWorkpieceActor/);
   assert.match(useOcctSource, /upsertToolActor/);
   assert.match(useOcctSource, /clearWorkspaceExactSessions/);

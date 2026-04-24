@@ -74,17 +74,18 @@ export function createGridHelpers(scene, bounds, options = {}) {
     scene,
   );
   ground.material = createGridMaterial(scene, gridRatio, theme);
+  ground.rotation.x = Math.PI / 2;
   ground.position.x = center.x;
-  ground.position.y = bounds.min.y - 0.01;
-  ground.position.z = center.z;
+  ground.position.y = center.y;
+  ground.position.z = bounds.min.z - 0.01;
   ground.isPickable = false;
 
   const xAxis = MeshBuilder.CreateLines(
     "occt-viewer-x-axis",
     {
       points: [
-        new Vector3(center.x - gridSize / 2, bounds.min.y, center.z),
-        new Vector3(center.x + gridSize / 2, bounds.min.y, center.z),
+        new Vector3(center.x - gridSize / 2, center.y, bounds.min.z),
+        new Vector3(center.x + gridSize / 2, center.y, bounds.min.z),
       ],
     },
     scene,
@@ -92,18 +93,18 @@ export function createGridHelpers(scene, bounds, options = {}) {
   xAxis.color = new Color3(0.8, 0.2, 0.2);
   xAxis.isPickable = false;
 
-  const zAxis = MeshBuilder.CreateLines(
-    "occt-viewer-z-axis",
+  const yAxis = MeshBuilder.CreateLines(
+    "occt-viewer-y-axis",
     {
       points: [
-        new Vector3(center.x, bounds.min.y, center.z - gridSize / 2),
-        new Vector3(center.x, bounds.min.y, center.z + gridSize / 2),
+        new Vector3(center.x, center.y - gridSize / 2, bounds.min.z),
+        new Vector3(center.x, center.y + gridSize / 2, bounds.min.z),
       ],
     },
     scene,
   );
-  zAxis.color = new Color3(0.2, 0.8, 0.2);
-  zAxis.isPickable = false;
+  yAxis.color = new Color3(0.2, 0.8, 0.2);
+  yAxis.isPickable = false;
 
-  return { ground, xAxis, zAxis };
+  return { ground, xAxis, yAxis, zAxis: yAxis };
 }
