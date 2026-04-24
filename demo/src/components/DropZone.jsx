@@ -4,7 +4,7 @@ import { Button } from "./ui/button";
 import OrientationModeToggle from "./OrientationModeToggle";
 import { useViewerStore } from "../store/viewerStore";
 
-export default function DropZone({ onFile, onOpenGenerator, visible }) {
+export default function DropZone({ onFile, onOpenGenerator, onOpenSample, visible }) {
   const [dragOver, setDragOver] = useState(false);
   const theme = useViewerStore((s) => s.theme);
   const isLight = theme === "light";
@@ -56,6 +56,9 @@ export default function DropZone({ onFile, onOpenGenerator, visible }) {
           <Button onClick={() => document.getElementById("file-input").click()}>
             Browse Files
           </Button>
+          <Button variant="ghost" onClick={onOpenSample} data-testid="load-sample">
+            Open Sample Model
+          </Button>
           <Button variant="ghost" onClick={onOpenGenerator} data-testid="open-generated-tool-panel-empty">
             Generate Optional Tool
           </Button>
@@ -69,7 +72,7 @@ export default function DropZone({ onFile, onOpenGenerator, visible }) {
           data-testid="file-input"
         />
         <p className={`mt-4 text-xs ${isLight ? "text-zinc-500" : "text-zinc-600"}`}>
-          Drag and drop is supported too. Keep the sample manual: import a workpiece, add an optional tool, then run one exact action or CAM sample check.
+          Drag and drop is supported too. No sample auto-loads by default: open a bundled sample, import a workpiece, add an optional tool, then run one exact action or CAM sample check.
         </p>
       </div>
     </div>

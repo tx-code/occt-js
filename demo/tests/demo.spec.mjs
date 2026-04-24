@@ -980,13 +980,20 @@ test("toolbar and stats hidden initially", async ({ page }) => {
 });
 
 test("drop zone keeps import flow focused", async ({ page }) => {
-  await expect(page.locator("[data-testid='load-sample']")).toHaveCount(0);
+  await expect(page.locator("[data-testid='load-sample']")).toBeVisible();
+  await expect(page.locator("[data-testid='load-sample']")).toContainText(/Open Sample Model/i);
   await expect(page.locator("[data-testid='orientation-mode-raw-empty']")).toBeVisible();
   await expect(page.locator("[data-testid='orientation-mode-auto-empty']")).toBeVisible();
   await expect(page.locator("[data-testid='open-generated-tool-panel-empty']")).toContainText(/Generate Optional Tool/i);
   await expect(page.locator("[data-testid='drop-zone']")).toContainText(/Most CAM samples start with a workpiece/i);
   await expect(page.locator("[data-testid='drop-zone']")).toContainText(/optional tool/i);
   await expect(page.locator("[data-testid='drop-zone']")).toContainText(/run one exact action or CAM sample check/i);
+});
+
+test("opens bundled sample from empty state", async ({ page }) => {
+  await page.click("[data-testid='load-sample']");
+  await expect(page.locator("[data-testid='stats-panel']")).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator("[data-testid='file-name']")).toContainText("analysis-io1-cm-214.stp");
 });
 
 test("imports STEP file via file input", async ({ page }) => {
@@ -1409,6 +1416,11 @@ test.describe("mobile layout", () => {
     deviceScaleFactor: iphone12.deviceScaleFactor,
     isMobile: iphone12.isMobile,
     hasTouch: iphone12.hasTouch,
+  });
+
+  test("mobile empty state exposes bundled sample action", async ({ page }) => {
+    await expect(page.locator("[data-testid='load-sample']")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Open Sample Model" })).toBeVisible();
   });
 
   test("mobile toolbar stays compact when menu is open", async ({ page }) => {

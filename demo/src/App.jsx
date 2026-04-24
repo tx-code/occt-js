@@ -98,6 +98,7 @@ export default function App() {
           <DropZone
             visible={!model}
             onFile={importModelFile}
+            onOpenSample={openSample}
             onOpenGenerator={() => setGeneratorOpen(true)}
           />
           <LoadingOverlay />
