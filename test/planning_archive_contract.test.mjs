@@ -173,3 +173,16 @@ test("archived milestone links in roadmap resolve to archived planning files", (
     assert.match(milestones, new RegExp(`## ${escapeRegExp(version)}\\b`));
   }
 });
+
+test("active milestone project truth reflects the reduced measurement sample", () => {
+  const requirementsExists = existsSync(resolve(repoRoot, ".planning", "REQUIREMENTS.md"));
+
+  if (!requirementsExists) {
+    return;
+  }
+
+  const project = readRepoText(".planning/PROJECT.md");
+
+  assert.match(project, /current-result inspection/i);
+  assert.doesNotMatch(project, /rerun\/compare\/clear flows/i);
+});

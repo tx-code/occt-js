@@ -1,5 +1,111 @@
 # Retrospective
 
+## Milestone: v1.13 — CAM Measurement Integration Sample
+
+**Shipped:** 2026-04-22
+
+### What shipped
+
+- The browser demo now exposes demo-owned CAM workflow names (`clearance`, `step depth`, `center-to-center`, `surface-to-center`) composed over shipped exact primitives.
+- Sample-first wording and representative workpiece/tool browser flows were tightened without reintroducing inspection-product behavior.
+- Root/package/sdk docs and conditional governance contracts now lock CAM ownership drift while preserving unchanged `npm run test:release:root` routing.
+
+### What worked
+
+- Demo-first composition over existing exact primitives avoided fake kernel-gap expansion.
+- Contract-first red/green edits on docs/governance made boundary changes precise and auditable.
+- Keeping browser verification conditional prevented release-gate creep while still enforcing CAM sample drift checks.
+
+### What to revisit
+
+- `v1.13` closeout still relied on manual archival/state edits instead of a fully one-shot milestone command in this repo state.
+- No dedicated `v1.13` milestone-audit artifact was produced; closeout relied on phase evidence plus governance/browser/planning audits.
+
+### Carry-forward ideas
+
+- Keep future CAM work demo-first unless multiple downstream consumers prove a reusable runtime/package primitive gap.
+- Treat probing/tolerance/reporting/PMI/CMM as explicit future product milestones, not implicit carry-over.
+
+## Milestone: v1.12 — Surface Subtraction & Boundary Cleanup
+
+**Shipped:** 2026-04-21
+
+### What shipped
+
+- The browser demo now reads as a simpler integration sample instead of a measurement-productivity workspace.
+- Demo-owned measurement routing and session semantics were clarified and kept downstream from the published `@tx-code/occt-core` surface.
+- Live docs, active planning truth, and conditional verification now all describe and enforce the reduced browser measurement surface.
+
+### What worked
+
+- Treating the milestone as subtraction rather than another feature pass kept the repo aligned with its runtime/package-first identity.
+- TDD on docs and governance drift was effective: stale wording and stale browser-lane references were easier to remove once they were encoded as failing contract tests.
+- Keeping package churn minimal avoided fake cleanup work; stronger tests and one-line wording fixes were enough where the public surface was already narrow.
+
+### What to revisit
+
+- `v1.12` still closed without a dedicated milestone-audit artifact; closeout relied on manual review, `audit-open`, and targeted verification evidence.
+- The archived `v1.10` materials still describe the broader pre-subtraction measurement demo, so future readers need to treat `v1.12` as the new boundary truth rather than the older product-style wording.
+
+### Carry-forward ideas
+
+- If the next milestone stays subtractive, keep it explicit and boundary-first instead of mixing cleanup with new feature growth.
+- If measurement work resumes, keep it demo-first or package-first until a concrete reusable root/package gap is proven.
+
+## Milestone: v1.11 — Supported Semantic Helpers
+
+**Shipped:** 2026-04-21
+
+### What shipped
+
+- `@tx-code/occt-core` now exposes package-first `describeExactCounterbore(ref)` and `describeExactCountersink(ref)` helpers over the shipped exact measurement surface.
+- The root carrier now includes one narrow selected-ref compound-hole descriptor instead of widening into generic feature discovery or topology APIs.
+- The active milestone truth was narrowed back to helper-only scope before closeout, so candidate-analysis, demo candidate suggestion, and pinned/exportable session workflows are not archived as shipped behavior.
+
+### What worked
+
+- Narrowing the milestone back to one retained helper outcome preserved the repo boundary and avoided publishing product-surface behavior that was not actually accepted.
+- The compound-hole helper implementation stayed additive and package-first, which fits `occt-js` better than a broader measurement-product expansion.
+- TDD-backed rollback of the unaccepted productivity branch made it straightforward to return the demo to explicit app-owned action mapping.
+
+### What to revisit
+
+- `v1.11` still closed without a dedicated milestone-audit artifact; this closeout relies on manual review plus planning audit evidence.
+- The milestone started broader than the accepted outcome, which means future measurement-product or subtraction work should be scoped more aggressively up front.
+
+### Carry-forward ideas
+
+- If the next milestone is subtraction, keep it explicit and repo-boundary-first rather than mixing cleanup with new feature intent.
+- If measurement work resumes, keep action mapping and session UX in `demo/` until a concrete reusable package or root gap is proven.
+
+## Milestone: v1.10 — Exact Measurement Demo Loop
+
+**Shipped:** 2026-04-21
+
+### What shipped
+
+- The browser demo now retains an imported workpiece plus generated tool as separate actor-scoped exact sessions in one shared workspace with store-owned tool pose.
+- The root/package exact surface now supports additive cross-model pairwise measurement while preserving existing same-model callers.
+- The selection bridge now resolves Babylon picks into actor-scoped occurrence-safe exact refs instead of viewer-only ids.
+- The demo now supports typed measurement actions, rerun/compare/clear flows, and placement-backed overlay guides for supported workflows.
+- Docs, manifest-routed browser verification, and conditional governance now lock the measurement demo loop without widening the authoritative root release gate.
+
+### What worked
+
+- Proving the shipped measurement kernel through one downstream demo loop exposed the real integration gaps without reopening broad viewer ownership in the runtime.
+- Inserting Phase 33.1 before the measurement MVP was the right call; multi-actor retained state and tool pose had to exist before measurements could be correct.
+- Keeping package/runtime changes narrow and additive let the milestone improve demo capability while preserving the root release boundary.
+
+### What to revisit
+
+- Milestone closeout still required manual archive, state, and retrospective edits because the worktree was dirty and no dedicated `v1.10` milestone audit artifact existed.
+- The dormant seed `SEED-001-web-exact-brep-measurement` is still not fully retired; future broader measurement-product work needs an explicit new milestone instead of implicit carry-over.
+
+### Carry-forward ideas
+
+- If measurement work continues, keep new scope demo-first or package-first until a concrete kernel gap appears.
+- Candidate follow-up directions are richer semantic measurement helpers, candidate discovery UX, or persistent measurement session/reporting flows, but only as explicitly scoped future milestones.
+
 ## Milestone: v1.9 — Generic Profile Solids
 
 **Shipped:** 2026-04-21

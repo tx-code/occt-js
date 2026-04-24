@@ -1,5 +1,65 @@
 # Milestones
 
+## v1.13 CAM Measurement Integration Sample (Shipped: 2026-04-22)
+
+**Phases completed:** 3 phases, 6 plans, 6 tasks
+**Known deferred items at close:** 1 (see `STATE.md` Deferred Items)
+
+**Key accomplishments:**
+
+- The browser demo now composes demo-owned CAM workflows (`clearance`, `step depth`, `center-to-center`, `surface-to-center`) over shipped exact primitives without widening root/package APIs.
+- CAM sample wording and shell framing were tightened so workpiece/tool scenarios read as practical checks while preserving one current result and deterministic invalidation.
+- Canonical root/package/sdk docs now explicitly lock the CAM ownership split as demo-owned composition over reusable exact primitives.
+- Conditional secondary-surface governance now fails on CAM wording/browser drift while preserving unchanged `npm run test:release:root` routing.
+- `v1.13` closes with full phase completion and green contract/browser/planning audit evidence.
+
+---
+
+## v1.12 Surface Subtraction & Boundary Cleanup (Shipped: 2026-04-21)
+
+**Phases completed:** 3 phases, 6 plans, 6 tasks
+**Known deferred items at close:** 3 (see `STATE.md` Deferred Items)
+
+**Key accomplishments:**
+
+- The browser demo was reduced back to an explicit integration sample with supported actions and a single current-result inspection flow.
+- Demo-owned measurement action/session seams are now explicitly downstream and no longer read like shared `@tx-code/occt-core` workflow APIs.
+- Root README, SDK docs, and active planning truth now consistently describe the reduced browser measurement boundary.
+- Conditional verification and governance now lock the simplified integration-sample surface while keeping `npm run test:release:root` unchanged.
+- `v1.12` finished the subtraction pass and returned the repo to a no-active-milestone planning state.
+
+---
+
+## v1.11 Supported Semantic Helpers (Shipped: 2026-04-21)
+
+**Phases completed:** 1 phase, 1 plan, 1 task
+**Known deferred items at close:** 3 (see `STATE.md` Deferred Items)
+
+**Key accomplishments:**
+
+- `@tx-code/occt-core` now ships package-first `counterbore` and `countersink` helpers over the existing exact surface.
+- The root carrier widened only by one narrow selected-ref compound-hole descriptor instead of generic topology or discovery APIs.
+- The milestone was explicitly narrowed back to helper-only truth, with candidate-analysis and pinned/exportable session work dropped before acceptance.
+- Planning state, docs, and archive truth now record that measurement action mapping and session UX remain downstream demo concerns.
+
+---
+
+## v1.10 Exact Measurement Demo Loop (Shipped: 2026-04-21)
+
+**Phases completed:** 4 phases, 7 plans, 7 tasks
+**Known deferred items at close:** 3 (see `STATE.md` Deferred Items)
+
+**Key accomplishments:**
+
+- The browser demo now keeps an imported workpiece and a generated tool alive as separate actor-scoped exact sessions inside one shared workspace, with store-owned tool pose.
+- The root Wasm carrier and `@tx-code/occt-core` now support additive cross-model pairwise exact measurement while preserving same-model caller compatibility.
+- Babylon picks now resolve to actor-scoped occurrence-safe exact refs, so the measurement loop no longer depends on viewer-only mesh ids.
+- Demo-owned measurement actions now support typed execution, rerun, compare, and clear flows across supported single-actor and workpiece-tool workflows.
+- Placement-backed exact results now drive scene-native overlay guides through the existing line-pass pipeline, with explicit panel-only fallback where stable placement geometry is unavailable.
+- Docs, manifest-routed browser verification, and conditional governance now lock the measurement demo loop without widening `npm run test:release:root`.
+
+---
+
 ## v1.9 Generic Profile Solids (Shipped: 2026-04-21)
 
 **Phases completed:** 3 phases, 6 plans, 6 tasks
