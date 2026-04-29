@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import { loadOcctFactory } from "./load_occt_factory.mjs";
 
 const factory = loadOcctFactory();
+const XDE_LABEL_PATH_PATTERN = /^\d+(?::\d+)+$/;
 
 async function loadFixture(name) {
   return new Uint8Array(await readFile(new URL(`./${name}`, import.meta.url)));
@@ -11,6 +12,33 @@ async function loadFixture(name) {
 
 async function createModule() {
   return factory();
+}
+
+function collectNodeIds(nodes, ids = []) {
+  for (const node of nodes ?? []) {
+    if (typeof node?.id === "string") {
+      ids.push(node.id);
+    }
+    collectNodeIds(node?.children, ids);
+  }
+  return ids;
+}
+
+function assertOpaquePublicNodeIds(result, label) {
+  const ids = collectNodeIds(result?.rootNodes);
+  assert.ok(ids.length > 0, `${label}: should expose public node ids`);
+  assert.equal(
+    new Set(ids).size,
+    ids.length,
+    `${label}: public node ids should be unique per occurrence`,
+  );
+  for (const id of ids) {
+    assert.doesNotMatch(
+      id,
+      XDE_LABEL_PATH_PATTERN,
+      `${label}: should not expose XDE label path "${id}" as public node id`,
+    );
+  }
 }
 
 function assertExactGeometryBindings(result, label) {
@@ -56,6 +84,17 @@ test("reused geometry definitions do not inflate exactGeometryBindings beyond ge
     Number.isFinite(result?.stats?.reusedInstanceCount) && result.stats.reusedInstanceCount > 0,
     "assembly.step should exercise reused geometry definitions",
   );
+});
+
+test("STEP public node ids do not expose XDE label paths", async () => {
+  const module = await createModule();
+  const assemblyBytes = await loadFixture("assembly.step");
+
+  const exact = module.OpenExactStepModel(assemblyBytes, {});
+  const stateless = module.ReadStepFile(assemblyBytes, {});
+
+  assertOpaquePublicNodeIds(exact, "OpenExactStepModel assembly.step");
+  assertOpaquePublicNodeIds(stateless, "ReadStepFile assembly.step");
 });
 
 test("stateless ReadStepFile remains exactGeometryBindings-free", async () => {

@@ -31,7 +31,6 @@
 #include <TopExp.hxx>
 #include <BRep_Builder.hxx>
 #include <Standard_ArrayStreamBuffer.hxx>
-#include <TDF_Tool.hxx>
 #include <Standard_Failure.hxx>
 #include <IFSelect_ReturnStatus.hxx>
 #include <UnitsMethods.hxx>
@@ -277,11 +276,7 @@ void TraverseLabel(const TDF_Label& label,
 
     scene.nodes[nodeIndex].name = GetLabelName(label, shapeTool);
 
-    {
-        TCollection_AsciiString entry;
-        TDF_Tool::Entry(label, entry);
-        scene.nodes[nodeIndex].id = entry.ToCString();
-    }
+    scene.nodes[nodeIndex].id = "node_" + std::to_string(nodeIndex);
 
     TopLoc_Location loc = shapeTool->GetLocation(label);
     if (loc.IsIdentity()) {

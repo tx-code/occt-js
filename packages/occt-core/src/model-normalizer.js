@@ -358,8 +358,22 @@ function materialIdForColor(color, keyToMaterialId) {
   return keyToMaterialId.get(key);
 }
 
+function isXdeLabelPath(value) {
+  return /^\d+(?::\d+)+$/.test(value);
+}
+
+function normalizeNodeId(rawId, path) {
+  const fallbackId = `node_${path}`;
+  if (typeof rawId !== "string" && typeof rawId !== "number") {
+    return fallbackId;
+  }
+
+  const id = String(rawId);
+  return isXdeLabelPath(id) ? fallbackId : id;
+}
+
 function normalizeNode(node, context, path) {
-  const id = node?.id ? String(node.id) : `node_${path}`;
+  const id = normalizeNodeId(node?.id, path);
   const transform = Array.isArray(node?.transform) && node.transform.length === 16
     ? node.transform.slice()
     : IDENTITY_MATRIX.slice();

@@ -11,7 +11,7 @@ import { useViewerStore } from "../store/viewerStore.js";
 const DEFAULT_IMPORT_PARAMS = Object.freeze({
   readColors: true,
   readNames: true,
-  rootMode: "multiple-shapes",
+  rootMode: "one-shape",
 });
 const GENERATED_SHAPE_FAMILY = Object.freeze({
   REVOLVED: "revolved",

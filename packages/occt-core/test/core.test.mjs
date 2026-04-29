@@ -246,6 +246,54 @@ describe("normalizeOcctResult", () => {
     assert.equal(result.stats.materialCount, 1);
   });
 
+  it("remaps XDE label paths to opaque public node ids", () => {
+    const result = normalizeOcctResult({
+      success: true,
+      sourceFormat: "step",
+      rootNodes: [
+        {
+          id: "0:1:1",
+          name: "assembly",
+          isAssembly: true,
+          transform: IDENTITY_MATRIX,
+          meshes: [],
+          children: [
+            {
+              id: "0:1:1:1",
+              name: "part",
+              isAssembly: false,
+              transform: IDENTITY_MATRIX,
+              meshes: [0],
+              children: [],
+            },
+          ],
+        },
+      ],
+      geometries: [
+        {
+          name: "meshA",
+          color: null,
+          positions: new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0]),
+          normals: new Float32Array([0, 0, 1, 0, 0, 1, 0, 0, 1]),
+          indices: new Uint32Array([0, 1, 2]),
+          faces: [],
+          edges: [],
+          vertices: [],
+          triangleToFaceMap: new Int32Array([]),
+        },
+      ],
+      materials: [],
+      warnings: [],
+      stats: { ...EMPTY_STATS, rootCount: 1, nodeCount: 2, partCount: 1, geometryCount: 1 },
+    });
+
+    assert.equal(result.rootNodes[0].id, "node_0");
+    assert.equal(result.rootNodes[0].children[0].id, "node_0_0");
+    assert.doesNotMatch(result.rootNodes[0].id, /^\d+(?::\d+)+$/);
+    assert.doesNotMatch(result.rootNodes[0].children[0].id, /^\d+(?::\d+)+$/);
+    assert.deepEqual(result.rootNodes[0].children[0].geometryIds, ["geo_0"]);
+  });
+
   it("normalizes occt-import-js style output", () => {
     const result = normalizeOcctResult({
       success: true,
