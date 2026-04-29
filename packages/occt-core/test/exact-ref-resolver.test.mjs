@@ -1,6 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  createExactEdgeRef,
+  createExactElementRef,
+  createExactFaceRef,
   normalizeExactOpenResult,
   resolveExactElementRef,
 } from "../src/index.js";
@@ -90,6 +93,68 @@ function makeRawExactOpenResult() {
   };
 }
 
+test("createExactElementRef builds a clean geometry-scoped ref without assembly node ids", () => {
+  const exactModel = normalizeExactOpenResult(makeRawExactOpenResult(), {
+    sourceFileName: "fixture.step",
+  });
+
+  const resolved = createExactElementRef(exactModel, {
+    geometryId: "geo_0",
+    kind: "face",
+    elementId: 7,
+  });
+
+  assert.deepEqual(resolved, {
+    ok: true,
+    exactModelId: 17,
+    exactShapeHandle: 33,
+    geometryId: "geo_0",
+    kind: "face",
+    elementId: 7,
+    transform: IDENTITY_MATRIX,
+  });
+  assert.equal("nodeId" in resolved, false);
+});
+
+test("createExactElementRef accepts exactShapeHandle and caller transform directly", () => {
+  const exactModel = normalizeExactOpenResult(makeRawExactOpenResult(), {
+    sourceFileName: "fixture.step",
+  });
+  const transform = [
+    1, 0, 0, 0,
+    0, 1, 0, 0,
+    0, 0, 1, 0,
+    4, 5, 6, 1,
+  ];
+
+  assert.deepEqual(createExactEdgeRef(exactModel, {
+    exactShapeHandle: 33,
+    elementId: 5,
+    transform,
+  }), {
+    ok: true,
+    exactModelId: 17,
+    exactShapeHandle: 33,
+    geometryId: "geo_0",
+    kind: "edge",
+    elementId: 5,
+    transform,
+  });
+
+  assert.deepEqual(createExactFaceRef(exactModel, {
+    exactShapeHandle: 33,
+    elementId: 7,
+  }), {
+    ok: true,
+    exactModelId: 17,
+    exactShapeHandle: 33,
+    geometryId: "geo_0",
+    kind: "face",
+    elementId: 7,
+    transform: IDENTITY_MATRIX,
+  });
+});
+
 test("resolveExactElementRef returns an occurrence-scoped face ref from normalized model data", () => {
   const exactModel = normalizeExactOpenResult(makeRawExactOpenResult(), {
     sourceFileName: "fixture.step",
@@ -149,6 +214,42 @@ test("invalid geometry or topology ids fail with explicit ref-resolution codes",
     sourceFileName: "fixture.step",
   });
 
+  assert.deepEqual(createExactElementRef(exactModel, {
+    kind: "face",
+    elementId: 7,
+  }), {
+    ok: false,
+    code: "invalid-id",
+    message: "Exact ref requires geometryId or exactShapeHandle.",
+  });
+  assert.deepEqual(createExactElementRef(exactModel, {
+    geometryId: "geo_0",
+    exactShapeHandle: 99,
+    kind: "face",
+    elementId: 7,
+  }), {
+    ok: false,
+    code: "exact-shape-mismatch",
+    message: 'geometryId "geo_0" is bound to exactShapeHandle 33, not 99.',
+  });
+  assert.deepEqual(createExactElementRef(exactModel, {
+    exactShapeHandle: 99,
+    kind: "face",
+    elementId: 7,
+  }), {
+    ok: false,
+    code: "invalid-id",
+    message: "Unknown exactShapeHandle: 99.",
+  });
+  assert.deepEqual(createExactElementRef(exactModel, {
+    geometryId: "geo_0",
+    kind: "wire",
+    elementId: 7,
+  }), {
+    ok: false,
+    code: "invalid-id",
+    message: 'Unsupported exact element kind: "wire".',
+  });
   assert.deepEqual(resolveExactElementRef(exactModel, {
     nodeId: "occ-a",
     geometryId: "geo-missing",

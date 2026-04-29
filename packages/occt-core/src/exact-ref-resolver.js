@@ -61,6 +61,14 @@ function findExactGeometryBinding(exactModel, geometryId) {
   return exactModel?.exactGeometryBindings?.find((binding) => binding?.geometryId === geometryId);
 }
 
+function findExactGeometryBindingByHandle(exactModel, exactShapeHandle) {
+  return exactModel?.exactGeometryBindings?.find((binding) => binding?.exactShapeHandle === exactShapeHandle);
+}
+
+function isExactElementKind(kind) {
+  return kind === "face" || kind === "edge" || kind === "vertex";
+}
+
 function hasTopologyElement(geometry, kind, elementId) {
   if (!Number.isInteger(elementId) || elementId <= 0) {
     return false;
@@ -77,6 +85,68 @@ function hasTopologyElement(geometry, kind, elementId) {
   return false;
 }
 
+export function createExactElementRef(exactModel, options = {}) {
+  if (!Number.isInteger(exactModel?.exactModelId) || exactModel.exactModelId <= 0) {
+    return makeFailure("invalid-handle", "Exact model handle is missing or invalid.");
+  }
+
+  const geometryId = typeof options.geometryId === "string" ? options.geometryId : "";
+  const requestedExactShapeHandle = Number.isInteger(options.exactShapeHandle)
+    ? options.exactShapeHandle
+    : undefined;
+  const kind = typeof options.kind === "string" ? options.kind : "";
+  const elementId = options.elementId;
+
+  if (!isExactElementKind(kind)) {
+    return makeFailure("invalid-id", `Unsupported exact element kind: "${kind}".`);
+  }
+
+  let exactBinding;
+  let geometry;
+  if (geometryId) {
+    geometry = findGeometry(exactModel, geometryId);
+    if (!geometry) {
+      return makeFailure("invalid-id", `Unknown geometryId: "${geometryId}".`);
+    }
+
+    exactBinding = findExactGeometryBinding(exactModel, geometryId);
+    if (!exactBinding) {
+      return makeFailure("invalid-id", `Missing exact geometry binding for "${geometryId}".`);
+    }
+    if (requestedExactShapeHandle !== undefined && exactBinding.exactShapeHandle !== requestedExactShapeHandle) {
+      return makeFailure(
+        "exact-shape-mismatch",
+        `geometryId "${geometryId}" is bound to exactShapeHandle ${exactBinding.exactShapeHandle}, not ${requestedExactShapeHandle}.`,
+      );
+    }
+  } else if (requestedExactShapeHandle !== undefined) {
+    exactBinding = findExactGeometryBindingByHandle(exactModel, requestedExactShapeHandle);
+    if (!exactBinding) {
+      return makeFailure("invalid-id", `Unknown exactShapeHandle: ${requestedExactShapeHandle}.`);
+    }
+    geometry = findGeometry(exactModel, exactBinding.geometryId);
+  } else {
+    return makeFailure("invalid-id", "Exact ref requires geometryId or exactShapeHandle.");
+  }
+
+  if (!geometry) {
+    return makeFailure("invalid-id", `Missing geometry for exactShapeHandle ${exactBinding.exactShapeHandle}.`);
+  }
+  if (!hasTopologyElement(geometry, kind, elementId)) {
+    return makeFailure("invalid-id", `Unknown ${kind} id ${elementId} on geometry "${exactBinding.geometryId}".`);
+  }
+
+  return {
+    ok: true,
+    exactModelId: exactModel.exactModelId,
+    exactShapeHandle: exactBinding.exactShapeHandle,
+    geometryId: exactBinding.geometryId,
+    kind,
+    elementId,
+    transform: normalizeTransform(options.transform),
+  };
+}
+
 export function resolveExactElementRef(exactModel, options = {}) {
   if (!Number.isInteger(exactModel?.exactModelId) || exactModel.exactModelId <= 0) {
     return makeFailure("invalid-handle", "Exact model handle is missing or invalid.");
@@ -84,8 +154,6 @@ export function resolveExactElementRef(exactModel, options = {}) {
 
   const nodeId = typeof options.nodeId === "string" ? options.nodeId : "";
   const geometryId = typeof options.geometryId === "string" ? options.geometryId : "";
-  const kind = typeof options.kind === "string" ? options.kind : "";
-  const elementId = options.elementId;
 
   const geometry = findGeometry(exactModel, geometryId);
   if (!geometry) {
@@ -104,20 +172,33 @@ export function resolveExactElementRef(exactModel, options = {}) {
   if (!nodeOccurrence.geometryIds.includes(geometryId)) {
     return makeFailure("occurrence-mismatch", `Node "${nodeId}" does not directly reference geometry "${geometryId}".`);
   }
-  if (!hasTopologyElement(geometry, kind, elementId)) {
-    return makeFailure("invalid-id", `Unknown ${kind} id ${elementId} on geometry "${geometryId}".`);
+  const ref = createExactElementRef(exactModel, {
+    geometryId,
+    kind: options.kind,
+    elementId: options.elementId,
+    transform: nodeOccurrence.transform,
+  });
+  if (ref.ok !== true) {
+    return ref;
   }
 
   return {
+    ...ref,
     ok: true,
-    exactModelId: exactModel.exactModelId,
-    exactShapeHandle: exactBinding.exactShapeHandle,
     nodeId,
-    geometryId,
-    kind,
-    elementId,
-    transform: nodeOccurrence.transform,
   };
+}
+
+export function createExactFaceRef(exactModel, options = {}) {
+  return createExactElementRef(exactModel, { ...options, kind: "face" });
+}
+
+export function createExactEdgeRef(exactModel, options = {}) {
+  return createExactElementRef(exactModel, { ...options, kind: "edge" });
+}
+
+export function createExactVertexRef(exactModel, options = {}) {
+  return createExactElementRef(exactModel, { ...options, kind: "vertex" });
 }
 
 export function resolveExactFaceRef(exactModel, options = {}) {

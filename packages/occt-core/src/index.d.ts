@@ -259,9 +259,23 @@ export interface OcctResolveExactRefOptions {
   elementId: number;
 }
 
+export interface OcctCreateExactRefOptions {
+  geometryId?: string;
+  exactShapeHandle?: number;
+  kind: OcctJSExactElementKind;
+  elementId: number;
+  transform?: OcctMatrix4;
+}
+
 export interface OcctResolvedExactRef extends OcctExactRef {
   ok: true;
   nodeId: string;
+  geometryId: string;
+  transform: OcctMatrix4;
+}
+
+export interface OcctCreatedExactRef extends OcctExactRef {
+  ok: true;
   geometryId: string;
   transform: OcctMatrix4;
 }
@@ -599,6 +613,14 @@ export declare class OcctCoreClient {
 export declare function createOcctCore(options?: OcctCoreClientOptions): OcctCoreClient;
 
 export declare function normalizeExactOpenResult(rawResult: unknown, options?: OcctNormalizeResultOptions): OcctNormalizedExactOpenResult;
+
+export declare function createExactElementRef(exactModel: OcctNormalizedExactOpenResult, options: OcctCreateExactRefOptions): OcctCreatedExactRef | OcctResolveExactRefFailure;
+
+export declare function createExactFaceRef(exactModel: OcctNormalizedExactOpenResult, options: Omit<OcctCreateExactRefOptions, "kind">): OcctCreatedExactRef | OcctResolveExactRefFailure;
+
+export declare function createExactEdgeRef(exactModel: OcctNormalizedExactOpenResult, options: Omit<OcctCreateExactRefOptions, "kind">): OcctCreatedExactRef | OcctResolveExactRefFailure;
+
+export declare function createExactVertexRef(exactModel: OcctNormalizedExactOpenResult, options: Omit<OcctCreateExactRefOptions, "kind">): OcctCreatedExactRef | OcctResolveExactRefFailure;
 
 export declare function resolveExactElementRef(exactModel: OcctNormalizedExactOpenResult, options: OcctResolveExactRefOptions): OcctResolvedExactRef | OcctResolveExactRefFailure;
 

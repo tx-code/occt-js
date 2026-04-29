@@ -99,6 +99,7 @@ test("occt-core published typings expose the helper SDK surface", () => {
   assert.match(typesSource, /suggestExactMidpointPlacement/);
   assert.match(typesSource, /describeExactEqualDistance/);
   assert.match(typesSource, /suggestExactSymmetryPlacement/);
+  assert.match(typesSource, /createExactElementRef/);
   assert.match(typesSource, /resolveExactElementRef/);
   assert.match(typesSource, /normalizeExactOpenResult/);
 });
@@ -122,6 +123,7 @@ test("occt-core JS barrel stays aligned with the retained package surface and ex
   assert.match(barrelSource, /createOcctCore/);
   assert.match(barrelSource, /OcctCoreClient/);
   assert.match(barrelSource, /normalizeExactOpenResult/);
+  assert.match(barrelSource, /createExactElementRef/);
   assert.match(barrelSource, /resolveExactElementRef/);
   assert.match(barrelSource, /normalizeOcctResult/);
   assert.doesNotMatch(barrelSource, /runDemoMeasurementAction/);

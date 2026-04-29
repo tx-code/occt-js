@@ -17,7 +17,11 @@ Create the adapter once, then open an exact model and build exact refs that carr
 ```js
 import OcctJS from "@tx-code/occt-js";
 import occtWasmUrl from "@tx-code/occt-js/dist/occt-js.wasm?url";
-import { createOcctCore } from "@tx-code/occt-core";
+import {
+  createExactFaceRef,
+  createOcctCore,
+  normalizeExactOpenResult,
+} from "@tx-code/occt-core";
 
 const core = createOcctCore({
   factory: OcctJS,
@@ -27,21 +31,21 @@ const core = createOcctCore({
 const rawExact = await core.openExactStep(stepBytes, {
   fileName: "part.step",
 });
+const exactModel = normalizeExactOpenResult(rawExact, {
+  sourceFileName: "part.step",
+});
 
-const refA = {
-  exactModelId: rawExact.exactModelId,
-  exactShapeHandle: rawExact.exactGeometryBindings[0].exactShapeHandle,
-  kind: "face",
+const refA = createExactFaceRef(exactModel, {
+  geometryId: exactModel.exactGeometryBindings[0].geometryId,
   elementId: 1,
-  transform: [
-    1, 0, 0, 0,
-    0, 1, 0, 0,
-    0, 0, 1, 0,
-    0, 0, 0, 1,
-  ],
-};
-const refB = { ...refA, elementId: 2 };
+});
+const refB = createExactFaceRef(exactModel, {
+  geometryId: exactModel.exactGeometryBindings[0].geometryId,
+  elementId: 2,
+});
 ```
+
+For single-shape workflows, this avoids assembly or scene-node identifiers entirely. Occurrence-aware consumers can still use `resolveExactElementRef(...)` when they intentionally need a transform from the normalized node tree.
 
 ## Pairwise Measurement
 

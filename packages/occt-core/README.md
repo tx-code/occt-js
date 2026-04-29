@@ -265,8 +265,30 @@ const placement = await core.suggestExactDistancePlacement(refA, refB);
 const relation = await core.classifyExactRelation(refA, refB);
 ```
 
+For single-shape or app-owned transform flows, callers can build clean refs without assembly or scene-node ids:
+
+```js
+import { createExactFaceRef, normalizeExactOpenResult } from "@tx-code/occt-core";
+
+const exactModel = normalizeExactOpenResult(rawExact, {
+  sourceFileName: "part.step",
+});
+
+const ref = createExactFaceRef(exactModel, {
+  geometryId: exactModel.exactGeometryBindings[0].geometryId,
+  elementId: 1,
+});
+
+if (ref.ok) {
+  await core.measureExactFaceArea(ref);
+}
+```
+
+Use `resolveExactElementRef(...)` only when the caller intentionally needs an occurrence transform from the normalized node tree.
+
 Available package-first measurement and helper surfaces:
 
+- `createExactElementRef(...)`, `createExactFaceRef(...)`, `createExactEdgeRef(...)`, and `createExactVertexRef(...)` for clean geometry-scoped exact refs
 - `measureExactDistance(refA, refB)`, `measureExactAngle(refA, refB)`, and `measureExactThickness(refA, refB)`
 - `suggestExactDistancePlacement(refA, refB)`, `suggestExactAnglePlacement(refA, refB)`, and `suggestExactThicknessPlacement(refA, refB)`
 - `suggestExactRadiusPlacement(ref)` and `suggestExactDiameterPlacement(ref)`
