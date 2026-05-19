@@ -1,4 +1,5 @@
 import { getReadMethodName, normalizeOcctFormat, listSupportedFormats } from "./formats.js";
+import { normalizeExactOpenResult } from "./exact-model-normalizer.js";
 import { normalizeOcctResult } from "./model-normalizer.js";
 
 const EXACT_OPEN_METHOD = {
@@ -519,7 +520,7 @@ function createManagedExactModel(client, exactModel) {
 
   if (client._managedExactFinalizer) {
     client._managedExactFinalizer.register(
-      managedExactModel,
+      exactModel,
       () => {
         void Promise.resolve(client.releaseExactModel(exactModelId)).catch(() => {});
       },
@@ -659,7 +660,18 @@ export class OcctCoreClient {
   }
 
   async openManagedExactModel(content, options = {}) {
-    const exactModel = await this.openExactModel(content, options);
+    const normalizedFormat = this._resolveRequestedFormat(options, "openManagedExactModel");
+    const importParams = normalizeImportParams(options.importParams);
+    const rawExactModel = await this.openExactModel(content, {
+      ...options,
+      format: normalizedFormat,
+      importParams,
+    });
+    const exactModel = normalizeExactOpenResult(rawExactModel, {
+      sourceFileName: options.fileName,
+      sourceFormat: normalizedFormat,
+      importParams,
+    });
     return createManagedExactModel(this, exactModel);
   }
 

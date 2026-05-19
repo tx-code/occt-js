@@ -540,6 +540,46 @@ const result = occt.ReadFile("step", buffer, {
 // result.stats         — { rootCount, nodeCount, partCount, triangleCount, ... }
 ```
 
+## Runtime Geometry Transform Export
+
+`occt-js` can also export transient runtime geometry bytes with a caller-supplied
+4x4 affine matrix applied. This is intended for downstream runtime boundaries
+that need STEP/BREP bytes in an already materialized placement while preserving
+the original source CAD and placement metadata separately in application
+authority.
+
+```js
+const sourceStep = new Uint8Array(/* source STEP bytes */);
+const sourceToWorkpiece = [
+  1, 0, 0, 0,
+  0, 1, 0, 0,
+  0, 0, 1, 0,
+  25, -10, 5, 1,
+];
+
+const transformed = occt.TransformStepFile(sourceStep, sourceToWorkpiece, {
+  linearUnit: "millimeter",
+});
+
+if (!transformed.success) {
+  throw new Error(transformed.error);
+}
+
+// transformed.content is a Uint8Array containing transformed STEP bytes.
+```
+
+Contract rules:
+
+- `TransformStepFile(...)` and `TransformBrepFile(...)` return exported CAD
+  bytes that can be reopened by the corresponding `Read*File(...)` API.
+- The transform matrix uses the same column-major layout as import and exact
+  helper transforms, with translation in indices 12, 13, and 14.
+- The generic `TransformFile(format, ...)` accepts `step`, `stp`, and `brep`;
+  `stp` is normalized to STEP output.
+- Invalid matrices, unsupported formats, import failures, and export failures
+  return `{ success: false, error }`; callers should not substitute the source
+  bytes for a failed non-identity transform.
+
 `rootMode` behavior by format:
 
 - `"one-shape"`: default. Multiple top-level XDE free shapes are exposed under one logical root node.

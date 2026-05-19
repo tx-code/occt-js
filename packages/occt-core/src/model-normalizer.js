@@ -213,7 +213,7 @@ function normalizeGeometry(mesh, index) {
   const indices = toArray(mesh?.indices ?? mesh?.index?.array);
 
   return {
-    id: `geo_${index}`,
+    id: typeof mesh?.id === "string" && mesh.id ? mesh.id : `geo_${index}`,
     name: mesh?.name,
     positions,
     normals: normals.length ? normals : undefined,

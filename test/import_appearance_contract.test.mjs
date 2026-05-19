@@ -181,6 +181,11 @@ function assertExactAppearanceContract(result, label) {
     result.geometries?.length ?? 0,
     `${label}: exactGeometryBindings should stay aligned with geometries`,
   );
+  for (const [index, binding] of result.exactGeometryBindings.entries()) {
+    const geometry = result.geometries[index];
+    assert.equal(geometry?.id, `geo_${index}`, `${label}: geometry ${index} should expose a stable geometry id`);
+    assert.equal(binding?.geometryId, geometry.id, `${label}: exact binding ${index} should reference its geometry id`);
+  }
 }
 
 test("colorMode default forces the built-in CAD color on colored STEP imports", async () => {

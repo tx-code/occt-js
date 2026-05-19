@@ -134,6 +134,22 @@ test("packed root package helper docs and typings stay aligned with the shipped 
   assert.match(typesSource, /ClassifyExactRelation/);
 });
 
+test("packed root package documents runtime geometry transform export helpers", () => {
+  const manifest = getDryRunPackManifest();
+  const packedPaths = new Set(manifest.files.map((entry) => entry.path));
+  const typesSource = readRepoText("dist/occt-js.d.ts");
+  const readme = readRepoText("README.md");
+
+  assert.equal(packedPaths.has("README.md"), true);
+  assert.equal(packedPaths.has("dist/occt-js.d.ts"), true);
+  assert.match(readme, /## Runtime Geometry Transform Export/);
+  assert.match(readme, /TransformStepFile/);
+  assert.match(readme, /TransformBrepFile/);
+  assert.match(typesSource, /export type OcctJSGeometryTransformFormat = "step" \| "stp" \| "brep";/);
+  assert.match(typesSource, /TransformStepFile/);
+  assert.match(typesSource, /TransformBrepFile/);
+});
+
 test("packed root package profile-solid docs and typings stay aligned with the shipped shared-profile and extruded surface", () => {
   const manifest = getDryRunPackManifest();
   const packedPaths = new Set(manifest.files.map((entry) => entry.path));

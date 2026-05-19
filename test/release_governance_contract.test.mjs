@@ -57,6 +57,15 @@ test("authoritative root test surface includes import appearance contract covera
   assert.match(testCommand, /test\/import_appearance_contract\.test\.mjs/);
 });
 
+test("authoritative root release and test surfaces include geometry transform export coverage", () => {
+  const packageJson = readRepoJson("package.json");
+  const releaseCommand = packageJson.scripts?.["test:release:root"] ?? "";
+  const testCommand = packageJson.scripts?.test ?? "";
+
+  assert.match(releaseCommand, /test\/geometry_transform_export_contract\.test\.mjs/);
+  assert.match(testCommand, /test\/geometry_transform_export_contract\.test\.mjs/);
+});
+
 test("authoritative root release and test surfaces include generated revolved-shape coverage", () => {
   const packageJson = readRepoJson("package.json");
   const releaseCommand = packageJson.scripts?.["test:release:root"] ?? "";
@@ -176,8 +185,8 @@ test("authoritative root release command surface keeps perf and soak lanes optio
 test("demo browser runtime does not depend on CDN package publishing", () => {
   const demoHook = readRepoText("demo/src/hooks/useOcct.js");
 
-  assert.match(demoHook, /import\("@tx-code\/occt-js"\)/);
-  assert.match(demoHook, /import\("@tx-code\/occt-js\/dist\/occt-js\.wasm\?url"\)/);
+  assert.match(demoHook, /from "@tx-code\/occt-js"/);
+  assert.match(demoHook, /dist\/occt-js\.wasm\?url/);
   assert.doesNotMatch(demoHook, /unpkg\.com/);
   assert.doesNotMatch(demoHook, /packageJson\.version/);
 });

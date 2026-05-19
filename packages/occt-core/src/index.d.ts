@@ -232,7 +232,7 @@ export interface OcctNormalizedExactOpenResult extends OcctNormalizedResult {
 
 export interface OcctManagedExactModel {
   exactModelId: number;
-  exactModel: OcctJSExactOpenResult;
+  exactModel: OcctNormalizedExactOpenResult;
   dispose(): Promise<OcctJSLifecycleResult>;
 }
 

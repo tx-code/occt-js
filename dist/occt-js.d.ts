@@ -35,6 +35,7 @@ export interface OcctJSVertex {
 }
 
 export interface OcctJSGeometry {
+    id: string;
     name: string;
     color: OcctJSColor | null;
     positions: Float32Array;
@@ -91,6 +92,7 @@ export interface OcctJSExactOpenResult extends OcctJSResult {
 }
 
 export interface OcctJSExactGeometryBinding {
+    geometryId: string;
     exactShapeHandle: number;
 }
 
@@ -939,11 +941,32 @@ export interface OcctJSOrientationResult {
     unitScaleToMeters?: number;
 }
 
+export type OcctJSGeometryTransformFormat = "step" | "stp" | "brep";
+
+export interface OcctJSGeometryTransformSuccess {
+    success: true;
+    format: OcctJSGeometryTransformFormat;
+    content: Uint8Array;
+}
+
+export interface OcctJSGeometryTransformFailure {
+    success: false;
+    format: string;
+    error: string;
+}
+
+export type OcctJSGeometryTransformResult =
+    | OcctJSGeometryTransformSuccess
+    | OcctJSGeometryTransformFailure;
+
 export interface OcctJSModule {
     ReadFile(format: string, content: Uint8Array, params?: OcctJSReadParams): OcctJSResult;
     ReadStepFile(content: Uint8Array, params?: OcctJSReadParams): OcctJSResult;
     ReadIgesFile(content: Uint8Array, params?: OcctJSReadParams): OcctJSResult;
     ReadBrepFile(content: Uint8Array, params?: OcctJSReadParams): OcctJSResult;
+    TransformFile(format: OcctJSGeometryTransformFormat, content: Uint8Array, transform: OcctJSMatrix4, params?: OcctJSReadParams): OcctJSGeometryTransformResult;
+    TransformStepFile(content: Uint8Array, transform: OcctJSMatrix4, params?: OcctJSReadParams): OcctJSGeometryTransformResult;
+    TransformBrepFile(content: Uint8Array, transform: OcctJSMatrix4, params?: OcctJSReadParams): OcctJSGeometryTransformResult;
     ValidateProfile2DSpec(spec: OcctJSProfile2DSpec): OcctJSProfile2DValidationResult;
     ValidateRevolvedShapeSpec(spec: OcctJSRevolvedShapeSpec): OcctJSRevolvedShapeValidationResult;
     ValidateExtrudedShapeSpec(spec: OcctJSExtrudedShapeSpec): OcctJSExtrudedShapeValidationResult;

@@ -52,6 +52,18 @@ function assertExactGeometryBindings(result, label) {
   );
 
   for (const [index, binding] of result.exactGeometryBindings.entries()) {
+    const geometry = result.geometries[index];
+    const expectedGeometryId = `geo_${index}`;
+    assert.equal(
+      geometry?.id,
+      expectedGeometryId,
+      `${label}: geometry ${index} should expose stable id ${expectedGeometryId}`,
+    );
+    assert.equal(
+      binding?.geometryId,
+      geometry.id,
+      `${label}: binding ${index} should reference its geometry id`,
+    );
     assert.equal(
       typeof binding?.exactShapeHandle,
       "number",

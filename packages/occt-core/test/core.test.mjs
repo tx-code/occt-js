@@ -1257,6 +1257,7 @@ describe("createOcctCore", () => {
       success: true,
       sourceFormat: "step",
       exactModelId: 17,
+      exactGeometryBindings: [],
       rootNodes: [],
       geometries: [],
       materials: [],
@@ -1317,6 +1318,7 @@ describe("createOcctCore", () => {
       success: true,
       sourceFormat: "step",
       exactModelId: 17,
+      exactGeometryBindings: [],
       rootNodes: [],
       geometries: [],
       materials: [],
@@ -1342,7 +1344,9 @@ describe("createOcctCore", () => {
     });
 
     assert.equal(managed.exactModelId, 17);
-    assert.equal(managed.exactModel, exactResult);
+    assert.deepEqual(managed.exactModel.exactGeometryBindings, []);
+    assert.deepEqual(managed.exactModel.geometries, []);
+    assert.equal(managed.exactModel.exactModelId, 17);
     assert.deepEqual(await managed.dispose(), { ok: true });
     assert.deepEqual(calls, [
       ["OpenExactStepModel", [7, 8, 9], { readColors: false }],
@@ -1361,8 +1365,8 @@ describe("createOcctCore", () => {
         finalizerInstances.push(this);
       }
 
-      register(_target, heldValue, unregisterToken) {
-        this.registrations.push({ heldValue, unregisterToken });
+      register(target, heldValue, unregisterToken) {
+        this.registrations.push({ heldValue, target, unregisterToken });
       }
 
       unregister(unregisterToken) {
@@ -1380,6 +1384,7 @@ describe("createOcctCore", () => {
             success: true,
             sourceFormat: "step",
             exactModelId: 27,
+            exactGeometryBindings: [],
             rootNodes: [],
             geometries: [],
             materials: [],
@@ -1396,6 +1401,7 @@ describe("createOcctCore", () => {
       const managed = await core.openManagedExactStep(new Uint8Array([1, 2, 3]));
       assert.equal(finalizerInstances.length, 1);
       assert.equal(finalizerInstances[0].registrations.length, 1);
+      assert.equal(finalizerInstances[0].registrations[0].target, managed.exactModel);
 
       assert.deepEqual(await managed.dispose(), { ok: true });
       assert.deepEqual(await managed.dispose(), { ok: true });

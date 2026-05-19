@@ -15,6 +15,7 @@
 #include "exact-model-store.hpp"
 #include "exact-query.hpp"
 #include "extruded-shape.hpp"
+#include "geometry-transform.hpp"
 #include "helical-sweep.hpp"
 #include "orientation.hpp"
 #include "profile-2d.hpp"
@@ -48,9 +49,15 @@ val TransformToVal(const std::array<float, 16>& m)
     return arr;
 }
 
-val MeshToVal(const OcctMeshData& mesh)
+std::string GeometryIdForIndex(size_t index)
+{
+    return "geo_" + std::to_string(index);
+}
+
+val MeshToVal(const OcctMeshData& mesh, size_t geometryIndex)
 {
     val obj = val::object();
+    obj.set("id", GeometryIdForIndex(geometryIndex));
     obj.set("name", mesh.name);
     obj.set("color", ColorToVal(mesh.color));
 
@@ -201,6 +208,29 @@ std::vector<uint8_t> ExtractBytes(const val& content)
     val memoryView = val(typed_memory_view(length, buffer.data()));
     memoryView.call<void>("set", content);
     return buffer;
+}
+
+val BytesToUint8Array(const std::vector<uint8_t>& content)
+{
+    val bytes = val::global("Uint8Array").new_(content.size());
+    if (!content.empty()) {
+        val memView = val(typed_memory_view(content.size(), content.data()));
+        bytes.call<void>("set", memView);
+    }
+    return bytes;
+}
+
+val GeometryTransformResultToVal(const OcctGeometryTransformResult& result)
+{
+    val obj = val::object();
+    obj.set("success", result.success);
+    obj.set("format", result.format);
+    if (!result.success) {
+        obj.set("error", result.error);
+        return obj;
+    }
+    obj.set("content", BytesToUint8Array(result.content));
+    return obj;
 }
 
 double ClampColorComponent(double value, double fallback)
@@ -382,6 +412,30 @@ std::array<double, 16> ParseMatrix4(const val& jsValue)
         matrix[index] = jsValue[index].as<double>();
     }
     return matrix;
+}
+
+bool TryParseMatrix4(const val& jsValue, std::array<double, 16>& matrix, std::string& error)
+{
+    if (jsValue.typeOf().as<std::string>() != "object" || jsValue.isNull()) {
+        error = "transform matrix must be an array-like object.";
+        return false;
+    }
+    if (!jsValue.hasOwnProperty("length") || jsValue["length"].as<unsigned>() < 16) {
+        error = "transform matrix must contain 16 numeric values.";
+        return false;
+    }
+    for (int index = 0; index < 16; ++index) {
+        if (jsValue[index].typeOf().as<std::string>() != "number") {
+            error = "transform matrix must contain only numeric values.";
+            return false;
+        }
+        matrix[index] = jsValue[index].as<double>();
+        if (!std::isfinite(matrix[index])) {
+            error = "transform matrix must contain only finite numeric values.";
+            return false;
+        }
+    }
+    return true;
 }
 
 gp_Trsf MatrixToTrsf(const std::array<double, 16>& matrix)
@@ -1156,6 +1210,7 @@ val ExactGeometryBindingsToVal(size_t geometryCount)
     val bindings = val::array();
     for (size_t index = 0; index < geometryCount; ++index) {
         val binding = val::object();
+        binding.set("geometryId", GeometryIdForIndex(index));
         binding.set("exactShapeHandle", static_cast<int>(index + 1));
         bindings.call<void>("push", binding);
     }
@@ -1188,8 +1243,8 @@ val BuildResult(const OcctSceneData& scene, const std::string& sourceFormat)
     result.set("rootNodes", rootNodes);
 
     val geometries = val::array();
-    for (const auto& mesh : scene.meshes) {
-        geometries.call<void>("push", MeshToVal(mesh));
+    for (size_t index = 0; index < scene.meshes.size(); ++index) {
+        geometries.call<void>("push", MeshToVal(scene.meshes[index], index));
     }
     result.set("geometries", geometries);
 
@@ -1294,6 +1349,9 @@ val OpenExactByFormat(const std::string& format, const val& content, const val& 
     std::transform(normalizedFormat.begin(), normalizedFormat.end(), normalizedFormat.begin(), [](unsigned char c) {
         return static_cast<char>(std::tolower(c));
     });
+    if (normalizedFormat == "stp") {
+        normalizedFormat = "step";
+    }
 
     OcctExactImportData imported;
     if (normalizedFormat == "step") {
@@ -1358,6 +1416,67 @@ val ReadBrepFile(const val& content, const val& jsParams)
 val ReadFile(const std::string& format, const val& content, const val& jsParams)
 {
     return ReadByFormat(format, content, jsParams);
+}
+
+val TransformByFormat(
+    const std::string& format,
+    const val& content,
+    const val& jsTransform,
+    const val& jsParams)
+{
+    std::vector<uint8_t> buffer = ExtractBytes(content);
+    ImportParams params = ParseImportParams(jsParams);
+    std::array<double, 16> matrix = IdentityMatrix4();
+    std::string matrixError;
+    std::string normalizedFormat = format;
+    std::transform(normalizedFormat.begin(), normalizedFormat.end(), normalizedFormat.begin(), [](unsigned char c) {
+        return static_cast<char>(std::tolower(c));
+    });
+    if (normalizedFormat == "stp") {
+        normalizedFormat = "step";
+    }
+
+    if (!TryParseMatrix4(jsTransform, matrix, matrixError)) {
+        OcctGeometryTransformResult result;
+        result.success = false;
+        result.format = normalizedFormat;
+        result.error = matrixError;
+        return GeometryTransformResultToVal(result);
+    }
+
+    if (normalizedFormat == "step") {
+        return GeometryTransformResultToVal(
+            TransformStepFromMemory(buffer.data(), buffer.size(), matrix, params));
+    }
+    if (normalizedFormat == "brep") {
+        return GeometryTransformResultToVal(
+            TransformBrepFromMemory(buffer.data(), buffer.size(), matrix, params));
+    }
+
+    OcctGeometryTransformResult result;
+    result.success = false;
+    result.format = normalizedFormat;
+    result.error = "Unsupported transform export format: " + format;
+    return GeometryTransformResultToVal(result);
+}
+
+val TransformStepFile(const val& content, const val& jsTransform, const val& jsParams)
+{
+    return TransformByFormat("step", content, jsTransform, jsParams);
+}
+
+val TransformBrepFile(const val& content, const val& jsTransform, const val& jsParams)
+{
+    return TransformByFormat("brep", content, jsTransform, jsParams);
+}
+
+val TransformFile(
+    const std::string& format,
+    const val& content,
+    const val& jsTransform,
+    const val& jsParams)
+{
+    return TransformByFormat(format, content, jsTransform, jsParams);
 }
 
 val ValidateProfile2DSpecBinding(const val& jsSpec)
@@ -2168,6 +2287,9 @@ EMSCRIPTEN_BINDINGS(occtjs)
     function("ReadStepFile", &ReadStepFile);
     function("ReadIgesFile", &ReadIgesFile);
     function("ReadBrepFile", &ReadBrepFile);
+    function("TransformFile", &TransformFile);
+    function("TransformStepFile", &TransformStepFile);
+    function("TransformBrepFile", &TransformBrepFile);
     function("ValidateProfile2DSpec", &ValidateProfile2DSpecBinding);
     function("ValidateRevolvedShapeSpec", &ValidateRevolvedShapeSpecBinding);
     function("ValidateExtrudedShapeSpec", &ValidateExtrudedShapeSpecBinding);

@@ -116,6 +116,30 @@ test("createExactElementRef builds a clean geometry-scoped ref without assembly 
   assert.equal("nodeId" in resolved, false);
 });
 
+test("normalizeExactOpenResult preserves explicit raw geometry ids", () => {
+  const raw = makeRawExactOpenResult();
+  raw.geometries[0].id = "part-body";
+  raw.exactGeometryBindings[0] = { geometryId: "part-body", exactShapeHandle: 33 };
+
+  const exactModel = normalizeExactOpenResult(raw, {
+    sourceFileName: "fixture.step",
+  });
+
+  assert.equal(exactModel.geometries[0].geometryId, "part-body");
+  assert.equal(exactModel.exactGeometryBindings[0].geometryId, "part-body");
+});
+
+test("normalizeExactOpenResult rejects mismatched raw exact geometry ids", () => {
+  const raw = makeRawExactOpenResult();
+  raw.geometries[0].id = "part-body";
+  raw.exactGeometryBindings[0] = { geometryId: "other-body", exactShapeHandle: 33 };
+
+  assert.throws(
+    () => normalizeExactOpenResult(raw, { sourceFileName: "fixture.step" }),
+    /Exact geometry binding 0 geometryId does not match normalized geometry/,
+  );
+});
+
 test("createExactElementRef accepts exactShapeHandle and caller transform directly", () => {
   const exactModel = normalizeExactOpenResult(makeRawExactOpenResult(), {
     sourceFileName: "fixture.step",

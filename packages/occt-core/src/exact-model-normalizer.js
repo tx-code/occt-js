@@ -17,6 +17,9 @@ function normalizeExactGeometryBindings(rawBindings, geometries) {
     if (!Number.isInteger(exactShapeHandle) || exactShapeHandle <= 0) {
       throw new Error(`Exact geometry binding ${index} is missing a valid exactShapeHandle.`);
     }
+    if (typeof binding?.geometryId === "string" && binding.geometryId !== geometry.geometryId) {
+      throw new Error(`Exact geometry binding ${index} geometryId does not match normalized geometry.`);
+    }
     return {
       geometryId: geometry.geometryId,
       exactShapeHandle,
