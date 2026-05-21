@@ -449,6 +449,149 @@ gp_Trsf MatrixToTrsf(const std::array<double, 16>& matrix)
     return transform;
 }
 
+bool TryParseOriginCoordinate(const std::string& value, OrientationBboxCoordinate& coordinate)
+{
+    if (value == "min" || value == "bottom") {
+        coordinate = OrientationBboxCoordinate::Min;
+        return true;
+    }
+    if (value == "center" || value == "middle") {
+        coordinate = OrientationBboxCoordinate::Center;
+        return true;
+    }
+    if (value == "max" || value == "top") {
+        coordinate = OrientationBboxCoordinate::Max;
+        return true;
+    }
+    return false;
+}
+
+void SetBboxOrigin(OrientationOriginInput& origin,
+                   OrientationBboxCoordinate x,
+                   OrientationBboxCoordinate y,
+                   OrientationBboxCoordinate z)
+{
+    origin.isSet = true;
+    origin.x = x;
+    origin.y = y;
+    origin.z = z;
+}
+
+OrientationOriginInput ParseOrientationOriginShortcut(const std::string& value)
+{
+    OrientationOriginInput origin;
+    if (value == "preserve") {
+        return origin;
+    }
+    if (value == "bbox-center-bottom") {
+        SetBboxOrigin(
+            origin,
+            OrientationBboxCoordinate::Center,
+            OrientationBboxCoordinate::Center,
+            OrientationBboxCoordinate::Min
+        );
+        return origin;
+    }
+    if (value == "bbox-min-bottom" || value == "bbox-min") {
+        SetBboxOrigin(
+            origin,
+            OrientationBboxCoordinate::Min,
+            OrientationBboxCoordinate::Min,
+            OrientationBboxCoordinate::Min
+        );
+        return origin;
+    }
+    if (value == "bbox-max-bottom") {
+        SetBboxOrigin(
+            origin,
+            OrientationBboxCoordinate::Max,
+            OrientationBboxCoordinate::Max,
+            OrientationBboxCoordinate::Min
+        );
+        return origin;
+    }
+    if (value == "bbox-center") {
+        SetBboxOrigin(
+            origin,
+            OrientationBboxCoordinate::Center,
+            OrientationBboxCoordinate::Center,
+            OrientationBboxCoordinate::Center
+        );
+        return origin;
+    }
+    if (value == "bbox-max") {
+        SetBboxOrigin(
+            origin,
+            OrientationBboxCoordinate::Max,
+            OrientationBboxCoordinate::Max,
+            OrientationBboxCoordinate::Max
+        );
+        return origin;
+    }
+
+    origin.error = "Unsupported orientation origin: " + value;
+    return origin;
+}
+
+bool ParseOrientationOriginAxis(const val& origin,
+                                const char* field,
+                                OrientationBboxCoordinate& coordinate,
+                                std::string& error)
+{
+    if (!origin.hasOwnProperty(field)) {
+        return true;
+    }
+
+    val axis = origin[field];
+    if (axis.typeOf().as<std::string>() != "string") {
+        error = std::string("Unsupported orientation origin coordinate for ") + field + ".";
+        return false;
+    }
+
+    const std::string value = axis.as<std::string>();
+    if (!TryParseOriginCoordinate(value, coordinate)) {
+        error = std::string("Unsupported orientation origin coordinate for ") + field + ": " + value;
+        return false;
+    }
+    return true;
+}
+
+OrientationOriginInput ParseOrientationOrigin(const val& value)
+{
+    const std::string type = value.typeOf().as<std::string>();
+    if (type == "string") {
+        return ParseOrientationOriginShortcut(value.as<std::string>());
+    }
+
+    OrientationOriginInput origin;
+    if (type != "object" || value.isNull()) {
+        origin.error = "Unsupported orientation origin: expected a string or bbox object.";
+        return origin;
+    }
+
+    if (!value.hasOwnProperty("kind") || value["kind"].typeOf().as<std::string>() != "string") {
+        origin.error = "Unsupported orientation origin: bbox object requires kind.";
+        return origin;
+    }
+    const std::string kind = value["kind"].as<std::string>();
+    if (kind != "bbox") {
+        origin.error = "Unsupported orientation origin kind: " + kind;
+        return origin;
+    }
+
+    origin.isSet = true;
+    if (!ParseOrientationOriginAxis(value, "x", origin.x, origin.error)) {
+        return origin;
+    }
+    if (!ParseOrientationOriginAxis(value, "y", origin.y, origin.error)) {
+        return origin;
+    }
+    if (!ParseOrientationOriginAxis(value, "z", origin.z, origin.error)) {
+        return origin;
+    }
+    return origin;
+}
+
 OrientationParams ParseOrientationParams(const val& jsParams)
 {
     OrientationParams params;
@@ -473,6 +616,10 @@ OrientationParams ParseOrientationParams(const val& jsParams)
 
     if (jsParams.hasOwnProperty("mode")) {
         params.mode = jsParams["mode"].as<std::string>();
+    }
+
+    if (jsParams.hasOwnProperty("origin")) {
+        params.origin = ParseOrientationOrigin(jsParams["origin"]);
     }
 
     if (jsParams.hasOwnProperty("presetAxis")) {

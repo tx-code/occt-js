@@ -27,6 +27,107 @@ function assertNumberArray(value, expectedLength, label) {
   }
 }
 
+function assertNear(actual, expected, label, tolerance = 1e-3) {
+  assert(
+    Math.abs(actual - expected) <= tolerance,
+    `${label}: expected ${expected}, got ${actual}, tolerance=${tolerance}`,
+  );
+}
+
+function multiplyMatrices(left, right) {
+  const output = new Array(16).fill(0);
+  for (let row = 0; row < 4; row += 1) {
+    for (let column = 0; column < 4; column += 1) {
+      let sum = 0;
+      for (let index = 0; index < 4; index += 1) {
+        sum += left[index * 4 + row] * right[column * 4 + index];
+      }
+      output[column * 4 + row] = sum;
+    }
+  }
+  return output;
+}
+
+const IDENTITY_MATRIX = [
+  1, 0, 0, 0,
+  0, 1, 0, 0,
+  0, 0, 1, 0,
+  0, 0, 0, 1,
+];
+
+function transformPoint(matrix, x, y, z) {
+  return {
+    x: matrix[0] * x + matrix[4] * y + matrix[8] * z + matrix[12],
+    y: matrix[1] * x + matrix[5] * y + matrix[9] * z + matrix[13],
+    z: matrix[2] * x + matrix[6] * y + matrix[10] * z + matrix[14],
+  };
+}
+
+function resolveGeometryMap(model) {
+  const geometries = model.geometries ?? [];
+  const map = new Map();
+  for (let index = 0; index < geometries.length; index += 1) {
+    const geometry = geometries[index];
+    map.set(index, geometry);
+    if (geometry.geometryId) {
+      map.set(geometry.geometryId, geometry);
+    }
+    if (geometry.id) {
+      map.set(geometry.id, geometry);
+    }
+  }
+  return map;
+}
+
+function collectTransformedBounds(model, placementTransform) {
+  const geometryMap = resolveGeometryMap(model);
+  const bounds = {
+    maxX: Number.NEGATIVE_INFINITY,
+    maxY: Number.NEGATIVE_INFINITY,
+    maxZ: Number.NEGATIVE_INFINITY,
+    minX: Number.POSITIVE_INFINITY,
+    minY: Number.POSITIVE_INFINITY,
+    minZ: Number.POSITIVE_INFINITY,
+  };
+
+  function visit(node, parentTransform) {
+    const nodeTransform = Array.isArray(node.transform) && node.transform.length === 16
+      ? node.transform
+      : IDENTITY_MATRIX;
+    const worldTransform = multiplyMatrices(parentTransform, nodeTransform);
+    const finalTransform = multiplyMatrices(placementTransform, worldTransform);
+
+    for (const geometryId of [...(node.geometryIds ?? []), ...(node.meshes ?? [])]) {
+      const geometry = geometryMap.get(geometryId);
+      const positions = geometry?.positions ?? [];
+      for (let index = 0; index + 2 < positions.length; index += 3) {
+        const point = transformPoint(
+          finalTransform,
+          positions[index],
+          positions[index + 1],
+          positions[index + 2],
+        );
+        bounds.minX = Math.min(bounds.minX, point.x);
+        bounds.minY = Math.min(bounds.minY, point.y);
+        bounds.minZ = Math.min(bounds.minZ, point.z);
+        bounds.maxX = Math.max(bounds.maxX, point.x);
+        bounds.maxY = Math.max(bounds.maxY, point.y);
+        bounds.maxZ = Math.max(bounds.maxZ, point.z);
+      }
+    }
+
+    for (const child of node.children ?? []) {
+      visit(child, worldTransform);
+    }
+  }
+
+  for (const rootNode of model.rootNodes ?? []) {
+    visit(rootNode, IDENTITY_MATRIX);
+  }
+
+  return bounds;
+}
+
 function assertOrientationContract(result, label) {
   assert(result && typeof result === "object", `${label}: result should be an object`);
   assert.equal(result.success, true, `${label}: success should be true`);
@@ -71,6 +172,13 @@ async function main() {
   assert(!unsupportedMode.success, "unsupported orientation mode should fail");
   assert(/Unsupported orientation mode/i.test(unsupportedMode.error), "unsupported orientation mode should explain the failure");
 
+  const unsupportedOrigin = m.AnalyzeOptimalOrientation("step", stepBytes, {
+    mode: "manufacturing",
+    origin: "fixture-center",
+  });
+  assert(!unsupportedOrigin.success, "unsupported orientation origin should fail");
+  assert(/Unsupported orientation origin/i.test(unsupportedOrigin.error), "unsupported origin should explain the failure");
+
   for (const format of ["step", "iges", "brep"]) {
     const fixture = GOLDEN[format].fixture;
     const bytes = new Uint8Array(readFileSync(resolve("test", fixture)));
@@ -88,6 +196,30 @@ async function main() {
       assert.equal(repeated.bbox.dz, result.bbox.dz, "repeat IGES orientation should keep bbox.dz stable");
     }
   }
+
+  const anchorBytes = new Uint8Array(readFileSync(resolve("test", "ANC101.stp")));
+  const anchorModel = m.ReadStepFile(anchorBytes, {});
+  assert(anchorModel.success, "anchor fixture import should succeed");
+
+  const centerBottom = m.AnalyzeOptimalOrientation("step", anchorBytes, {
+    mode: "manufacturing",
+    origin: "bbox-center-bottom",
+  });
+  assertOrientationContract(centerBottom, "AnalyzeOptimalOrientation(origin=bbox-center-bottom)");
+  const centerBottomBounds = collectTransformedBounds(anchorModel, centerBottom.transform);
+  assertNear((centerBottomBounds.minX + centerBottomBounds.maxX) / 2, 0, "bbox-center-bottom centerX");
+  assertNear((centerBottomBounds.minY + centerBottomBounds.maxY) / 2, 0, "bbox-center-bottom centerY");
+  assertNear(centerBottomBounds.minZ, 0, "bbox-center-bottom minZ");
+
+  const minCorner = m.AnalyzeOptimalOrientation("step", anchorBytes, {
+    mode: "manufacturing",
+    origin: { kind: "bbox", x: "min", y: "min", z: "min" },
+  });
+  assertOrientationContract(minCorner, "AnalyzeOptimalOrientation(origin=bbox min)");
+  const minCornerBounds = collectTransformedBounds(anchorModel, minCorner.transform);
+  assertNear(minCornerBounds.minX, 0, "bbox min origin minX");
+  assertNear(minCornerBounds.minY, 0, "bbox min origin minY");
+  assertNear(minCornerBounds.minZ, 0, "bbox min origin minZ");
 
   console.log("PASS test_optimal_orientation_api");
 }

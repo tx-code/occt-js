@@ -369,6 +369,20 @@ bool GetBoundingBox(const TopoDS_Shape& shape,
         && std::isfinite(xmax) && std::isfinite(ymax) && std::isfinite(zmax);
 }
 
+double ResolveBboxCoordinate(OrientationBboxCoordinate coordinate, double min, double max)
+{
+    switch (coordinate) {
+        case OrientationBboxCoordinate::Min:
+            return min;
+        case OrientationBboxCoordinate::Center:
+            return 0.5 * (min + max);
+        case OrientationBboxCoordinate::Max:
+            return max;
+    }
+
+    return 0.5 * (min + max);
+}
+
 double ComputeBasisArea(const TopoDS_Shape& shape)
 {
     double xmin = 0.0;
@@ -815,7 +829,8 @@ gp_Dir TransformDir(const gp_Trsf& trsf, const gp_Dir& dir)
 
 OrientationResult BuildOrientationResult(const LoadedShape& loaded,
                                          const Stage1Computation& stage1,
-                                         const Stage2Computation& stage2)
+                                         const Stage2Computation& stage2,
+                                         const OrientationParams& params)
 {
     OrientationResult result;
     result.success = true;
@@ -830,7 +845,6 @@ OrientationResult BuildOrientationResult(const LoadedShape& loaded,
 
     gp_Trsf totalTransform = stage1.transform;
     totalTransform.PreMultiply(stage2.transform);
-    result.transform = TrsfToMatrix(totalTransform);
 
     double xmin = 0.0;
     double ymin = 0.0;
@@ -843,6 +857,25 @@ OrientationResult BuildOrientationResult(const LoadedShape& loaded,
         result.error = "Failed to compute oriented bounding box.";
         return result;
     }
+
+    if (params.origin.isSet) {
+        const double originX = ResolveBboxCoordinate(params.origin.x, xmin, xmax);
+        const double originY = ResolveBboxCoordinate(params.origin.y, ymin, ymax);
+        const double originZ = ResolveBboxCoordinate(params.origin.z, zmin, zmax);
+
+        gp_Trsf originTransform;
+        originTransform.SetTranslation(gp_Vec(-originX, -originY, -originZ));
+        totalTransform.PreMultiply(originTransform);
+
+        xmin -= originX;
+        xmax -= originX;
+        ymin -= originY;
+        ymax -= originY;
+        zmin -= originZ;
+        zmax -= originZ;
+    }
+
+    result.transform = TrsfToMatrix(totalTransform);
 
     struct AxisExtent {
         double extent = 0.0;
@@ -910,6 +943,11 @@ OrientationResult AnalyzeOptimalOrientationFromMemory(
         return result;
     }
 
+    if (!params.origin.error.empty()) {
+        result.error = params.origin.error;
+        return result;
+    }
+
     try {
         LoadedShape loaded = LoadShapeFromMemory(normalizedFormat, data, size, params);
         if (!loaded.success) {
@@ -936,7 +974,7 @@ OrientationResult AnalyzeOptimalOrientationFromMemory(
         }
 
         Stage2Computation stage2 = ComputeStage2(stage1.shape);
-        result = BuildOrientationResult(loaded, stage1, stage2);
+        result = BuildOrientationResult(loaded, stage1, stage2, params);
     }
     catch (const Standard_Failure& ex) {
         result.error = "OCCT exception: ";

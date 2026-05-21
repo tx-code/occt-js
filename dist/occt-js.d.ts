@@ -898,9 +898,27 @@ export interface OcctJSOrientationPresetAxis {
     direction?: [number, number, number];
 }
 
+export type OcctJSOrientationBboxCoordinate = "min" | "center" | "max" | "bottom" | "middle" | "top";
+
+export type OcctJSOrientationOrigin =
+    | "preserve"
+    | "bbox-center-bottom"
+    | "bbox-min-bottom"
+    | "bbox-max-bottom"
+    | "bbox-center"
+    | "bbox-min"
+    | "bbox-max"
+    | {
+        kind: "bbox";
+        x?: OcctJSOrientationBboxCoordinate;
+        y?: OcctJSOrientationBboxCoordinate;
+        z?: OcctJSOrientationBboxCoordinate;
+    };
+
 export interface OcctJSOrientationParams {
     linearUnit?: "millimeter" | "centimeter" | "meter" | "inch" | "foot";
     mode?: "manufacturing";
+    origin?: OcctJSOrientationOrigin;
     presetAxis?: OcctJSOrientationPresetAxis;
 }
 

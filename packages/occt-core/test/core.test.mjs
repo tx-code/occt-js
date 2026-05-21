@@ -3930,6 +3930,53 @@ describe("resolveAutoOrientedModel", () => {
     ]);
   });
 
+  it("passes explicit bbox origin options to OCCT orientation analysis", async () => {
+    const model = {
+      rootNodes: [
+        {
+          id: "node-a",
+          kind: "part",
+          transform: [
+            1, 0, 0, 0,
+            0, 1, 0, 0,
+            0, 0, 1, 0,
+            0, 0, 0, 1,
+          ],
+          children: [],
+          geometryIds: [],
+          materialIds: [],
+        },
+      ],
+    };
+    let receivedParams;
+
+    await resolveAutoOrientedModel({
+      bytes: new Uint8Array([1, 2, 3]),
+      format: "step",
+      model,
+      occt: {
+        AnalyzeOptimalOrientation(_format, _bytes, params) {
+          receivedParams = params;
+          return {
+            success: true,
+            transform: [
+              1, 0, 0, 0,
+              0, 1, 0, 0,
+              0, 0, 1, 0,
+              0, 0, 0, 1,
+            ],
+          };
+        },
+      },
+      origin: { kind: "bbox", x: "center", y: "center", z: "bottom" },
+    });
+
+    assert.deepEqual(receivedParams, {
+      mode: "manufacturing",
+      origin: { kind: "bbox", x: "center", y: "center", z: "bottom" },
+    });
+  });
+
   it("returns the original model when orientation analysis is unavailable", async () => {
     const model = {
       rootNodes: [

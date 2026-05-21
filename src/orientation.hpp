@@ -13,10 +13,25 @@ struct OrientationAxisInput {
     bool isSet = false;
 };
 
+enum class OrientationBboxCoordinate {
+    Min,
+    Center,
+    Max
+};
+
+struct OrientationOriginInput {
+    bool isSet = false;
+    OrientationBboxCoordinate x = OrientationBboxCoordinate::Center;
+    OrientationBboxCoordinate y = OrientationBboxCoordinate::Center;
+    OrientationBboxCoordinate z = OrientationBboxCoordinate::Min;
+    std::string error;
+};
+
 struct OrientationParams {
     ImportParams::LinearUnit linearUnit = ImportParams::LinearUnit::Millimeter;
     std::string mode = "manufacturing";
     OrientationAxisInput presetAxis;
+    OrientationOriginInput origin;
 };
 
 struct OrientationFrame {

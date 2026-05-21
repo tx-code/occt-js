@@ -46,12 +46,17 @@ export async function resolveAutoOrientedModel({
   mode = "manufacturing",
   model,
   occt,
+  origin,
 } = {}) {
   if (!occt || typeof occt.AnalyzeOptimalOrientation !== "function") {
     return model;
   }
 
-  const orientation = occt.AnalyzeOptimalOrientation(format, bytes, { mode });
+  const params = { mode };
+  if (origin !== undefined) {
+    params.origin = origin;
+  }
+  const orientation = occt.AnalyzeOptimalOrientation(format, bytes, params);
   if (!orientation?.success) {
     return model;
   }

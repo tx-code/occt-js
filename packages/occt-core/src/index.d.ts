@@ -41,6 +41,7 @@ import type {
   OcctJSHelicalSweepValidationResult,
   OcctJSLifecycleResult,
   OcctJSModule,
+  OcctJSOrientationOrigin,
   OcctJSOrientationResult,
   OcctJSProfile2DSpec,
   OcctJSProfile2DValidationResult,
@@ -553,6 +554,7 @@ export interface OcctAutoOrientationOptions {
   mode?: "manufacturing";
   model?: OcctNormalizedResult;
   occt?: Pick<OcctJSModule, "AnalyzeOptimalOrientation"> | null;
+  origin?: OcctJSOrientationOrigin;
 }
 
 export declare class OcctCoreClient {
@@ -675,6 +677,7 @@ export type {
   OcctJSHelicalSweepValidationResult,
   OcctJSLifecycleResult,
   OcctJSModule,
+  OcctJSOrientationOrigin,
   OcctJSOrientationResult,
   OcctJSProfile2DSpec,
   OcctJSProfile2DValidationResult,
