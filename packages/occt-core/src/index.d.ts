@@ -49,6 +49,10 @@ import type {
   OcctJSRevolvedShapeBuildResult,
   OcctJSRevolvedShapeSpec,
   OcctJSRevolvedShapeValidationResult,
+  OcctJSStepPartImportRejection,
+  OcctJSStepPartImportSelection,
+  OcctJSStepProductInspectionResult,
+  OcctJSStepProductInspectionSuccess,
 } from "@tx-code/occt-js";
 
 export type OcctPoint3 = [number, number, number];
@@ -99,6 +103,38 @@ export interface OcctImportModelOptions {
   fileName?: string;
   importParams?: OcctImportParams;
 }
+
+export interface OcctStepProductInspectionOptions {
+  fileName?: string;
+  importParams?: OcctImportParams;
+}
+
+export type OcctStepProductInspectionResult = OcctJSStepProductInspectionResult;
+
+export type OcctStepPartImportSelection = OcctJSStepPartImportSelection;
+
+export type OcctStepPartImportRejection = OcctJSStepPartImportRejection;
+
+export interface OcctStepPartImportOptions extends OcctStepProductInspectionOptions {
+  selection?: OcctStepPartImportSelection;
+}
+
+export interface OcctStepPartImportSuccess {
+  success: true;
+  sourceFormat: "step";
+  model: OcctNormalizedResult;
+  inspection: OcctJSStepProductInspectionSuccess;
+}
+
+export interface OcctStepPartImportFailure {
+  success: false;
+  sourceFormat: "step";
+  error: string;
+  rejection: OcctStepPartImportRejection;
+  inspection?: OcctStepProductInspectionResult;
+}
+
+export type OcctStepPartImportResult = OcctStepPartImportSuccess | OcctStepPartImportFailure;
 
 export interface OcctCoreClientOptions {
   factory?: (overrides?: { wasmBinary?: Uint8Array }) => Promise<OcctJSModule> | OcctJSModule;
@@ -561,6 +597,8 @@ export declare class OcctCoreClient {
   constructor(options?: OcctCoreClientOptions);
   getSupportedFormats(): Promise<OcctFormat[]>;
   importModel(content: OcctBinaryInput, options?: OcctImportModelOptions): Promise<OcctNormalizedResult>;
+  inspectStepProduct(content: OcctBinaryInput, options?: OcctStepProductInspectionOptions): Promise<OcctStepProductInspectionResult>;
+  importStepPart(content: OcctBinaryInput, options?: OcctStepPartImportOptions): Promise<OcctStepPartImportResult>;
   openExactModel(content: OcctBinaryInput, options?: OcctImportModelOptions): Promise<OcctJSExactOpenResult>;
   openExactStep(content: OcctBinaryInput, options?: Omit<OcctImportModelOptions, "format">): Promise<OcctJSExactOpenResult>;
   openExactIges(content: OcctBinaryInput, options?: Omit<OcctImportModelOptions, "format">): Promise<OcctJSExactOpenResult>;
@@ -686,6 +724,10 @@ export type {
   OcctJSRevolvedShapeSpec,
   OcctJSRevolvedShapeValidationResult,
   OcctJSExactRevolvedShapeOpenResult,
+  OcctJSStepPartImportRejection,
+  OcctJSStepPartImportSelection,
+  OcctJSStepProductInspectionResult,
+  OcctJSStepProductInspectionSuccess,
   OcctJSGeneratedCompositeShapeMetadata,
   OcctJSGeneratedExtrudedShapeMetadata,
   OcctJSGeneratedExtrudedShapeFaceBinding,

@@ -104,6 +104,19 @@ test("occt-core published typings expose the helper SDK surface", () => {
   assert.match(typesSource, /normalizeExactOpenResult/);
 });
 
+test("occt-core published typings expose STEP inspection and strict part import wrappers", () => {
+  const typesSource = readPackageText("src/index.d.ts");
+
+  assert.match(typesSource, /OcctStepProductInspectionOptions/);
+  assert.match(typesSource, /OcctStepProductInspectionResult/);
+  assert.match(typesSource, /OcctStepPartImportOptions/);
+  assert.match(typesSource, /OcctStepPartImportResult/);
+  assert.match(typesSource, /OcctStepPartImportRejection/);
+  assert.match(typesSource, /OcctStepPartImportSelection/);
+  assert.match(typesSource, /inspectStepProduct/);
+  assert.match(typesSource, /importStepPart/);
+});
+
 test("occt-core published typings do not publish candidate-analysis descriptors", () => {
   const typesSource = readPackageText("src/index.d.ts");
 
