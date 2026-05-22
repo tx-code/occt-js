@@ -86,6 +86,50 @@ struct OcctExactImportData {
     std::vector<TopoDS_Shape> exactGeometryShapes;
 };
 
+struct OcctProductInspectionMessage {
+    std::string code;
+    std::string message;
+    std::string severity;
+    bool hasSeverity = false;
+    std::string nodeId;
+    bool hasNodeId = false;
+};
+
+struct OcctProductInspectionNode {
+    std::string id;
+    std::string name;
+    std::string kind;
+    bool isAssembly = false;
+    bool isReference = false;
+    bool hasShape = false;
+    std::string occurrenceRef;
+    std::string partRef;
+    std::array<float, 16> transform;
+    std::vector<int> childIndices;
+};
+
+struct OcctProductInspectionError {
+    std::string code;
+    std::string message;
+};
+
+struct OcctProductInspectionResult {
+    bool ok = false;
+    std::string sourceFormat = "step";
+    std::string classification;
+    OcctProductInspectionError error;
+    int rootCount = 0;
+    int uniquePartCount = 0;
+    int partOccurrenceCount = 0;
+    bool assemblyPresent = false;
+    std::vector<OcctProductInspectionNode> nodes;
+    std::vector<int> rootNodeIndices;
+    std::vector<OcctProductInspectionMessage> reasons;
+    std::vector<OcctProductInspectionMessage> warnings;
+    std::string sourceUnit;
+    double unitScaleToMeters = 0.0;
+};
+
 struct OcctLifecycleResult {
     bool ok = false;
     std::string code;

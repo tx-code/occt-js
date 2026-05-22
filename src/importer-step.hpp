@@ -24,3 +24,10 @@ OcctExactImportData ImportExactStepFromMemory(
     const std::string& fileName,
     const ImportParams& params
 );
+
+OcctProductInspectionResult InspectStepProductFromMemory(
+    const uint8_t*     data,
+    size_t             size,
+    const std::string& fileName,
+    const ImportParams& params
+);

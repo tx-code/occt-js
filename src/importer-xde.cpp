@@ -5,6 +5,7 @@
 #include <streambuf>
 #include <istream>
 #include <map>
+#include <set>
 #include <cstdint>
 #include <cmath>
 #include <vector>
@@ -21,7 +22,9 @@
 #include <TDF_Label.hxx>
 #include <TDF_LabelSequence.hxx>
 #include <TDF_ChildIterator.hxx>
+#include <TDF_Tool.hxx>
 #include <TDataStd_Name.hxx>
+#include <TCollection_AsciiString.hxx>
 #include <TopoDS_Shape.hxx>
 #include <TopLoc_Location.hxx>
 #include <Quantity_Color.hxx>
@@ -84,6 +87,38 @@ UnitsMethods_LengthUnit LinearUnitToLengthUnit(ImportParams::LinearUnit linearUn
         default:
             return UnitsMethods_LengthUnit_Millimeter;
     }
+}
+
+void ApplyLengthUnitMetadata(const Handle(TDocStd_Document)& doc,
+                             std::string& sourceUnit,
+                             double& unitScaleToMeters)
+{
+    Standard_Real unitInMeters = 0.0;
+    if (!XCAFDoc_DocumentTool::GetLengthUnit(doc, unitInMeters)) {
+        return;
+    }
+
+    unitScaleToMeters = unitInMeters;
+    if (std::abs(unitInMeters - 0.001) < 1e-9) {
+        sourceUnit = "MM";
+    } else if (std::abs(unitInMeters - 0.01) < 1e-9) {
+        sourceUnit = "CM";
+    } else if (std::abs(unitInMeters - 1.0) < 1e-9) {
+        sourceUnit = "M";
+    } else if (std::abs(unitInMeters - 0.0254) < 1e-6) {
+        sourceUnit = "INCH";
+    } else if (std::abs(unitInMeters - 0.3048) < 1e-6) {
+        sourceUnit = "FOOT";
+    } else {
+        sourceUnit = "CUSTOM";
+    }
+}
+
+std::string LabelEntry(const TDF_Label& label)
+{
+    TCollection_AsciiString entry;
+    TDF_Tool::Entry(label, entry);
+    return entry.ToCString();
 }
 
 std::string GetLabelNameNoRef(const TDF_Label& label)
@@ -183,6 +218,179 @@ bool IsMeshNode(const TDF_Label& label, const Handle(XCAFDoc_ShapeTool)& shapeTo
         }
     }
     return !hasFreeShapeChild;
+}
+
+std::vector<TDF_Label> GetProductChildren(const TDF_Label& label,
+                                          const Handle(XCAFDoc_ShapeTool)& shapeTool)
+{
+    std::vector<TDF_Label> children;
+    for (TDF_ChildIterator it(label); it.More(); it.Next()) {
+        TDF_Label childLabel = it.Value();
+        if (shapeTool->IsSubShape(childLabel)) {
+            continue;
+        }
+        TopoDS_Shape childShape;
+        if (shapeTool->GetShape(childLabel, childShape)) {
+            children.push_back(childLabel);
+        }
+    }
+    return children;
+}
+
+void AddProductMessage(std::vector<OcctProductInspectionMessage>& messages,
+                       const std::string& code,
+                       const std::string& message,
+                       const std::string& nodeId = {},
+                       const std::string& severity = {})
+{
+    OcctProductInspectionMessage item;
+    item.code = code;
+    item.message = message;
+    if (!nodeId.empty()) {
+        item.nodeId = nodeId;
+        item.hasNodeId = true;
+    }
+    if (!severity.empty()) {
+        item.severity = severity;
+        item.hasSeverity = true;
+    }
+    messages.push_back(std::move(item));
+}
+
+std::string ShapeIdentity(const TDF_Label& label, const TopoDS_Shape& shape)
+{
+    std::string identity = LabelEntry(label);
+    if (!identity.empty()) {
+        return identity;
+    }
+
+    auto* tshapePtr = shape.IsNull() ? nullptr : shape.TShape().get();
+    if (tshapePtr != nullptr) {
+        return "shape_" + std::to_string(reinterpret_cast<uintptr_t>(tshapePtr));
+    }
+    return "unknown_shape";
+}
+
+struct ProductInspectionTraversalState {
+    std::set<std::string> uniquePartRefs;
+    std::map<std::string, int> partRefOccurrences;
+};
+
+int TraverseProductLabel(const TDF_Label& label,
+                         const Handle(XCAFDoc_ShapeTool)& shapeTool,
+                         OcctProductInspectionResult& result,
+                         ProductInspectionTraversalState& traversal)
+{
+    int nodeIndex = static_cast<int>(result.nodes.size());
+    result.nodes.emplace_back();
+    OcctProductInspectionNode& node = result.nodes[nodeIndex];
+
+    node.id = "product_node_" + std::to_string(nodeIndex);
+    node.occurrenceRef = LabelEntry(label);
+    node.transform = IdentityMatrix();
+
+    TDF_Label refLabel = label;
+    if (shapeTool->IsReference(label)) {
+        node.isReference = true;
+        shapeTool->GetReferredShape(label, refLabel);
+    }
+
+    node.partRef = LabelEntry(refLabel);
+    node.name = GetLabelName(label, shapeTool);
+
+    TopLoc_Location loc = shapeTool->GetLocation(label);
+    if (!loc.IsIdentity()) {
+        node.transform = TrsfToMatrix(loc.Transformation());
+    }
+
+    TopoDS_Shape shape = shapeTool->GetShape(refLabel);
+    node.hasShape = !shape.IsNull();
+
+    std::vector<TDF_Label> children = GetProductChildren(refLabel, shapeTool);
+    bool isAssemblyLabel = shapeTool->IsAssembly(refLabel) || !children.empty();
+    node.isAssembly = isAssemblyLabel;
+    node.kind = isAssemblyLabel ? "assembly" : "part";
+
+    if (isAssemblyLabel) {
+        result.assemblyPresent = true;
+        for (const TDF_Label& childLabel : children) {
+            int childIndex = TraverseProductLabel(childLabel, shapeTool, result, traversal);
+            node.childIndices.push_back(childIndex);
+        }
+        return nodeIndex;
+    }
+
+    if (!node.hasShape) {
+        AddProductMessage(
+            result.warnings,
+            "missing_shape",
+            "Product node does not have an importable shape.",
+            node.id,
+            "warning");
+        return nodeIndex;
+    }
+
+    std::string partIdentity = ShapeIdentity(refLabel, shape);
+    if (node.partRef.empty()) {
+        node.partRef = partIdentity;
+    }
+    traversal.uniquePartRefs.insert(partIdentity);
+    traversal.partRefOccurrences[partIdentity]++;
+    result.partOccurrenceCount++;
+    return nodeIndex;
+}
+
+bool HasRepeatedPartOccurrence(const ProductInspectionTraversalState& traversal)
+{
+    for (const auto& entry : traversal.partRefOccurrences) {
+        if (entry.second > 1) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void ClassifyProductInspection(OcctProductInspectionResult& result,
+                               const ProductInspectionTraversalState& traversal)
+{
+    result.uniquePartCount = static_cast<int>(traversal.uniquePartRefs.size());
+    const bool repeatedPartOccurrence = HasRepeatedPartOccurrence(traversal);
+
+    if (result.assemblyPresent || repeatedPartOccurrence) {
+        result.classification = "assembly";
+        result.assemblyPresent = true;
+        AddProductMessage(
+            result.reasons,
+            repeatedPartOccurrence ? "repeated_part_occurrence" : "assembly_label_present",
+            repeatedPartOccurrence
+                ? "The STEP product structure contains repeated occurrences of the same part."
+                : "The STEP product structure contains an assembly label or assembly children.");
+        return;
+    }
+
+    if (result.rootCount > 1) {
+        result.classification = "multi_part";
+        AddProductMessage(
+            result.reasons,
+            "multiple_free_shapes",
+            "The STEP file contains multiple top-level free shapes.");
+        return;
+    }
+
+    if (result.uniquePartCount == 1 && result.partOccurrenceCount == 1) {
+        result.classification = "single_part";
+        AddProductMessage(
+            result.reasons,
+            "single_free_shape_no_assembly",
+            "The STEP file contains exactly one top-level part with no assembly structure.");
+        return;
+    }
+
+    result.classification = "ambiguous";
+    AddProductMessage(
+        result.reasons,
+        "inconclusive_product_structure",
+        "The STEP file was readable but did not expose enough structure for a strict classification.");
 }
 
 void ExtractShapeMeshes(const TopoDS_Shape& shape,
@@ -449,6 +657,85 @@ TopoDS_Shape BuildExactRootShape(const TDF_LabelSequence& freeShapes,
 
 } // namespace
 
+OcctProductInspectionResult InspectXdeProductFromMemory(
+    const uint8_t* data,
+    size_t size,
+    const std::string& fileName,
+    const ImportParams& params,
+    const std::string& format)
+{
+    OcctProductInspectionResult result;
+    result.sourceFormat = format;
+
+    if (format != "step") {
+        result.error.code = "unsupported_format";
+        result.error.message = "Unsupported product inspection format: " + format;
+        return result;
+    }
+
+    try {
+        Handle(XCAFApp_Application) app = XCAFApp_Application::GetApplication();
+        Handle(TDocStd_Document) doc;
+        app->NewDocument("BinXCAF", doc);
+
+        if (doc.IsNull()) {
+            result.error.code = "internal_error";
+            result.error.message = "Failed to create XDE document.";
+            return result;
+        }
+
+        XCAFDoc_DocumentTool::SetLengthUnit(doc, 1.0, LinearUnitToLengthUnit(params.linearUnit));
+
+        std::string readError;
+        if (!ReadAndTransferXde(data, size, fileName, params, format, doc, readError)) {
+            result.error.code = "read_failed";
+            result.error.message = readError;
+            app->Close(doc);
+            return result;
+        }
+
+        ApplyLengthUnitMetadata(doc, result.sourceUnit, result.unitScaleToMeters);
+
+        Handle(XCAFDoc_ShapeTool) shapeTool = XCAFDoc_DocumentTool::ShapeTool(doc->Main());
+        TDF_LabelSequence freeShapes;
+        shapeTool->GetFreeShapes(freeShapes);
+        result.rootCount = freeShapes.Length();
+
+        if (freeShapes.Length() == 0) {
+            result.error.code = "no_shapes";
+            result.error.message = "No shapes found in source file.";
+            app->Close(doc);
+            return result;
+        }
+
+        ProductInspectionTraversalState traversal;
+        for (int i = 1; i <= freeShapes.Length(); ++i) {
+            int rootIndex = TraverseProductLabel(freeShapes.Value(i), shapeTool, result, traversal);
+            result.rootNodeIndices.push_back(rootIndex);
+        }
+
+        ClassifyProductInspection(result, traversal);
+        result.ok = true;
+        app->Close(doc);
+    }
+    catch (const Standard_Failure& ex) {
+        result.error.code = "internal_error";
+        result.error.message = "OCCT exception: ";
+        result.error.message += ex.GetMessageString();
+    }
+    catch (const std::exception& ex) {
+        result.error.code = "internal_error";
+        result.error.message = "C++ exception: ";
+        result.error.message += ex.what();
+    }
+    catch (...) {
+        result.error.code = "internal_error";
+        result.error.message = "Unknown exception during XDE product inspection.";
+    }
+
+    return result;
+}
+
 OcctExactImportData ImportExactXdeFromMemory(
     const uint8_t* data,
     size_t size,
@@ -479,25 +766,7 @@ OcctExactImportData ImportExactXdeFromMemory(
             return imported;
         }
 
-        {
-            Standard_Real unitInMeters = 0.0;
-            if (XCAFDoc_DocumentTool::GetLengthUnit(doc, unitInMeters)) {
-                scene.unitScaleToMeters = unitInMeters;
-                if (std::abs(unitInMeters - 0.001) < 1e-9) {
-                    scene.sourceUnit = "MM";
-                } else if (std::abs(unitInMeters - 0.01) < 1e-9) {
-                    scene.sourceUnit = "CM";
-                } else if (std::abs(unitInMeters - 1.0) < 1e-9) {
-                    scene.sourceUnit = "M";
-                } else if (std::abs(unitInMeters - 0.0254) < 1e-6) {
-                    scene.sourceUnit = "INCH";
-                } else if (std::abs(unitInMeters - 0.3048) < 1e-6) {
-                    scene.sourceUnit = "FOOT";
-                } else {
-                    scene.sourceUnit = "CUSTOM";
-                }
-            }
-        }
+        ApplyLengthUnitMetadata(doc, scene.sourceUnit, scene.unitScaleToMeters);
 
         Handle(XCAFDoc_ShapeTool) shapeTool = XCAFDoc_DocumentTool::ShapeTool(doc->Main());
         Handle(XCAFDoc_ColorTool) colorTool = XCAFDoc_DocumentTool::ColorTool(doc->Main());

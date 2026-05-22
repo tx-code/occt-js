@@ -27,3 +27,11 @@ OcctExactImportData ImportExactXdeFromMemory(
     const ImportParams& params,
     const std::string&  format
 );
+
+OcctProductInspectionResult InspectXdeProductFromMemory(
+    const uint8_t*      data,
+    size_t              size,
+    const std::string&  fileName,
+    const ImportParams& params,
+    const std::string&  format
+);
