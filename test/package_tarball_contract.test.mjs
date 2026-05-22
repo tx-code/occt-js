@@ -118,6 +118,21 @@ test("packed root package ships STEP product inspection typings", () => {
   assert.match(typesSource, /partOccurrenceCount/);
 });
 
+test("packed root package ships strict STEP part import typings", () => {
+  const manifest = getDryRunPackManifest();
+  const packedPaths = new Set(manifest.files.map((entry) => entry.path));
+  const typesSource = readRepoText("dist/occt-js.d.ts");
+
+  assert.equal(packedPaths.has("dist/occt-js.d.ts"), true);
+  assert.match(typesSource, /ReadStepPartFile/);
+  assert.match(typesSource, /OcctJSStepPartImportResult/);
+  assert.match(typesSource, /OcctJSStepPartImportRejection/);
+  assert.match(typesSource, /OcctJSStepPartImportSelection/);
+  assert.match(typesSource, /selection_not_supported/);
+  assert.match(typesSource, /assembly_not_allowed/);
+  assert.match(typesSource, /multi_part_not_allowed/);
+});
+
 test("packed root package helper docs and typings stay aligned with the shipped helper family", () => {
   const manifest = getDryRunPackManifest();
   const packedPaths = new Set(manifest.files.map((entry) => entry.path));

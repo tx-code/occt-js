@@ -117,3 +117,15 @@ test("published typings expose the raw STEP product inspection contract", () => 
   assert.ok(typesSource.includes("uniquePartCount"));
   assert.ok(typesSource.includes("partOccurrenceCount"));
 });
+
+test("published typings expose the raw strict STEP part import contract", () => {
+  const typesSource = readRepoText("dist/occt-js.d.ts");
+
+  assert.ok(typesSource.includes("ReadStepPartFile"));
+  assert.ok(typesSource.includes("OcctJSStepPartImportResult"));
+  assert.ok(typesSource.includes("OcctJSStepPartImportRejection"));
+  assert.ok(typesSource.includes("OcctJSStepPartImportSelection"));
+  assert.ok(typesSource.includes("selection_not_supported"));
+  assert.ok(typesSource.includes("assembly_not_allowed"));
+  assert.ok(typesSource.includes("multi_part_not_allowed"));
+});

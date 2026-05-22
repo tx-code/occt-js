@@ -140,6 +140,56 @@ export type OcctJSStepProductInspectionResult =
     | OcctJSStepProductInspectionSuccess
     | OcctJSStepProductInspectionFailure;
 
+export type OcctJSStepPartImportRejectionCode =
+    | "assembly_not_allowed"
+    | "multi_part_not_allowed"
+    | "ambiguous_product_structure"
+    | "inspection_failed"
+    | "selection_not_supported"
+    | "import_failed";
+
+export type OcctJSStepPartImportSelection =
+    | { kind: "part"; partRef: string }
+    | { kind: "occurrence"; occurrenceRef: string };
+
+export interface OcctJSStepPartImportParams extends OcctJSReadParams {
+    // Selected import is represented in the contract but rejected by the current runtime.
+    selection?: OcctJSStepPartImportSelection | null;
+}
+
+export interface OcctJSStepPartImportRejection {
+    code: OcctJSStepPartImportRejectionCode;
+    message: string;
+    classification?: OcctJSStepProductClassification;
+    rootCount?: number;
+    uniquePartCount?: number;
+    partOccurrenceCount?: number;
+    assemblyPresent?: boolean;
+    inspectionErrorCode?: OcctJSStepProductInspectionErrorCode;
+}
+
+export interface OcctJSStepPartImportSuccess extends OcctJSResult {
+    success: true;
+    sourceFormat: "step";
+    rootNodes: OcctJSNode[];
+    geometries: OcctJSGeometry[];
+    materials: OcctJSMaterial[];
+    stats: OcctJSStats;
+    inspection: OcctJSStepProductInspectionSuccess;
+}
+
+export interface OcctJSStepPartImportFailure {
+    success: false;
+    sourceFormat: "step";
+    error: string;
+    rejection: OcctJSStepPartImportRejection;
+    inspection?: OcctJSStepProductInspectionResult;
+}
+
+export type OcctJSStepPartImportResult =
+    | OcctJSStepPartImportSuccess
+    | OcctJSStepPartImportFailure;
+
 export interface OcctJSExactOpenResult extends OcctJSResult {
     exactModelId?: number;
     exactGeometryBindings?: OcctJSExactGeometryBinding[];
@@ -1035,6 +1085,7 @@ export interface OcctJSModule {
     ReadFile(format: string, content: Uint8Array, params?: OcctJSReadParams): OcctJSResult;
     ReadStepFile(content: Uint8Array, params?: OcctJSReadParams): OcctJSResult;
     InspectStepProduct(content: Uint8Array, params?: OcctJSReadParams): OcctJSStepProductInspectionResult;
+    ReadStepPartFile(content: Uint8Array, params?: OcctJSStepPartImportParams): OcctJSStepPartImportResult;
     ReadIgesFile(content: Uint8Array, params?: OcctJSReadParams): OcctJSResult;
     ReadBrepFile(content: Uint8Array, params?: OcctJSReadParams): OcctJSResult;
     TransformFile(format: OcctJSGeometryTransformFormat, content: Uint8Array, transform: OcctJSMatrix4, params?: OcctJSReadParams): OcctJSGeometryTransformResult;
