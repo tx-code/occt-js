@@ -315,7 +315,7 @@ int TraverseProductLabel(const TDF_Label& label,
         result.assemblyPresent = true;
         for (const TDF_Label& childLabel : children) {
             int childIndex = TraverseProductLabel(childLabel, shapeTool, result, traversal);
-            node.childIndices.push_back(childIndex);
+            result.nodes[nodeIndex].childIndices.push_back(childIndex);
         }
         return nodeIndex;
     }

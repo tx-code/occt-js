@@ -105,6 +105,19 @@ test("packed root package ships appearance typings needed by downstream consumer
   assert.match(typesSource, /built-in ghost opacity 0\.35/i);
 });
 
+test("packed root package ships STEP product inspection typings", () => {
+  const manifest = getDryRunPackManifest();
+  const packedPaths = new Set(manifest.files.map((entry) => entry.path));
+  const typesSource = readRepoText("dist/occt-js.d.ts");
+
+  assert.equal(packedPaths.has("dist/occt-js.d.ts"), true);
+  assert.match(typesSource, /InspectStepProduct/);
+  assert.match(typesSource, /OcctJSStepProductInspectionResult/);
+  assert.match(typesSource, /OcctJSStepProductInspectionNode/);
+  assert.match(typesSource, /uniquePartCount/);
+  assert.match(typesSource, /partOccurrenceCount/);
+});
+
 test("packed root package helper docs and typings stay aligned with the shipped helper family", () => {
   const manifest = getDryRunPackManifest();
   const packedPaths = new Set(manifest.files.map((entry) => entry.path));

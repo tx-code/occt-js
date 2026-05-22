@@ -107,3 +107,13 @@ test("consumer-facing docs describe the helper SDK without widening secondary-su
   assert.match(rootReadme, /Optional secondary surfaces/i);
   assert.equal(coreReadme.includes("@tx-code/occt-babylon-loader"), false);
 });
+
+test("published typings expose the raw STEP product inspection contract", () => {
+  const typesSource = readRepoText("dist/occt-js.d.ts");
+
+  assert.ok(typesSource.includes("InspectStepProduct"));
+  assert.ok(typesSource.includes("OcctJSStepProductInspectionResult"));
+  assert.ok(typesSource.includes("OcctJSStepProductInspectionNode"));
+  assert.ok(typesSource.includes("uniquePartCount"));
+  assert.ok(typesSource.includes("partOccurrenceCount"));
+});
