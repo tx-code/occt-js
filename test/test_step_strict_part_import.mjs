@@ -51,6 +51,25 @@ function assertStrictRejection(result, expectedCode, label) {
   assertNoViewerGeometryFields(result, label);
 }
 
+function assertMatrixClose(actual, expected, label) {
+  assert(Array.isArray(actual), `${label}: actual matrix should be an array`);
+  assert(Array.isArray(expected), `${label}: expected matrix should be an array`);
+  assert.equal(actual.length, 16, `${label}: actual matrix should have 16 entries`);
+  assert.equal(expected.length, 16, `${label}: expected matrix should have 16 entries`);
+  for (let index = 0; index < 16; index += 1) {
+    const diff = Math.abs(Number(actual[index]) - Number(expected[index]));
+    assert(diff <= 1e-6, `${label}: matrix entry ${index} differs by ${diff}`);
+  }
+}
+
+function assertMatrixHasPlacement(matrix, label) {
+  const identity = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
+  assert(
+    matrix.some((value, index) => Math.abs(Number(value) - identity[index]) > 1e-6),
+    `${label}: fixture occurrence should exercise non-identity placement`,
+  );
+}
+
 async function main() {
   const factory = loadOcctFactory();
   const m = await factory();
@@ -92,6 +111,7 @@ async function main() {
   assert.equal(inspectedAssembly.status, "ok", "assembly inspection should succeed before selected import");
   const selectedLeaf = inspectedAssembly.selectableOccurrences?.[0];
   assert(selectedLeaf, "assembly inspection should expose a selectable leaf occurrence");
+  assertMatrixHasPlacement(selectedLeaf.occurrenceTransform, "selected assembly occurrence");
 
   const selected = m.ReadStepPartFile(loadFixture("assembly.step"), {
     selection: { kind: "occurrence", occurrenceRef: selectedLeaf.occurrenceRef },
@@ -107,6 +127,16 @@ async function main() {
   assert.equal(selected.rootNodes.length, 1, "selected occurrence import should expose exactly one root");
   assert.equal(selected.rootNodes[0].isAssembly, false, "selected occurrence root should be a part");
   assert.equal(selected.rootNodes[0].children.length, 0, "selected occurrence root should not expose assembly children");
+  assertMatrixClose(
+    selected.rootNodes[0].transform,
+    selectedLeaf.occurrenceTransform,
+    "selected root transform should own the inspected occurrence placement",
+  );
+  assertMatrixClose(
+    selected.selectedOccurrence?.occurrenceTransform,
+    selectedLeaf.occurrenceTransform,
+    "selected metadata should preserve the inspected occurrence placement",
+  );
 
   const staleSelection = m.ReadStepPartFile(loadFixture("assembly.step"), {
     selection: { kind: "occurrence", occurrenceRef: "occurrence:stale" },

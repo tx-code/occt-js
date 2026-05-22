@@ -128,7 +128,15 @@ test("packed root package ships strict STEP part import typings", () => {
   assert.match(typesSource, /OcctJSStepPartImportResult/);
   assert.match(typesSource, /OcctJSStepPartImportRejection/);
   assert.match(typesSource, /OcctJSStepPartImportSelection/);
-  assert.match(typesSource, /selection_not_supported/);
+  assert.match(typesSource, /OcctJSStepSelectableOccurrence/);
+  assert.match(typesSource, /OcctJSStepSelectedOccurrence/);
+  assert.match(typesSource, /selectableOccurrences/);
+  assert.match(typesSource, /selectedOccurrence/);
+  assert.match(typesSource, /selection_not_found/);
+  assert.match(typesSource, /selection_not_leaf_occurrence/);
+  assert.match(typesSource, /selection_missing_shape/);
+  assert.match(typesSource, /selection_ambiguous/);
+  assert.match(typesSource, /selection_import_failed/);
   assert.match(typesSource, /assembly_not_allowed/);
   assert.match(typesSource, /multi_part_not_allowed/);
 });

@@ -129,7 +129,22 @@ test("published typings expose the raw strict STEP part import contract", () => 
   assert.ok(typesSource.includes("OcctJSStepPartImportResult"));
   assert.ok(typesSource.includes("OcctJSStepPartImportRejection"));
   assert.ok(typesSource.includes("OcctJSStepPartImportSelection"));
-  assert.ok(typesSource.includes("selection_not_supported"));
+  assert.ok(typesSource.includes("OcctJSStepSelectedOccurrence"));
+  assert.ok(typesSource.includes("selectedOccurrence"));
+  assert.ok(typesSource.includes("selection_not_found"));
+  assert.ok(typesSource.includes("selection_not_leaf_occurrence"));
+  assert.ok(typesSource.includes("selection_missing_shape"));
+  assert.ok(typesSource.includes("selection_ambiguous"));
+  assert.ok(typesSource.includes("selection_import_failed"));
   assert.ok(typesSource.includes("assembly_not_allowed"));
   assert.ok(typesSource.includes("multi_part_not_allowed"));
+});
+
+test("package metadata marks the selected occurrence runtime version", () => {
+  const packageJson = readRepoJson("package.json");
+  const packageLock = readRepoJson("package-lock.json");
+
+  assert.equal(packageJson.version, "0.1.13");
+  assert.equal(packageLock.version, "0.1.13");
+  assert.equal(packageLock.packages[""].version, "0.1.13");
 });
