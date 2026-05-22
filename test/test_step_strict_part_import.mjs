@@ -23,9 +23,18 @@ function loadFixture(name) {
 }
 
 function assertNoViewerGeometryFields(result, label) {
-  for (const key of ["rootNodes", "geometries", "materials", "stats"]) {
+  for (const key of ["rootNodes", "geometries", "materials", "stats", "triangleCount", "geometryCount", "meshCount"]) {
     assert(!hasOwn(result, key), `${label}: strict rejection must not expose ${key}`);
   }
+}
+
+function assertStrictRejection(result, expectedCode, label) {
+  assert.equal(result.success, false, `${label} should be rejected by strict import`);
+  assert.equal(result.sourceFormat, "step", `${label} rejection should keep sourceFormat=step`);
+  assert.equal(result.rejection?.code, expectedCode, `${label} should expose ${expectedCode}`);
+  assert(typeof result.error === "string" && result.error.length > 0, `${label} should expose an error message`);
+  assert(typeof result.rejection?.message === "string" && result.rejection.message.length > 0, `${label} should expose a rejection message`);
+  assertNoViewerGeometryFields(result, label);
 }
 
 async function main() {
@@ -42,10 +51,34 @@ async function main() {
   assert.equal(singlePart.inspection?.classification, "single_part", "strict success should include single_part inspection");
 
   const assembly = m.ReadStepPartFile(loadFixture("assembly.step"), {});
-  assert.equal(assembly.success, false, "assembly.step should be rejected by strict import");
-  assert.equal(assembly.rejection?.code, "assembly_not_allowed", "assembly.step should expose assembly rejection code");
+  assertStrictRejection(assembly, "assembly_not_allowed", "assembly.step");
   assert.equal(assembly.inspection?.classification, "assembly", "assembly rejection should include inspection result");
-  assertNoViewerGeometryFields(assembly, "assembly.step");
+  assert.equal(assembly.rejection?.classification, "assembly", "assembly rejection should summarize classification");
+
+  const multiPart = m.ReadStepPartFile(loadFixture("two_free_shapes.step"), {});
+  assertStrictRejection(multiPart, "multi_part_not_allowed", "two_free_shapes.step");
+  assert.equal(multiPart.inspection?.classification, "multi_part", "multi-part rejection should include inspection result");
+  assert.equal(multiPart.rejection?.classification, "multi_part", "multi-part rejection should summarize classification");
+
+  const syntheticRootAttempt = m.ReadStepPartFile(loadFixture("two_free_shapes.step"), { rootMode: "one-shape" });
+  assertStrictRejection(syntheticRootAttempt, "multi_part_not_allowed", "two_free_shapes.step rootMode=one-shape");
+  assert.equal(
+    syntheticRootAttempt.inspection?.classification,
+    "multi_part",
+    "synthetic viewer root must not make a multi-part STEP importable"
+  );
+
+  const invalid = m.ReadStepPartFile(new Uint8Array([0, 1, 2, 3]), {});
+  assertStrictRejection(invalid, "inspection_failed", "invalid STEP bytes");
+  assert.equal(invalid.inspection?.status, "error", "invalid bytes rejection should include failed inspection");
+  assert.equal(invalid.inspection?.error?.code, "read_failed", "invalid bytes rejection should preserve read_failed");
+  assert.equal(invalid.rejection?.inspectionErrorCode, "read_failed", "invalid bytes rejection should summarize read_failed");
+
+  const selected = m.ReadStepPartFile(loadFixture("simple_part.step"), {
+    selection: { kind: "occurrence", occurrenceRef: "occurrence:1" },
+  });
+  assertStrictRejection(selected, "selection_not_supported", "selected occurrence import");
+  assert(!hasOwn(selected, "inspection"), "selection rejection should not inspect or import geometry");
 
   console.log("PASS test_step_strict_part_import");
 }
