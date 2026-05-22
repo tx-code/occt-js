@@ -1364,6 +1364,96 @@ val ExactGeometryBindingsToVal(size_t geometryCount)
     return bindings;
 }
 
+val ProductInspectionMessageToVal(const OcctProductInspectionMessage& message)
+{
+    val obj = val::object();
+    obj.set("code", message.code);
+    obj.set("message", message.message);
+    if (message.hasSeverity) {
+        obj.set("severity", message.severity);
+    }
+    if (message.hasNodeId) {
+        obj.set("nodeId", message.nodeId);
+    }
+    return obj;
+}
+
+val ProductInspectionNodeToTreeVal(const OcctProductInspectionResult& inspection, int nodeIndex)
+{
+    const OcctProductInspectionNode& node = inspection.nodes.at(static_cast<size_t>(nodeIndex));
+    val obj = val::object();
+    obj.set("id", node.id);
+    obj.set("name", node.name);
+    obj.set("kind", node.kind);
+    obj.set("isAssembly", node.isAssembly);
+    obj.set("isReference", node.isReference);
+    obj.set("hasShape", node.hasShape);
+    obj.set("occurrenceRef", node.occurrenceRef);
+    obj.set("partRef", node.partRef);
+
+    val transform = val::array();
+    for (float value : node.transform) {
+        transform.call<void>("push", value);
+    }
+    obj.set("transform", transform);
+
+    val children = val::array();
+    for (int childIndex : node.childIndices) {
+        children.call<void>("push", ProductInspectionNodeToTreeVal(inspection, childIndex));
+    }
+    obj.set("children", children);
+    return obj;
+}
+
+val ProductInspectionResultToVal(const OcctProductInspectionResult& inspection)
+{
+    val result = val::object();
+    result.set("sourceFormat", inspection.sourceFormat);
+
+    if (!inspection.ok) {
+        result.set("status", std::string("error"));
+        val error = val::object();
+        error.set("code", inspection.error.code);
+        error.set("message", inspection.error.message);
+        result.set("error", error);
+        return result;
+    }
+
+    result.set("status", std::string("ok"));
+    result.set("classification", inspection.classification);
+    result.set("rootCount", inspection.rootCount);
+    result.set("uniquePartCount", inspection.uniquePartCount);
+    result.set("partOccurrenceCount", inspection.partOccurrenceCount);
+    result.set("assemblyPresent", inspection.assemblyPresent);
+
+    val productTree = val::array();
+    for (int rootIndex : inspection.rootNodeIndices) {
+        productTree.call<void>("push", ProductInspectionNodeToTreeVal(inspection, rootIndex));
+    }
+    result.set("productTree", productTree);
+
+    val reasons = val::array();
+    for (const auto& reason : inspection.reasons) {
+        reasons.call<void>("push", ProductInspectionMessageToVal(reason));
+    }
+    result.set("reasons", reasons);
+
+    val warnings = val::array();
+    for (const auto& warning : inspection.warnings) {
+        warnings.call<void>("push", ProductInspectionMessageToVal(warning));
+    }
+    result.set("warnings", warnings);
+
+    if (!inspection.sourceUnit.empty()) {
+        result.set("sourceUnit", inspection.sourceUnit);
+    }
+    if (inspection.unitScaleToMeters > 0.0) {
+        result.set("unitScaleToMeters", inspection.unitScaleToMeters);
+    }
+
+    return result;
+}
+
 val BuildResult(const OcctSceneData& scene, const std::string& sourceFormat)
 {
     val result = val::object();
@@ -1548,6 +1638,15 @@ val OpenExactByFormat(const std::string& format, const val& content, const val& 
 val ReadStepFile(const val& content, const val& jsParams)
 {
     return ReadByFormat("step", content, jsParams);
+}
+
+val InspectStepProduct(const val& content, const val& jsParams)
+{
+    std::vector<uint8_t> buffer = ExtractBytes(content);
+    ImportParams params = ParseImportParams(jsParams);
+    return ProductInspectionResultToVal(
+        InspectStepProductFromMemory(buffer.data(), buffer.size(), "input.stp", params)
+    );
 }
 
 val ReadIgesFile(const val& content, const val& jsParams)
@@ -2432,6 +2531,7 @@ EMSCRIPTEN_BINDINGS(occtjs)
 {
     function("ReadFile", &ReadFile);
     function("ReadStepFile", &ReadStepFile);
+    function("InspectStepProduct", &InspectStepProduct);
     function("ReadIgesFile", &ReadIgesFile);
     function("ReadBrepFile", &ReadBrepFile);
     function("TransformFile", &TransformFile);
