@@ -162,6 +162,14 @@ function normalizeImportParams(importParams) {
   return normalized;
 }
 
+function normalizeStepPartImportParams(options) {
+  const importParams = normalizeImportParams(options.importParams);
+  if (Object.prototype.hasOwnProperty.call(options, "selection")) {
+    importParams.selection = options.selection ?? null;
+  }
+  return importParams;
+}
+
 function normalizeTransform(transform) {
   return Array.isArray(transform) && transform.length === 16
     ? transform.slice()
@@ -622,6 +630,53 @@ export class OcctCoreClient {
       sourceFileName: options.fileName,
       importParams,
     });
+  }
+
+  async inspectStepProduct(content, options = {}) {
+    const module = await this._ensureModule();
+    if (typeof module.InspectStepProduct !== "function") {
+      throw new Error("Loaded OCCT module does not expose InspectStepProduct().");
+    }
+
+    const bytes = toUint8Array(content);
+    const importParams = normalizeImportParams(options.importParams);
+    return module.InspectStepProduct(bytes, importParams);
+  }
+
+  async importStepPart(content, options = {}) {
+    const module = await this._ensureModule();
+    if (typeof module.ReadStepPartFile !== "function") {
+      throw new Error("Loaded OCCT module does not expose ReadStepPartFile().");
+    }
+
+    const bytes = toUint8Array(content);
+    const importParams = normalizeStepPartImportParams(options);
+    const rawResult = module.ReadStepPartFile(bytes, importParams);
+
+    if (!rawResult?.success) {
+      const error = rawResult?.error ?? "ReadStepPartFile() failed.";
+      return {
+        success: false,
+        sourceFormat: "step",
+        error,
+        rejection: rawResult?.rejection ?? {
+          code: "import_failed",
+          message: error,
+        },
+        ...(rawResult?.inspection ? { inspection: rawResult.inspection } : {}),
+      };
+    }
+
+    return {
+      success: true,
+      sourceFormat: "step",
+      model: normalizeOcctResult(rawResult, {
+        sourceFormat: "step",
+        sourceFileName: options.fileName,
+        importParams,
+      }),
+      inspection: rawResult.inspection,
+    };
   }
 
   async openExactModel(content, options = {}) {

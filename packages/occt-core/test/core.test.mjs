@@ -1021,6 +1021,152 @@ describe("createOcctCore", () => {
     );
   });
 
+  it("wraps raw STEP product inspection without adding IMOS policy", async () => {
+    const calls = [];
+    const rawInspection = {
+      status: "ok",
+      sourceFormat: "step",
+      classification: "single_part",
+      rootCount: 1,
+      uniquePartCount: 1,
+      partOccurrenceCount: 1,
+      assemblyPresent: false,
+      productTree: [],
+      reasons: [{ code: "single_free_shape_no_assembly", message: "one root" }],
+      warnings: [],
+    };
+    const core = createOcctCore({
+      factory: async () => ({
+        InspectStepProduct: (bytes, params) => {
+          calls.push([Array.from(bytes), params]);
+          return rawInspection;
+        },
+      }),
+    });
+
+    const inspection = await core.inspectStepProduct(new Uint8Array([1, 2, 3]), {
+      importParams: { readColors: false },
+    });
+
+    assert.equal(inspection, rawInspection);
+    assert.deepEqual(calls, [[[1, 2, 3], { readColors: false }]]);
+    assert.equal(hasOwn(inspection, "canImport"), false);
+  });
+
+  it("wraps strict STEP part import success with a normalized model and inspection", async () => {
+    const calls = [];
+    const rawInspection = {
+      status: "ok",
+      sourceFormat: "step",
+      classification: "single_part",
+      rootCount: 1,
+      uniquePartCount: 1,
+      partOccurrenceCount: 1,
+      assemblyPresent: false,
+      productTree: [],
+      reasons: [],
+      warnings: [],
+    };
+    const core = createOcctCore({
+      factory: async () => ({
+        ReadStepPartFile: (bytes, params) => {
+          calls.push([Array.from(bytes), params]);
+          return {
+            ...createColorlessRawResult(),
+            sourceFormat: "step",
+            inspection: rawInspection,
+          };
+        },
+      }),
+    });
+
+    const result = await core.importStepPart(new Uint8Array([4, 5, 6]), {
+      fileName: "part.step",
+      importParams: { linearDeflection: 0.2 },
+    });
+
+    assert.equal(result.success, true);
+    assert.equal(result.inspection, rawInspection);
+    assert.equal(result.model.sourceFormat, "step");
+    assert.equal(result.model.sourceFileName, "part.step");
+    assert.equal(result.model.geometries.length, 1);
+    assert.deepEqual(calls, [[[4, 5, 6], { linearDeflection: 0.2 }]]);
+  });
+
+  it("returns strict STEP part import rejections without throwing", async () => {
+    const rawInspection = {
+      status: "ok",
+      sourceFormat: "step",
+      classification: "assembly",
+      rootCount: 1,
+      uniquePartCount: 5,
+      partOccurrenceCount: 18,
+      assemblyPresent: true,
+      productTree: [],
+      reasons: [],
+      warnings: [],
+    };
+    const core = createOcctCore({
+      factory: async () => ({
+        ReadStepPartFile: () => ({
+          success: false,
+          sourceFormat: "step",
+          error: "STEP file is an assembly.",
+          rejection: {
+            code: "assembly_not_allowed",
+            message: "assembly",
+            classification: "assembly",
+          },
+          inspection: rawInspection,
+        }),
+      }),
+    });
+
+    const result = await core.importStepPart(new Uint8Array([1]), { format: "step" });
+
+    assert.equal(result.success, false);
+    assert.equal(result.rejection.code, "assembly_not_allowed");
+    assert.equal(result.inspection, rawInspection);
+  });
+
+  it("forwards strict STEP part selection through raw params", async () => {
+    let capturedParams;
+    const selection = { kind: "occurrence", occurrenceRef: "occurrence:1" };
+    const core = createOcctCore({
+      factory: async () => ({
+        ReadStepPartFile: (_bytes, params) => {
+          capturedParams = params;
+          return {
+            success: false,
+            sourceFormat: "step",
+            error: "selection not supported",
+            rejection: { code: "selection_not_supported", message: "selection not supported" },
+          };
+        },
+      }),
+    });
+
+    const result = await core.importStepPart(new Uint8Array([1]), { selection });
+
+    assert.equal(result.success, false);
+    assert.deepEqual(capturedParams, { selection });
+  });
+
+  it("fails explicitly when product inspection or strict part import raw methods are unavailable", async () => {
+    const core = createOcctCore({
+      factory: async () => ({}),
+    });
+
+    await assert.rejects(
+      core.inspectStepProduct(new Uint8Array([1])),
+      /InspectStepProduct/
+    );
+    await assert.rejects(
+      core.importStepPart(new Uint8Array([1])),
+      /ReadStepPartFile/
+    );
+  });
+
   it("infers the format from fileName when format is omitted", async () => {
     let called = null;
     const core = createOcctCore({
