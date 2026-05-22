@@ -1093,6 +1093,85 @@ describe("createOcctCore", () => {
     assert.deepEqual(calls, [[[4, 5, 6], { linearDeflection: 0.2 }]]);
   });
 
+  it("wraps selected STEP occurrence import success with selected metadata", async () => {
+    const calls = [];
+    const selectedTransform = [
+      1, 0, 0, 0,
+      0, 1, 0, 0,
+      0, 0, 1, 0,
+      12, 24, 36, 1,
+    ];
+    const selectedOccurrence = {
+      kind: "occurrence",
+      occurrenceRef: "occurrence:2:0:1:1:2:1",
+      partRef: "0:1:1:3",
+      nodeId: "product_node_2",
+      name: "nut",
+      displayPath: ["assembly", "nut"],
+      localTransform: IDENTITY_MATRIX,
+      occurrenceTransform: selectedTransform,
+      sourceUnit: "MM",
+      unitScaleToMeters: 0.001,
+    };
+    const rawInspection = {
+      status: "ok",
+      sourceFormat: "step",
+      classification: "assembly",
+      rootCount: 1,
+      uniquePartCount: 5,
+      partOccurrenceCount: 18,
+      assemblyPresent: true,
+      selectableOccurrences: [selectedOccurrence],
+      productTree: [],
+      reasons: [],
+      warnings: [{ code: "repeated_part_occurrence", message: "repeated" }],
+      sourceUnit: "MM",
+      unitScaleToMeters: 0.001,
+    };
+    const core = createOcctCore({
+      factory: async () => ({
+        ReadStepPartFile: (bytes, params) => {
+          calls.push([Array.from(bytes), params]);
+          return {
+            ...createColorlessRawResult(),
+            sourceFormat: "step",
+            sourceUnit: "MM",
+            unitScaleToMeters: 0.001,
+            warnings: [{ code: "selected_occurrence", message: "selected" }],
+            rootNodes: [{
+              id: "selected_occurrence",
+              name: "nut",
+              isAssembly: false,
+              transform: selectedTransform,
+              meshes: [0],
+              children: [],
+            }],
+            inspection: rawInspection,
+            selectedOccurrence,
+          };
+        },
+      }),
+    });
+    const selection = { kind: "occurrence", occurrenceRef: selectedOccurrence.occurrenceRef };
+
+    const result = await core.importStepPart(new Uint8Array([7, 8, 9]), {
+      fileName: "assembly.step",
+      importParams: { linearDeflection: 0.2 },
+      selection,
+    });
+
+    assert.equal(result.success, true);
+    assert.equal(result.inspection, rawInspection);
+    assert.equal(result.selectedOccurrence, selectedOccurrence);
+    assert.equal(result.model.sourceFormat, "step");
+    assert.equal(result.model.sourceFileName, "assembly.step");
+    assert.equal(result.model.sourceUnit, "MM");
+    assert.equal(result.model.unitScaleToMeters, 0.001);
+    assert.deepEqual(result.model.rootNodes[0].transform, selectedTransform);
+    assert.deepEqual(result.model.warnings, [{ code: "selected_occurrence", message: "selected" }]);
+    assert.deepEqual(calls, [[[7, 8, 9], { linearDeflection: 0.2, selection }]]);
+  });
+
   it("returns strict STEP part import rejections without throwing", async () => {
     const rawInspection = {
       status: "ok",
@@ -1127,6 +1206,52 @@ describe("createOcctCore", () => {
     assert.equal(result.success, false);
     assert.equal(result.rejection.code, "assembly_not_allowed");
     assert.equal(result.inspection, rawInspection);
+  });
+
+  it("returns selected STEP import typed rejections without throwing or normalizing geometry", async () => {
+    const cases = [
+      "selection_not_found",
+      "selection_not_leaf_occurrence",
+      "selection_ambiguous",
+      "selection_not_supported",
+    ];
+
+    for (const code of cases) {
+      const rawInspection = {
+        status: "ok",
+        sourceFormat: "step",
+        classification: "assembly",
+        rootCount: 1,
+        uniquePartCount: 5,
+        partOccurrenceCount: 18,
+        assemblyPresent: true,
+        productTree: [],
+        selectableOccurrences: [],
+        reasons: [],
+        warnings: [],
+      };
+      const core = createOcctCore({
+        factory: async () => ({
+          ReadStepPartFile: () => ({
+            success: false,
+            sourceFormat: "step",
+            error: code,
+            rejection: { code, message: code },
+            inspection: rawInspection,
+          }),
+        }),
+      });
+
+      const result = await core.importStepPart(new Uint8Array([1]), {
+        selection: { kind: "occurrence", occurrenceRef: "occurrence:stale" },
+      });
+
+      assert.equal(result.success, false);
+      assert.equal(result.sourceFormat, "step");
+      assert.equal(result.rejection.code, code);
+      assert.equal(result.inspection, rawInspection);
+      assert.equal(hasOwn(result, "model"), false);
+    }
   });
 
   it("forwards strict STEP part selection through raw params", async () => {

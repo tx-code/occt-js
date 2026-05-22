@@ -113,6 +113,9 @@ test("occt-core published typings expose STEP inspection and strict part import 
   assert.match(typesSource, /OcctStepPartImportResult/);
   assert.match(typesSource, /OcctStepPartImportRejection/);
   assert.match(typesSource, /OcctStepPartImportSelection/);
+  assert.match(typesSource, /OcctStepSelectedOccurrence/);
+  assert.match(typesSource, /OcctJSStepSelectedOccurrence/);
+  assert.match(typesSource, /selectedOccurrence\?: OcctStepSelectedOccurrence/);
   assert.match(typesSource, /inspectStepProduct/);
   assert.match(typesSource, /importStepPart/);
 });
