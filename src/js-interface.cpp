@@ -1454,6 +1454,74 @@ val ProductInspectionResultToVal(const OcctProductInspectionResult& inspection)
     return result;
 }
 
+bool HasStepPartSelection(const val& jsParams)
+{
+    if (jsParams.typeOf().as<std::string>() != "object" || jsParams.isNull()) {
+        return false;
+    }
+    if (!jsParams.hasOwnProperty("selection")) {
+        return false;
+    }
+    const val selection = jsParams["selection"];
+    return selection.typeOf().as<std::string>() != "undefined" && !selection.isNull();
+}
+
+void AttachInspectionSummaryToRejection(val& rejection, const OcctProductInspectionResult& inspection)
+{
+    if (!inspection.ok) {
+        rejection.set("inspectionErrorCode", inspection.error.code);
+        return;
+    }
+
+    rejection.set("classification", inspection.classification);
+    rejection.set("rootCount", inspection.rootCount);
+    rejection.set("uniquePartCount", inspection.uniquePartCount);
+    rejection.set("partOccurrenceCount", inspection.partOccurrenceCount);
+    rejection.set("assemblyPresent", inspection.assemblyPresent);
+}
+
+val StepPartImportFailure(const std::string& code,
+                          const std::string& message,
+                          const OcctProductInspectionResult* inspection = nullptr)
+{
+    val result = val::object();
+    result.set("success", false);
+    result.set("sourceFormat", std::string("step"));
+    result.set("error", message);
+
+    val rejection = val::object();
+    rejection.set("code", code);
+    rejection.set("message", message);
+    if (inspection != nullptr) {
+        AttachInspectionSummaryToRejection(rejection, *inspection);
+        result.set("inspection", ProductInspectionResultToVal(*inspection));
+    }
+    result.set("rejection", rejection);
+    return result;
+}
+
+std::string StepPartRejectionCodeForClassification(const std::string& classification)
+{
+    if (classification == "assembly") {
+        return "assembly_not_allowed";
+    }
+    if (classification == "multi_part") {
+        return "multi_part_not_allowed";
+    }
+    return "ambiguous_product_structure";
+}
+
+std::string StepPartRejectionMessageForClassification(const OcctProductInspectionResult& inspection)
+{
+    if (inspection.classification == "assembly") {
+        return "STEP file is an assembly and cannot be imported as a strict single part.";
+    }
+    if (inspection.classification == "multi_part") {
+        return "STEP file contains multiple parts and cannot be imported as a strict single part.";
+    }
+    return "STEP product structure is ambiguous and cannot be imported as a strict single part.";
+}
+
 val BuildResult(const OcctSceneData& scene, const std::string& sourceFormat)
 {
     val result = val::object();
@@ -1647,6 +1715,48 @@ val InspectStepProduct(const val& content, const val& jsParams)
     return ProductInspectionResultToVal(
         InspectStepProductFromMemory(buffer.data(), buffer.size(), "input.stp", params)
     );
+}
+
+val ReadStepPartFile(const val& content, const val& jsParams)
+{
+    if (HasStepPartSelection(jsParams)) {
+        return StepPartImportFailure(
+            "selection_not_supported",
+            "Selected STEP part or occurrence import is not supported yet. Omit selection to import only strict single-part STEP files."
+        );
+    }
+
+    std::vector<uint8_t> buffer = ExtractBytes(content);
+    ImportParams params = ParseImportParams(jsParams);
+    OcctProductInspectionResult inspection = InspectStepProductFromMemory(
+        buffer.data(),
+        buffer.size(),
+        "input.stp",
+        params
+    );
+
+    if (!inspection.ok) {
+        std::string message = "STEP product inspection failed: " + inspection.error.message;
+        return StepPartImportFailure("inspection_failed", message, &inspection);
+    }
+
+    if (inspection.classification != "single_part") {
+        return StepPartImportFailure(
+            StepPartRejectionCodeForClassification(inspection.classification),
+            StepPartRejectionMessageForClassification(inspection),
+            &inspection
+        );
+    }
+
+    OcctSceneData scene = ImportStepFromMemory(buffer.data(), buffer.size(), "input.stp", params);
+    if (!scene.success) {
+        std::string message = "Strict STEP part import failed: " + scene.error;
+        return StepPartImportFailure("import_failed", message, &inspection);
+    }
+
+    val result = BuildResult(scene, "step");
+    result.set("inspection", ProductInspectionResultToVal(inspection));
+    return result;
 }
 
 val ReadIgesFile(const val& content, const val& jsParams)
@@ -2532,6 +2642,7 @@ EMSCRIPTEN_BINDINGS(occtjs)
     function("ReadFile", &ReadFile);
     function("ReadStepFile", &ReadStepFile);
     function("InspectStepProduct", &InspectStepProduct);
+    function("ReadStepPartFile", &ReadStepPartFile);
     function("ReadIgesFile", &ReadIgesFile);
     function("ReadBrepFile", &ReadBrepFile);
     function("TransformFile", &TransformFile);
