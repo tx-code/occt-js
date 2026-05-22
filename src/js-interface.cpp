@@ -1378,6 +1378,35 @@ val ProductInspectionMessageToVal(const OcctProductInspectionMessage& message)
     return obj;
 }
 
+val StringVectorToVal(const std::vector<std::string>& values)
+{
+    val arr = val::array();
+    for (const auto& value : values) {
+        arr.call<void>("push", value);
+    }
+    return arr;
+}
+
+val StepSelectableOccurrenceToVal(const OcctStepSelectableOccurrence& occurrence)
+{
+    val obj = val::object();
+    obj.set("kind", occurrence.kind);
+    obj.set("occurrenceRef", occurrence.occurrenceRef);
+    obj.set("partRef", occurrence.partRef);
+    obj.set("nodeId", occurrence.nodeId);
+    obj.set("name", occurrence.name);
+    obj.set("displayPath", StringVectorToVal(occurrence.displayPath));
+    obj.set("localTransform", TransformToVal(occurrence.localTransform));
+    obj.set("occurrenceTransform", TransformToVal(occurrence.occurrenceTransform));
+    if (!occurrence.sourceUnit.empty()) {
+        obj.set("sourceUnit", occurrence.sourceUnit);
+    }
+    if (occurrence.unitScaleToMeters > 0.0) {
+        obj.set("unitScaleToMeters", occurrence.unitScaleToMeters);
+    }
+    return obj;
+}
+
 val ProductInspectionNodeToTreeVal(const OcctProductInspectionResult& inspection, int nodeIndex)
 {
     const OcctProductInspectionNode& node = inspection.nodes.at(static_cast<size_t>(nodeIndex));
@@ -1388,14 +1417,17 @@ val ProductInspectionNodeToTreeVal(const OcctProductInspectionResult& inspection
     obj.set("isAssembly", node.isAssembly);
     obj.set("isReference", node.isReference);
     obj.set("hasShape", node.hasShape);
+    obj.set("selectable", node.selectable);
     obj.set("occurrenceRef", node.occurrenceRef);
     obj.set("partRef", node.partRef);
+    obj.set("displayPath", StringVectorToVal(node.displayPath));
 
     val transform = val::array();
     for (float value : node.transform) {
         transform.call<void>("push", value);
     }
     obj.set("transform", transform);
+    obj.set("occurrenceTransform", TransformToVal(node.occurrenceTransform));
 
     val children = val::array();
     for (int childIndex : node.childIndices) {
@@ -1425,6 +1457,12 @@ val ProductInspectionResultToVal(const OcctProductInspectionResult& inspection)
     result.set("uniquePartCount", inspection.uniquePartCount);
     result.set("partOccurrenceCount", inspection.partOccurrenceCount);
     result.set("assemblyPresent", inspection.assemblyPresent);
+
+    val selectableOccurrences = val::array();
+    for (const auto& occurrence : inspection.selectableOccurrences) {
+        selectableOccurrences.call<void>("push", StepSelectableOccurrenceToVal(occurrence));
+    }
+    result.set("selectableOccurrences", selectableOccurrences);
 
     val productTree = val::array();
     for (int rootIndex : inspection.rootNodeIndices) {

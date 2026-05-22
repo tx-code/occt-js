@@ -71,6 +71,22 @@ std::array<float, 16> IdentityMatrix()
     return {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
 }
 
+std::array<float, 16> MultiplyMatrix(const std::array<float, 16>& a,
+                                     const std::array<float, 16>& b)
+{
+    std::array<float, 16> result{};
+    for (int col = 0; col < 4; ++col) {
+        for (int row = 0; row < 4; ++row) {
+            float value = 0.0f;
+            for (int k = 0; k < 4; ++k) {
+                value += a[k * 4 + row] * b[col * 4 + k];
+            }
+            result[col * 4 + row] = value;
+        }
+    }
+    return result;
+}
+
 UnitsMethods_LengthUnit LinearUnitToLengthUnit(ImportParams::LinearUnit linearUnit)
 {
     switch (linearUnit) {
@@ -119,6 +135,15 @@ std::string LabelEntry(const TDF_Label& label)
     TCollection_AsciiString entry;
     TDF_Tool::Entry(label, entry);
     return entry.ToCString();
+}
+
+std::string MakeOccurrenceRef(const TDF_Label& label, int nodeIndex)
+{
+    const std::string labelEntry = LabelEntry(label);
+    if (!labelEntry.empty()) {
+        return "occurrence:" + std::to_string(nodeIndex) + ":" + labelEntry;
+    }
+    return "occurrence:" + std::to_string(nodeIndex);
 }
 
 std::string GetLabelNameNoRef(const TDF_Label& label)
@@ -276,18 +301,32 @@ struct ProductInspectionTraversalState {
     std::map<std::string, int> partRefOccurrences;
 };
 
+std::string DisplayPathSegment(const OcctProductInspectionNode& node)
+{
+    if (!node.name.empty()) {
+        return node.name;
+    }
+    if (!node.occurrenceRef.empty()) {
+        return node.occurrenceRef;
+    }
+    return node.id;
+}
+
 int TraverseProductLabel(const TDF_Label& label,
                          const Handle(XCAFDoc_ShapeTool)& shapeTool,
                          OcctProductInspectionResult& result,
-                         ProductInspectionTraversalState& traversal)
+                         ProductInspectionTraversalState& traversal,
+                         std::array<float, 16> parentTransform,
+                         std::vector<std::string> parentPath)
 {
     int nodeIndex = static_cast<int>(result.nodes.size());
     result.nodes.emplace_back();
     OcctProductInspectionNode& node = result.nodes[nodeIndex];
 
     node.id = "product_node_" + std::to_string(nodeIndex);
-    node.occurrenceRef = LabelEntry(label);
+    node.occurrenceRef = MakeOccurrenceRef(label, nodeIndex);
     node.transform = IdentityMatrix();
+    node.occurrenceTransform = IdentityMatrix();
 
     TDF_Label refLabel = label;
     if (shapeTool->IsReference(label)) {
@@ -302,6 +341,9 @@ int TraverseProductLabel(const TDF_Label& label,
     if (!loc.IsIdentity()) {
         node.transform = TrsfToMatrix(loc.Transformation());
     }
+    node.occurrenceTransform = MultiplyMatrix(parentTransform, node.transform);
+    node.displayPath = parentPath;
+    node.displayPath.push_back(DisplayPathSegment(node));
 
     TopoDS_Shape shape = shapeTool->GetShape(refLabel);
     node.hasShape = !shape.IsNull();
@@ -313,8 +355,16 @@ int TraverseProductLabel(const TDF_Label& label,
 
     if (isAssemblyLabel) {
         result.assemblyPresent = true;
+        const std::array<float, 16> childParentTransform = node.occurrenceTransform;
+        const std::vector<std::string> childParentPath = node.displayPath;
         for (const TDF_Label& childLabel : children) {
-            int childIndex = TraverseProductLabel(childLabel, shapeTool, result, traversal);
+            int childIndex = TraverseProductLabel(
+                childLabel,
+                shapeTool,
+                result,
+                traversal,
+                childParentTransform,
+                childParentPath);
             result.nodes[nodeIndex].childIndices.push_back(childIndex);
         }
         return nodeIndex;
@@ -337,6 +387,20 @@ int TraverseProductLabel(const TDF_Label& label,
     traversal.uniquePartRefs.insert(partIdentity);
     traversal.partRefOccurrences[partIdentity]++;
     result.partOccurrenceCount++;
+    if (!node.occurrenceRef.empty() && node.childIndices.empty()) {
+        node.selectable = true;
+        OcctStepSelectableOccurrence occurrence;
+        occurrence.occurrenceRef = node.occurrenceRef;
+        occurrence.partRef = node.partRef;
+        occurrence.nodeId = node.id;
+        occurrence.name = node.name;
+        occurrence.displayPath = node.displayPath;
+        occurrence.localTransform = node.transform;
+        occurrence.occurrenceTransform = node.occurrenceTransform;
+        occurrence.sourceUnit = result.sourceUnit;
+        occurrence.unitScaleToMeters = result.unitScaleToMeters;
+        result.selectableOccurrences.push_back(std::move(occurrence));
+    }
     return nodeIndex;
 }
 
@@ -710,7 +774,13 @@ OcctProductInspectionResult InspectXdeProductFromMemory(
 
         ProductInspectionTraversalState traversal;
         for (int i = 1; i <= freeShapes.Length(); ++i) {
-            int rootIndex = TraverseProductLabel(freeShapes.Value(i), shapeTool, result, traversal);
+            int rootIndex = TraverseProductLabel(
+                freeShapes.Value(i),
+                shapeTool,
+                result,
+                traversal,
+                IdentityMatrix(),
+                {});
             result.rootNodeIndices.push_back(rootIndex);
         }
 

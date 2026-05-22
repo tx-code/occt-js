@@ -102,10 +102,26 @@ struct OcctProductInspectionNode {
     bool isAssembly = false;
     bool isReference = false;
     bool hasShape = false;
+    bool selectable = false;
     std::string occurrenceRef;
     std::string partRef;
+    std::vector<std::string> displayPath;
     std::array<float, 16> transform;
+    std::array<float, 16> occurrenceTransform;
     std::vector<int> childIndices;
+};
+
+struct OcctStepSelectableOccurrence {
+    std::string kind = "occurrence";
+    std::string occurrenceRef;
+    std::string partRef;
+    std::string nodeId;
+    std::string name;
+    std::vector<std::string> displayPath;
+    std::array<float, 16> localTransform;
+    std::array<float, 16> occurrenceTransform;
+    std::string sourceUnit;
+    double unitScaleToMeters = 0.0;
 };
 
 struct OcctProductInspectionError {
@@ -124,6 +140,7 @@ struct OcctProductInspectionResult {
     bool assemblyPresent = false;
     std::vector<OcctProductInspectionNode> nodes;
     std::vector<int> rootNodeIndices;
+    std::vector<OcctStepSelectableOccurrence> selectableOccurrences;
     std::vector<OcctProductInspectionMessage> reasons;
     std::vector<OcctProductInspectionMessage> warnings;
     std::string sourceUnit;

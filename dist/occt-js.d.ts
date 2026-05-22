@@ -104,10 +104,26 @@ export interface OcctJSStepProductInspectionNode {
     isAssembly: boolean;
     isReference: boolean;
     hasShape: boolean;
+    selectable: boolean;
     occurrenceRef: string;
     partRef: string;
+    displayPath: string[];
     transform: number[];
+    occurrenceTransform: number[];
     children: OcctJSStepProductInspectionNode[];
+}
+
+export interface OcctJSStepSelectableOccurrence {
+    kind: "occurrence";
+    occurrenceRef: string;
+    partRef: string;
+    nodeId: string;
+    name: string;
+    displayPath: string[];
+    localTransform: number[];
+    occurrenceTransform: number[];
+    sourceUnit?: string;
+    unitScaleToMeters?: number;
 }
 
 export interface OcctJSStepProductInspectionError {
@@ -123,6 +139,7 @@ export interface OcctJSStepProductInspectionSuccess {
     uniquePartCount: number;
     partOccurrenceCount: number;
     assemblyPresent: boolean;
+    selectableOccurrences: OcctJSStepSelectableOccurrence[];
     productTree: OcctJSStepProductInspectionNode[];
     reasons: OcctJSStepProductInspectionMessage[];
     warnings: OcctJSStepProductInspectionMessage[];
