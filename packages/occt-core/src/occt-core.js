@@ -667,7 +667,7 @@ export class OcctCoreClient {
       };
     }
 
-    return {
+    const result = {
       success: true,
       sourceFormat: "step",
       model: normalizeOcctResult(rawResult, {
@@ -677,6 +677,10 @@ export class OcctCoreClient {
       }),
       inspection: rawResult.inspection,
     };
+    if (rawResult.selectedOccurrence) {
+      result.selectedOccurrence = rawResult.selectedOccurrence;
+    }
+    return result;
   }
 
   async openExactModel(content, options = {}) {

@@ -51,6 +51,7 @@ import type {
   OcctJSRevolvedShapeValidationResult,
   OcctJSStepPartImportRejection,
   OcctJSStepPartImportSelection,
+  OcctJSStepSelectedOccurrence,
   OcctJSStepProductInspectionResult,
   OcctJSStepProductInspectionSuccess,
 } from "@tx-code/occt-js";
@@ -115,6 +116,8 @@ export type OcctStepPartImportSelection = OcctJSStepPartImportSelection;
 
 export type OcctStepPartImportRejection = OcctJSStepPartImportRejection;
 
+export type OcctStepSelectedOccurrence = OcctJSStepSelectedOccurrence;
+
 export interface OcctStepPartImportOptions extends OcctStepProductInspectionOptions {
   selection?: OcctStepPartImportSelection;
 }
@@ -124,6 +127,7 @@ export interface OcctStepPartImportSuccess {
   sourceFormat: "step";
   model: OcctNormalizedResult;
   inspection: OcctJSStepProductInspectionSuccess;
+  selectedOccurrence?: OcctStepSelectedOccurrence;
 }
 
 export interface OcctStepPartImportFailure {
@@ -726,6 +730,7 @@ export type {
   OcctJSExactRevolvedShapeOpenResult,
   OcctJSStepPartImportRejection,
   OcctJSStepPartImportSelection,
+  OcctJSStepSelectedOccurrence,
   OcctJSStepProductInspectionResult,
   OcctJSStepProductInspectionSuccess,
   OcctJSGeneratedCompositeShapeMetadata,

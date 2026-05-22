@@ -1168,7 +1168,9 @@ describe("createOcctCore", () => {
     assert.equal(result.model.sourceUnit, "MM");
     assert.equal(result.model.unitScaleToMeters, 0.001);
     assert.deepEqual(result.model.rootNodes[0].transform, selectedTransform);
-    assert.deepEqual(result.model.warnings, [{ code: "selected_occurrence", message: "selected" }]);
+    assert.deepEqual(result.model.warnings.map(({ code, message }) => ({ code, message })), [
+      { code: "selected_occurrence", message: "selected" },
+    ]);
     assert.deepEqual(calls, [[[7, 8, 9], { linearDeflection: 0.2, selection }]]);
   });
 
