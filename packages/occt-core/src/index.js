@@ -13,3 +13,4 @@ export {
 export { normalizeOcctFormat, getReadMethodName, listSupportedFormats } from "./formats.js";
 export { normalizeOcctResult } from "./model-normalizer.js";
 export { applyOrientationToModel, resolveAutoOrientedModel } from "./orientation.js";
+export { getStepSelectableOccurrences } from "./step-selection.js";

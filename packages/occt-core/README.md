@@ -84,6 +84,35 @@ Contract rules:
 Apps own settings persistence, and `@tx-code/occt-core` only consumes the chosen import-time appearance options.
 Viewer overrides remain downstream concerns; the adapter does not own repaint, theme switching, or post-import display policy.
 
+## STEP Selected Occurrence Import
+
+`@tx-code/occt-core` exposes the runtime STEP inspection and strict part import surface without adding app-specific selection policy:
+
+```js
+import { createOcctCore, getStepSelectableOccurrences } from "@tx-code/occt-core";
+
+const inspection = await core.inspectStepProduct(stepBytes, {
+  fileName: "assembly.step",
+});
+
+const occurrences = getStepSelectableOccurrences(inspection);
+const result = await core.importStepPart(stepBytes, {
+  fileName: "assembly.step",
+  selection: {
+    kind: "occurrence",
+    occurrenceRef: occurrences[0].occurrenceRef,
+  },
+});
+```
+
+Selected occurrence rules:
+
+- `getStepSelectableOccurrences(inspection)` returns a shallow copy of the runtime `selectableOccurrences` array only when inspection succeeds.
+- `importStepPart(...)` accepts the selected `occurrenceRef` through `selection: { kind: "occurrence", occurrenceRef }` and returns normalized model data plus `selectedOccurrence` metadata on success.
+- Occurrence refs are live-session refs from the current inspection output; do not persist them across file reads, package versions, or user sessions.
+- Downstream apps own selector policy, labels, sorting, persistence, and user prompts.
+- Do not select by display labels or display paths; use the opaque `occurrenceRef` from the current inspection result.
+
 ## Shared Profile and Extruded Shape SDK
 
 `@tx-code/occt-core` exposes package-first wrappers for the shared `Profile2D` validator and additive generated-extruded-shape runtime surface:

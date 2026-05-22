@@ -8,6 +8,13 @@ import {
 } from "../src/index.js";
 import { loadOcctFactory } from "../../../test/load_occt_factory.mjs";
 
+const IDENTITY_MATRIX = [
+  1, 0, 0, 0,
+  0, 1, 0, 0,
+  0, 0, 1, 0,
+  0, 0, 0, 1,
+];
+
 function hasOwn(object, key) {
   return Object.prototype.hasOwnProperty.call(object, key);
 }

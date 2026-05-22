@@ -52,6 +52,7 @@ import type {
   OcctJSStepPartImportRejection,
   OcctJSStepPartImportSelection,
   OcctJSStepSelectedOccurrence,
+  OcctJSStepSelectableOccurrence,
   OcctJSStepProductInspectionResult,
   OcctJSStepProductInspectionSuccess,
 } from "@tx-code/occt-js";
@@ -117,6 +118,8 @@ export type OcctStepPartImportSelection = OcctJSStepPartImportSelection;
 export type OcctStepPartImportRejection = OcctJSStepPartImportRejection;
 
 export type OcctStepSelectedOccurrence = OcctJSStepSelectedOccurrence;
+
+export type OcctStepSelectableOccurrence = OcctJSStepSelectableOccurrence;
 
 export interface OcctStepPartImportOptions extends OcctStepProductInspectionOptions {
   selection?: OcctStepPartImportSelection;
@@ -686,6 +689,8 @@ export declare function applyOrientationToModel(model: OcctNormalizedResult, ori
 
 export declare function resolveAutoOrientedModel(options?: OcctAutoOrientationOptions): Promise<OcctNormalizedResult | undefined>;
 
+export declare function getStepSelectableOccurrences(inspection?: OcctStepProductInspectionResult | null): OcctStepSelectableOccurrence[];
+
 export type {
   OcctFormat,
   OcctJSImportAppearancePreset,
@@ -731,6 +736,7 @@ export type {
   OcctJSStepPartImportRejection,
   OcctJSStepPartImportSelection,
   OcctJSStepSelectedOccurrence,
+  OcctJSStepSelectableOccurrence,
   OcctJSStepProductInspectionResult,
   OcctJSStepProductInspectionSuccess,
   OcctJSGeneratedCompositeShapeMetadata,
