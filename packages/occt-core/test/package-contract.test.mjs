@@ -54,6 +54,15 @@ test("occt-core package docs describe narrow helper support boundaries and downs
   assert.match(readme, /viewer policy/i);
 });
 
+test("occt-core package docs describe selected occurrence wrapper boundaries", () => {
+  const readme = readPackageText("README.md");
+
+  assert.match(readme, /getStepSelectableOccurrences/);
+  assert.match(readme, /importStepPart/);
+  assert.match(readme, /live-session/i);
+  assert.match(readme, /downstream apps.*selector policy/i);
+});
+
 test("occt-core package docs keep demo-owned action routing and current-result session semantics downstream", () => {
   const readme = readPackageText("README.md");
 
@@ -109,6 +118,7 @@ test("occt-core published typings expose STEP inspection and strict part import 
 
   assert.match(typesSource, /OcctStepProductInspectionOptions/);
   assert.match(typesSource, /OcctStepProductInspectionResult/);
+  assert.match(typesSource, /OcctStepSelectableOccurrence/);
   assert.match(typesSource, /OcctStepPartImportOptions/);
   assert.match(typesSource, /OcctStepPartImportResult/);
   assert.match(typesSource, /OcctStepPartImportRejection/);
@@ -116,6 +126,7 @@ test("occt-core published typings expose STEP inspection and strict part import 
   assert.match(typesSource, /OcctStepSelectedOccurrence/);
   assert.match(typesSource, /OcctJSStepSelectedOccurrence/);
   assert.match(typesSource, /selectedOccurrence\?: OcctStepSelectedOccurrence/);
+  assert.match(typesSource, /getStepSelectableOccurrences/);
   assert.match(typesSource, /inspectStepProduct/);
   assert.match(typesSource, /importStepPart/);
 });
@@ -138,6 +149,7 @@ test("occt-core JS barrel stays aligned with the retained package surface and ex
 
   assert.match(barrelSource, /createOcctCore/);
   assert.match(barrelSource, /OcctCoreClient/);
+  assert.match(barrelSource, /getStepSelectableOccurrences/);
   assert.match(barrelSource, /normalizeExactOpenResult/);
   assert.match(barrelSource, /createExactElementRef/);
   assert.match(barrelSource, /resolveExactElementRef/);

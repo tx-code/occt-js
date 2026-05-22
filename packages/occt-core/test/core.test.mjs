@@ -1053,6 +1053,35 @@ describe("createOcctCore", () => {
     assert.equal(hasOwn(inspection, "canImport"), false);
   });
 
+  it("derives selectable STEP occurrences without adding app policy", async () => {
+    const { getStepSelectableOccurrences } = await import("../src/index.js");
+    const selectable = [{
+      kind: "occurrence",
+      occurrenceRef: "occurrence:2:0:1:1:2:1",
+      partRef: "0:1:1:3",
+      nodeId: "product_node_2",
+      name: "nut",
+      displayPath: ["assembly", "nut"],
+      localTransform: IDENTITY_MATRIX,
+      occurrenceTransform: IDENTITY_MATRIX,
+    }];
+    const inspection = {
+      status: "ok",
+      sourceFormat: "step",
+      classification: "assembly",
+      selectableOccurrences: selectable,
+    };
+
+    const occurrences = getStepSelectableOccurrences(inspection);
+
+    assert.deepEqual(occurrences, selectable);
+    assert.notEqual(occurrences, selectable);
+    occurrences.pop();
+    assert.equal(inspection.selectableOccurrences.length, 1);
+    assert.deepEqual(getStepSelectableOccurrences({ status: "error", selectableOccurrences: selectable }), []);
+    assert.deepEqual(getStepSelectableOccurrences(null), []);
+  });
+
   it("wraps strict STEP part import success with a normalized model and inspection", async () => {
     const calls = [];
     const rawInspection = {

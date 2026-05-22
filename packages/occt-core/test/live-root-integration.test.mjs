@@ -8,6 +8,10 @@ import {
 } from "../src/index.js";
 import { loadOcctFactory } from "../../../test/load_occt_factory.mjs";
 
+function hasOwn(object, key) {
+  return Object.prototype.hasOwnProperty.call(object, key);
+}
+
 function createProfile2DSpec() {
   return {
     version: 1,
@@ -102,6 +106,52 @@ test("createOcctCore imports STEP through the built root carrier", async () => {
   assert.ok(model.rootNodes.length > 0);
   assert.ok(model.geometries.length > 0);
   assert.ok(model.stats.partCount > 0);
+});
+
+test("createOcctCore imports a selected STEP occurrence through the built root carrier", async () => {
+  const { getStepSelectableOccurrences } = await import("../src/index.js");
+  const factory = loadOcctFactory();
+  const wasmBinary = new Uint8Array(await readFile(new URL("../../../dist/occt-js.wasm", import.meta.url)));
+  const assemblyBytes = new Uint8Array(await readFile(new URL("../../../test/assembly.step", import.meta.url)));
+
+  const core = createOcctCore({
+    factory,
+    wasmBinary,
+  });
+
+  const inspection = await core.inspectStepProduct(assemblyBytes, {
+    fileName: "assembly.step",
+  });
+  const occurrences = getStepSelectableOccurrences(inspection);
+  const selected = occurrences.find((occurrence) => (
+    Array.isArray(occurrence.occurrenceTransform) &&
+    occurrence.occurrenceTransform.some((value, index) => (
+      Math.abs(Number(value) - IDENTITY_MATRIX[index]) > 1e-6
+    ))
+  ));
+
+  assert.equal(inspection.status, "ok");
+  assert.ok(selected, "assembly.step should expose selectable placed occurrences");
+
+  const result = await core.importStepPart(assemblyBytes, {
+    fileName: "assembly.step",
+    selection: { kind: "occurrence", occurrenceRef: selected.occurrenceRef },
+  });
+
+  assert.equal(result.success, true);
+  assert.equal(result.selectedOccurrence?.occurrenceRef, selected.occurrenceRef);
+  assert.equal(result.model.rootNodes.length, 1);
+  assert.equal(result.model.rootNodes[0].kind, "part");
+  assert.deepEqual(result.model.rootNodes[0].transform, selected.occurrenceTransform);
+
+  const stale = await core.importStepPart(assemblyBytes, {
+    fileName: "assembly.step",
+    selection: { kind: "occurrence", occurrenceRef: "occurrence:stale" },
+  });
+
+  assert.equal(stale.success, false);
+  assert.equal(stale.rejection.code, "selection_not_found");
+  assert.equal(hasOwn(stale, "model"), false);
 });
 
 test("createOcctCore opens and disposes an exact STEP handle through the built root carrier", async () => {
