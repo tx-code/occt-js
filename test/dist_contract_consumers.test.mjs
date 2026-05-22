@@ -114,6 +114,10 @@ test("published typings expose the raw STEP product inspection contract", () => 
   assert.ok(typesSource.includes("InspectStepProduct"));
   assert.ok(typesSource.includes("OcctJSStepProductInspectionResult"));
   assert.ok(typesSource.includes("OcctJSStepProductInspectionNode"));
+  assert.ok(typesSource.includes("OcctJSStepSelectableOccurrence"));
+  assert.ok(typesSource.includes("selectableOccurrences"));
+  assert.ok(typesSource.includes("occurrenceTransform"));
+  assert.ok(typesSource.includes("displayPath"));
   assert.ok(typesSource.includes("uniquePartCount"));
   assert.ok(typesSource.includes("partOccurrenceCount"));
 });

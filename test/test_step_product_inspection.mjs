@@ -26,6 +26,62 @@ function reasonCodes(result) {
   return new Set((result.reasons ?? []).map((reason) => reason.code));
 }
 
+function flattenTree(nodes) {
+  const flat = [];
+  const visit = (node) => {
+    flat.push(node);
+    for (const child of node.children ?? []) {
+      visit(child);
+    }
+  };
+  for (const node of nodes ?? []) {
+    visit(node);
+  }
+  return flat;
+}
+
+function assertMatrix16(value, label) {
+  assert(Array.isArray(value), `${label}: matrix should be an array`);
+  assert.equal(value.length, 16, `${label}: matrix should contain 16 values`);
+  for (const entry of value) {
+    assert(typeof entry === "number" && Number.isFinite(entry), `${label}: matrix values should be finite numbers`);
+  }
+}
+
+function assertSelectableOccurrence(item, label) {
+  assert.equal(item.kind, "occurrence", `${label}: kind should be occurrence`);
+  assert(typeof item.occurrenceRef === "string" && item.occurrenceRef.length > 0, `${label}: occurrenceRef should be non-empty`);
+  assert(typeof item.partRef === "string" && item.partRef.length > 0, `${label}: partRef should be non-empty`);
+  assert(typeof item.nodeId === "string" && item.nodeId.length > 0, `${label}: nodeId should be non-empty`);
+  assert(Array.isArray(item.displayPath) && item.displayPath.length > 0, `${label}: displayPath should be non-empty`);
+  assertMatrix16(item.localTransform, `${label}: localTransform`);
+  assertMatrix16(item.occurrenceTransform, `${label}: occurrenceTransform`);
+}
+
+function assertSelectableMetadata(result, label) {
+  assert(Array.isArray(result.selectableOccurrences), `${label}: selectableOccurrences should be an array`);
+  const flatNodes = flattenTree(result.productTree);
+  assert(flatNodes.length > 0, `${label}: flattened product tree should not be empty`);
+
+  for (const node of flatNodes) {
+    assert(Array.isArray(node.displayPath), `${label}: node ${node.id} should expose displayPath`);
+    assertMatrix16(node.transform, `${label}: node ${node.id} transform`);
+    assertMatrix16(node.occurrenceTransform, `${label}: node ${node.id} occurrenceTransform`);
+    assert(typeof node.selectable === "boolean", `${label}: node ${node.id} selectable should be boolean`);
+    if (node.isAssembly || (node.children ?? []).length > 0 || !node.hasShape) {
+      assert.equal(node.selectable, false, `${label}: grouping or shape-less node ${node.id} must not be selectable`);
+    }
+  }
+
+  for (const item of result.selectableOccurrences) {
+    assertSelectableOccurrence(item, `${label}: selectable ${item.occurrenceRef}`);
+    const node = flatNodes.find((candidate) => candidate.id === item.nodeId);
+    assert(node, `${label}: selectable ${item.occurrenceRef} should map to a product tree node`);
+    assert.equal(node.selectable, true, `${label}: selectable node ${node.id} should be marked selectable`);
+    assert.equal(node.occurrenceRef, item.occurrenceRef, `${label}: selectable occurrenceRef should match node`);
+  }
+}
+
 function assertNoViewerGeometryFields(result, label) {
   for (const key of ["rootNodes", "geometries", "materials", "stats", "triangleCount", "geometryCount", "meshCount"]) {
     assert(!hasOwn(result, key), `${label}: inspection result must not expose ${key}`);
@@ -68,6 +124,8 @@ async function main() {
   assert.equal(inspected.assemblyPresent, false, "simple_part.step should not expose assembly structure");
   assert(inspected.productTree.length > 0, "simple_part.step should expose productTree");
   assert(reasonCodes(inspected).has("single_free_shape_no_assembly"), "simple_part.step should explain single-part classification");
+  assertSelectableMetadata(inspected, "simple_part.step");
+  assert.equal(inspected.selectableOccurrences.length, 1, "simple_part.step should expose one selectable occurrence");
 
   const assembly = m.InspectStepProduct(loadFixture("assembly.step"), {});
   assertOkInspection(assembly, "assembly.step");
@@ -80,6 +138,18 @@ async function main() {
     reasonCodes(assembly).has("assembly_label_present") || reasonCodes(assembly).has("repeated_part_occurrence"),
     "assembly.step should explain assembly classification"
   );
+  assertSelectableMetadata(assembly, "assembly.step");
+  assert(assembly.selectableOccurrences.length > 0, "assembly.step should expose selectable leaf occurrences");
+  const partRefCounts = new Map();
+  for (const item of assembly.selectableOccurrences) {
+    partRefCounts.set(item.partRef, (partRefCounts.get(item.partRef) ?? 0) + 1);
+  }
+  assert([...partRefCounts.values()].some((count) => count > 1), "assembly.step should expose repeated selectable occurrences by partRef");
+  assert.equal(
+    new Set(assembly.selectableOccurrences.map((item) => item.occurrenceRef)).size,
+    assembly.selectableOccurrences.length,
+    "assembly.step selectable occurrences should have distinct occurrenceRef values"
+  );
 
   const multiPart = m.InspectStepProduct(loadFixture("two_free_shapes.step"), {});
   assertOkInspection(multiPart, "two_free_shapes.step");
@@ -90,6 +160,8 @@ async function main() {
   assert.equal(multiPart.partOccurrenceCount, 2, "two_free_shapes.step should expose two part occurrences");
   assert(reasonCodes(multiPart).has("multiple_free_shapes"), "two_free_shapes.step should explain multi-part classification");
   assert(multiPart.classification !== "single_part", "two_free_shapes.step must not pass as single_part");
+  assertSelectableMetadata(multiPart, "two_free_shapes.step");
+  assert.equal(multiPart.selectableOccurrences.length, 2, "two_free_shapes.step should expose two selectable occurrences");
 
   const invalid = m.InspectStepProduct(new Uint8Array([0, 1, 2, 3]), {});
   assert.equal(invalid.status, "error", "invalid STEP bytes should return status=error");
