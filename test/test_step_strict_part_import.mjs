@@ -22,6 +22,20 @@ function loadFixture(name) {
   return new Uint8Array(readFileSync(resolve("test", name)));
 }
 
+function flattenTree(nodes) {
+  const flat = [];
+  const visit = (node) => {
+    flat.push(node);
+    for (const child of node.children ?? []) {
+      visit(child);
+    }
+  };
+  for (const node of nodes ?? []) {
+    visit(node);
+  }
+  return flat;
+}
+
 function assertNoViewerGeometryFields(result, label) {
   for (const key of ["rootNodes", "geometries", "materials", "stats", "triangleCount", "geometryCount", "meshCount"]) {
     assert(!hasOwn(result, key), `${label}: strict rejection must not expose ${key}`);
@@ -74,11 +88,48 @@ async function main() {
   assert.equal(invalid.inspection?.error?.code, "read_failed", "invalid bytes rejection should preserve read_failed");
   assert.equal(invalid.rejection?.inspectionErrorCode, "read_failed", "invalid bytes rejection should summarize read_failed");
 
-  const selected = m.ReadStepPartFile(loadFixture("simple_part.step"), {
-    selection: { kind: "occurrence", occurrenceRef: "occurrence:1" },
+  const inspectedAssembly = m.InspectStepProduct(loadFixture("assembly.step"), {});
+  assert.equal(inspectedAssembly.status, "ok", "assembly inspection should succeed before selected import");
+  const selectedLeaf = inspectedAssembly.selectableOccurrences?.[0];
+  assert(selectedLeaf, "assembly inspection should expose a selectable leaf occurrence");
+
+  const selected = m.ReadStepPartFile(loadFixture("assembly.step"), {
+    selection: { kind: "occurrence", occurrenceRef: selectedLeaf.occurrenceRef },
   });
-  assertStrictRejection(selected, "selection_not_supported", "selected occurrence import");
-  assert(!hasOwn(selected, "inspection"), "selection rejection should not inspect or import geometry");
+  assert.equal(selected.success, true, "selected occurrence import should succeed");
+  assert.equal(selected.inspection?.status, "ok", "selected occurrence import should include inspection");
+  assert.equal(selected.selectedOccurrence?.kind, "occurrence", "selected occurrence metadata should identify occurrence kind");
+  assert.equal(
+    selected.selectedOccurrence?.occurrenceRef,
+    selectedLeaf.occurrenceRef,
+    "selected occurrence metadata should preserve requested occurrenceRef"
+  );
+  assert.equal(selected.rootNodes.length, 1, "selected occurrence import should expose exactly one root");
+  assert.equal(selected.rootNodes[0].isAssembly, false, "selected occurrence root should be a part");
+  assert.equal(selected.rootNodes[0].children.length, 0, "selected occurrence root should not expose assembly children");
+
+  const staleSelection = m.ReadStepPartFile(loadFixture("assembly.step"), {
+    selection: { kind: "occurrence", occurrenceRef: "occurrence:stale" },
+  });
+  assertStrictRejection(staleSelection, "selection_not_found", "stale selected occurrence import");
+  assert.equal(staleSelection.inspection?.classification, "assembly", "stale selection rejection should include inspection");
+
+  const assemblyNode = flattenTree(inspectedAssembly.productTree).find((node) => node.isAssembly && node.occurrenceRef);
+  assert(assemblyNode, "assembly inspection should expose a grouping occurrence for rejection coverage");
+  const groupingSelection = m.ReadStepPartFile(loadFixture("assembly.step"), {
+    selection: { kind: "occurrence", occurrenceRef: assemblyNode.occurrenceRef },
+  });
+  assertStrictRejection(groupingSelection, "selection_not_leaf_occurrence", "grouping selected occurrence import");
+
+  const partSelection = m.ReadStepPartFile(loadFixture("assembly.step"), {
+    selection: { kind: "part", partRef: selectedLeaf.partRef },
+  });
+  assertStrictRejection(partSelection, "selection_ambiguous", "part-definition selected import");
+
+  const unsupportedSelection = m.ReadStepPartFile(loadFixture("assembly.step"), {
+    selection: { kind: "display-row", occurrenceRef: selectedLeaf.occurrenceRef },
+  });
+  assertStrictRejection(unsupportedSelection, "selection_not_supported", "unsupported selection kind");
 
   console.log("PASS test_step_strict_part_import");
 }
