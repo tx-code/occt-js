@@ -301,6 +301,22 @@ struct ProductInspectionTraversalState {
     std::map<std::string, int> partRefOccurrences;
 };
 
+struct ProductOccurrenceMatch {
+    bool found = false;
+    TDF_Label label;
+    TDF_Label refLabel;
+    std::string name;
+    std::string occurrenceRef;
+    std::string partRef;
+    bool isAssembly = false;
+    bool hasShape = false;
+    bool hasChildren = false;
+    TopoDS_Shape shape;
+};
+
+void ClassifyProductInspection(OcctProductInspectionResult& result,
+                               const ProductInspectionTraversalState& traversal);
+
 std::string DisplayPathSegment(const OcctProductInspectionNode& node)
 {
     if (!node.name.empty()) {
@@ -402,6 +418,96 @@ int TraverseProductLabel(const TDF_Label& label,
         result.selectableOccurrences.push_back(std::move(occurrence));
     }
     return nodeIndex;
+}
+
+void BuildProductInspectionFromFreeShapes(const TDF_LabelSequence& freeShapes,
+                                          const Handle(XCAFDoc_ShapeTool)& shapeTool,
+                                          OcctProductInspectionResult& result)
+{
+    result.rootCount = freeShapes.Length();
+    ProductInspectionTraversalState traversal;
+    for (int i = 1; i <= freeShapes.Length(); ++i) {
+        int rootIndex = TraverseProductLabel(
+            freeShapes.Value(i),
+            shapeTool,
+            result,
+            traversal,
+            IdentityMatrix(),
+            {});
+        result.rootNodeIndices.push_back(rootIndex);
+    }
+
+    ClassifyProductInspection(result, traversal);
+    result.ok = true;
+}
+
+const OcctStepSelectableOccurrence* FindSelectableOccurrence(
+    const OcctProductInspectionResult& inspection,
+    const std::string& occurrenceRef)
+{
+    for (const auto& occurrence : inspection.selectableOccurrences) {
+        if (occurrence.occurrenceRef == occurrenceRef) {
+            return &occurrence;
+        }
+    }
+    return nullptr;
+}
+
+bool FindProductOccurrenceLabel(const TDF_Label& label,
+                                const Handle(XCAFDoc_ShapeTool)& shapeTool,
+                                const std::string& targetOccurrenceRef,
+                                int& nodeIndex,
+                                ProductOccurrenceMatch& match)
+{
+    const int currentIndex = nodeIndex++;
+    const std::string occurrenceRef = MakeOccurrenceRef(label, currentIndex);
+
+    TDF_Label refLabel = label;
+    if (shapeTool->IsReference(label)) {
+        shapeTool->GetReferredShape(label, refLabel);
+    }
+
+    std::vector<TDF_Label> children = GetProductChildren(refLabel, shapeTool);
+    TopoDS_Shape shape = shapeTool->GetShape(refLabel);
+    const bool isAssemblyLabel = shapeTool->IsAssembly(refLabel) || !children.empty();
+
+    if (occurrenceRef == targetOccurrenceRef) {
+        match.found = true;
+        match.label = label;
+        match.refLabel = refLabel;
+        match.name = GetLabelName(label, shapeTool);
+        match.occurrenceRef = occurrenceRef;
+        match.partRef = LabelEntry(refLabel);
+        match.isAssembly = isAssemblyLabel;
+        match.hasShape = !shape.IsNull();
+        match.hasChildren = !children.empty();
+        match.shape = shape;
+        return true;
+    }
+
+    if (isAssemblyLabel) {
+        for (const TDF_Label& childLabel : children) {
+            if (FindProductOccurrenceLabel(childLabel, shapeTool, targetOccurrenceRef, nodeIndex, match)) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+ProductOccurrenceMatch FindProductOccurrenceLabel(const TDF_LabelSequence& freeShapes,
+                                                  const Handle(XCAFDoc_ShapeTool)& shapeTool,
+                                                  const std::string& occurrenceRef)
+{
+    ProductOccurrenceMatch match;
+    int nodeIndex = 0;
+    for (int i = 1; i <= freeShapes.Length(); ++i) {
+        if (FindProductOccurrenceLabel(freeShapes.Value(i), shapeTool, occurrenceRef, nodeIndex, match)) {
+            return match;
+        }
+    }
+    return match;
 }
 
 bool HasRepeatedPartOccurrence(const ProductInspectionTraversalState& traversal)
@@ -763,7 +869,6 @@ OcctProductInspectionResult InspectXdeProductFromMemory(
         Handle(XCAFDoc_ShapeTool) shapeTool = XCAFDoc_DocumentTool::ShapeTool(doc->Main());
         TDF_LabelSequence freeShapes;
         shapeTool->GetFreeShapes(freeShapes);
-        result.rootCount = freeShapes.Length();
 
         if (freeShapes.Length() == 0) {
             result.error.code = "no_shapes";
@@ -772,20 +877,7 @@ OcctProductInspectionResult InspectXdeProductFromMemory(
             return result;
         }
 
-        ProductInspectionTraversalState traversal;
-        for (int i = 1; i <= freeShapes.Length(); ++i) {
-            int rootIndex = TraverseProductLabel(
-                freeShapes.Value(i),
-                shapeTool,
-                result,
-                traversal,
-                IdentityMatrix(),
-                {});
-            result.rootNodeIndices.push_back(rootIndex);
-        }
-
-        ClassifyProductInspection(result, traversal);
-        result.ok = true;
+        BuildProductInspectionFromFreeShapes(freeShapes, shapeTool, result);
         app->Close(doc);
     }
     catch (const Standard_Failure& ex) {
@@ -801,6 +893,145 @@ OcctProductInspectionResult InspectXdeProductFromMemory(
     catch (...) {
         result.error.code = "internal_error";
         result.error.message = "Unknown exception during XDE product inspection.";
+    }
+
+    return result;
+}
+
+OcctSelectedStepImportResult ImportSelectedXdeOccurrenceFromMemory(
+    const uint8_t* data,
+    size_t size,
+    const std::string& fileName,
+    const ImportParams& params,
+    const std::string& format,
+    const std::string& occurrenceRef)
+{
+    OcctSelectedStepImportResult result;
+    result.inspection.sourceFormat = format;
+
+    if (format != "step") {
+        result.inspection.error.code = "unsupported_format";
+        result.inspection.error.message = "Unsupported selected occurrence import format: " + format;
+        result.rejectionCode = "inspection_failed";
+        result.rejectionMessage = result.inspection.error.message;
+        return result;
+    }
+
+    try {
+        Handle(XCAFApp_Application) app = XCAFApp_Application::GetApplication();
+        Handle(TDocStd_Document) doc;
+        app->NewDocument("BinXCAF", doc);
+
+        if (doc.IsNull()) {
+            result.inspection.error.code = "internal_error";
+            result.inspection.error.message = "Failed to create XDE document.";
+            result.rejectionCode = "inspection_failed";
+            result.rejectionMessage = result.inspection.error.message;
+            return result;
+        }
+
+        XCAFDoc_DocumentTool::SetLengthUnit(doc, 1.0, LinearUnitToLengthUnit(params.linearUnit));
+
+        std::string readError;
+        if (!ReadAndTransferXde(data, size, fileName, params, format, doc, readError)) {
+            result.inspection.error.code = "read_failed";
+            result.inspection.error.message = readError;
+            result.rejectionCode = "inspection_failed";
+            result.rejectionMessage = "STEP product inspection failed: " + readError;
+            app->Close(doc);
+            return result;
+        }
+
+        ApplyLengthUnitMetadata(doc, result.inspection.sourceUnit, result.inspection.unitScaleToMeters);
+
+        Handle(XCAFDoc_ShapeTool) shapeTool = XCAFDoc_DocumentTool::ShapeTool(doc->Main());
+        Handle(XCAFDoc_ColorTool) colorTool = XCAFDoc_DocumentTool::ColorTool(doc->Main());
+
+        TDF_LabelSequence freeShapes;
+        shapeTool->GetFreeShapes(freeShapes);
+
+        if (freeShapes.Length() == 0) {
+            result.inspection.error.code = "no_shapes";
+            result.inspection.error.message = "No shapes found in source file.";
+            result.rejectionCode = "inspection_failed";
+            result.rejectionMessage = result.inspection.error.message;
+            app->Close(doc);
+            return result;
+        }
+
+        BuildProductInspectionFromFreeShapes(freeShapes, shapeTool, result.inspection);
+
+        ProductOccurrenceMatch match = FindProductOccurrenceLabel(freeShapes, shapeTool, occurrenceRef);
+        if (!match.found) {
+            result.rejectionCode = "selection_not_found";
+            result.rejectionMessage = "Selected STEP occurrence was not found in the inspected product structure.";
+            app->Close(doc);
+            return result;
+        }
+
+        if (match.isAssembly || match.hasChildren) {
+            result.rejectionCode = "selection_not_leaf_occurrence";
+            result.rejectionMessage = "Selected STEP occurrence is an assembly or grouping node, not a leaf part occurrence.";
+            app->Close(doc);
+            return result;
+        }
+
+        if (!match.hasShape || match.shape.IsNull()) {
+            result.rejectionCode = "selection_missing_shape";
+            result.rejectionMessage = "Selected STEP occurrence does not have an importable shape.";
+            app->Close(doc);
+            return result;
+        }
+
+        const OcctStepSelectableOccurrence* selectedOccurrence =
+            FindSelectableOccurrence(result.inspection, occurrenceRef);
+        if (selectedOccurrence == nullptr) {
+            result.rejectionCode = "selection_not_leaf_occurrence";
+            result.rejectionMessage = "Selected STEP occurrence is not an importable leaf part occurrence.";
+            app->Close(doc);
+            return result;
+        }
+        result.selectedOccurrence = *selectedOccurrence;
+
+        TriangulateShape(match.shape, params);
+
+        OcctSceneData& scene = result.scene;
+        scene.sourceUnit = result.inspection.sourceUnit;
+        scene.unitScaleToMeters = result.inspection.unitScaleToMeters;
+        scene.nodes.emplace_back();
+        OcctNodeData& node = scene.nodes.back();
+        node.id = "selected_occurrence";
+        node.name = result.selectedOccurrence.name.empty() ? match.name : result.selectedOccurrence.name;
+        node.isAssembly = false;
+        node.transform = result.selectedOccurrence.occurrenceTransform;
+
+        std::map<uintptr_t, int> shapeCache;
+        ExtractShapeMeshes(match.shape, shapeTool, colorTool, params, scene, node, shapeCache);
+        if (node.meshIndices.empty()) {
+            result.rejectionCode = "selection_import_failed";
+            result.rejectionMessage = "Selected STEP occurrence did not produce renderable geometry.";
+            app->Close(doc);
+            return result;
+        }
+
+        scene.rootNodeIndices.push_back(0);
+        scene.success = true;
+        result.success = true;
+        app->Close(doc);
+    }
+    catch (const Standard_Failure& ex) {
+        result.rejectionCode = "selection_import_failed";
+        result.rejectionMessage = "OCCT exception during selected STEP occurrence import: ";
+        result.rejectionMessage += ex.GetMessageString();
+    }
+    catch (const std::exception& ex) {
+        result.rejectionCode = "selection_import_failed";
+        result.rejectionMessage = "C++ exception during selected STEP occurrence import: ";
+        result.rejectionMessage += ex.what();
+    }
+    catch (...) {
+        result.rejectionCode = "selection_import_failed";
+        result.rejectionMessage = "Unknown exception during selected STEP occurrence import.";
     }
 
     return result;

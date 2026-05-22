@@ -1492,16 +1492,71 @@ val ProductInspectionResultToVal(const OcctProductInspectionResult& inspection)
     return result;
 }
 
-bool HasStepPartSelection(const val& jsParams)
+struct StepPartSelectionInput {
+    bool hasSelection = false;
+    std::string kind;
+    std::string occurrenceRef;
+    std::string partRef;
+    std::string rejectionCode;
+    std::string rejectionMessage;
+};
+
+StepPartSelectionInput ParseStepPartSelectionInput(const val& jsParams)
 {
+    StepPartSelectionInput input;
     if (jsParams.typeOf().as<std::string>() != "object" || jsParams.isNull()) {
-        return false;
+        return input;
     }
     if (!jsParams.hasOwnProperty("selection")) {
-        return false;
+        return input;
     }
+
     const val selection = jsParams["selection"];
-    return selection.typeOf().as<std::string>() != "undefined" && !selection.isNull();
+    if (selection.typeOf().as<std::string>() == "undefined" || selection.isNull()) {
+        return input;
+    }
+
+    input.hasSelection = true;
+    if (selection.typeOf().as<std::string>() != "object") {
+        input.rejectionCode = "selection_not_supported";
+        input.rejectionMessage = "STEP part selection must be an object.";
+        return input;
+    }
+    if (!selection.hasOwnProperty("kind") || selection["kind"].typeOf().as<std::string>() != "string") {
+        input.rejectionCode = "selection_not_supported";
+        input.rejectionMessage = "STEP part selection requires a string kind.";
+        return input;
+    }
+
+    input.kind = selection["kind"].as<std::string>();
+    if (input.kind == "occurrence") {
+        if (!selection.hasOwnProperty("occurrenceRef")
+            || selection["occurrenceRef"].typeOf().as<std::string>() != "string")
+        {
+            input.rejectionCode = "selection_not_found";
+            input.rejectionMessage = "STEP occurrence selection requires a non-empty occurrenceRef.";
+            return input;
+        }
+        input.occurrenceRef = selection["occurrenceRef"].as<std::string>();
+        if (input.occurrenceRef.empty()) {
+            input.rejectionCode = "selection_not_found";
+            input.rejectionMessage = "STEP occurrence selection requires a non-empty occurrenceRef.";
+        }
+        return input;
+    }
+
+    if (input.kind == "part") {
+        if (selection.hasOwnProperty("partRef") && selection["partRef"].typeOf().as<std::string>() == "string") {
+            input.partRef = selection["partRef"].as<std::string>();
+        }
+        input.rejectionCode = "selection_ambiguous";
+        input.rejectionMessage = "STEP part-definition selection is ambiguous; select a concrete occurrenceRef.";
+        return input;
+    }
+
+    input.rejectionCode = "selection_not_supported";
+    input.rejectionMessage = "Unsupported STEP part selection kind: " + input.kind + ".";
+    return input;
 }
 
 void AttachInspectionSummaryToRejection(val& rejection, const OcctProductInspectionResult& inspection)
@@ -1757,15 +1812,38 @@ val InspectStepProduct(const val& content, const val& jsParams)
 
 val ReadStepPartFile(const val& content, const val& jsParams)
 {
-    if (HasStepPartSelection(jsParams)) {
-        return StepPartImportFailure(
-            "selection_not_supported",
-            "Selected STEP part or occurrence import is not supported yet. Omit selection to import only strict single-part STEP files."
-        );
-    }
-
     std::vector<uint8_t> buffer = ExtractBytes(content);
     ImportParams params = ParseImportParams(jsParams);
+    StepPartSelectionInput selection = ParseStepPartSelectionInput(jsParams);
+    if (selection.hasSelection) {
+        if (!selection.rejectionCode.empty()) {
+            return StepPartImportFailure(selection.rejectionCode, selection.rejectionMessage);
+        }
+
+        OcctSelectedStepImportResult selected = ImportSelectedStepOccurrenceFromMemory(
+            buffer.data(),
+            buffer.size(),
+            "input.stp",
+            params,
+            selection.occurrenceRef
+        );
+
+        if (!selected.success) {
+            const std::string code = selected.rejectionCode.empty()
+                ? "selection_import_failed"
+                : selected.rejectionCode;
+            const std::string message = selected.rejectionMessage.empty()
+                ? "Selected STEP occurrence import failed."
+                : selected.rejectionMessage;
+            return StepPartImportFailure(code, message, &selected.inspection);
+        }
+
+        val result = BuildResult(selected.scene, "step");
+        result.set("inspection", ProductInspectionResultToVal(selected.inspection));
+        result.set("selectedOccurrence", StepSelectableOccurrenceToVal(selected.selectedOccurrence));
+        return result;
+    }
+
     OcctProductInspectionResult inspection = InspectStepProductFromMemory(
         buffer.data(),
         buffer.size(),

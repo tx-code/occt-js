@@ -35,3 +35,12 @@ OcctProductInspectionResult InspectXdeProductFromMemory(
     const ImportParams& params,
     const std::string&  format
 );
+
+OcctSelectedStepImportResult ImportSelectedXdeOccurrenceFromMemory(
+    const uint8_t*      data,
+    size_t              size,
+    const std::string&  fileName,
+    const ImportParams& params,
+    const std::string&  format,
+    const std::string&  occurrenceRef
+);

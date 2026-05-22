@@ -31,3 +31,11 @@ OcctProductInspectionResult InspectStepProductFromMemory(
     const std::string& fileName,
     const ImportParams& params
 );
+
+OcctSelectedStepImportResult ImportSelectedStepOccurrenceFromMemory(
+    const uint8_t*     data,
+    size_t             size,
+    const std::string& fileName,
+    const ImportParams& params,
+    const std::string& occurrenceRef
+);

@@ -162,6 +162,11 @@ export type OcctJSStepPartImportRejectionCode =
     | "multi_part_not_allowed"
     | "ambiguous_product_structure"
     | "inspection_failed"
+    | "selection_not_found"
+    | "selection_not_leaf_occurrence"
+    | "selection_missing_shape"
+    | "selection_ambiguous"
+    | "selection_import_failed"
     | "selection_not_supported"
     | "import_failed";
 
@@ -170,7 +175,6 @@ export type OcctJSStepPartImportSelection =
     | { kind: "occurrence"; occurrenceRef: string };
 
 export interface OcctJSStepPartImportParams extends OcctJSReadParams {
-    // Selected import is represented in the contract but rejected by the current runtime.
     selection?: OcctJSStepPartImportSelection | null;
 }
 
@@ -185,6 +189,8 @@ export interface OcctJSStepPartImportRejection {
     inspectionErrorCode?: OcctJSStepProductInspectionErrorCode;
 }
 
+export interface OcctJSStepSelectedOccurrence extends OcctJSStepSelectableOccurrence {}
+
 export interface OcctJSStepPartImportSuccess extends OcctJSResult {
     success: true;
     sourceFormat: "step";
@@ -193,6 +199,7 @@ export interface OcctJSStepPartImportSuccess extends OcctJSResult {
     materials: OcctJSMaterial[];
     stats: OcctJSStats;
     inspection: OcctJSStepProductInspectionSuccess;
+    selectedOccurrence?: OcctJSStepSelectedOccurrence;
 }
 
 export interface OcctJSStepPartImportFailure {

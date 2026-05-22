@@ -147,6 +147,15 @@ struct OcctProductInspectionResult {
     double unitScaleToMeters = 0.0;
 };
 
+struct OcctSelectedStepImportResult {
+    bool success = false;
+    OcctSceneData scene;
+    OcctProductInspectionResult inspection;
+    OcctStepSelectableOccurrence selectedOccurrence;
+    std::string rejectionCode;
+    std::string rejectionMessage;
+};
+
 struct OcctLifecycleResult {
     bool ok = false;
     std::string code;
