@@ -33,9 +33,12 @@
 #include <TopTools_IndexedMapOfShape.hxx>
 #include <TopExp.hxx>
 #include <BRep_Builder.hxx>
+#include <BRep_Tool.hxx>
+#include <Poly_Triangulation.hxx>
 #include <Standard_ArrayStreamBuffer.hxx>
 #include <Standard_Failure.hxx>
 #include <IFSelect_ReturnStatus.hxx>
+#include <TopoDS.hxx>
 #include <UnitsMethods.hxx>
 
 namespace {
@@ -289,6 +292,19 @@ bool NodeHasRenderableMeshes(const OcctSceneData& scene, const OcctNodeData& nod
     return false;
 }
 
+bool ShapeHasRenderableTriangulation(const TopoDS_Shape& shape)
+{
+    for (TopExp_Explorer ex(shape, TopAbs_FACE); ex.More(); ex.Next()) {
+        TopLoc_Location faceLoc;
+        const TopoDS_Face& face = TopoDS::Face(ex.Current());
+        Handle(Poly_Triangulation) triangulation = BRep_Tool::Triangulation(face, faceLoc);
+        if (!triangulation.IsNull() && triangulation->NbNodes() > 0 && triangulation->NbTriangles() > 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
 std::vector<TDF_Label> GetProductChildren(const TDF_Label& label,
                                           const Handle(XCAFDoc_ShapeTool)& shapeTool)
 {
@@ -361,18 +377,7 @@ struct ProductOccurrenceMatch {
 void ClassifyProductInspection(OcctProductInspectionResult& result,
                                const ProductInspectionTraversalState& traversal);
 
-void ExtractShapeMeshes(const TopoDS_Shape& shape,
-                        const Handle(XCAFDoc_ShapeTool)& shapeTool,
-                        const Handle(XCAFDoc_ColorTool)& colorTool,
-                        const ImportParams& params,
-                        OcctSceneData& scene,
-                        OcctNodeData& node,
-                        std::map<uintptr_t, int>& shapeHashToMeshIndex,
-                        std::vector<TopoDS_Shape>* exactGeometryShapes);
-
 bool ShapeProducesRenderableGeometry(TopoDS_Shape shape,
-                                     const Handle(XCAFDoc_ShapeTool)& shapeTool,
-                                     const Handle(XCAFDoc_ColorTool)& colorTool,
                                      const ImportParams& params)
 {
     if (shape.IsNull() || !HasRenderableTopology(shape) || !HasExtractableRenderUnit(shape)) {
@@ -381,11 +386,7 @@ bool ShapeProducesRenderableGeometry(TopoDS_Shape shape,
 
     TriangulateShape(shape, params);
 
-    OcctSceneData scene;
-    OcctNodeData node;
-    std::map<uintptr_t, int> shapeCache;
-    ExtractShapeMeshes(shape, shapeTool, colorTool, params, scene, node, shapeCache, nullptr);
-    return NodeHasRenderableMeshes(scene, node);
+    return ShapeHasRenderableTriangulation(shape);
 }
 
 std::string DisplayPathSegment(const OcctProductInspectionNode& node)
@@ -401,7 +402,6 @@ std::string DisplayPathSegment(const OcctProductInspectionNode& node)
 
 int TraverseProductLabel(const TDF_Label& label,
                          const Handle(XCAFDoc_ShapeTool)& shapeTool,
-                         const Handle(XCAFDoc_ColorTool)& colorTool,
                          const ImportParams& params,
                          OcctProductInspectionResult& result,
                          ProductInspectionTraversalState& traversal,
@@ -450,7 +450,6 @@ int TraverseProductLabel(const TDF_Label& label,
             int childIndex = TraverseProductLabel(
                 childLabel,
                 shapeTool,
-                colorTool,
                 params,
                 result,
                 traversal,
@@ -471,7 +470,7 @@ int TraverseProductLabel(const TDF_Label& label,
         return nodeIndex;
     }
 
-    if (!ShapeProducesRenderableGeometry(shape, shapeTool, colorTool, params)) {
+    if (!ShapeProducesRenderableGeometry(shape, params)) {
         AddProductMessage(
             result.warnings,
             "non_renderable_shape",
@@ -507,7 +506,6 @@ int TraverseProductLabel(const TDF_Label& label,
 
 void BuildProductInspectionFromFreeShapes(const TDF_LabelSequence& freeShapes,
                                           const Handle(XCAFDoc_ShapeTool)& shapeTool,
-                                          const Handle(XCAFDoc_ColorTool)& colorTool,
                                           const ImportParams& params,
                                           OcctProductInspectionResult& result)
 {
@@ -517,7 +515,6 @@ void BuildProductInspectionFromFreeShapes(const TDF_LabelSequence& freeShapes,
         int rootIndex = TraverseProductLabel(
             freeShapes.Value(i),
             shapeTool,
-            colorTool,
             params,
             result,
             traversal,
@@ -956,7 +953,6 @@ OcctProductInspectionResult InspectXdeProductFromMemory(
         ApplyLengthUnitMetadata(doc, result.sourceUnit, result.unitScaleToMeters);
 
         Handle(XCAFDoc_ShapeTool) shapeTool = XCAFDoc_DocumentTool::ShapeTool(doc->Main());
-        Handle(XCAFDoc_ColorTool) colorTool = XCAFDoc_DocumentTool::ColorTool(doc->Main());
         TDF_LabelSequence freeShapes;
         shapeTool->GetFreeShapes(freeShapes);
 
@@ -967,7 +963,7 @@ OcctProductInspectionResult InspectXdeProductFromMemory(
             return result;
         }
 
-        BuildProductInspectionFromFreeShapes(freeShapes, shapeTool, colorTool, params, result);
+        BuildProductInspectionFromFreeShapes(freeShapes, shapeTool, params, result);
         app->Close(doc);
     }
     catch (const Standard_Failure& ex) {
@@ -1049,7 +1045,7 @@ OcctSelectedStepImportResult ImportSelectedXdeOccurrenceFromMemory(
             return result;
         }
 
-        BuildProductInspectionFromFreeShapes(freeShapes, shapeTool, colorTool, params, result.inspection);
+        BuildProductInspectionFromFreeShapes(freeShapes, shapeTool, params, result.inspection);
 
         ProductOccurrenceMatch match = FindProductOccurrenceLabel(freeShapes, shapeTool, occurrenceRef);
         if (!match.found) {
