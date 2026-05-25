@@ -150,6 +150,7 @@ struct OcctProductInspectionResult {
 struct OcctSelectedStepImportResult {
     bool success = false;
     OcctSceneData scene;
+    TopoDS_Shape exactShape;
     OcctProductInspectionResult inspection;
     OcctStepSelectableOccurrence selectedOccurrence;
     std::string rejectionCode;

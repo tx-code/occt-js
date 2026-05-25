@@ -59,6 +59,7 @@ test("occt-core package docs describe selected occurrence wrapper boundaries", (
 
   assert.match(readme, /getStepSelectableOccurrences/);
   assert.match(readme, /importStepPart/);
+  assert.match(readme, /exportStepPart/);
   assert.match(readme, /live-session/i);
   assert.match(readme, /downstream apps.*selector policy/i);
 });
@@ -121,6 +122,8 @@ test("occt-core published typings expose STEP inspection and strict part import 
   assert.match(typesSource, /OcctStepSelectableOccurrence/);
   assert.match(typesSource, /OcctStepPartImportOptions/);
   assert.match(typesSource, /OcctStepPartImportResult/);
+  assert.match(typesSource, /OcctStepPartExportOptions/);
+  assert.match(typesSource, /OcctStepPartExportResult/);
   assert.match(typesSource, /OcctStepPartImportRejection/);
   assert.match(typesSource, /OcctStepPartImportSelection/);
   assert.match(typesSource, /OcctStepSelectedOccurrence/);
@@ -129,6 +132,7 @@ test("occt-core published typings expose STEP inspection and strict part import 
   assert.match(typesSource, /getStepSelectableOccurrences/);
   assert.match(typesSource, /inspectStepProduct/);
   assert.match(typesSource, /importStepPart/);
+  assert.match(typesSource, /exportStepPart/);
 });
 
 test("occt-core published typings do not publish candidate-analysis descriptors", () => {

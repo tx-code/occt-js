@@ -170,6 +170,14 @@ function normalizeStepPartImportParams(options) {
   return importParams;
 }
 
+function normalizeStepPartExportParams(options) {
+  const importParams = normalizeStepPartImportParams(options);
+  if (Object.prototype.hasOwnProperty.call(options, "format")) {
+    importParams.exportFormat = normalizeOcctFormat(options.format);
+  }
+  return importParams;
+}
+
 function normalizeTransform(transform) {
   return Array.isArray(transform) && transform.length === 16
     ? transform.slice()
@@ -675,6 +683,44 @@ export class OcctCoreClient {
         sourceFileName: options.fileName,
         importParams,
       }),
+      inspection: rawResult.inspection,
+    };
+    if (rawResult.selectedOccurrence) {
+      result.selectedOccurrence = rawResult.selectedOccurrence;
+    }
+    return result;
+  }
+
+  async exportStepPart(content, options = {}) {
+    const module = await this._ensureModule();
+    if (typeof module.ExportStepPartFile !== "function") {
+      throw new Error("Loaded OCCT module does not expose ExportStepPartFile().");
+    }
+
+    const bytes = toUint8Array(content);
+    const exportParams = normalizeStepPartExportParams(options);
+    const rawResult = module.ExportStepPartFile(bytes, exportParams);
+
+    if (!rawResult?.success) {
+      const error = rawResult?.error ?? "ExportStepPartFile() failed.";
+      return {
+        success: false,
+        sourceFormat: "step",
+        error,
+        rejection: rawResult?.rejection ?? {
+          code: "export_failed",
+          message: error,
+        },
+        ...(rawResult?.inspection ? { inspection: rawResult.inspection } : {}),
+      };
+    }
+
+    const contentBytes = toUint8Array(rawResult.content);
+    const result = {
+      success: true,
+      sourceFormat: "step",
+      format: normalizeOcctFormat(rawResult.format ?? exportParams.exportFormat ?? "brep"),
+      content: contentBytes,
       inspection: rawResult.inspection,
     };
     if (rawResult.selectedOccurrence) {

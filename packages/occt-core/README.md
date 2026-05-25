@@ -103,12 +103,22 @@ const result = await core.importStepPart(stepBytes, {
     occurrenceRef: occurrences[0].occurrenceRef,
   },
 });
+
+const exported = await core.exportStepPart(stepBytes, {
+  fileName: "assembly.step",
+  format: "brep",
+  selection: {
+    kind: "occurrence",
+    occurrenceRef: occurrences[0].occurrenceRef,
+  },
+});
 ```
 
 Selected occurrence rules:
 
 - `getStepSelectableOccurrences(inspection)` returns a shallow copy of the runtime `selectableOccurrences` array only when inspection succeeds.
 - `importStepPart(...)` accepts the selected `occurrenceRef` through `selection: { kind: "occurrence", occurrenceRef }` and returns normalized model data plus `selectedOccurrence` metadata on success.
+- `exportStepPart(...)` accepts the same occurrence selection and returns standalone BREP or STEP bytes with the occurrence placement baked into the exact shape.
 - Occurrence refs are live-session refs from the current inspection output; do not persist them across file reads, package versions, or user sessions.
 - Downstream apps own selector policy, labels, sorting, persistence, and user prompts.
 - Do not select by display labels or display paths; use the opaque `occurrenceRef` from the current inspection result.

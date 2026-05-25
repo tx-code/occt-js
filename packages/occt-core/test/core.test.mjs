@@ -1203,6 +1203,75 @@ describe("createOcctCore", () => {
     assert.deepEqual(calls, [[[7, 8, 9], { linearDeflection: 0.2, selection }]]);
   });
 
+  it("wraps selected STEP occurrence export success with standalone BREP bytes", async () => {
+    const calls = [];
+    const selectedOccurrence = {
+      kind: "occurrence",
+      occurrenceRef: "occurrence:2:0:1:1:2:1",
+      partRef: "0:1:1:3",
+      nodeId: "product_node_2",
+      name: "nut",
+      displayPath: ["assembly", "nut"],
+      localTransform: IDENTITY_MATRIX,
+      occurrenceTransform: [
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        12, 24, 36, 1,
+      ],
+      sourceUnit: "MM",
+      unitScaleToMeters: 0.001,
+    };
+    const rawInspection = {
+      status: "ok",
+      sourceFormat: "step",
+      classification: "assembly",
+      rootCount: 1,
+      uniquePartCount: 5,
+      partOccurrenceCount: 18,
+      assemblyPresent: true,
+      selectableOccurrences: [selectedOccurrence],
+      productTree: [],
+      reasons: [],
+      warnings: [],
+      sourceUnit: "MM",
+      unitScaleToMeters: 0.001,
+    };
+    const core = createOcctCore({
+      factory: async () => ({
+        ExportStepPartFile: (bytes, params) => {
+          calls.push([Array.from(bytes), params]);
+          return {
+            success: true,
+            sourceFormat: "step",
+            format: "brep",
+            content: new Uint8Array([0x42, 0x52, 0x45, 0x50]),
+            inspection: rawInspection,
+            selectedOccurrence,
+          };
+        },
+      }),
+    });
+    const selection = { kind: "occurrence", occurrenceRef: selectedOccurrence.occurrenceRef };
+
+    const result = await core.exportStepPart(new Uint8Array([7, 8, 9]), {
+      fileName: "assembly.step",
+      importParams: { linearDeflection: 0.2 },
+      selection,
+      format: "brep",
+    });
+
+    assert.equal(result.success, true);
+    assert.equal(result.sourceFormat, "step");
+    assert.equal(result.format, "brep");
+    assert.deepEqual(Array.from(result.content), [0x42, 0x52, 0x45, 0x50]);
+    assert.equal(result.inspection, rawInspection);
+    assert.equal(result.selectedOccurrence, selectedOccurrence);
+    assert.deepEqual(calls, [
+      [[7, 8, 9], { linearDeflection: 0.2, selection, exportFormat: "brep" }],
+    ]);
+  });
+
   it("returns strict STEP part import rejections without throwing", async () => {
     const rawInspection = {
       status: "ok",

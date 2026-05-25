@@ -168,6 +168,8 @@ export type OcctJSStepPartImportRejectionCode =
     | "selection_ambiguous"
     | "selection_import_failed"
     | "selection_not_supported"
+    | "selection_required"
+    | "export_failed"
     | "import_failed";
 
 export type OcctJSStepPartImportSelection =
@@ -176,6 +178,12 @@ export type OcctJSStepPartImportSelection =
 
 export interface OcctJSStepPartImportParams extends OcctJSReadParams {
     selection?: OcctJSStepPartImportSelection | null;
+}
+
+export type OcctJSStepPartExportFormat = "brep" | "step" | "stp";
+
+export interface OcctJSStepPartExportParams extends OcctJSStepPartImportParams {
+    exportFormat?: OcctJSStepPartExportFormat;
 }
 
 export interface OcctJSStepPartImportRejection {
@@ -213,6 +221,23 @@ export interface OcctJSStepPartImportFailure {
 export type OcctJSStepPartImportResult =
     | OcctJSStepPartImportSuccess
     | OcctJSStepPartImportFailure;
+
+export interface OcctJSStepPartExportSuccess {
+    success: true;
+    sourceFormat: "step";
+    format: "brep" | "step";
+    content: Uint8Array;
+    inspection: OcctJSStepProductInspectionSuccess;
+    selectedOccurrence: OcctJSStepSelectedOccurrence;
+}
+
+export interface OcctJSStepPartExportFailure extends OcctJSStepPartImportFailure {
+    format?: string;
+}
+
+export type OcctJSStepPartExportResult =
+    | OcctJSStepPartExportSuccess
+    | OcctJSStepPartExportFailure;
 
 export interface OcctJSExactOpenResult extends OcctJSResult {
     exactModelId?: number;
@@ -1110,6 +1135,7 @@ export interface OcctJSModule {
     ReadStepFile(content: Uint8Array, params?: OcctJSReadParams): OcctJSResult;
     InspectStepProduct(content: Uint8Array, params?: OcctJSReadParams): OcctJSStepProductInspectionResult;
     ReadStepPartFile(content: Uint8Array, params?: OcctJSStepPartImportParams): OcctJSStepPartImportResult;
+    ExportStepPartFile(content: Uint8Array, params?: OcctJSStepPartExportParams): OcctJSStepPartExportResult;
     ReadIgesFile(content: Uint8Array, params?: OcctJSReadParams): OcctJSResult;
     ReadBrepFile(content: Uint8Array, params?: OcctJSReadParams): OcctJSResult;
     TransformFile(format: OcctJSGeometryTransformFormat, content: Uint8Array, transform: OcctJSMatrix4, params?: OcctJSReadParams): OcctJSGeometryTransformResult;

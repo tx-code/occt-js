@@ -1593,6 +1593,41 @@ val StepPartImportFailure(const std::string& code,
     return result;
 }
 
+std::string ParseStepPartExportFormat(const val& jsParams)
+{
+    if (jsParams.typeOf().as<std::string>() != "object" || jsParams.isNull()) {
+        return "brep";
+    }
+    if (!jsParams.hasOwnProperty("exportFormat")) {
+        return "brep";
+    }
+    if (jsParams["exportFormat"].typeOf().as<std::string>() != "string") {
+        return "brep";
+    }
+
+    std::string format = jsParams["exportFormat"].as<std::string>();
+    std::transform(format.begin(), format.end(), format.begin(), [](unsigned char c) {
+        return static_cast<char>(std::tolower(c));
+    });
+    if (format == "stp") {
+        return "step";
+    }
+    if (format == "step" || format == "brep") {
+        return format;
+    }
+    return format;
+}
+
+val StepPartExportFailure(const std::string& code,
+                          const std::string& message,
+                          const std::string& format,
+                          const OcctProductInspectionResult* inspection = nullptr)
+{
+    val result = StepPartImportFailure(code, message, inspection);
+    result.set("format", format);
+    return result;
+}
+
 std::string StepPartRejectionCodeForClassification(const std::string& classification)
 {
     if (classification == "assembly") {
@@ -1872,6 +1907,63 @@ val ReadStepPartFile(const val& content, const val& jsParams)
 
     val result = BuildResult(scene, "step");
     result.set("inspection", ProductInspectionResultToVal(inspection));
+    return result;
+}
+
+val ExportStepPartFile(const val& content, const val& jsParams)
+{
+    std::vector<uint8_t> buffer = ExtractBytes(content);
+    ImportParams params = ParseImportParams(jsParams);
+    StepPartSelectionInput selection = ParseStepPartSelectionInput(jsParams);
+    const std::string exportFormat = ParseStepPartExportFormat(jsParams);
+
+    if (!selection.hasSelection) {
+        return StepPartExportFailure(
+            "selection_required",
+            "Selected STEP part export requires an explicit occurrence selection.",
+            exportFormat);
+    }
+    if (!selection.rejectionCode.empty()) {
+        return StepPartExportFailure(selection.rejectionCode, selection.rejectionMessage, exportFormat);
+    }
+
+    OcctSelectedStepImportResult selected = ImportSelectedStepOccurrenceFromMemory(
+        buffer.data(),
+        buffer.size(),
+        "input.stp",
+        params,
+        selection.occurrenceRef
+    );
+
+    if (!selected.success) {
+        const std::string code = selected.rejectionCode.empty()
+            ? "selection_import_failed"
+            : selected.rejectionCode;
+        const std::string message = selected.rejectionMessage.empty()
+            ? "Selected STEP occurrence import failed."
+            : selected.rejectionMessage;
+        return StepPartExportFailure(code, message, exportFormat, &selected.inspection);
+    }
+
+    OcctGeometryTransformResult exported =
+        ExportShapeToFormat(selected.exactShape, exportFormat);
+    if (!exported.success) {
+        return StepPartExportFailure(
+            "export_failed",
+            exported.error.empty()
+                ? "Selected STEP occurrence export failed."
+                : exported.error,
+            exported.format.empty() ? exportFormat : exported.format,
+            &selected.inspection);
+    }
+
+    val result = val::object();
+    result.set("success", true);
+    result.set("sourceFormat", std::string("step"));
+    result.set("format", exported.format);
+    result.set("content", BytesToUint8Array(exported.content));
+    result.set("inspection", ProductInspectionResultToVal(selected.inspection));
+    result.set("selectedOccurrence", StepSelectableOccurrenceToVal(selected.selectedOccurrence));
     return result;
 }
 
@@ -2759,6 +2851,7 @@ EMSCRIPTEN_BINDINGS(occtjs)
     function("ReadStepFile", &ReadStepFile);
     function("InspectStepProduct", &InspectStepProduct);
     function("ReadStepPartFile", &ReadStepPartFile);
+    function("ExportStepPartFile", &ExportStepPartFile);
     function("ReadIgesFile", &ReadIgesFile);
     function("ReadBrepFile", &ReadBrepFile);
     function("TransformFile", &TransformFile);

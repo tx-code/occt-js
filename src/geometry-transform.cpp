@@ -4,6 +4,8 @@
 #include "importer-step.hpp"
 
 #include <sstream>
+#include <algorithm>
+#include <cctype>
 
 #include <BRepBuilderAPI_Transform.hxx>
 #include <BRepTools.hxx>
@@ -95,6 +97,49 @@ OcctGeometryTransformResult WriteBrepShape(
 }
 
 } // namespace
+
+OcctGeometryTransformResult ExportShapeToFormat(
+    const TopoDS_Shape& shape,
+    const std::string& format)
+{
+    std::string normalizedFormat = format;
+    std::transform(
+        normalizedFormat.begin(),
+        normalizedFormat.end(),
+        normalizedFormat.begin(),
+        [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    if (normalizedFormat == "stp") {
+        normalizedFormat = "step";
+    }
+    if (shape.IsNull()) {
+        return Failure(normalizedFormat, "Selected STEP occurrence exact shape is null.");
+    }
+
+    const std::array<double, 16> identity = {
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        0, 0, 0, 1,
+    };
+    try {
+        if (normalizedFormat == "step") {
+            return WriteStepShape(shape, identity);
+        }
+        if (normalizedFormat == "brep") {
+            return WriteBrepShape(shape, identity);
+        }
+        return Failure(normalizedFormat, "Unsupported selected STEP occurrence export format: " + format);
+    }
+    catch (const Standard_Failure& ex) {
+        return Failure(normalizedFormat, std::string("OCCT exception: ") + ex.GetMessageString());
+    }
+    catch (const std::exception& ex) {
+        return Failure(normalizedFormat, std::string("C++ exception: ") + ex.what());
+    }
+    catch (...) {
+        return Failure(normalizedFormat, "Unknown exception during selected STEP occurrence export.");
+    }
+}
 
 OcctGeometryTransformResult TransformStepFromMemory(
     const uint8_t* data,

@@ -176,6 +176,36 @@ test("repeated part definition occurrences keep distinct refs and independent se
   }
 });
 
+test("selected occurrence exports as standalone BREP that reloads without STEP product selection", async () => {
+  const occt = await getOcct();
+  const fixture = loadFixture("assembly.step");
+  const inspection = occt.InspectStepProduct(fixture, {});
+  const selected = findAccumulatedTransformOccurrence(inspection);
+
+  assert.ok(selected, "assembly fixture should expose an accumulated transform occurrence");
+
+  const exported = occt.ExportStepPartFile(fixture, {
+    exportFormat: "brep",
+    selection: { kind: "occurrence", occurrenceRef: selected.occurrenceRef },
+  });
+
+  assert.equal(exported.success, true);
+  assert.equal(exported.sourceFormat, "step");
+  assert.equal(exported.format, "brep");
+  assert.ok(exported.content instanceof Uint8Array);
+  assert.ok(exported.content.byteLength > 0);
+  assert.equal(exported.selectedOccurrence?.occurrenceRef, selected.occurrenceRef);
+  assertMatrixClose(
+    exported.selectedOccurrence?.occurrenceTransform,
+    selected.occurrenceTransform,
+    "exported selected occurrence metadata transform",
+  );
+
+  const reloaded = occt.ReadBrepFile(exported.content, {});
+  assert.equal(reloaded.success, true);
+  assert.ok(reloaded.geometries.length > 0);
+});
+
 test("inspection exposes only renderable selected STEP occurrences", async () => {
   const occt = await getOcct();
   const fixture = loadFixture("as1_pe_203.stp");
@@ -241,6 +271,11 @@ test("selected import rejects unsafe selections without fallback geometry", asyn
     }),
     "selection_not_supported",
     "unsupported selection kind",
+  );
+  assertStrictRejection(
+    occt.ExportStepPartFile(loadFixture("assembly.step"), {}),
+    "selection_required",
+    "export without selection",
   );
 });
 

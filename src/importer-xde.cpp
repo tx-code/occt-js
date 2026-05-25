@@ -32,6 +32,7 @@
 #include <TopExp_Explorer.hxx>
 #include <TopTools_IndexedMapOfShape.hxx>
 #include <TopExp.hxx>
+#include <BRepBuilderAPI_Transform.hxx>
 #include <BRep_Builder.hxx>
 #include <BRep_Tool.hxx>
 #include <Poly_Triangulation.hxx>
@@ -72,6 +73,27 @@ std::array<float, 16> TrsfToMatrix(const gp_Trsf& trsf)
 std::array<float, 16> IdentityMatrix()
 {
     return {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
+}
+
+gp_Trsf MatrixToTrsf(const std::array<float, 16>& matrix)
+{
+    gp_Trsf trsf;
+    trsf.SetValues(
+        matrix[0], matrix[4], matrix[8], matrix[12],
+        matrix[1], matrix[5], matrix[9], matrix[13],
+        matrix[2], matrix[6], matrix[10], matrix[14]
+    );
+    return trsf;
+}
+
+TopoDS_Shape ApplyOccurrenceTransform(
+    const TopoDS_Shape& shape,
+    const std::array<float, 16>& occurrenceTransform)
+{
+    return BRepBuilderAPI_Transform(
+        shape,
+        MatrixToTrsf(occurrenceTransform),
+        Standard_True).Shape();
 }
 
 std::array<float, 16> MultiplyMatrix(const std::array<float, 16>& a,
@@ -1078,6 +1100,15 @@ OcctSelectedStepImportResult ImportSelectedXdeOccurrenceFromMemory(
             return result;
         }
         result.selectedOccurrence = *selectedOccurrence;
+        result.exactShape = ApplyOccurrenceTransform(
+            match.shape,
+            result.selectedOccurrence.occurrenceTransform);
+        if (result.exactShape.IsNull()) {
+            result.rejectionCode = "selection_import_failed";
+            result.rejectionMessage = "Selected STEP occurrence exact shape is null after applying its placement.";
+            app->Close(doc);
+            return result;
+        }
 
         TriangulateShape(match.shape, params);
 
