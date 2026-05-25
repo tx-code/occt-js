@@ -176,6 +176,35 @@ test("repeated part definition occurrences keep distinct refs and independent se
   }
 });
 
+test("inspection exposes only renderable selected STEP occurrences", async () => {
+  const occt = await getOcct();
+  const fixture = loadFixture("as1_pe_203.stp");
+  const inspection = occt.InspectStepProduct(fixture, {});
+
+  assert.equal(inspection.status, "ok");
+  assert.equal(inspection.classification, "assembly");
+  assert.equal(inspection.assemblyPresent, true);
+  assert.ok(
+    inspection.selectableOccurrences?.length > 0,
+    "assembly fixture should expose renderable selectable occurrences",
+  );
+  assert.equal(
+    inspection.selectableOccurrences.some((occurrence) => occurrence.name === "COMPOUND"),
+    false,
+    "empty COMPOUND labels should not be advertised as selectable parts",
+  );
+
+  for (const occurrence of inspection.selectableOccurrences ?? []) {
+    const result = occt.ReadStepPartFile(fixture, {
+      selection: { kind: "occurrence", occurrenceRef: occurrence.occurrenceRef },
+    });
+
+    assert.equal(result.success, true, `${occurrence.occurrenceRef} should import`);
+    assert.ok(result.geometries.length > 0, `${occurrence.occurrenceRef} should expose geometry`);
+    assert.equal(result.selectedOccurrence?.occurrenceRef, occurrence.occurrenceRef);
+  }
+});
+
 test("selected import rejects unsafe selections without fallback geometry", async () => {
   const occt = await getOcct();
   const inspection = occt.InspectStepProduct(loadFixture("assembly.step"), {});

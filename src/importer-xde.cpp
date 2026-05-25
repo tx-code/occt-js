@@ -245,6 +245,18 @@ bool IsMeshNode(const TDF_Label& label, const Handle(XCAFDoc_ShapeTool)& shapeTo
     return !hasFreeShapeChild;
 }
 
+bool HasRenderableTopology(const TopoDS_Shape& shape)
+{
+    if (shape.IsNull()) {
+        return false;
+    }
+
+    for (TopExp_Explorer ex(shape, TopAbs_FACE); ex.More(); ex.Next()) {
+        return true;
+    }
+    return false;
+}
+
 std::vector<TDF_Label> GetProductChildren(const TDF_Label& label,
                                           const Handle(XCAFDoc_ShapeTool)& shapeTool)
 {
@@ -391,6 +403,16 @@ int TraverseProductLabel(const TDF_Label& label,
             result.warnings,
             "missing_shape",
             "Product node does not have an importable shape.",
+            node.id,
+            "warning");
+        return nodeIndex;
+    }
+
+    if (!HasRenderableTopology(shape)) {
+        AddProductMessage(
+            result.warnings,
+            "non_renderable_shape",
+            "Product node has a shape but no renderable topology.",
             node.id,
             "warning");
         return nodeIndex;
