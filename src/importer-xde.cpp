@@ -1012,7 +1012,8 @@ OcctSelectedStepImportResult ImportSelectedXdeOccurrenceFromMemory(
     const std::string& fileName,
     const ImportParams& params,
     const std::string& format,
-    const std::string& occurrenceRef)
+    const std::string& occurrenceRef,
+    bool includeSceneGeometry)
 {
     OcctSelectedStepImportResult result;
     result.inspection.sourceFormat = format;
@@ -1106,6 +1107,12 @@ OcctSelectedStepImportResult ImportSelectedXdeOccurrenceFromMemory(
         if (result.exactShape.IsNull()) {
             result.rejectionCode = "selection_import_failed";
             result.rejectionMessage = "Selected STEP occurrence exact shape is null after applying its placement.";
+            app->Close(doc);
+            return result;
+        }
+
+        if (!includeSceneGeometry) {
+            result.success = true;
             app->Close(doc);
             return result;
         }

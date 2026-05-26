@@ -116,7 +116,14 @@ export type OcctStepProductInspectionResult = OcctJSStepProductInspectionResult;
 
 export type OcctStepPartImportSelection = OcctJSStepPartImportSelection;
 
-export type OcctStepPartImportRejection = OcctJSStepPartImportRejection;
+export interface OcctStepPartSyntheticImportRejection {
+  code: "import_inspection_missing";
+  message: string;
+}
+
+export type OcctStepPartImportRejection =
+  | OcctJSStepPartImportRejection
+  | OcctStepPartSyntheticImportRejection;
 
 export type OcctStepSelectedOccurrence = OcctJSStepSelectedOccurrence;
 

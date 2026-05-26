@@ -1932,7 +1932,8 @@ val ExportStepPartFile(const val& content, const val& jsParams)
         buffer.size(),
         "input.stp",
         params,
-        selection.occurrenceRef
+        selection.occurrenceRef,
+        false
     );
 
     if (!selected.success) {

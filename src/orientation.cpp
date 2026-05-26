@@ -1,5 +1,6 @@
 #include "orientation.hpp"
 
+#include "importer-brep.hpp"
 #include "importer-iges-staging.hpp"
 #include "importer-utils.hpp"
 
@@ -299,14 +300,7 @@ LoadedShape LoadBrepShapeFromMemory(const uint8_t* data,
 {
     LoadedShape loaded;
 
-    Standard_ArrayStreamBuffer streamBuf(
-        reinterpret_cast<const char*>(data),
-        static_cast<Standard_Size>(size));
-    std::istream istream(&streamBuf);
-
-    TopoDS_Shape shape;
-    BRep_Builder builder;
-    BRepTools::Read(shape, istream, builder);
+    TopoDS_Shape shape = ReadBrepShapeFromMemory(data, size);
 
     if (shape.IsNull()) {
         loaded.error = "BREP reader failed to parse the file.";

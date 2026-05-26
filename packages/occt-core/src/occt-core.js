@@ -178,6 +178,23 @@ function normalizeStepPartExportParams(options) {
   return importParams;
 }
 
+function isSuccessfulStepProductInspection(value) {
+  return value && typeof value === "object" && value.status === "ok";
+}
+
+function missingStepProductInspectionFailure(operation) {
+  const message = `${operation} succeeded without successful STEP product inspection metadata.`;
+  return {
+    success: false,
+    sourceFormat: "step",
+    error: message,
+    rejection: {
+      code: "import_inspection_missing",
+      message,
+    },
+  };
+}
+
 function normalizeTransform(transform) {
   return Array.isArray(transform) && transform.length === 16
     ? transform.slice()
@@ -674,6 +691,9 @@ export class OcctCoreClient {
         ...(rawResult?.inspection ? { inspection: rawResult.inspection } : {}),
       };
     }
+    if (!isSuccessfulStepProductInspection(rawResult.inspection)) {
+      return missingStepProductInspectionFailure("ReadStepPartFile()");
+    }
 
     const result = {
       success: true,
@@ -713,6 +733,9 @@ export class OcctCoreClient {
         },
         ...(rawResult?.inspection ? { inspection: rawResult.inspection } : {}),
       };
+    }
+    if (!isSuccessfulStepProductInspection(rawResult.inspection)) {
+      return missingStepProductInspectionFailure("ExportStepPartFile()");
     }
 
     const contentBytes = toUint8Array(rawResult.content);

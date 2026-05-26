@@ -33,7 +33,15 @@ OcctSelectedStepImportResult ImportSelectedStepOccurrenceFromMemory(
     size_t size,
     const std::string& fileName,
     const ImportParams& params,
-    const std::string& occurrenceRef)
+    const std::string& occurrenceRef,
+    bool includeSceneGeometry)
 {
-    return ImportSelectedXdeOccurrenceFromMemory(data, size, fileName, params, "step", occurrenceRef);
+    return ImportSelectedXdeOccurrenceFromMemory(
+        data,
+        size,
+        fileName,
+        params,
+        "step",
+        occurrenceRef,
+        includeSceneGeometry);
 }

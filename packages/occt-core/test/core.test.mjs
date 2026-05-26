@@ -1122,6 +1122,26 @@ describe("createOcctCore", () => {
     assert.deepEqual(calls, [[[4, 5, 6], { linearDeflection: 0.2 }]]);
   });
 
+  it("rejects strict STEP part import success without inspection metadata", async () => {
+    const core = createOcctCore({
+      factory: async () => ({
+        ReadStepPartFile: () => ({
+          ...createColorlessRawResult(),
+          sourceFormat: "step",
+        }),
+      }),
+    });
+
+    const result = await core.importStepPart(new Uint8Array([4, 5, 6]), {
+      fileName: "part.step",
+    });
+
+    assert.equal(result.success, false);
+    assert.equal(result.rejection.code, "import_inspection_missing");
+    assert.match(result.error, /inspection metadata/);
+    assert.equal(Object.hasOwn(result, "model"), false);
+  });
+
   it("wraps selected STEP occurrence import success with selected metadata", async () => {
     const calls = [];
     const selectedTransform = [
@@ -1270,6 +1290,28 @@ describe("createOcctCore", () => {
     assert.deepEqual(calls, [
       [[7, 8, 9], { linearDeflection: 0.2, selection, exportFormat: "brep" }],
     ]);
+  });
+
+  it("rejects selected STEP occurrence export success without inspection metadata", async () => {
+    const core = createOcctCore({
+      factory: async () => ({
+        ExportStepPartFile: () => ({
+          success: true,
+          sourceFormat: "step",
+          format: "brep",
+          content: new Uint8Array([1, 2, 3]),
+        }),
+      }),
+    });
+
+    const result = await core.exportStepPart(new Uint8Array([4, 5, 6]), {
+      selection: { kind: "occurrence", occurrenceRef: "occurrence:1" },
+    });
+
+    assert.equal(result.success, false);
+    assert.equal(result.rejection.code, "import_inspection_missing");
+    assert.match(result.error, /inspection metadata/);
+    assert.equal(Object.hasOwn(result, "content"), false);
   });
 
   it("returns strict STEP part import rejections without throwing", async () => {

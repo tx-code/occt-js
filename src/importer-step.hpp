@@ -37,5 +37,6 @@ OcctSelectedStepImportResult ImportSelectedStepOccurrenceFromMemory(
     size_t             size,
     const std::string& fileName,
     const ImportParams& params,
-    const std::string& occurrenceRef
+    const std::string& occurrenceRef,
+    bool               includeSceneGeometry = true
 );

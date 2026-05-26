@@ -4,6 +4,17 @@
 #include <cstdint>
 #include <string>
 
+#include <TopoDS_Shape.hxx>
+
+/// Read an OCCT BREP shape from an in-memory buffer.
+///
+/// Supports both ASCII BREP (`CASCADE Topology`) and OCCT binary BREP
+/// (`Open CASCADE Topology`) payloads.
+TopoDS_Shape ReadBrepShapeFromMemory(
+    const uint8_t* data,
+    size_t size
+);
+
 /// Import a BREP file from an in-memory buffer.
 ///
 /// @param data      Pointer to the raw file bytes.

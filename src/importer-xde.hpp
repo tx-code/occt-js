@@ -42,5 +42,6 @@ OcctSelectedStepImportResult ImportSelectedXdeOccurrenceFromMemory(
     const std::string&  fileName,
     const ImportParams& params,
     const std::string&  format,
-    const std::string&  occurrenceRef
+    const std::string&  occurrenceRef,
+    bool                includeSceneGeometry = true
 );

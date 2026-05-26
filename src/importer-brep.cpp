@@ -6,12 +6,15 @@
 #include <map>
 #include <cstdint>
 #include <array>
+#include <algorithm>
+#include <string>
 
 #include <Standard_ArrayStreamBuffer.hxx>
 #include <Standard_Failure.hxx>
 #include <TopoDS_Shape.hxx>
 #include <TopExp_Explorer.hxx>
 #include <TopAbs_ShapeEnum.hxx>
+#include <BinTools.hxx>
 #include <BRep_Builder.hxx>
 #include <BRepTools.hxx>
 #include <TopoDS_Iterator.hxx>
@@ -138,7 +141,79 @@ void AppendRootNode(const TopoDS_Shape& shape,
     ExtractShapeMeshes(shape, params, scene, root, exactGeometryShapes);
 }
 
+enum class BrepStorageKind {
+    Unknown,
+    Ascii,
+    Binary,
+};
+
+BrepStorageKind DetectBrepStorageKind(const uint8_t* data, size_t size)
+{
+    const size_t prefixSize = std::min<size_t>(size, 128);
+    std::string prefix(reinterpret_cast<const char*>(data), prefixSize);
+    const size_t offset = prefix.find_first_not_of(" \t\r\n");
+    if (offset == std::string::npos) {
+        return BrepStorageKind::Unknown;
+    }
+    prefix.erase(0, offset);
+    if (prefix.rfind("Open CASCADE Topology", 0) == 0) {
+        return BrepStorageKind::Binary;
+    }
+    if (prefix.rfind("CASCADE Topology", 0) == 0
+        || prefix.rfind("DBRep_DrawableShape", 0) == 0) {
+        return BrepStorageKind::Ascii;
+    }
+    return BrepStorageKind::Unknown;
+}
+
+bool ReadAsciiBrepShape(const uint8_t* data, size_t size, TopoDS_Shape& shape)
+{
+    Standard_ArrayStreamBuffer streamBuf(
+        reinterpret_cast<const char*>(data),
+        static_cast<Standard_Size>(size));
+    std::istream istream(&streamBuf);
+
+    BRep_Builder builder;
+    BRepTools::Read(shape, istream, builder);
+    return !shape.IsNull();
+}
+
+bool ReadBinaryBrepShape(const uint8_t* data, size_t size, TopoDS_Shape& shape)
+{
+    Standard_ArrayStreamBuffer streamBuf(
+        reinterpret_cast<const char*>(data),
+        static_cast<Standard_Size>(size));
+    std::istream istream(&streamBuf);
+
+    BinTools::Read(shape, istream);
+    return !shape.IsNull();
+}
+
 } // namespace
+
+TopoDS_Shape ReadBrepShapeFromMemory(const uint8_t* data, size_t size)
+{
+    TopoDS_Shape shape;
+    const BrepStorageKind storageKind = DetectBrepStorageKind(data, size);
+    if (storageKind == BrepStorageKind::Binary) {
+        ReadBinaryBrepShape(data, size, shape);
+        return shape;
+    }
+
+    try {
+        if (ReadAsciiBrepShape(data, size, shape)) {
+            return shape;
+        }
+    }
+    catch (...) {
+        shape.Nullify();
+    }
+
+    if (storageKind != BrepStorageKind::Ascii) {
+        ReadBinaryBrepShape(data, size, shape);
+    }
+    return shape;
+}
 
 OcctExactImportData ImportExactBrepFromMemory(
     const uint8_t* data,
@@ -150,14 +225,7 @@ OcctExactImportData ImportExactBrepFromMemory(
     OcctSceneData& scene = imported.scene;
 
     try {
-        Standard_ArrayStreamBuffer streamBuf(
-            reinterpret_cast<const char*>(data),
-            static_cast<Standard_Size>(size));
-        std::istream istream(&streamBuf);
-
-        TopoDS_Shape shape;
-        BRep_Builder builder;
-        BRepTools::Read(shape, istream, builder);
+        TopoDS_Shape shape = ReadBrepShapeFromMemory(data, size);
 
         if (shape.IsNull()) {
             scene.error = "BREP reader failed to parse the file.";

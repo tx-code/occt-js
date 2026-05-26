@@ -194,6 +194,11 @@ test("selected occurrence exports as standalone BREP that reloads without STEP p
   assert.equal(exported.format, "brep");
   assert.ok(exported.content instanceof Uint8Array);
   assert.ok(exported.content.byteLength > 0);
+  assert.match(
+    new TextDecoder().decode(exported.content.slice(0, 64)),
+    /Open CASCADE Topology/,
+    "selected BREP export should use OCCT binary BREP for camplan compatibility",
+  );
   assert.equal(exported.selectedOccurrence?.occurrenceRef, selected.occurrenceRef);
   assertMatrixClose(
     exported.selectedOccurrence?.occurrenceTransform,
@@ -204,6 +209,16 @@ test("selected occurrence exports as standalone BREP that reloads without STEP p
   const reloaded = occt.ReadBrepFile(exported.content, {});
   assert.equal(reloaded.success, true);
   assert.ok(reloaded.geometries.length > 0);
+
+  const orientation = occt.AnalyzeOptimalOrientation("brep", exported.content, {
+    mode: "manufacturing",
+    origin: "bbox-center-bottom",
+  });
+  assert.equal(orientation.success, true);
+  assertMatrix16(
+    orientation.transform,
+    "selected binary BREP orientation transform",
+  );
 });
 
 test("inspection exposes only renderable selected STEP occurrences", async () => {

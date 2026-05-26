@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cctype>
 
+#include <BinTools.hxx>
 #include <BRepBuilderAPI_Transform.hxx>
 #include <BRepTools.hxx>
 #include <IFSelect_ReturnStatus.hxx>
@@ -87,7 +88,7 @@ OcctGeometryTransformResult WriteBrepShape(
     }
 
     std::ostringstream stream;
-    BRepTools::Write(transformed, stream);
+    BinTools::Write(transformed, stream);
 
     OcctGeometryTransformResult result;
     result.success = true;
