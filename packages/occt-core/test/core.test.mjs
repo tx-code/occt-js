@@ -1292,6 +1292,47 @@ describe("createOcctCore", () => {
     ]);
   });
 
+  it("rejects non-BREP selected STEP occurrence export formats before raw runtime dispatch", async () => {
+    const calls = [];
+    const core = createOcctCore({
+      factory: async () => ({
+        ExportStepPartFile: (bytes, params) => {
+          calls.push([Array.from(bytes), params]);
+          return {
+            success: true,
+            sourceFormat: "step",
+            format: "step",
+            content: new Uint8Array([1, 2, 3]),
+            inspection: {
+              status: "ok",
+              sourceFormat: "step",
+              classification: "assembly",
+              rootCount: 1,
+              uniquePartCount: 1,
+              partOccurrenceCount: 1,
+              assemblyPresent: true,
+              selectableOccurrences: [],
+              productTree: [],
+              reasons: [],
+              warnings: [],
+            },
+          };
+        },
+      }),
+    });
+
+    const result = await core.exportStepPart(new Uint8Array([7, 8, 9]), {
+      selection: { kind: "occurrence", occurrenceRef: "occurrence:left" },
+      format: "step",
+    });
+
+    assert.equal(result.success, false);
+    assert.equal(result.sourceFormat, "step");
+    assert.equal(result.rejection.code, "unsupported_export_format");
+    assert.match(result.error, /BREP/);
+    assert.deepEqual(calls, []);
+  });
+
   it("rejects selected STEP occurrence export success without inspection metadata", async () => {
     const core = createOcctCore({
       factory: async () => ({

@@ -176,6 +176,32 @@ test("repeated part definition occurrences keep distinct refs and independent se
   }
 });
 
+test("repeated part definition can be selected by partRef", async () => {
+  const occt = await getOcct();
+  const fixture = loadFixture("assembly.step");
+  const inspection = occt.InspectStepProduct(fixture, {});
+  const [pair] = findRepeatedPartOccurrences(inspection);
+
+  assert.ok(pair, "assembly fixture should expose a repeated part pair");
+
+  const result = occt.ReadStepPartFile(fixture, {
+    selection: { kind: "part", partRef: pair.partRef },
+  });
+
+  assert.equal(result.success, true);
+  assert.equal(result.selectedOccurrence?.partRef, pair.partRef);
+  assert.ok(result.geometries.length > 0);
+
+  const exported = occt.ExportStepPartFile(fixture, {
+    exportFormat: "brep",
+    selection: { kind: "part", partRef: pair.partRef },
+  });
+
+  assert.equal(exported.success, true);
+  assert.equal(exported.format, "brep");
+  assert.equal(exported.selectedOccurrence?.partRef, pair.partRef);
+});
+
 test("selected occurrence exports as standalone BREP that reloads without STEP product selection", async () => {
   const occt = await getOcct();
   const fixture = loadFixture("assembly.step");
@@ -218,6 +244,24 @@ test("selected occurrence exports as standalone BREP that reloads without STEP p
   assertMatrix16(
     orientation.transform,
     "selected binary BREP orientation transform",
+  );
+});
+
+test("selected occurrence export rejects STEP serialization", async () => {
+  const occt = await getOcct();
+  const fixture = loadFixture("assembly.step");
+  const inspection = occt.InspectStepProduct(fixture, {});
+  const selected = inspection.selectableOccurrences?.[0];
+
+  assert.ok(selected, "assembly fixture should expose selectable occurrences");
+
+  assertStrictRejection(
+    occt.ExportStepPartFile(fixture, {
+      exportFormat: "step",
+      selection: { kind: "occurrence", occurrenceRef: selected.occurrenceRef },
+    }),
+    "unsupported_export_format",
+    "selected STEP export format",
   );
 });
 
@@ -275,9 +319,9 @@ test("selected import rejects unsafe selections without fallback geometry", asyn
   );
   assertStrictRejection(
     occt.ReadStepPartFile(loadFixture("assembly.step"), {
-      selection: { kind: "part", partRef: selected.partRef },
+      selection: { kind: "part", partRef: "part:stale" },
     }),
-    "selection_ambiguous",
+    "selection_not_found",
     "part definition selection",
   );
   assertStrictRejection(

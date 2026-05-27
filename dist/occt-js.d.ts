@@ -169,6 +169,7 @@ export type OcctJSStepPartImportRejectionCode =
     | "selection_import_failed"
     | "selection_not_supported"
     | "selection_required"
+    | "unsupported_export_format"
     | "export_failed"
     | "import_failed";
 
@@ -180,7 +181,7 @@ export interface OcctJSStepPartImportParams extends OcctJSReadParams {
     selection?: OcctJSStepPartImportSelection | null;
 }
 
-export type OcctJSStepPartExportFormat = "brep" | "step" | "stp";
+export type OcctJSStepPartExportFormat = "brep";
 
 export interface OcctJSStepPartExportParams extends OcctJSStepPartImportParams {
     exportFormat?: OcctJSStepPartExportFormat;
@@ -225,7 +226,7 @@ export type OcctJSStepPartImportResult =
 export interface OcctJSStepPartExportSuccess {
     success: true;
     sourceFormat: "step";
-    format: "brep" | "step";
+    format: "brep";
     content: Uint8Array;
     inspection: OcctJSStepProductInspectionSuccess;
     selectedOccurrence: OcctJSStepSelectedOccurrence;

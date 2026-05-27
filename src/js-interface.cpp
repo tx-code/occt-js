@@ -1546,17 +1546,55 @@ StepPartSelectionInput ParseStepPartSelectionInput(const val& jsParams)
     }
 
     if (input.kind == "part") {
-        if (selection.hasOwnProperty("partRef") && selection["partRef"].typeOf().as<std::string>() == "string") {
-            input.partRef = selection["partRef"].as<std::string>();
+        if (!selection.hasOwnProperty("partRef")
+            || selection["partRef"].typeOf().as<std::string>() != "string")
+        {
+            input.rejectionCode = "selection_not_found";
+            input.rejectionMessage = "STEP part selection requires a non-empty partRef.";
+            return input;
         }
-        input.rejectionCode = "selection_ambiguous";
-        input.rejectionMessage = "STEP part-definition selection is ambiguous; select a concrete occurrenceRef.";
+        input.partRef = selection["partRef"].as<std::string>();
+        if (input.partRef.empty()) {
+            input.rejectionCode = "selection_not_found";
+            input.rejectionMessage = "STEP part selection requires a non-empty partRef.";
+        }
         return input;
     }
 
     input.rejectionCode = "selection_not_supported";
     input.rejectionMessage = "Unsupported STEP part selection kind: " + input.kind + ".";
     return input;
+}
+
+void ResolvePartSelectionToOccurrenceRef(const std::vector<uint8_t>& buffer,
+                                         const ImportParams& params,
+                                         StepPartSelectionInput& selection)
+{
+    if (!selection.hasSelection || selection.kind != "part" || !selection.rejectionCode.empty()) {
+        return;
+    }
+
+    OcctProductInspectionResult inspection = InspectStepProductFromMemory(
+        buffer.data(),
+        buffer.size(),
+        "input.stp",
+        params
+    );
+    if (!inspection.ok) {
+        selection.rejectionCode = "inspection_failed";
+        selection.rejectionMessage = "STEP product inspection failed: " + inspection.error.message;
+        return;
+    }
+
+    for (const auto& occurrence : inspection.selectableOccurrences) {
+        if (occurrence.partRef == selection.partRef) {
+            selection.occurrenceRef = occurrence.occurrenceRef;
+            return;
+        }
+    }
+
+    selection.rejectionCode = "selection_not_found";
+    selection.rejectionMessage = "Selected STEP part was not found in the inspected product structure.";
 }
 
 void AttachInspectionSummaryToRejection(val& rejection, const OcctProductInspectionResult& inspection)
@@ -1609,10 +1647,7 @@ std::string ParseStepPartExportFormat(const val& jsParams)
     std::transform(format.begin(), format.end(), format.begin(), [](unsigned char c) {
         return static_cast<char>(std::tolower(c));
     });
-    if (format == "stp") {
-        return "step";
-    }
-    if (format == "step" || format == "brep") {
+    if (format == "brep") {
         return format;
     }
     return format;
@@ -1851,6 +1886,7 @@ val ReadStepPartFile(const val& content, const val& jsParams)
     ImportParams params = ParseImportParams(jsParams);
     StepPartSelectionInput selection = ParseStepPartSelectionInput(jsParams);
     if (selection.hasSelection) {
+        ResolvePartSelectionToOccurrenceRef(buffer, params, selection);
         if (!selection.rejectionCode.empty()) {
             return StepPartImportFailure(selection.rejectionCode, selection.rejectionMessage);
         }
@@ -1917,12 +1953,20 @@ val ExportStepPartFile(const val& content, const val& jsParams)
     StepPartSelectionInput selection = ParseStepPartSelectionInput(jsParams);
     const std::string exportFormat = ParseStepPartExportFormat(jsParams);
 
+    if (exportFormat != "brep") {
+        return StepPartExportFailure(
+            "unsupported_export_format",
+            "Selected STEP part export only supports standalone BREP output.",
+            exportFormat);
+    }
+
     if (!selection.hasSelection) {
         return StepPartExportFailure(
             "selection_required",
             "Selected STEP part export requires an explicit occurrence selection.",
             exportFormat);
     }
+    ResolvePartSelectionToOccurrenceRef(buffer, params, selection);
     if (!selection.rejectionCode.empty()) {
         return StepPartExportFailure(selection.rejectionCode, selection.rejectionMessage, exportFormat);
     }

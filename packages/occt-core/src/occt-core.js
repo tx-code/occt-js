@@ -719,6 +719,18 @@ export class OcctCoreClient {
 
     const bytes = toUint8Array(content);
     const exportParams = normalizeStepPartExportParams(options);
+    if (exportParams.exportFormat !== undefined && exportParams.exportFormat !== "brep") {
+      const message = "Selected STEP part export only supports standalone BREP output.";
+      return {
+        success: false,
+        sourceFormat: "step",
+        error: message,
+        rejection: {
+          code: "unsupported_export_format",
+          message,
+        },
+      };
+    }
     const rawResult = module.ExportStepPartFile(bytes, exportParams);
 
     if (!rawResult?.success) {

@@ -109,9 +109,6 @@ OcctGeometryTransformResult ExportShapeToFormat(
         normalizedFormat.end(),
         normalizedFormat.begin(),
         [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-    if (normalizedFormat == "stp") {
-        normalizedFormat = "step";
-    }
     if (shape.IsNull()) {
         return Failure(normalizedFormat, "Selected STEP occurrence exact shape is null.");
     }
@@ -123,13 +120,10 @@ OcctGeometryTransformResult ExportShapeToFormat(
         0, 0, 0, 1,
     };
     try {
-        if (normalizedFormat == "step") {
-            return WriteStepShape(shape, identity);
-        }
         if (normalizedFormat == "brep") {
             return WriteBrepShape(shape, identity);
         }
-        return Failure(normalizedFormat, "Unsupported selected STEP occurrence export format: " + format);
+        return Failure(normalizedFormat, "Selected STEP occurrence export only supports standalone BREP output.");
     }
     catch (const Standard_Failure& ex) {
         return Failure(normalizedFormat, std::string("OCCT exception: ") + ex.GetMessageString());

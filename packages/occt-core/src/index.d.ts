@@ -158,7 +158,7 @@ export type OcctStepPartImportResult = OcctStepPartImportSuccess | OcctStepPartI
 export interface OcctStepPartExportSuccess {
   success: true;
   sourceFormat: "step";
-  format: "brep" | "step";
+  format: "brep";
   content: Uint8Array;
   inspection: OcctJSStepProductInspectionSuccess;
   selectedOccurrence?: OcctStepSelectedOccurrence;
