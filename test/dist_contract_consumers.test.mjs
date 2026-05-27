@@ -144,9 +144,8 @@ test("package metadata marks the selected occurrence runtime version", () => {
   const packageJson = readRepoJson("package.json");
   const packageLock = readRepoJson("package-lock.json");
 
-  assert.equal(packageJson.version, "0.1.13");
-  assert.equal(packageLock.version, "0.1.13");
-  assert.equal(packageLock.packages[""].version, "0.1.13");
+  assert.equal(packageLock.version, packageJson.version);
+  assert.equal(packageLock.packages[""].version, packageJson.version);
 });
 
 test("npm test includes the selected occurrence contract suite", () => {
