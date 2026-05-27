@@ -161,7 +161,7 @@ export interface OcctStepPartExportSuccess {
   format: "brep";
   content: Uint8Array;
   inspection: OcctJSStepProductInspectionSuccess;
-  selectedOccurrence?: OcctStepSelectedOccurrence;
+  selectedOccurrence: OcctStepSelectedOccurrence;
 }
 
 export interface OcctStepPartExportFailure {

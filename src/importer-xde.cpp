@@ -75,24 +75,16 @@ std::array<float, 16> IdentityMatrix()
     return {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
 }
 
-gp_Trsf MatrixToTrsf(const std::array<float, 16>& matrix)
-{
-    gp_Trsf trsf;
-    trsf.SetValues(
-        matrix[0], matrix[4], matrix[8], matrix[12],
-        matrix[1], matrix[5], matrix[9], matrix[13],
-        matrix[2], matrix[6], matrix[10], matrix[14]
-    );
-    return trsf;
-}
-
 TopoDS_Shape ApplyOccurrenceTransform(
     const TopoDS_Shape& shape,
-    const std::array<float, 16>& occurrenceTransform)
+    const TopLoc_Location& occurrenceLocation)
 {
+    if (occurrenceLocation.IsIdentity()) {
+        return shape;
+    }
     return BRepBuilderAPI_Transform(
         shape,
-        MatrixToTrsf(occurrenceTransform),
+        occurrenceLocation.Transformation(),
         Standard_True).Shape();
 }
 
@@ -393,6 +385,7 @@ struct ProductOccurrenceMatch {
     bool isAssembly = false;
     bool hasShape = false;
     bool hasChildren = false;
+    TopLoc_Location occurrenceLocation;
     TopoDS_Shape shape;
 };
 
@@ -564,11 +557,13 @@ const OcctStepSelectableOccurrence* FindSelectableOccurrence(
 bool FindProductOccurrenceLabel(const TDF_Label& label,
                                 const Handle(XCAFDoc_ShapeTool)& shapeTool,
                                 const std::string& targetOccurrenceRef,
+                                const TopLoc_Location& parentLocation,
                                 int& nodeIndex,
                                 ProductOccurrenceMatch& match)
 {
     const int currentIndex = nodeIndex++;
     const std::string occurrenceRef = MakeOccurrenceRef(label, currentIndex);
+    const TopLoc_Location occurrenceLocation = parentLocation * shapeTool->GetLocation(label);
 
     TDF_Label refLabel = label;
     if (shapeTool->IsReference(label)) {
@@ -589,13 +584,14 @@ bool FindProductOccurrenceLabel(const TDF_Label& label,
         match.isAssembly = isAssemblyLabel;
         match.hasShape = !shape.IsNull();
         match.hasChildren = !children.empty();
+        match.occurrenceLocation = occurrenceLocation;
         match.shape = shape;
         return true;
     }
 
     if (isAssemblyLabel) {
         for (const TDF_Label& childLabel : children) {
-            if (FindProductOccurrenceLabel(childLabel, shapeTool, targetOccurrenceRef, nodeIndex, match)) {
+            if (FindProductOccurrenceLabel(childLabel, shapeTool, targetOccurrenceRef, occurrenceLocation, nodeIndex, match)) {
                 return true;
             }
         }
@@ -611,7 +607,7 @@ ProductOccurrenceMatch FindProductOccurrenceLabel(const TDF_LabelSequence& freeS
     ProductOccurrenceMatch match;
     int nodeIndex = 0;
     for (int i = 1; i <= freeShapes.Length(); ++i) {
-        if (FindProductOccurrenceLabel(freeShapes.Value(i), shapeTool, occurrenceRef, nodeIndex, match)) {
+        if (FindProductOccurrenceLabel(freeShapes.Value(i), shapeTool, occurrenceRef, TopLoc_Location(), nodeIndex, match)) {
             return match;
         }
     }
@@ -1103,7 +1099,7 @@ OcctSelectedStepImportResult ImportSelectedXdeOccurrenceFromMemory(
         result.selectedOccurrence = *selectedOccurrence;
         result.exactShape = ApplyOccurrenceTransform(
             match.shape,
-            result.selectedOccurrence.occurrenceTransform);
+            match.occurrenceLocation);
         if (result.exactShape.IsNull()) {
             result.rejectionCode = "selection_import_failed";
             result.rejectionMessage = "Selected STEP occurrence exact shape is null after applying its placement.";

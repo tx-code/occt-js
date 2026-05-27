@@ -1586,11 +1586,23 @@ void ResolvePartSelectionToOccurrenceRef(const std::vector<uint8_t>& buffer,
         return;
     }
 
+    std::string matchedOccurrenceRef;
+    int matchCount = 0;
     for (const auto& occurrence : inspection.selectableOccurrences) {
         if (occurrence.partRef == selection.partRef) {
-            selection.occurrenceRef = occurrence.occurrenceRef;
-            return;
+            matchedOccurrenceRef = occurrence.occurrenceRef;
+            matchCount++;
         }
+    }
+
+    if (matchCount == 1) {
+        selection.occurrenceRef = matchedOccurrenceRef;
+        return;
+    }
+    if (matchCount > 1) {
+        selection.rejectionCode = "selection_ambiguous";
+        selection.rejectionMessage = "Selected STEP part definition has multiple occurrences; select a concrete occurrenceRef.";
+        return;
     }
 
     selection.rejectionCode = "selection_not_found";

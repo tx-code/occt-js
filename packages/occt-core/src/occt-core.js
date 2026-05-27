@@ -749,19 +749,29 @@ export class OcctCoreClient {
     if (!isSuccessfulStepProductInspection(rawResult.inspection)) {
       return missingStepProductInspectionFailure("ExportStepPartFile()");
     }
+    if (!rawResult.selectedOccurrence) {
+      const error = "ExportStepPartFile() did not return selected occurrence metadata.";
+      return {
+        success: false,
+        sourceFormat: "step",
+        error,
+        rejection: {
+          code: "export_failed",
+          message: error,
+        },
+        inspection: rawResult.inspection,
+      };
+    }
 
     const contentBytes = toUint8Array(rawResult.content);
-    const result = {
+    return {
       success: true,
       sourceFormat: "step",
       format: normalizeOcctFormat(rawResult.format ?? exportParams.exportFormat ?? "brep"),
       content: contentBytes,
       inspection: rawResult.inspection,
+      selectedOccurrence: rawResult.selectedOccurrence,
     };
-    if (rawResult.selectedOccurrence) {
-      result.selectedOccurrence = rawResult.selectedOccurrence;
-    }
-    return result;
   }
 
   async openExactModel(content, options = {}) {

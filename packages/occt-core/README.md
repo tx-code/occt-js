@@ -117,8 +117,8 @@ const exported = await core.exportStepPart(stepBytes, {
 Selected occurrence rules:
 
 - `getStepSelectableOccurrences(inspection)` returns a shallow copy of the runtime `selectableOccurrences` array only when inspection succeeds.
-- `importStepPart(...)` accepts the selected `occurrenceRef` through `selection: { kind: "occurrence", occurrenceRef }` and returns normalized model data plus `selectedOccurrence` metadata on success.
-- `exportStepPart(...)` accepts the same occurrence selection and returns standalone BREP bytes with the occurrence placement baked into the exact shape.
+- `importStepPart(...)` accepts `selection: { kind: "occurrence", occurrenceRef }`; `selection: { kind: "part", partRef }` is accepted only when that part definition maps to exactly one selectable occurrence.
+- `exportStepPart(...)` accepts the same selection contract and returns standalone BREP bytes plus required `selectedOccurrence` metadata on success.
 - Occurrence refs are live-session refs from the current inspection output; do not persist them across file reads, package versions, or user sessions.
 - Downstream apps own selector policy, labels, sorting, persistence, and user prompts.
 - Do not select by display labels or display paths; use the opaque `occurrenceRef` from the current inspection result.

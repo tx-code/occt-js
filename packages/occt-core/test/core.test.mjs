@@ -1355,6 +1355,42 @@ describe("createOcctCore", () => {
     assert.equal(Object.hasOwn(result, "content"), false);
   });
 
+  it("rejects selected STEP occurrence export success without selected occurrence metadata", async () => {
+    const rawInspection = {
+      status: "ok",
+      sourceFormat: "step",
+      classification: "assembly",
+      rootCount: 1,
+      uniquePartCount: 1,
+      partOccurrenceCount: 1,
+      assemblyPresent: true,
+      selectableOccurrences: [],
+      productTree: [],
+      reasons: [],
+      warnings: [],
+    };
+    const core = createOcctCore({
+      factory: async () => ({
+        ExportStepPartFile: () => ({
+          success: true,
+          sourceFormat: "step",
+          format: "brep",
+          content: new Uint8Array([1, 2, 3]),
+          inspection: rawInspection,
+        }),
+      }),
+    });
+
+    const result = await core.exportStepPart(new Uint8Array([4, 5, 6]), {
+      selection: { kind: "occurrence", occurrenceRef: "occurrence:1" },
+    });
+
+    assert.equal(result.success, false);
+    assert.equal(result.rejection.code, "export_failed");
+    assert.match(result.error, /selected occurrence metadata/);
+    assert.equal(Object.hasOwn(result, "content"), false);
+  });
+
   it("returns strict STEP part import rejections without throwing", async () => {
     const rawInspection = {
       status: "ok",

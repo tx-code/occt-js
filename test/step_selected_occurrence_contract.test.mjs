@@ -176,7 +176,34 @@ test("repeated part definition occurrences keep distinct refs and independent se
   }
 });
 
-test("repeated part definition can be selected by partRef", async () => {
+test("unique part definition can be selected by partRef", async () => {
+  const occt = await getOcct();
+  const fixture = loadFixture("simple_part.step");
+  const inspection = occt.InspectStepProduct(fixture, {});
+  const selected = inspection.selectableOccurrences?.[0];
+
+  assert.equal(inspection.status, "ok");
+  assert.ok(selected, "single-part fixture should expose a selectable part");
+
+  const result = occt.ReadStepPartFile(fixture, {
+    selection: { kind: "part", partRef: selected.partRef },
+  });
+
+  assert.equal(result.success, true);
+  assert.equal(result.selectedOccurrence?.partRef, selected.partRef);
+  assert.ok(result.geometries.length > 0);
+
+  const exported = occt.ExportStepPartFile(fixture, {
+    exportFormat: "brep",
+    selection: { kind: "part", partRef: selected.partRef },
+  });
+
+  assert.equal(exported.success, true);
+  assert.equal(exported.format, "brep");
+  assert.equal(exported.selectedOccurrence?.partRef, selected.partRef);
+});
+
+test("repeated part definition rejects ambiguous partRef selection", async () => {
   const occt = await getOcct();
   const fixture = loadFixture("assembly.step");
   const inspection = occt.InspectStepProduct(fixture, {});
@@ -184,22 +211,21 @@ test("repeated part definition can be selected by partRef", async () => {
 
   assert.ok(pair, "assembly fixture should expose a repeated part pair");
 
-  const result = occt.ReadStepPartFile(fixture, {
-    selection: { kind: "part", partRef: pair.partRef },
-  });
-
-  assert.equal(result.success, true);
-  assert.equal(result.selectedOccurrence?.partRef, pair.partRef);
-  assert.ok(result.geometries.length > 0);
-
-  const exported = occt.ExportStepPartFile(fixture, {
-    exportFormat: "brep",
-    selection: { kind: "part", partRef: pair.partRef },
-  });
-
-  assert.equal(exported.success, true);
-  assert.equal(exported.format, "brep");
-  assert.equal(exported.selectedOccurrence?.partRef, pair.partRef);
+  assertStrictRejection(
+    occt.ReadStepPartFile(fixture, {
+      selection: { kind: "part", partRef: pair.partRef },
+    }),
+    "selection_ambiguous",
+    "repeated part definition import",
+  );
+  assertStrictRejection(
+    occt.ExportStepPartFile(fixture, {
+      exportFormat: "brep",
+      selection: { kind: "part", partRef: pair.partRef },
+    }),
+    "selection_ambiguous",
+    "repeated part definition export",
+  );
 });
 
 test("selected occurrence exports as standalone BREP that reloads without STEP product selection", async () => {
