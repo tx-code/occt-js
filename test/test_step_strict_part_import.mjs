@@ -154,7 +154,19 @@ async function main() {
   const partSelection = m.ReadStepPartFile(loadFixture("assembly.step"), {
     selection: { kind: "part", partRef: selectedLeaf.partRef },
   });
-  assertStrictRejection(partSelection, "selection_ambiguous", "part-definition selected import");
+  assert.equal(partSelection.success, true, "part-definition selected import should resolve to an importable part");
+  assert.equal(
+    partSelection.selectedOccurrence?.partRef,
+    selectedLeaf.partRef,
+    "part-definition selected import should preserve the requested partRef"
+  );
+  assert.equal(partSelection.rootNodes.length, 1, "part-definition selected import should expose exactly one root");
+  assert.equal(partSelection.rootNodes[0].isAssembly, false, "part-definition selected import root should be a part");
+  assert.equal(
+    partSelection.rootNodes[0].children.length,
+    0,
+    "part-definition selected import root should not expose assembly children"
+  );
 
   const unsupportedSelection = m.ReadStepPartFile(loadFixture("assembly.step"), {
     selection: { kind: "display-row", occurrenceRef: selectedLeaf.occurrenceRef },
