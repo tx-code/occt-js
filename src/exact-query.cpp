@@ -58,8 +58,6 @@ TResult MakeFailure(const std::string& code, const std::string& message)
 
 constexpr const char* kCompoundHoleUnsupportedMessage =
     "Exact compound-hole helper only supports selected refs that normalize into supported counterbore or countersink cavities.";
-constexpr const char* kExactAngleUnsupportedMessage =
-    "Exact angle only supports line/line, plane/plane, mixed line/plane, or circle/plane and circle/cylinder pairs.";
 
 std::string NormalizeKind(const std::string& kind)
 {
@@ -1642,209 +1640,9 @@ gp_Pnt SampleEdgePoint(BRepAdaptor_Curve& curve)
     return curve.Value(0.5 * (curve.FirstParameter() + curve.LastParameter()));
 }
 
-bool TrySampleCurveTangent(BRepAdaptor_Curve& curve, gp_Pnt& point, gp_Dir& tangent)
-{
-    gp_Vec tangentVector;
-    curve.D1(0.5 * (curve.FirstParameter() + curve.LastParameter()), point, tangentVector);
-    if (tangentVector.Magnitude() <= Precision::Confusion()) {
-        return false;
-    }
-    tangent = gp_Dir(tangentVector);
-    return true;
-}
-
-bool TrySurfaceNormalAtPoint(BRepAdaptor_Surface& surface, const gp_Pnt& point, gp_Dir& normal)
-{
-    if (surface.GetType() == GeomAbs_Plane) {
-        normal = surface.Plane().Axis().Direction();
-        return true;
-    }
-
-    if (surface.GetType() == GeomAbs_Cylinder) {
-        const gp_Cylinder cylinder = surface.Cylinder();
-        const gp_Dir axisDirection = cylinder.Axis().Direction();
-        const gp_Vec axisVector(axisDirection);
-        const gp_Vec axisToPoint(cylinder.Location(), point);
-        const gp_Pnt projected = cylinder.Location().Translated(axisVector * axisToPoint.Dot(axisVector));
-        const gp_Vec radial(projected, point);
-        if (radial.Magnitude() <= Precision::Confusion()) {
-            return false;
-        }
-        normal = gp_Dir(radial);
-        return true;
-    }
-
-    return false;
-}
-
 bool IsPerpendicular(const gp_Dir& left, const gp_Dir& right)
 {
     return std::abs(CanonicalAngle(left.Angle(right)) - 1.5707963267948966) <= Precision::Angular();
-}
-
-OcctExactAngleResult MeasureLinePlaneAngle(
-    const TopoDS_Edge& edge,
-    const TopoDS_Face& face,
-    const bool edgeIsA)
-{
-    BRepAdaptor_Curve curve(edge);
-    BRepAdaptor_Surface surface(face, false);
-    if (curve.GetType() != GeomAbs_Line || surface.GetType() != GeomAbs_Plane) {
-        return MakeFailure<OcctExactAngleResult>(
-            "unsupported-geometry",
-            kExactAngleUnsupportedMessage
-        );
-    }
-
-    const gp_Lin line = curve.Line();
-    const gp_Pln plane = surface.Plane();
-    const gp_Dir lineDirection = line.Direction();
-    const gp_Dir planeNormal = plane.Axis().Direction();
-
-    gp_Dir projectedLineDirection;
-    double value = 1.5707963267948966;
-    if (TryProjectDirectionOntoPlane(lineDirection, planeNormal, projectedLineDirection)) {
-        value = CanonicalAngle(lineDirection.Angle(projectedLineDirection));
-        if (value <= Precision::Angular()) {
-            return MakeFailure<OcctExactAngleResult>(
-                "parallel-geometry",
-                "Exact angle is not defined for linear edges parallel to planar faces."
-            );
-        }
-    } else if (!TryProjectDirectionOntoPlane(
-        ChooseStableReferenceDirection(planeNormal),
-        planeNormal,
-        projectedLineDirection)) {
-        return MakeFailure<OcctExactAngleResult>(
-            "unsupported-geometry",
-            "Exact angle requires a stable planar reference direction."
-        );
-    }
-
-    const gp_Dir directionA = edgeIsA ? lineDirection : projectedLineDirection;
-    const gp_Dir directionB = edgeIsA ? projectedLineDirection : lineDirection;
-    const gp_Vec workingNormalVector(directionA.XYZ().Crossed(directionB.XYZ()));
-    if (workingNormalVector.Magnitude() <= Precision::Confusion()) {
-        return MakeFailure<OcctExactAngleResult>(
-            "parallel-geometry",
-            "Exact angle is not defined for linear edges parallel to planar faces."
-        );
-    }
-
-    double distanceValue = 0.0;
-    gp_Pnt edgePoint;
-    gp_Pnt facePoint;
-    OcctLifecycleResult lifecycle = MeasureMinimumDistance(edge, face, distanceValue, edgePoint, facePoint);
-    if (!lifecycle.ok) {
-        return ConvertFailure<OcctExactAngleResult>(lifecycle);
-    }
-
-    const gp_Pnt pointA = edgeIsA ? edgePoint : facePoint;
-    const gp_Pnt pointB = edgeIsA ? facePoint : edgePoint;
-    const gp_Pnt origin = Midpoint(pointA, pointB);
-
-    OcctExactAngleResult result;
-    result.ok = true;
-    result.value = value;
-    result.origin = ToArray(origin);
-    result.directionA = ToArray(directionA);
-    result.directionB = ToArray(directionB);
-    result.pointA = ToArray(pointA);
-    result.pointB = ToArray(pointB);
-    result.workingPlaneOrigin = ToArray(origin);
-    result.workingPlaneNormal = ToArray(gp_Dir(workingNormalVector));
-    return result;
-}
-
-OcctExactAngleResult MeasureCircleSurfaceAngle(
-    const TopoDS_Edge& edge,
-    const TopoDS_Face& face,
-    const bool edgeIsA)
-{
-    BRepAdaptor_Curve curve(edge);
-    BRepAdaptor_Surface surface(face, false);
-    if (curve.GetType() != GeomAbs_Circle
-        || (surface.GetType() != GeomAbs_Plane && surface.GetType() != GeomAbs_Cylinder)) {
-        return MakeFailure<OcctExactAngleResult>(
-            "unsupported-geometry",
-            kExactAngleUnsupportedMessage
-        );
-    }
-
-    gp_Pnt curvePoint;
-    gp_Dir curveTangent;
-    if (!TrySampleCurveTangent(curve, curvePoint, curveTangent)) {
-        return MakeFailure<OcctExactAngleResult>(
-            "unsupported-geometry",
-            "Exact angle requires a stable circular-edge tangent."
-        );
-    }
-
-    gp_Dir surfaceNormal;
-    if (!TrySurfaceNormalAtPoint(surface, curvePoint, surfaceNormal)) {
-        return MakeFailure<OcctExactAngleResult>(
-            "unsupported-geometry",
-            "Exact angle requires a stable face normal at the circular edge."
-        );
-    }
-
-    gp_Dir surfaceTangent;
-    double value = 1.5707963267948966;
-    if (TryProjectDirectionOntoPlane(curveTangent, surfaceNormal, surfaceTangent)) {
-        value = CanonicalAngle(curveTangent.Angle(surfaceTangent));
-    } else if (!TryProjectDirectionOntoPlane(
-        ChooseStableReferenceDirection(surfaceNormal),
-        surfaceNormal,
-        surfaceTangent)) {
-        return MakeFailure<OcctExactAngleResult>(
-            "unsupported-geometry",
-            "Exact angle requires a stable surface tangent direction."
-        );
-    }
-
-    const gp_Pnt facePoint = SampleFacePoint(face, surface);
-    const gp_Dir directionA = edgeIsA ? curveTangent : surfaceTangent;
-    const gp_Dir directionB = edgeIsA ? surfaceTangent : curveTangent;
-    const gp_Vec workingNormalVector(directionA.XYZ().Crossed(directionB.XYZ()));
-    const gp_Dir workingNormal =
-        workingNormalVector.Magnitude() > Precision::Confusion()
-            ? gp_Dir(workingNormalVector)
-            : surfaceNormal;
-
-    const gp_Pnt pointA = edgeIsA ? curvePoint : facePoint;
-    const gp_Pnt pointB = edgeIsA ? facePoint : curvePoint;
-
-    OcctExactAngleResult result;
-    result.ok = true;
-    result.value = value;
-    result.origin = ToArray(curvePoint);
-    result.directionA = ToArray(directionA);
-    result.directionB = ToArray(directionB);
-    result.pointA = ToArray(pointA);
-    result.pointB = ToArray(pointB);
-    result.workingPlaneOrigin = ToArray(curvePoint);
-    result.workingPlaneNormal = ToArray(workingNormal);
-    return result;
-}
-
-OcctExactAngleResult MeasureEdgeFaceAngle(
-    const TopoDS_Edge& edge,
-    const TopoDS_Face& face,
-    const bool edgeIsA)
-{
-    BRepAdaptor_Curve curve(edge);
-    BRepAdaptor_Surface surface(face, false);
-    if (curve.GetType() == GeomAbs_Line && surface.GetType() == GeomAbs_Plane) {
-        return MeasureLinePlaneAngle(edge, face, edgeIsA);
-    }
-    if (curve.GetType() == GeomAbs_Circle
-        && (surface.GetType() == GeomAbs_Plane || surface.GetType() == GeomAbs_Cylinder)) {
-        return MeasureCircleSurfaceAngle(edge, face, edgeIsA);
-    }
-    return MakeFailure<OcctExactAngleResult>(
-        "unsupported-geometry",
-        kExactAngleUnsupportedMessage
-    );
 }
 
 OcctExactRelationResult ClassifyLineLineRelation(const TopoDS_Edge& edgeA, const TopoDS_Edge& edgeB)
@@ -2588,7 +2386,7 @@ OcctExactAngleResult MeasureExactAngleCrossModel(
             if (curveA.GetType() != GeomAbs_Line || curveB.GetType() != GeomAbs_Line) {
                 return MakeFailure<OcctExactAngleResult>(
                     "unsupported-geometry",
-                    kExactAngleUnsupportedMessage
+                    "Exact angle only supports line/line or plane/plane pairs."
                 );
             }
 
@@ -2647,7 +2445,7 @@ OcctExactAngleResult MeasureExactAngleCrossModel(
             if (surfaceA.GetType() != GeomAbs_Plane || surfaceB.GetType() != GeomAbs_Plane) {
                 return MakeFailure<OcctExactAngleResult>(
                     "unsupported-geometry",
-                    kExactAngleUnsupportedMessage
+                    "Exact angle only supports line/line or plane/plane pairs."
                 );
             }
 
@@ -2685,45 +2483,9 @@ OcctExactAngleResult MeasureExactAngleCrossModel(
             return result;
         }
 
-        if (normalizedKindA == "edge" && normalizedKindB == "face") {
-            TopoDS_Edge edgeA;
-            OcctLifecycleResult lifecycle = ResolveEdge(exactModelIdA, exactShapeHandleA, elementIdA, edgeA);
-            if (!lifecycle.ok) {
-                return ConvertFailure<OcctExactAngleResult>(lifecycle);
-            }
-
-            TopoDS_Face faceB;
-            lifecycle = ResolveFace(exactModelIdB, exactShapeHandleB, elementIdB, faceB);
-            if (!lifecycle.ok) {
-                return ConvertFailure<OcctExactAngleResult>(lifecycle);
-            }
-
-            edgeA = TopoDS::Edge(ApplyOccurrenceTransform(edgeA, transformA));
-            faceB = TopoDS::Face(ApplyOccurrenceTransform(faceB, transformB));
-            return MeasureEdgeFaceAngle(edgeA, faceB, true);
-        }
-
-        if (normalizedKindA == "face" && normalizedKindB == "edge") {
-            TopoDS_Face faceA;
-            OcctLifecycleResult lifecycle = ResolveFace(exactModelIdA, exactShapeHandleA, elementIdA, faceA);
-            if (!lifecycle.ok) {
-                return ConvertFailure<OcctExactAngleResult>(lifecycle);
-            }
-
-            TopoDS_Edge edgeB;
-            lifecycle = ResolveEdge(exactModelIdB, exactShapeHandleB, elementIdB, edgeB);
-            if (!lifecycle.ok) {
-                return ConvertFailure<OcctExactAngleResult>(lifecycle);
-            }
-
-            faceA = TopoDS::Face(ApplyOccurrenceTransform(faceA, transformA));
-            edgeB = TopoDS::Edge(ApplyOccurrenceTransform(edgeB, transformB));
-            return MeasureEdgeFaceAngle(edgeB, faceA, false);
-        }
-
         return MakeFailure<OcctExactAngleResult>(
             "unsupported-geometry",
-            kExactAngleUnsupportedMessage
+            "Exact angle only supports line/line or plane/plane pairs."
         );
     } catch (const Standard_Failure& failure) {
         return MakeFailure<OcctExactAngleResult>(
@@ -3127,13 +2889,10 @@ OcctExactPlacementResult SuggestExactAnglePlacementCrossModel(
     }
 
     gp_Vec planeNormalVector(directionA.XYZ().Crossed(directionB.XYZ()));
-    gp_Dir planeNormal;
-    if (planeNormalVector.Magnitude() > Precision::Confusion()) {
-        planeNormal = gp_Dir(planeNormalVector);
-    } else if (!TryMakeDirection(angle.workingPlaneNormal, planeNormal)) {
+    if (planeNormalVector.Magnitude() <= Precision::Confusion()) {
         return MakeFailure<OcctExactPlacementResult>(
             "parallel-geometry",
-            "Exact angle placement requires non-parallel geometry or a stable working plane."
+            "Exact angle placement requires non-parallel geometry."
         );
     }
 
@@ -3146,7 +2905,7 @@ OcctExactPlacementResult SuggestExactAnglePlacementCrossModel(
     result.directionA = ToArray(directionA);
     result.hasDirectionB = true;
     result.directionB = ToArray(directionB);
-    if (!BuildFrameFromNormalAndX(ToPoint(angle.origin), planeNormal, directionA, result.frame)) {
+    if (!BuildFrameFromNormalAndX(ToPoint(angle.origin), gp_Dir(planeNormalVector), directionA, result.frame)) {
         return MakeFailure<OcctExactPlacementResult>(
             "unsupported-geometry",
             "Exact angle placement requires a stable working frame."

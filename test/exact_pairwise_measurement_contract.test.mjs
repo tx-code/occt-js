@@ -57,20 +57,6 @@ function measureExactAngle(module, refA, refB, transformA = IDENTITY_MATRIX, tra
   );
 }
 
-function suggestExactAnglePlacement(module, refA, refB, transformA = IDENTITY_MATRIX, transformB = IDENTITY_MATRIX) {
-  return module.SuggestExactAnglePlacement(
-    refA.exactModelId,
-    refA.exactShapeHandle,
-    refA.kind,
-    refA.elementId,
-    refB.exactShapeHandle,
-    refB.kind,
-    refB.elementId,
-    transformA,
-    transformB,
-  );
-}
-
 function measureExactThickness(module, refA, refB, transformA = IDENTITY_MATRIX, transformB = IDENTITY_MATRIX) {
   return module.MeasureExactThickness(
     refA.exactModelId,
@@ -133,27 +119,16 @@ function getApproxFaceNormal(geometry, face) {
   ));
 }
 
-function getExactFaceNormal(module, result, geometry, face, geometryIndex = 0) {
+function getExactFaceNormal(module, result, geometry, face) {
   const normal = module.EvaluateExactFaceNormal(
     result.exactModelId,
-    result.exactGeometryBindings[geometryIndex].exactShapeHandle,
+    result.exactGeometryBindings[0].exactShapeHandle,
     "face",
     face.id,
     getFaceCentroid(geometry, face),
   );
   assert.equal(normal?.ok, true);
   return normal.localNormal;
-}
-
-function tryGetExactFaceNormal(module, result, geometry, face, geometryIndex = 0) {
-  const normal = module.EvaluateExactFaceNormal(
-    result.exactModelId,
-    result.exactGeometryBindings[geometryIndex].exactShapeHandle,
-    "face",
-    face.id,
-    getFaceCentroid(geometry, face),
-  );
-  return normal?.ok === true ? normal.localNormal : undefined;
 }
 
 function getApproxEdgeDirection(edge) {
@@ -206,107 +181,6 @@ function findSeparatedParallelFacePair(module, result, geometry) {
     );
     return distance?.ok === true && distance.value > 0;
   });
-}
-
-function getExactGeometryFamily(module, result, geometryIndex, kind, elementId) {
-  const family = module.GetExactGeometryType(
-    result.exactModelId,
-    result.exactGeometryBindings[geometryIndex].exactShapeHandle,
-    kind,
-    elementId,
-  );
-  return family?.ok === true ? family.family : undefined;
-}
-
-async function findMixedLinePlaneAnglePair(module) {
-  const fixtures = [
-    { name: "simple_part.step", opener: "OpenExactStepModel" },
-    { name: "as1_pe_203.brep", opener: "OpenExactBrepModel" },
-  ];
-
-  for (const fixture of fixtures) {
-    const bytes = await loadFixture(fixture.name);
-    const result = module[fixture.opener](bytes, {});
-    assert.equal(result?.success, true);
-    for (let geometryIndex = 0; geometryIndex < result.geometries.length; geometryIndex += 1) {
-      const geometry = result.geometries[geometryIndex];
-      const lineEdges = geometry.edges.filter((edge) => (
-        getExactGeometryFamily(module, result, geometryIndex, "edge", edge.id) === "line"
-      ));
-      const planeFaces = geometry.faces.filter((face) => (
-        getExactGeometryFamily(module, result, geometryIndex, "face", face.id) === "plane"
-      ));
-
-      for (const edge of lineEdges) {
-        const edgeDirection = getApproxEdgeDirection(edge);
-        for (const face of planeFaces) {
-          const faceNormal = tryGetExactFaceNormal(
-            module,
-            result,
-            geometry,
-            face,
-            geometryIndex,
-          );
-          if (!faceNormal) {
-            continue;
-          }
-          const normalDot = Math.abs(dot(edgeDirection, faceNormal));
-          if (normalDot <= 1e-6) {
-            continue;
-          }
-          return {
-            edgeRef: getExactRef(result, geometryIndex, "edge", edge.id),
-            expectedAngle: Math.asin(Math.min(1, normalDot)),
-            faceRef: getExactRef(result, geometryIndex, "face", face.id),
-            fixture: fixture.name,
-          };
-        }
-      }
-    }
-  }
-
-  return undefined;
-}
-
-async function findCircleSurfaceAnglePair(module) {
-  const bytes = await loadFixture("as1_pe_203.brep");
-  const result = module.OpenExactBrepModel(bytes, {});
-  assert.equal(result?.success, true);
-
-  for (let geometryIndex = 0; geometryIndex < result.geometries.length; geometryIndex += 1) {
-    const geometry = result.geometries[geometryIndex];
-    const facesById = new Map(geometry.faces.map((face) => [face.id, face]));
-    const circleEdges = geometry.edges.filter((edge) => (
-      getExactGeometryFamily(module, result, geometryIndex, "edge", edge.id) === "circle"
-      && Array.isArray(edge.ownerFaceIds)
-    ));
-
-    for (const edge of circleEdges) {
-      for (const ownerFaceId of edge.ownerFaceIds) {
-        const face = facesById.get(ownerFaceId);
-        if (!face) {
-          continue;
-        }
-        const faceFamily = getExactGeometryFamily(
-          module,
-          result,
-          geometryIndex,
-          "face",
-          face.id,
-        );
-        if (faceFamily !== "plane" && faceFamily !== "cylinder") {
-          continue;
-        }
-        return {
-          edgeRef: getExactRef(result, geometryIndex, "edge", edge.id),
-          faceFamily,
-          faceRef: getExactRef(result, geometryIndex, "face", face.id),
-        };
-      }
-    }
-  }
-
-  return undefined;
 }
 
 test("exact distance queries return attach points and working plane from retained exact refs", async () => {
@@ -368,61 +242,6 @@ test("exact angle queries return origin directions and working plane for linear 
   assert.ok(Array.isArray(angle?.workingPlaneNormal) && angle.workingPlaneNormal.length === 3);
 });
 
-test("exact angle queries support mixed linear edge and planar face pairs", async () => {
-  const module = await createModule();
-  const pair = await findMixedLinePlaneAnglePair(module);
-
-  assert.ok(pair, "fixtures should expose a non-parallel line/plane pair");
-
-  const faceEdgeAngle = measureExactAngle(module, pair.faceRef, pair.edgeRef);
-  assert.equal(faceEdgeAngle?.ok, true, `${pair.fixture} face/edge mixed angle should succeed`);
-  assert.equal(typeof faceEdgeAngle?.value, "number");
-  assert.ok(Math.abs(faceEdgeAngle.value - pair.expectedAngle) < 1e-6);
-  assert.ok(Array.isArray(faceEdgeAngle?.origin) && faceEdgeAngle.origin.length === 3);
-  assert.ok(Array.isArray(faceEdgeAngle?.directionA) && faceEdgeAngle.directionA.length === 3);
-  assert.ok(Array.isArray(faceEdgeAngle?.directionB) && faceEdgeAngle.directionB.length === 3);
-  assert.ok(Array.isArray(faceEdgeAngle?.pointA) && faceEdgeAngle.pointA.length === 3);
-  assert.ok(Array.isArray(faceEdgeAngle?.pointB) && faceEdgeAngle.pointB.length === 3);
-  assert.ok(Array.isArray(faceEdgeAngle?.workingPlaneOrigin) && faceEdgeAngle.workingPlaneOrigin.length === 3);
-  assert.ok(Array.isArray(faceEdgeAngle?.workingPlaneNormal) && faceEdgeAngle.workingPlaneNormal.length === 3);
-
-  const edgeFaceAngle = measureExactAngle(module, pair.edgeRef, pair.faceRef);
-  assert.equal(edgeFaceAngle?.ok, true, `${pair.fixture} edge/face mixed angle should succeed`);
-  assert.ok(Math.abs(edgeFaceAngle.value - pair.expectedAngle) < 1e-6);
-});
-
-test("exact angle queries support circular edge and analytic owner face pairs", async () => {
-  const module = await createModule();
-  const pair = await findCircleSurfaceAnglePair(module);
-
-  assert.ok(pair, "as1_pe_203.brep should expose a circle edge with a plane or cylinder owner face");
-
-  const faceEdgeAngle = measureExactAngle(module, pair.faceRef, pair.edgeRef);
-  assert.equal(
-    faceEdgeAngle?.ok,
-    true,
-    `circle/${pair.faceFamily} owner angle should succeed`,
-  );
-  assert.equal(typeof faceEdgeAngle?.value, "number");
-  assert.ok(Math.abs(faceEdgeAngle.value) < 1e-6);
-  assert.ok(Array.isArray(faceEdgeAngle?.origin) && faceEdgeAngle.origin.length === 3);
-  assert.ok(Array.isArray(faceEdgeAngle?.directionA) && faceEdgeAngle.directionA.length === 3);
-  assert.ok(Array.isArray(faceEdgeAngle?.directionB) && faceEdgeAngle.directionB.length === 3);
-  assert.ok(Array.isArray(faceEdgeAngle?.pointA) && faceEdgeAngle.pointA.length === 3);
-  assert.ok(Array.isArray(faceEdgeAngle?.pointB) && faceEdgeAngle.pointB.length === 3);
-  assert.ok(Array.isArray(faceEdgeAngle?.workingPlaneOrigin) && faceEdgeAngle.workingPlaneOrigin.length === 3);
-  assert.ok(Array.isArray(faceEdgeAngle?.workingPlaneNormal) && faceEdgeAngle.workingPlaneNormal.length === 3);
-
-  const faceEdgePlacement = suggestExactAnglePlacement(module, pair.faceRef, pair.edgeRef);
-  assert.equal(faceEdgePlacement?.ok, true);
-  assert.ok(Array.isArray(faceEdgePlacement?.anchors) && faceEdgePlacement.anchors.length >= 2);
-  assert.ok(Array.isArray(faceEdgePlacement?.frame?.origin) && faceEdgePlacement.frame.origin.length === 3);
-
-  const edgeFaceAngle = measureExactAngle(module, pair.edgeRef, pair.faceRef);
-  assert.equal(edgeFaceAngle?.ok, true);
-  assert.ok(Math.abs(edgeFaceAngle.value) < 1e-6);
-});
-
 test("exact thickness queries use plane distance for parallel planar face pairs", async () => {
   const module = await createModule();
   const stepBytes = await loadFixture("simple_part.step");
@@ -472,12 +291,10 @@ test("exact angle failures stay explicit for parallel or unsupported geometry", 
     return distance?.ok === true && distance.value > 0;
   });
   const lineEdge = geometry.edges.find((edge) => Array.isArray(edge.points) || edge.points?.length === 6);
-  const vertex = geometry.vertices[0];
 
   assert.ok(parallelEdges, "simple_part.step should expose a pair of separated parallel line edges");
   assert.ok(planeFace, "simple_part.step should expose at least one plane face");
   assert.ok(lineEdge, "simple_part.step should expose at least one line edge");
-  assert.ok(vertex, "simple_part.step should expose at least one vertex");
 
   assert.deepEqual(
     measureExactAngle(
@@ -496,12 +313,12 @@ test("exact angle failures stay explicit for parallel or unsupported geometry", 
     measureExactAngle(
       module,
       getExactRef(result, 0, "face", planeFace.id),
-      getExactRef(result, 0, "vertex", vertex.id),
+      getExactRef(result, 0, "edge", lineEdge.id),
     ),
     {
       ok: false,
       code: "unsupported-geometry",
-      message: "Exact angle only supports line/line, plane/plane, mixed line/plane, or circle/plane and circle/cylinder pairs.",
+      message: "Exact angle only supports line/line or plane/plane pairs.",
     },
   );
 });
