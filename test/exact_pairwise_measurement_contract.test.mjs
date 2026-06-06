@@ -209,7 +209,7 @@ test("exact distance queries return attach points and working plane from retaine
   assert.ok(Array.isArray(distance?.workingPlaneNormal) && distance.workingPlaneNormal.length === 3);
 });
 
-test("exact angle queries return origin directions and working plane for linear edges or planar faces", async () => {
+test("exact angle queries return origin directions and working plane for planar faces", async () => {
   const module = await createModule();
   const stepBytes = await loadFixture("simple_part.step");
   const result = module.OpenExactStepModel(stepBytes, {});
@@ -217,18 +217,18 @@ test("exact angle queries return origin directions and working plane for linear 
   assert.equal(result?.success, true);
   const geometry = result.geometries[0];
 
-  const edgePair = findEdgePair(geometry, (left, right) => {
-    const leftDirection = getApproxEdgeDirection(left);
-    const rightDirection = getApproxEdgeDirection(right);
-    return Math.abs(dot(leftDirection, rightDirection)) < 1e-6;
+  const facePair = findFacePair(geometry, (left, right) => {
+    const leftNormal = getExactFaceNormal(module, result, geometry, left);
+    const rightNormal = getExactFaceNormal(module, result, geometry, right);
+    return Math.abs(dot(leftNormal, rightNormal)) < 1e-6;
   });
 
-  assert.ok(edgePair, "simple_part.step should expose a pair of perpendicular line edges");
+  assert.ok(facePair, "simple_part.step should expose a pair of perpendicular planar faces");
 
   const angle = measureExactAngle(
     module,
-    getExactRef(result, 0, "edge", edgePair[0].id),
-    getExactRef(result, 0, "edge", edgePair[1].id),
+    getExactRef(result, 0, "face", facePair[0].id),
+    getExactRef(result, 0, "face", facePair[1].id),
   );
 
   assert.equal(angle?.ok, true);
@@ -290,9 +290,23 @@ test("exact angle failures stay explicit for parallel or unsupported geometry", 
     );
     return distance?.ok === true && distance.value > 0;
   });
+  const separatedNonParallelEdges = findEdgePair(geometry, (left, right) => {
+    const leftDirection = getApproxEdgeDirection(left);
+    const rightDirection = getApproxEdgeDirection(right);
+    if (Math.abs(Math.abs(dot(leftDirection, rightDirection)) - 1) <= 1e-6) {
+      return false;
+    }
+    const distance = measureExactDistance(
+      module,
+      getExactRef(result, 0, "edge", left.id),
+      getExactRef(result, 0, "edge", right.id),
+    );
+    return distance?.ok === true && distance.value > 1e-6;
+  });
   const lineEdge = geometry.edges.find((edge) => Array.isArray(edge.points) || edge.points?.length === 6);
 
   assert.ok(parallelEdges, "simple_part.step should expose a pair of separated parallel line edges");
+  assert.ok(separatedNonParallelEdges, "simple_part.step should expose a pair of separated nonparallel line edges");
   assert.ok(planeFace, "simple_part.step should expose at least one plane face");
   assert.ok(lineEdge, "simple_part.step should expose at least one line edge");
 
@@ -306,6 +320,19 @@ test("exact angle failures stay explicit for parallel or unsupported geometry", 
       ok: false,
       code: "parallel-geometry",
       message: "Exact angle is not defined for parallel planar faces or collinear linear edges.",
+    },
+  );
+
+  assert.deepEqual(
+    measureExactAngle(
+      module,
+      getExactRef(result, 0, "edge", separatedNonParallelEdges[0].id),
+      getExactRef(result, 0, "edge", separatedNonParallelEdges[1].id),
+    ),
+    {
+      ok: false,
+      code: "non-intersecting-geometry",
+      message: "Exact angle is only defined for intersecting linear edges or nonparallel planar faces.",
     },
   );
 

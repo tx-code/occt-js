@@ -2408,6 +2408,12 @@ OcctExactAngleResult MeasureExactAngleCrossModel(
             if (!lifecycle.ok) {
                 return ConvertFailure<OcctExactAngleResult>(lifecycle);
             }
+            if (distanceValue > Precision::Confusion()) {
+                return MakeFailure<OcctExactAngleResult>(
+                    "non-intersecting-geometry",
+                    "Exact angle is only defined for intersecting linear edges or nonparallel planar faces."
+                );
+            }
 
             gp_Dir workingPlaneNormal(gp_Vec(lineA.Direction().XYZ().Crossed(lineB.Direction().XYZ())));
 
