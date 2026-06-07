@@ -140,6 +140,31 @@ function getApproxEdgeDirection(edge) {
   ]);
 }
 
+function edgeEndpoint(edge, offset) {
+  const pointValues = Array.from(edge.points);
+  return [
+    pointValues[offset],
+    pointValues[offset + 1],
+    pointValues[offset + 2],
+  ];
+}
+
+function pointsAlmostEqual(left, right, tolerance = 1e-6) {
+  return Math.hypot(
+    left[0] - right[0],
+    left[1] - right[1],
+    left[2] - right[2],
+  ) <= tolerance;
+}
+
+function edgesShareEndpoint(left, right) {
+  const leftEndpoints = [edgeEndpoint(left, 0), edgeEndpoint(left, 3)];
+  const rightEndpoints = [edgeEndpoint(right, 0), edgeEndpoint(right, 3)];
+  return leftEndpoints.some((leftPoint) =>
+    rightEndpoints.some((rightPoint) => pointsAlmostEqual(leftPoint, rightPoint)),
+  );
+}
+
 function findFacePair(geometry, predicate) {
   for (let leftIndex = 0; leftIndex < geometry.faces.length; leftIndex += 1) {
     for (let rightIndex = leftIndex + 1; rightIndex < geometry.faces.length; rightIndex += 1) {
@@ -207,6 +232,29 @@ test("exact distance queries return attach points and working plane from retaine
   assert.ok(Array.isArray(distance?.pointB) && distance.pointB.length === 3);
   assert.ok(Array.isArray(distance?.workingPlaneOrigin) && distance.workingPlaneOrigin.length === 3);
   assert.ok(Array.isArray(distance?.workingPlaneNormal) && distance.workingPlaneNormal.length === 3);
+});
+
+test("exact distance returns zero for touching geometry without requiring a placement axis", async () => {
+  const module = await createModule();
+  const stepBytes = await loadFixture("simple_part.step");
+  const result = module.OpenExactStepModel(stepBytes, {});
+
+  assert.equal(result?.success, true);
+  const geometry = result.geometries[0];
+  const edgePair = findEdgePair(geometry, edgesShareEndpoint);
+
+  assert.ok(edgePair, "simple_part.step should expose a pair of edges sharing an endpoint");
+
+  const distance = measureExactDistance(
+    module,
+    getExactRef(result, 0, "edge", edgePair[0].id),
+    getExactRef(result, 0, "edge", edgePair[1].id),
+  );
+
+  assert.equal(distance?.ok, true);
+  assert.ok(distance.value <= 1e-7);
+  assert.ok(pointsAlmostEqual(distance.pointA, distance.pointB));
+  assert.deepEqual(distance.workingPlaneNormal, [0, 0, 0]);
 });
 
 test("exact angle queries return origin directions and working plane for planar faces", async () => {

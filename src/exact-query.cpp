@@ -2294,20 +2294,7 @@ OcctExactDistanceResult MeasureExactDistanceCrossModel(
         if (!lifecycle.ok) {
             return ConvertFailure<OcctExactDistanceResult>(lifecycle);
         }
-        if (value <= Precision::Confusion()) {
-            return MakeFailure<OcctExactDistanceResult>(
-                "coincident-geometry",
-                "Exact distance requires geometry with a stable separation direction."
-            );
-        }
-
         gp_Dir workingPlaneNormal;
-        if (!TryMakeDirection(pointA, pointB, workingPlaneNormal)) {
-            return MakeFailure<OcctExactDistanceResult>(
-                "coincident-geometry",
-                "Exact distance requires geometry with a stable separation direction."
-            );
-        }
 
         OcctExactDistanceResult result;
         result.ok = true;
@@ -2315,7 +2302,9 @@ OcctExactDistanceResult MeasureExactDistanceCrossModel(
         result.pointA = ToArray(pointA);
         result.pointB = ToArray(pointB);
         result.workingPlaneOrigin = ToArray(Midpoint(pointA, pointB));
-        result.workingPlaneNormal = ToArray(workingPlaneNormal);
+        if (TryMakeDirection(pointA, pointB, workingPlaneNormal)) {
+            result.workingPlaneNormal = ToArray(workingPlaneNormal);
+        }
         return result;
     } catch (const Standard_Failure& failure) {
         return MakeFailure<OcctExactDistanceResult>(

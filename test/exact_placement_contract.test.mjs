@@ -132,6 +132,31 @@ function getApproxEdgeDirection(edge) {
   ]);
 }
 
+function edgeEndpoint(edge, offset) {
+  const pointValues = Array.from(edge.points);
+  return [
+    pointValues[offset],
+    pointValues[offset + 1],
+    pointValues[offset + 2],
+  ];
+}
+
+function pointsAlmostEqual(left, right, tolerance = 1e-6) {
+  return Math.hypot(
+    left[0] - right[0],
+    left[1] - right[1],
+    left[2] - right[2],
+  ) <= tolerance;
+}
+
+function edgesShareEndpoint(left, right) {
+  const leftEndpoints = [edgeEndpoint(left, 0), edgeEndpoint(left, 3)];
+  const rightEndpoints = [edgeEndpoint(right, 0), edgeEndpoint(right, 3)];
+  return leftEndpoints.some((leftPoint) =>
+    rightEndpoints.some((rightPoint) => pointsAlmostEqual(leftPoint, rightPoint)),
+  );
+}
+
 function findFacePair(geometry, predicate) {
   for (let leftIndex = 0; leftIndex < geometry.faces.length; leftIndex += 1) {
     for (let rightIndex = leftIndex + 1; rightIndex < geometry.faces.length; rightIndex += 1) {
@@ -325,6 +350,7 @@ test("pairwise placement failures stay explicit for unsupported or degenerate ge
   const geometry = result.geometries[0];
   const planeFace = geometry.faces[0];
   const lineEdge = geometry.edges[0];
+  const touchingEdges = findEdgePair(geometry, edgesShareEndpoint);
   const parallelEdges = findEdgePair(geometry, (left, right) => {
     const leftDirection = getApproxEdgeDirection(left);
     const rightDirection = getApproxEdgeDirection(right);
@@ -346,8 +372,22 @@ test("pairwise placement failures stay explicit for unsupported or degenerate ge
   });
 
   assert.ok(parallelEdges, "simple_part.step should expose a pair of separated parallel line edges");
+  assert.ok(touchingEdges, "simple_part.step should expose a pair of edges sharing an endpoint");
   assert.ok(planeFace, "simple_part.step should expose at least one plane face");
   assert.ok(lineEdge, "simple_part.step should expose at least one line edge");
+
+  assert.deepEqual(
+    suggestExactDistancePlacement(
+      module,
+      getExactRef(result, 0, "edge", touchingEdges[0].id),
+      getExactRef(result, 0, "edge", touchingEdges[1].id),
+    ),
+    {
+      ok: false,
+      code: "coincident-geometry",
+      message: "Exact distance placement requires geometry with a stable separation direction.",
+    },
+  );
 
   assert.deepEqual(
     suggestExactAnglePlacement(
